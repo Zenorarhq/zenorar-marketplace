@@ -6,12 +6,13 @@ import RelatedProducts from '@/components/product/RelatedProducts'
 import { scriptProducts } from '@/lib/mock-data'
 
 interface ProductPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
-export default function ProductPage({ params }: ProductPageProps) {
+export default async function ProductPage({ params }: ProductPageProps) {
+  const { slug } = await params
   // Find product by slug (in real app, this would fetch from API)
-  const product = scriptProducts.find((p) => p.slug === params.slug) || scriptProducts[0]
+  const product = scriptProducts.find((p) => p.slug === slug) || scriptProducts[0]
 
   return (
     <main className="max-w-container mx-auto px-8 lg:px-12 py-6">
@@ -49,10 +50,18 @@ export default function ProductPage({ params }: ProductPageProps) {
             {/* Overlay with actions */}
             <div className="absolute inset-0 bg-gradient-to-t from-background-dark/80 to-transparent flex items-end p-8">
               <div className="flex gap-4">
-                <button className="w-12 h-12 bg-white/10 backdrop-blur rounded-lg flex items-center justify-center border border-white/20 cursor-pointer hover:bg-white/20">
+                <button
+                  type="button"
+                  aria-label="Zoom in on image"
+                  className="w-12 h-12 bg-white/10 backdrop-blur rounded-lg flex items-center justify-center border border-white/20 cursor-pointer hover:bg-white/20"
+                >
                   <span className="material-symbols-outlined">zoom_in</span>
                 </button>
-                <button className="w-12 h-12 bg-white/10 backdrop-blur rounded-lg flex items-center justify-center border border-white/20 cursor-pointer hover:bg-white/20">
+                <button
+                  type="button"
+                  aria-label="Play product video"
+                  className="w-12 h-12 bg-white/10 backdrop-blur rounded-lg flex items-center justify-center border border-white/20 cursor-pointer hover:bg-white/20"
+                >
                   <span className="material-symbols-outlined">play_circle</span>
                 </button>
               </div>

@@ -1,4 +1,12 @@
+'use client'
+
 import Image from 'next/image'
+import { useCart } from '@/lib/cart-context'
+
+interface OrderSummaryProps {
+  onSubmit?: (e: React.FormEvent) => void
+  isSubmitting?: boolean
+}
 
 interface OrderItem {
   id: string
@@ -28,22 +36,42 @@ const mockOrderItems: OrderItem[] = [
   },
 ]
 
-export default function OrderSummary() {
-  const subtotal = mockOrderItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSummaryProps) {
+  const { items: cartItems } = useCart()
+
+  // Use cart items if available, otherwise fall back to mock data
+  const displayItems = cartItems.length > 0
+    ? cartItems.map((item) => ({
+        id: item.product.id,
+        name: item.product.name,
+        image: item.product.image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvwgfYMEvcI_nX3811VEyCy34SMnKHy9dmdnqG3nSMOUjjKLHrwM1Buu7vIN4sHUv_IHj3lxtx8AuvVgtQJrjdBjilef-qD6NbH3AMwpj-xP3Cl3XD4r8kxRx3ZJzJe8Y-Z4MqVrZdrhg60-dWHm_iNTlUzZhPqmEvucOUsNN2Cqq1nlRE-lUiK6PR4GpN2-YM32iXvk86ERNf_KfTr8v3fkU0u395JRo_hw-hlhfenuygiypi5Pyn0V13zGizBFBqXGrkP8TTlHSx',
+        license: item.license === 'extended' ? 'Extended License' : 'Standard License',
+        price: item.price,
+        quantity: item.quantity,
+      }))
+    : mockOrderItems
+
+  const subtotal = displayItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const shipping = 0 // Free shipping
   const tax = 0
   const total = subtotal + shipping + tax
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (onSubmit) {
+      onSubmit(e as unknown as React.FormEvent)
+    }
+  }
+
   return (
     <div className="sticky top-32 bg-charcoal rounded-2xl border border-border-dark p-8 shadow-2xl">
       <h2 className="text-xl font-bold text-white mb-8 flex items-center gap-2">
-        <span className="material-symbols-outlined text-primary">shopping_bag</span>
+        <span className="material-symbols-outlined text-primary" aria-hidden="true">shopping_bag</span>
         Order Summary
       </h2>
 
       {/* Order Items */}
       <div className="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
-        {mockOrderItems.map((item) => (
+        {displayItems.map((item) => (
           <div key={item.id} className="flex gap-4">
             <div className="w-20 h-20 rounded-xl bg-background-dark border border-border-dark overflow-hidden shrink-0">
               <Image
@@ -89,17 +117,24 @@ export default function OrderSummary() {
       </div>
 
       {/* Continue Button */}
-      <button className="w-full bg-primary text-black font-extrabold py-5 rounded-xl mt-8 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-widest group">
-        Next: Payment
-        <span className="material-symbols-outlined font-bold group-hover:translate-x-1 transition-transform">
-          arrow_forward
-        </span>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={isSubmitting}
+        className="w-full bg-primary text-black font-extrabold py-5 rounded-xl mt-8 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-widest group disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isSubmitting ? 'Processing...' : 'Next: Payment'}
+        {!isSubmitting && (
+          <span className="material-symbols-outlined font-bold group-hover:translate-x-1 transition-transform" aria-hidden="true">
+            arrow_forward
+          </span>
+        )}
       </button>
 
       {/* Trust Badge */}
       <div className="mt-6 flex flex-col gap-4">
         <div className="bg-background-dark/50 border border-border-dark p-4 rounded-xl flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary text-xl">verified_user</span>
+          <span className="material-symbols-outlined text-primary text-xl" aria-hidden="true">verified_user</span>
           <div className="text-[10px] leading-tight">
             <div className="text-white font-bold uppercase tracking-widest mb-0.5">
               Buyer Protection

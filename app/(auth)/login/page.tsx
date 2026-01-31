@@ -1,7 +1,49 @@
+'use client'
+
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const currentYear = new Date().getFullYear()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setIsLoading(true)
+
+    try {
+      // TODO: Implement actual authentication logic
+      console.log('Login attempt:', { email, password })
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Redirect on success (placeholder)
+      window.location.href = '/'
+    } catch {
+      setError('Invalid email or password. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = () => {
+    // TODO: Implement Google OAuth
+    console.log('Google login clicked')
+  }
+
+  const handleWalletLogin = () => {
+    // TODO: Implement wallet connection
+    console.log('Wallet login clicked')
+  }
+
   return (
     <div className="bg-surface-dark text-slate-100 min-h-screen flex">
       {/* Left Side - Hero */}
@@ -69,7 +111,7 @@ export default function LoginPage() {
 
           {/* Copyright */}
           <div className="text-slate-600 text-sm">
-            &copy; 2024 Marketplace Inc.
+            &copy; {currentYear} Marketplace Inc.
           </div>
         </div>
       </div>
@@ -87,7 +129,11 @@ export default function LoginPage() {
 
           {/* Tab Switch */}
           <div className="bg-background-dark p-1.5 rounded-2xl grid grid-cols-2 gap-1 mb-10 border border-border-dark">
-            <button className="py-3 rounded-xl text-sm font-bold bg-[#262626] text-white shadow-lg ring-1 ring-white/5 transition-all">
+            <button
+              type="button"
+              className="py-3 rounded-xl text-sm font-bold bg-[#262626] text-white shadow-lg ring-1 ring-white/5 transition-all"
+              aria-current="page"
+            >
               Login
             </button>
             <Link href="/signup" className="py-3 rounded-xl text-sm font-semibold text-slate-400 hover:text-white transition-colors text-center">
@@ -101,10 +147,21 @@ export default function LoginPage() {
             <p className="text-slate-400">Enter your details to access your account</p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Social Login */}
           <div className="grid grid-cols-2 gap-4 mb-8">
-            <button className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M23.766 12.2764C23.766 11.4607 23.6999 10.6406 23.5588 9.83807H12.24V14.4591H18.7217C18.4528 15.9494 17.5885 17.2678 16.323 18.1056V21.1039H20.19C22.4608 19.0139 23.766 15.9274 23.766 12.2764Z" fill="#4285F4" />
                 <path d="M12.24 24.0008C15.4765 24.0008 18.2058 22.9382 20.19 21.1039L16.323 18.1056C15.2424 18.8375 13.8643 19.252 12.2435 19.252C9.11388 19.252 6.45946 17.1399 5.50705 14.3003H1.5166V17.3912C3.55371 21.4434 7.7029 24.0008 12.24 24.0008Z" fill="#34A853" />
                 <path d="M5.50253 14.3003C5.00236 12.8099 5.00236 11.1961 5.50253 9.70575V6.61481H1.5166C-0.18551 10.0056 -0.18551 14.0004 1.5166 17.3912L5.50253 14.3003Z" fill="#FBBC05" />
@@ -112,7 +169,11 @@ export default function LoginPage() {
               </svg>
               <span className="font-medium text-sm">Google</span>
             </button>
-            <button className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group">
+            <button
+              type="button"
+              onClick={handleWalletLogin}
+              className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group"
+            >
               <span className="material-symbols-outlined w-5 h-5 text-white group-hover:text-primary transition-colors">
                 account_balance_wallet
               </span>
@@ -131,46 +192,65 @@ export default function LoginPage() {
           </div>
 
           {/* Login Form */}
-          <form className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="relative group">
+              <label htmlFor="email" className="sr-only">Email Address</label>
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
                 mail
               </span>
               <input
+                id="email"
+                name="email"
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email Address"
+                required
+                autoComplete="email"
                 className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium"
               />
             </div>
 
             <div className="relative group">
+              <label htmlFor="password" className="sr-only">Password</label>
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
                 lock
               </span>
               <input
-                type="password"
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
+                required
+                autoComplete="current-password"
                 className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-4 pl-12 pr-12 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium"
               />
               <button
                 type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
               >
-                <span className="material-symbols-outlined text-[20px]">visibility_off</span>
+                <span className="material-symbols-outlined text-[20px]">
+                  {showPassword ? 'visibility' : 'visibility_off'}
+                </span>
               </button>
             </div>
 
             <div className="flex justify-end mt-1">
-              <a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">
+              <Link href="/forgot-password" className="text-sm text-slate-400 hover:text-white transition-colors">
                 Forgot Password?
-              </a>
+              </Link>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-primary hover:bg-[#3bc26d] text-black font-bold text-lg py-4 rounded-2xl shadow-glow-green hover:shadow-glow-green-lg transition-all transform hover:-translate-y-0.5 mt-4"
+              disabled={isLoading}
+              className="w-full bg-primary hover:bg-[#3bc26d] text-black font-bold text-lg py-4 rounded-2xl shadow-glow-green hover:shadow-glow-green-lg transition-all transform hover:-translate-y-0.5 mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              Login
+              {isLoading ? 'Signing in...' : 'Login'}
             </button>
           </form>
 

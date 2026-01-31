@@ -1,6 +1,32 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 
 export default function Footer() {
+  const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [subscribed, setSubscribed] = useState(false)
+  const currentYear = new Date().getFullYear()
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) return
+
+    setIsSubmitting(true)
+    try {
+      // TODO: Implement actual newsletter subscription
+      console.log('Newsletter subscription:', email)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setSubscribed(true)
+      setEmail('')
+    } catch (error) {
+      console.error('Newsletter subscription error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <footer className="bg-surface-dark border-t border-border-dark pt-16 pb-8">
       <div className="max-w-container mx-auto px-8 lg:px-12 grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-16">
@@ -97,33 +123,63 @@ export default function Footer() {
         {/* Newsletter Column */}
         <div>
           <h4 className="font-bold mb-6 text-white">Newsletter</h4>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              placeholder="Email address"
-              className="bg-background-dark border-none rounded-lg py-2 px-3 text-sm focus:ring-1 focus:ring-primary w-full text-slate-200 placeholder:text-slate-500"
-            />
-            <button className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:brightness-110 transition-all">
-              Join
-            </button>
-          </div>
+          {subscribed ? (
+            <p className="text-primary text-sm">Thanks for subscribing!</p>
+          ) : (
+            <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
+              <label htmlFor="newsletter-email" className="sr-only">Email address</label>
+              <input
+                id="newsletter-email"
+                name="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                required
+                className="bg-background-dark border-none rounded-lg py-2 px-3 text-sm focus:ring-1 focus:ring-primary w-full text-slate-200 placeholder:text-slate-500"
+              />
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-primary text-black px-4 py-2 rounded-lg text-sm font-bold hover:brightness-110 transition-all disabled:opacity-50"
+              >
+                {isSubmitting ? '...' : 'Join'}
+              </button>
+            </form>
+          )}
           <div className="flex gap-4 mt-8">
-            <Link href="#" className="text-slate-400 hover:text-primary transition-colors">
+            <a
+              href="https://twitter.com/marketplace"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-primary transition-colors"
+              aria-label="Follow us on Twitter"
+            >
               <span className="material-symbols-outlined">public</span>
-            </Link>
-            <Link href="#" className="text-slate-400 hover:text-primary transition-colors">
+            </a>
+            <a
+              href="mailto:hello@marketplace.com"
+              className="text-slate-400 hover:text-primary transition-colors"
+              aria-label="Email us"
+            >
               <span className="material-symbols-outlined">alternate_email</span>
-            </Link>
-            <Link href="#" className="text-slate-400 hover:text-primary transition-colors">
+            </a>
+            <a
+              href="https://discord.gg/marketplace"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-primary transition-colors"
+              aria-label="Join our Discord"
+            >
               <span className="material-symbols-outlined">forum</span>
-            </Link>
+            </a>
           </div>
         </div>
       </div>
 
       {/* Bottom Bar */}
       <div className="max-w-container mx-auto px-8 lg:px-12 border-t border-border-dark pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-xs">
-        <p>&copy; 2024 Marketplace Inc. All rights reserved.</p>
+        <p>&copy; {currentYear} Marketplace Inc. All rights reserved.</p>
         <div className="flex gap-8">
           <Link href="/terms" className="hover:text-slate-300 transition-colors">
             Terms
