@@ -1,13 +1,41 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Product } from '@/lib/types'
+import { useCart } from '@/lib/cart-context'
 
 interface ProductPurchasePanelProps {
   product: Product
 }
 
 export default function ProductPurchasePanel({ product }: ProductPurchasePanelProps) {
+  const { addItem } = useCart()
+  const [selectedLicense, setSelectedLicense] = useState<'standard' | 'extended'>('standard')
+  const [isAdding, setIsAdding] = useState(false)
+  const [showAddedMessage, setShowAddedMessage] = useState(false)
+
+  const currentPrice = selectedLicense === 'extended'
+    ? (product.priceRange?.max || product.price)
+    : (product.priceRange?.min || product.price)
+
+  const handleAddToCart = async () => {
+    setIsAdding(true)
+    try {
+      addItem(product, selectedLicense)
+      setShowAddedMessage(true)
+      setTimeout(() => setShowAddedMessage(false), 2000)
+    } finally {
+      setIsAdding(false)
+    }
+  }
+
+  const handleDirectPurchase = () => {
+    addItem(product, selectedLicense)
+    window.location.href = '/checkout'
+  }
+
   return (
     <div className="sticky top-24">
       {/* Main Purchase Card */}
@@ -15,9 +43,9 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
         {/* Price */}
         <div className="flex items-baseline gap-2 mb-6">
           <span className="text-3xl font-extrabold text-white">
-            ${product.priceRange?.min || product.price}
+            ${currentPrice}
           </span>
-          {product.priceRange && (
+          {product.priceRange && selectedLicense === 'standard' && (
             <>
               <span className="text-slate-500 text-sm">—</span>
               <span className="text-slate-500 text-sm">${product.priceRange.max}</span>
@@ -28,26 +56,40 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
         {/* License Select */}
         <div className="space-y-4 mb-6">
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+            <label htmlFor="license-type" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
               License Type
             </label>
-            <select className="w-full bg-background-dark border-border-dark rounded-lg text-slate-300 text-sm focus:ring-primary focus:border-primary px-4 py-3">
-              <option>Standard License (${product.priceRange?.min || product.price})</option>
-              <option>Extended License (${product.priceRange?.max || product.price})</option>
+            <select
+              id="license-type"
+              value={selectedLicense}
+              onChange={(e) => setSelectedLicense(e.target.value as 'standard' | 'extended')}
+              className="w-full bg-background-dark border-border-dark rounded-lg text-slate-300 text-sm focus:ring-primary focus:border-primary px-4 py-3"
+            >
+              <option value="standard">Standard License (${product.priceRange?.min || product.price})</option>
+              <option value="extended">Extended License (${product.priceRange?.max || product.price})</option>
             </select>
           </div>
         </div>
 
         {/* Add to Cart Button */}
-        <button className="w-full bg-primary text-black font-bold py-4 rounded-xl mb-4 hover:brightness-105 transition-all flex items-center justify-center gap-2">
-          <span className="material-symbols-outlined">shopping_cart</span>
-          Add to Cart
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          disabled={isAdding}
+          className="w-full bg-primary text-black font-bold py-4 rounded-xl mb-4 hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
+          {showAddedMessage ? 'Added to Cart!' : isAdding ? 'Adding...' : 'Add to Cart'}
         </button>
 
-        {/* Direct Purchase Link */}
-        <a href="#" className="block text-center text-primary text-sm font-bold hover:underline mb-8">
+        {/* Direct Purchase Button */}
+        <button
+          type="button"
+          onClick={handleDirectPurchase}
+          className="block w-full text-center text-primary text-sm font-bold hover:underline mb-8"
+        >
           Direct Purchase
-        </a>
+        </button>
 
         {/* Seller Info */}
         {product.seller && (
@@ -66,7 +108,7 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
                 <div className="text-sm font-bold text-white flex items-center gap-1">
                   {product.seller.name}
                   {product.seller.verified && (
-                    <span className="material-symbols-outlined text-primary text-[14px] icon-filled">
+                    <span className="material-symbols-outlined text-primary text-[14px] icon-filled" aria-label="Verified seller">
                       verified
                     </span>
                   )}
@@ -80,18 +122,27 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
             </div>
 
             <div className="space-y-3">
-              <a href="#" className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-sm">mail</span>
+              <Link
+                href={`/seller/${product.seller.id}/contact`}
+                className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm" aria-hidden="true">mail</span>
                 Contact Seller
-              </a>
-              <a href="#" className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-sm">support_agent</span>
+              </Link>
+              <Link
+                href={`/products/${product.slug}/support`}
+                className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm" aria-hidden="true">support_agent</span>
                 Technical Support
-              </a>
-              <a href="#" className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-sm">description</span>
+              </Link>
+              <Link
+                href={`/products/${product.slug}/docs`}
+                className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm" aria-hidden="true">description</span>
                 Documentation
-              </a>
+              </Link>
             </div>
           </div>
         )}
@@ -100,14 +151,14 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
       {/* Trust Badges */}
       <div className="mt-6 flex flex-col gap-3">
         <div className="bg-surface-dark border border-border-dark p-4 rounded-xl flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary">security</span>
+          <span className="material-symbols-outlined text-primary" aria-hidden="true">security</span>
           <div className="text-xs">
             <div className="text-white font-bold">Secure Payment</div>
             <div className="text-slate-500">Encrypted transactions via Stripe</div>
           </div>
         </div>
         <div className="bg-surface-dark border border-border-dark p-4 rounded-xl flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary">history</span>
+          <span className="material-symbols-outlined text-primary" aria-hidden="true">history</span>
           <div className="text-xs">
             <div className="text-white font-bold">Update Protection</div>
             <div className="text-slate-500">Free updates for 6 months</div>
