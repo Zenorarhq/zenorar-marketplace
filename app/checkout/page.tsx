@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Header from '@/components/layout/Header'
+import CategoryNav from '@/components/layout/CategoryNav'
+import Footer from '@/components/layout/Footer'
 import OrderSummary from '@/components/checkout/OrderSummary'
+import Breadcrumbs from '@/components/ui/Breadcrumbs'
+import Icon from '@/components/ui/Icon'
 
 interface ShippingForm {
   fullName: string
@@ -16,7 +21,6 @@ interface ShippingForm {
 }
 
 export default function CheckoutPage() {
-  const currentYear = new Date().getFullYear()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<ShippingForm>({
     fullName: '',
@@ -59,21 +63,19 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background-dark">
-      {/* Checkout Header */}
-      <header className="border-b border-border-dark bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-container mx-auto px-8 h-20 flex items-center justify-between">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-2xl">grid_view</span>
-            Marketplace
-          </Link>
+    <div className="min-h-screen bg-background-dark flex flex-col">
+      <Header />
+      <CategoryNav />
 
-          {/* Checkout Steps */}
-          <nav aria-label="Checkout progress" className="flex items-center gap-12">
+      {/* Main Content */}
+      <main className="flex-grow max-w-container mx-auto px-8 lg:px-12 pb-24 w-full">
+        <div className="py-4">
+          <Breadcrumbs className="mb-0" />
+        </div>
+
+        {/* Checkout Steps */}
+        <div className="mb-8">
+          <nav aria-label="Checkout progress" className="flex items-center justify-center">
             <ol className="flex items-center gap-4">
               {/* Step 1 - Active */}
               <li className="flex items-center gap-3">
@@ -104,20 +106,8 @@ export default function CheckoutPage() {
               </li>
             </ol>
           </nav>
-
-          {/* Exit Button */}
-          <Link
-            href="/"
-            className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium transition-colors"
-          >
-            <span className="material-symbols-outlined text-xl">close</span>
-            Exit
-          </Link>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-container mx-auto px-8 py-12">
         <div className="grid grid-cols-12 gap-16">
           {/* Left Column - Form */}
           <div className="col-span-12 lg:col-span-7">
@@ -235,8 +225,8 @@ export default function CheckoutPage() {
                       Phone Number
                     </label>
                     <div className="relative">
-                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 material-symbols-outlined" aria-hidden="true">
-                        call
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true">
+                        <Icon name="call" size={20} />
                       </span>
                       <input
                         id="phone"
@@ -312,25 +302,7 @@ export default function CheckoutPage() {
         </div>
       </main>
 
-      {/* Simple Footer */}
-      <footer className="mt-24 border-t border-border-dark py-12">
-        <div className="max-w-container mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-6 text-slate-500 text-xs">
-          <div className="flex items-center gap-8">
-            <p>&copy; {currentYear} Marketplace Inc.</p>
-            <div className="flex gap-6 uppercase tracking-widest font-bold">
-              <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
-              <Link href="/terms" className="hover:text-primary transition-colors">Terms</Link>
-              <Link href="/cookies" className="hover:text-primary transition-colors">Cookies</Link>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 grayscale opacity-50" aria-label="Accepted payment methods">
-            <span className="material-symbols-outlined" aria-label="PayPal">payments</span>
-            <span className="material-symbols-outlined" aria-label="Credit Card">credit_card</span>
-            <span className="material-symbols-outlined" aria-label="Bank Transfer">account_balance</span>
-            <span className="material-symbols-outlined" aria-label="Bitcoin">currency_bitcoin</span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

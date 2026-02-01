@@ -1,5 +1,6 @@
 import Image from 'next/image'
-import Breadcrumb from '@/components/layout/Breadcrumb'
+import Icon from '@/components/ui/Icon'
+import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import ProductTabs from '@/components/product/ProductTabs'
 import ProductPurchasePanel from '@/components/product/ProductPurchasePanel'
 import RelatedProducts from '@/components/product/RelatedProducts'
@@ -15,21 +16,24 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const product = scriptProducts.find((p) => p.slug === slug) || scriptProducts[0]
 
   return (
-    <main className="max-w-container mx-auto px-8 lg:px-12 py-6">
-      {/* Breadcrumb */}
-      <Breadcrumb
-        items={[
-          { label: 'Home', href: '/' },
-          { label: 'Scripts', href: '/products' },
-          { label: product.name },
-        ]}
-      />
+    <main className="max-w-container mx-auto px-8 lg:px-12 pb-24">
+      {/* Breadcrumbs */}
+      <div className="py-4">
+        <Breadcrumbs
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'Scripts', href: '/products' },
+            { label: product.name }
+          ]}
+          className="mb-0"
+        />
+      </div>
 
       {/* Product Title */}
-      <div className="flex items-center gap-3 mb-8 mt-6">
+      <div className="flex items-center gap-3 mb-8">
         <h1 className="text-4xl font-extrabold text-white">{product.name}</h1>
         <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-primary/20">
-          <span className="material-symbols-outlined text-sm icon-filled">verified</span>
+          <Icon name="verified" size={14} />
           Verified
         </div>
       </div>
@@ -55,14 +59,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   aria-label="Zoom in on image"
                   className="w-12 h-12 bg-white/10 backdrop-blur rounded-lg flex items-center justify-center border border-white/20 cursor-pointer hover:bg-white/20"
                 >
-                  <span className="material-symbols-outlined">zoom_in</span>
+                  <Icon name="zoom-in" size={24} />
                 </button>
                 <button
                   type="button"
                   aria-label="Play product video"
                   className="w-12 h-12 bg-white/10 backdrop-blur rounded-lg flex items-center justify-center border border-white/20 cursor-pointer hover:bg-white/20"
                 >
-                  <span className="material-symbols-outlined">play_circle</span>
+                  <Icon name="play-circle" size={24} />
                 </button>
               </div>
             </div>

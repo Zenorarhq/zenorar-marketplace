@@ -1,3 +1,5 @@
+import Icon from '@/components/ui/Icon'
+
 export default function PromoBanner() {
   return (
     <div className="relative bg-gradient-to-r from-primary to-green-600 rounded-2xl p-10 text-black mb-12 overflow-hidden shadow-2xl shadow-primary/20">
@@ -13,7 +15,7 @@ export default function PromoBanner() {
         </p>
 
         <button className="bg-black text-white px-8 py-3 rounded-lg font-bold hover:scale-105 transition-transform flex items-center gap-2 mx-auto">
-          <span className="material-symbols-outlined">sell</span>
+          <Icon name="tag" size={20} />
           Grab Offer Now
         </button>
       </div>

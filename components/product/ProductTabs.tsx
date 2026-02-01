@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Icon from '@/components/ui/Icon'
 import { Product } from '@/lib/types'
 import StarRating from '@/components/ui/StarRating'
 
@@ -85,7 +86,7 @@ export default function ProductTabs({ product }: ProductTabsProps) {
               {/* Demo Link Button */}
               <button className="w-full bg-primary text-black font-extrabold py-4 rounded-xl flex items-center justify-center gap-3 hover:brightness-105 transition-all text-sm uppercase tracking-wider">
                 Link to Demo
-                <span className="material-symbols-outlined font-bold">open_in_new</span>
+                <Icon name="open-in-new" size={20} />
               </button>
             </div>
 
@@ -97,7 +98,7 @@ export default function ProductTabs({ product }: ProductTabsProps) {
                   {product.features.map((feature, index) => (
                     <div key={index} className="flex gap-4">
                       <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0 border border-primary/20">
-                        <span className="material-symbols-outlined text-[32px]">{feature.icon}</span>
+                        <Icon name={feature.icon} size={32} />
                       </div>
                       <div>
                         <h4 className="text-white font-bold mb-1">{feature.title}</h4>

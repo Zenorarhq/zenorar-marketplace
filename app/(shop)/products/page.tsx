@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Breadcrumb from '@/components/layout/Breadcrumb'
+import Icon from '@/components/ui/Icon'
+import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import FilterSidebar from '@/components/filters/FilterSidebar'
 import ScriptCard from '@/components/cards/ScriptCard'
 import { scriptProducts } from '@/lib/mock-data'
@@ -43,13 +44,14 @@ export default function ProductsPage() {
 
   return (
     <main className="max-w-container mx-auto px-8 lg:px-12 pb-24">
-      {/* Breadcrumb */}
+      {/* Breadcrumbs */}
       <div className="py-4">
-        <Breadcrumb
+        <Breadcrumbs
           items={[
             { label: 'Home', href: '/' },
-            { label: 'Scripts' },
+            { label: 'Scripts', href: '/products' }
           ]}
+          className="mb-0"
         />
       </div>
 
@@ -102,7 +104,7 @@ export default function ProductsPage() {
               >
                 {isLoading ? 'Loading...' : 'Show More Results'}
                 {!isLoading && (
-                  <span className="material-symbols-outlined text-sm" aria-hidden="true">keyboard_arrow_down</span>
+                  <Icon name="chevron-down" size={16} />
                 )}
               </button>
             </div>

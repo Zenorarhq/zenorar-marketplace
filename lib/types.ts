@@ -72,3 +72,67 @@ export interface NavItem {
   href: string
   icon?: string
 }
+
+// eSIM Types
+export interface EsimPlan {
+  id: string
+  name: string
+  region: string
+  countries: string[]
+  data: string
+  validity: string
+  price: number
+  originalPrice?: number
+  popular?: boolean
+  features: string[]
+}
+
+export interface EsimRegion {
+  id: string
+  name: string
+  flag: string
+  planCount: number
+  startingPrice: number
+}
+
+// Virtual Number Types
+export interface VirtualNumber {
+  id: string
+  country: string
+  countryCode: string
+  flag: string
+  areaCode: string
+  type: 'local' | 'toll-free' | 'mobile'
+  price: number
+  setupFee: number
+  features: string[]
+  available: boolean
+}
+
+export interface VirtualNumberCountry {
+  id: string
+  name: string
+  flag: string
+  code: string
+  numberCount: number
+  startingPrice: number
+}
+
+// Gift Card Types
+export interface GiftCard {
+  id: string
+  brand: string
+  category: string
+  denominations: number[]
+  discount: number
+  image: string
+  popular?: boolean
+  description: string
+}
+
+export interface GiftCardCategory {
+  id: string
+  name: string
+  icon: string
+  cardCount: number
+}
