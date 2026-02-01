@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import Icon from '@/components/ui/Icon'
 
 interface CartItem {
   id: string
@@ -59,7 +60,7 @@ export default function CartSlideOver({ isOpen, onClose }: CartSlideOverProps) {
             onClick={onClose}
             className="text-slate-400 hover:text-white transition-colors"
           >
-            <span className="material-symbols-outlined text-3xl">close</span>
+            <Icon name="close" size={28} />
           </button>
         </div>
 
@@ -86,7 +87,7 @@ export default function CartSlideOver({ isOpen, onClose }: CartSlideOverProps) {
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-white text-sm">{item.name}</h3>
                   <button className="text-slate-600 hover:text-red-500 transition-colors">
-                    <span className="material-symbols-outlined text-xl">delete</span>
+                    <Icon name="delete" size={20} />
                   </button>
                 </div>
 
@@ -96,11 +97,11 @@ export default function CartSlideOver({ isOpen, onClose }: CartSlideOverProps) {
                   {/* Quantity Controls */}
                   <div className="flex items-center gap-3 bg-background-dark rounded-lg p-1 border border-border-dark">
                     <button className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-white">
-                      <span className="material-symbols-outlined text-sm">remove</span>
+                      <Icon name="minus" size={14} />
                     </button>
                     <span className="text-xs font-bold text-white">{item.quantity}</span>
                     <button className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-white">
-                      <span className="material-symbols-outlined text-sm">add</span>
+                      <Icon name="plus" size={14} />
                     </button>
                   </div>
 
@@ -123,7 +124,7 @@ export default function CartSlideOver({ isOpen, onClose }: CartSlideOverProps) {
             className="w-full bg-primary text-black font-extrabold py-5 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
           >
             Checkout Now
-            <span className="material-symbols-outlined font-bold">arrow_forward</span>
+            <Icon name="arrow-right" size={20} />
           </Link>
 
           <p className="text-center text-[10px] text-slate-500 mt-4 uppercase tracking-widest">

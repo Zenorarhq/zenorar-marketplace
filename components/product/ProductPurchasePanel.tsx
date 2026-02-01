@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import Icon from '@/components/ui/Icon'
 import { Product } from '@/lib/types'
 import { useCart } from '@/lib/cart-context'
 
@@ -11,7 +12,7 @@ interface ProductPurchasePanelProps {
 }
 
 export default function ProductPurchasePanel({ product }: ProductPurchasePanelProps) {
-  const { addItem } = useCart()
+  const { addItem, showAddedToCartPopup, buyNow } = useCart()
   const [selectedLicense, setSelectedLicense] = useState<'standard' | 'extended'>('standard')
   const [isAdding, setIsAdding] = useState(false)
   const [showAddedMessage, setShowAddedMessage] = useState(false)
@@ -23,17 +24,15 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
   const handleAddToCart = async () => {
     setIsAdding(true)
     try {
-      addItem(product, selectedLicense)
-      setShowAddedMessage(true)
-      setTimeout(() => setShowAddedMessage(false), 2000)
+      addItem(product, selectedLicense, currentPrice)
+      showAddedToCartPopup(product, currentPrice)
     } finally {
       setIsAdding(false)
     }
   }
 
-  const handleDirectPurchase = () => {
-    addItem(product, selectedLicense)
-    window.location.href = '/checkout'
+  const handleBuyNow = () => {
+    buyNow(product, selectedLicense, currentPrice)
   }
 
   return (
@@ -78,17 +77,18 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
           disabled={isAdding}
           className="w-full bg-primary text-black font-bold py-4 rounded-xl mb-4 hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
         >
-          <span className="material-symbols-outlined" aria-hidden="true">shopping_cart</span>
+          <Icon name="shopping-cart" size={20} />
           {showAddedMessage ? 'Added to Cart!' : isAdding ? 'Adding...' : 'Add to Cart'}
         </button>
 
-        {/* Direct Purchase Button */}
+        {/* Buy Now Button */}
         <button
           type="button"
-          onClick={handleDirectPurchase}
-          className="block w-full text-center text-primary text-sm font-bold hover:underline mb-8"
+          onClick={handleBuyNow}
+          className="w-full bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl mb-8 hover:border-primary/50 transition-all flex items-center justify-center gap-2"
         >
-          Direct Purchase
+          <Icon name="flash" size={18} />
+          Buy Now
         </button>
 
         {/* Seller Info */}
@@ -108,9 +108,7 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
                 <div className="text-sm font-bold text-white flex items-center gap-1">
                   {product.seller.name}
                   {product.seller.verified && (
-                    <span className="material-symbols-outlined text-primary text-[14px] icon-filled" aria-label="Verified seller">
-                      verified
-                    </span>
+                    <Icon name="verified" size={14} className="text-primary" />
                   )}
                 </div>
                 {product.seller.badge && (
@@ -126,21 +124,21 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
                 href={`/seller/${product.seller.id}/contact`}
                 className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-sm" aria-hidden="true">mail</span>
+                <Icon name="mail" size={14} />
                 Contact Seller
               </Link>
               <Link
                 href={`/products/${product.slug}/support`}
                 className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-sm" aria-hidden="true">support_agent</span>
+                <Icon name="support-agent" size={14} />
                 Technical Support
               </Link>
               <Link
                 href={`/products/${product.slug}/docs`}
                 className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors"
               >
-                <span className="material-symbols-outlined text-sm" aria-hidden="true">description</span>
+                <Icon name="description" size={14} />
                 Documentation
               </Link>
             </div>
@@ -151,14 +149,14 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
       {/* Trust Badges */}
       <div className="mt-6 flex flex-col gap-3">
         <div className="bg-surface-dark border border-border-dark p-4 rounded-xl flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary" aria-hidden="true">security</span>
+          <Icon name="security" size={24} className="text-primary" />
           <div className="text-xs">
             <div className="text-white font-bold">Secure Payment</div>
             <div className="text-slate-500">Encrypted transactions via Stripe</div>
           </div>
         </div>
         <div className="bg-surface-dark border border-border-dark p-4 rounded-xl flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary" aria-hidden="true">history</span>
+          <Icon name="history" size={24} className="text-primary" />
           <div className="text-xs">
             <div className="text-white font-bold">Update Protection</div>
             <div className="text-slate-500">Free updates for 6 months</div>

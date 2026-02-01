@@ -1,7 +1,72 @@
+'use client'
+
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import Icon from '@/components/ui/Icon'
 
 export default function SignupPage() {
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const currentYear = new Date().getFullYear()
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // TODO: Implement actual signup logic
+      console.log('Signup attempt:', formData)
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Redirect on success
+      window.location.href = '/login?registered=true'
+    } catch {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSignup = () => {
+    // TODO: Implement Google OAuth
+    console.log('Google signup clicked')
+  }
+
+  const handleWalletSignup = () => {
+    // TODO: Implement wallet connection
+    console.log('Wallet signup clicked')
+  }
+
   return (
     <div className="bg-surface-dark text-slate-100 min-h-screen flex">
       {/* Left Side - Hero */}
@@ -29,7 +94,7 @@ export default function SignupPage() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 font-bold text-2xl tracking-tight text-white">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black">
-              <span className="material-symbols-outlined text-2xl">grid_view</span>
+              <Icon name="grid-view" size={24} />
             </div>
             Marketplace
           </Link>
@@ -69,7 +134,7 @@ export default function SignupPage() {
 
           {/* Copyright */}
           <div className="text-slate-600 text-sm">
-            &copy; 2024 Marketplace Inc.
+            &copy; {currentYear} Marketplace Inc.
           </div>
         </div>
       </div>
@@ -80,7 +145,7 @@ export default function SignupPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-8">
             <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary">
-              <span className="material-symbols-outlined text-2xl">grid_view</span>
+              <Icon name="grid-view" size={24} />
               Marketplace
             </Link>
           </div>
@@ -90,7 +155,11 @@ export default function SignupPage() {
             <Link href="/login" className="py-3 rounded-xl text-sm font-semibold text-slate-400 hover:text-white transition-colors text-center">
               Login
             </Link>
-            <button className="py-3 rounded-xl text-sm font-bold bg-[#262626] text-white shadow-lg ring-1 ring-white/5 transition-all">
+            <button
+              type="button"
+              className="py-3 rounded-xl text-sm font-bold bg-[#262626] text-white shadow-lg ring-1 ring-white/5 transition-all"
+              aria-current="page"
+            >
               Sign Up
             </button>
           </div>
@@ -101,10 +170,21 @@ export default function SignupPage() {
             <p className="text-slate-400">Enter your details to get started</p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Social Signup */}
           <div className="grid grid-cols-2 gap-4 mb-8">
-            <button className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <button
+              type="button"
+              onClick={handleGoogleSignup}
+              className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M23.766 12.2764C23.766 11.4607 23.6999 10.6406 23.5588 9.83807H12.24V14.4591H18.7217C18.4528 15.9494 17.5885 17.2678 16.323 18.1056V21.1039H20.19C22.4608 19.0139 23.766 15.9274 23.766 12.2764Z" fill="#4285F4" />
                 <path d="M12.24 24.0008C15.4765 24.0008 18.2058 22.9382 20.19 21.1039L16.323 18.1056C15.2424 18.8375 13.8643 19.252 12.2435 19.252C9.11388 19.252 6.45946 17.1399 5.50705 14.3003H1.5166V17.3912C3.55371 21.4434 7.7029 24.0008 12.24 24.0008Z" fill="#34A853" />
                 <path d="M5.50253 14.3003C5.00236 12.8099 5.00236 11.1961 5.50253 9.70575V6.61481H1.5166C-0.18551 10.0056 -0.18551 14.0004 1.5166 17.3912L5.50253 14.3003Z" fill="#FBBC05" />
@@ -112,10 +192,12 @@ export default function SignupPage() {
               </svg>
               <span className="font-medium text-sm">Google</span>
             </button>
-            <button className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group">
-              <span className="material-symbols-outlined w-5 h-5 text-white group-hover:text-primary transition-colors">
-                account_balance_wallet
-              </span>
+            <button
+              type="button"
+              onClick={handleWalletSignup}
+              className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group"
+            >
+              <Icon name="wallet" size={20} className="text-white group-hover:text-primary transition-colors" />
               <span className="font-medium text-sm">Wallet</span>
             </button>
           </div>
@@ -131,75 +213,110 @@ export default function SignupPage() {
           </div>
 
           {/* Signup Form */}
-          <form className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="relative group">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
-                person
-              </span>
+              <label htmlFor="fullName" className="sr-only">Full Name</label>
+              <Icon name="user" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
               <input
+                id="fullName"
+                name="fullName"
                 type="text"
+                value={formData.fullName}
+                onChange={handleInputChange}
                 placeholder="Full Name"
+                required
+                autoComplete="name"
                 className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium"
               />
             </div>
 
             <div className="relative group">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
-                mail
-              </span>
+              <label htmlFor="email" className="sr-only">Email Address</label>
+              <Icon name="mail" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
               <input
+                id="email"
+                name="email"
                 type="email"
+                value={formData.email}
+                onChange={handleInputChange}
                 placeholder="Email Address"
+                required
+                autoComplete="email"
                 className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium"
               />
             </div>
 
             <div className="relative group">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
-                lock
-              </span>
+              <label htmlFor="password" className="sr-only">Password</label>
+              <Icon name="lock" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
               <input
-                type="password"
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleInputChange}
                 placeholder="Password"
+                required
+                autoComplete="new-password"
+                minLength={8}
                 className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-4 pl-12 pr-12 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium"
               />
               <button
                 type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
               >
-                <span className="material-symbols-outlined text-[20px]">visibility_off</span>
+                <Icon name={showPassword ? 'eye' : 'visibility-off'} size={20} />
               </button>
             </div>
 
             <div className="relative group">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
-                lock
-              </span>
+              <label htmlFor="confirmPassword" className="sr-only">Confirm Password</label>
+              <Icon name="lock" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
               <input
-                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
                 placeholder="Confirm Password"
+                required
+                autoComplete="new-password"
                 className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-4 pl-12 pr-12 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium"
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+              >
+                <Icon name={showConfirmPassword ? 'eye' : 'visibility-off'} size={20} />
+              </button>
             </div>
 
             <div className="flex items-start gap-3 mt-4">
               <input
+                id="terms"
                 type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
                 className="mt-1 rounded border-border-dark bg-background-dark text-primary focus:ring-primary"
               />
-              <span className="text-sm text-slate-400">
+              <label htmlFor="terms" className="text-sm text-slate-400">
                 I agree to the{' '}
-                <a href="#" className="text-primary hover:underline">Terms of Service</a>
+                <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>
                 {' '}and{' '}
-                <a href="#" className="text-primary hover:underline">Privacy Policy</a>
-              </span>
+                <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+              </label>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-primary hover:bg-[#3bc26d] text-black font-bold text-lg py-4 rounded-2xl shadow-glow-green hover:shadow-glow-green-lg transition-all transform hover:-translate-y-0.5 mt-4"
+              disabled={isLoading}
+              className="w-full bg-primary hover:bg-[#3bc26d] text-black font-bold text-lg py-4 rounded-2xl shadow-glow-green hover:shadow-glow-green-lg transition-all transform hover:-translate-y-0.5 mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              Create Account
+              {isLoading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 

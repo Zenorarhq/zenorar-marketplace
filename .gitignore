@@ -31,3 +31,12 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Design assets
+/Zenorar/
+
+# Claude
+.claude/
+
+# Misc
+nul

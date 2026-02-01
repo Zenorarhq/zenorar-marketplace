@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Icon from '@/components/ui/Icon'
 
 export default function Footer() {
   const [email, setEmail] = useState('')
@@ -36,7 +37,7 @@ export default function Footer() {
             href="/"
             className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary mb-6"
           >
-            <span className="material-symbols-outlined text-2xl">grid_view</span>
+            <Icon name="grid-view" size={24} />
             Marketplace
           </Link>
           <p className="text-slate-500 text-sm leading-relaxed">
@@ -83,6 +84,11 @@ export default function Footer() {
             <li>
               <Link href="/contact" className="hover:text-primary transition-colors">
                 Contact Us
+              </Link>
+            </li>
+            <li>
+              <Link href="/profile" className="hover:text-primary transition-colors">
+                My Account
               </Link>
             </li>
             <li>
@@ -155,14 +161,14 @@ export default function Footer() {
               className="text-slate-400 hover:text-primary transition-colors"
               aria-label="Follow us on Twitter"
             >
-              <span className="material-symbols-outlined">public</span>
+              <Icon name="globe" size={24} />
             </a>
             <a
               href="mailto:hello@marketplace.com"
               className="text-slate-400 hover:text-primary transition-colors"
               aria-label="Email us"
             >
-              <span className="material-symbols-outlined">alternate_email</span>
+              <Icon name="mail" size={24} />
             </a>
             <a
               href="https://discord.gg/marketplace"
@@ -171,7 +177,7 @@ export default function Footer() {
               className="text-slate-400 hover:text-primary transition-colors"
               aria-label="Join our Discord"
             >
-              <span className="material-symbols-outlined">forum</span>
+              <Icon name="forum" size={24} />
             </a>
           </div>
         </div>

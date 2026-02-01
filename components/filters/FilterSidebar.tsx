@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import Icon from '@/components/ui/Icon'
 import { filterCategories, filterLanguages } from '@/lib/mock-data'
 
 interface FilterState {
@@ -123,9 +124,7 @@ export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
             />
             <div className="flex text-yellow-500" aria-label="5 stars">
               {[1, 2, 3, 4, 5].map((star) => (
-                <span key={star} className="material-symbols-outlined text-[16px] icon-filled" aria-hidden="true">
-                  star
-                </span>
+                <Icon key={star} name="star" size={16}  />
               ))}
             </div>
           </label>
@@ -138,11 +137,9 @@ export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
             />
             <div className="flex text-yellow-500" aria-label="4 stars and up">
               {[1, 2, 3, 4].map((star) => (
-                <span key={star} className="material-symbols-outlined text-[16px] icon-filled" aria-hidden="true">
-                  star
-                </span>
+                <Icon key={star} name="star" size={16}  />
               ))}
-              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">star</span>
+              <Icon name="star" size={16} />
               <span className="ml-1 text-[11px] text-slate-500">&amp; up</span>
             </div>
           </label>

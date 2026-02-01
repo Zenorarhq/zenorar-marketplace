@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Product } from '@/lib/types'
 import StarRating from '@/components/ui/StarRating'
+import Icon from '@/components/ui/Icon'
 
 interface ProductCardProps {
   product: Product
@@ -28,7 +29,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       className="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-border-dark hover:border-primary/50 transition-all cursor-pointer group"
     >
       <div className={`w-10 h-10 mb-4 rounded-lg flex items-center justify-center ${colorClass}`}>
-        <span className="material-symbols-outlined">{product.icon}</span>
+        <Icon name={product.icon} size={24} />
       </div>
 
       <h3 className="font-bold text-sm mb-1 group-hover:text-primary transition-colors">

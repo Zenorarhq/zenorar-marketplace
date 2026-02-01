@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import Icon from '@/components/ui/Icon'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -71,7 +72,7 @@ export default function LoginPage() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 font-bold text-2xl tracking-tight text-white">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black">
-              <span className="material-symbols-outlined text-2xl">grid_view</span>
+              <Icon name="grid-view" size={24} />
             </div>
             Marketplace
           </Link>
@@ -122,7 +123,7 @@ export default function LoginPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-8">
             <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary">
-              <span className="material-symbols-outlined text-2xl">grid_view</span>
+              <Icon name="grid-view" size={24} />
               Marketplace
             </Link>
           </div>
@@ -174,9 +175,7 @@ export default function LoginPage() {
               onClick={handleWalletLogin}
               className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group"
             >
-              <span className="material-symbols-outlined w-5 h-5 text-white group-hover:text-primary transition-colors">
-                account_balance_wallet
-              </span>
+              <Icon name="wallet" size={20} className="text-white group-hover:text-primary transition-colors" />
               <span className="font-medium text-sm">Wallet</span>
             </button>
           </div>
@@ -195,9 +194,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="relative group">
               <label htmlFor="email" className="sr-only">Email Address</label>
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
-                mail
-              </span>
+              <Icon name="mail" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
               <input
                 id="email"
                 name="email"
@@ -213,9 +210,7 @@ export default function LoginPage() {
 
             <div className="relative group">
               <label htmlFor="password" className="sr-only">Password</label>
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors">
-                lock
-              </span>
+              <Icon name="lock" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
               <input
                 id="password"
                 name="password"
@@ -233,9 +228,7 @@ export default function LoginPage() {
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
               >
-                <span className="material-symbols-outlined text-[20px]">
-                  {showPassword ? 'visibility' : 'visibility_off'}
-                </span>
+                <Icon name={showPassword ? 'eye' : 'visibility-off'} size={20} />
               </button>
             </div>
 

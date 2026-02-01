@@ -6,7 +6,7 @@ import Connectivity from '@/components/sections/Connectivity'
 
 export default function Home() {
   return (
-    <main className="max-w-container mx-auto px-8 lg:px-12 py-8">
+    <main className="max-w-container mx-auto px-8 lg:px-12 py-8 w-full">
       <HeroSection />
       <MostPopular />
       <PromoBanner />

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Product } from '@/lib/types'
 import StarRating from '@/components/ui/StarRating'
+import Icon from '@/components/ui/Icon'
 
 interface ScriptCardProps {
   product: Product
@@ -28,7 +29,7 @@ export default function ScriptCard({ product }: ScriptCardProps) {
       className="bg-charcoal p-5 rounded-2xl border border-border-dark hover:border-primary/40 transition-all cursor-pointer group shadow-lg"
     >
       <div className={`w-10 h-10 mb-4 rounded-lg flex items-center justify-center ${colorClass}`}>
-        <span className="material-symbols-outlined">{product.icon}</span>
+        <Icon name={product.icon} size={24} />
       </div>
 
       <h3 className="font-bold text-sm mb-1 group-hover:text-primary transition-colors">

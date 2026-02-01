@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Icon from '@/components/ui/Icon'
 import { useCart } from '@/lib/cart-context'
 
 interface OrderSummaryProps {
@@ -65,7 +66,7 @@ export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSu
   return (
     <div className="sticky top-32 bg-charcoal rounded-2xl border border-border-dark p-8 shadow-2xl">
       <h2 className="text-xl font-bold text-white mb-8 flex items-center gap-2">
-        <span className="material-symbols-outlined text-primary" aria-hidden="true">shopping_bag</span>
+        <Icon name="shopping-bag" size={24} className="text-primary" />
         Order Summary
       </h2>
 
@@ -125,16 +126,14 @@ export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSu
       >
         {isSubmitting ? 'Processing...' : 'Next: Payment'}
         {!isSubmitting && (
-          <span className="material-symbols-outlined font-bold group-hover:translate-x-1 transition-transform" aria-hidden="true">
-            arrow_forward
-          </span>
+          <Icon name="arrow-right" size={20} className="group-hover:translate-x-1 transition-transform" />
         )}
       </button>
 
       {/* Trust Badge */}
       <div className="mt-6 flex flex-col gap-4">
         <div className="bg-background-dark/50 border border-border-dark p-4 rounded-xl flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary text-xl" aria-hidden="true">verified_user</span>
+          <Icon name="verified" size={20} className="text-primary" />
           <div className="text-[10px] leading-tight">
             <div className="text-white font-bold uppercase tracking-widest mb-0.5">
               Buyer Protection

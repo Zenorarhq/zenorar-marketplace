@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Product } from '@/lib/types'
 import StarRating from '@/components/ui/StarRating'
+import Icon from '@/components/ui/Icon'
 
 interface RecommendedCardProps {
   product: Product
@@ -35,7 +36,7 @@ export default function RecommendedCard({ product }: RecommendedCardProps) {
       className="flex items-center gap-4 group cursor-pointer"
     >
       <div className={`w-12 h-12 rounded-lg flex items-center justify-center border ${colorClass}`}>
-        <span className="material-symbols-outlined text-2xl">{product.icon}</span>
+        <Icon name={product.icon} size={24} />
       </div>
 
       <div className="flex-1 min-w-0">
