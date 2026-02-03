@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable SWC minification for faster builds
+  swcMinify: true,
   images: {
     remotePatterns: [
       {

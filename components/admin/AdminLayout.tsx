@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
@@ -10,82 +11,149 @@ interface AdminLayoutProps {
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard' },
-  { href: '/admin/tickets', label: 'Tickets', icon: 'ticket-01' },
-  { href: '/admin/users', label: 'Users', icon: 'user-group' },
-  { href: '/admin/analytics', label: 'Analytics', icon: 'chart' },
-  { href: '/admin/settings', label: 'Settings', icon: 'settings-01' },
+  { href: '/admin/frontend', label: 'Frontend Editor', icon: 'code' },
+  { href: '/admin/library', label: 'Upload Library', icon: 'upload' },
+  { href: '/admin/tickets', label: 'Tickets', icon: 'ticket' },
+  { href: '/admin/reports', label: 'Reports', icon: 'chart' },
+  { href: '/admin/settings', label: 'Settings', icon: 'settings' },
 ]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname()
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false)
 
   return (
-    <div className="min-h-screen bg-background-dark flex flex-col">
-      {/* Admin Header */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-border-dark px-6 lg:px-10 py-3 bg-background-dark sticky top-0 z-50">
-        <div className="flex items-center gap-8">
+    <div className="min-h-screen bg-[#0a0a0a] flex overflow-x-hidden">
+      {/* Left Sidebar */}
+      {/* Mobile: always w-16, Desktop: w-56 or w-16 based on desktopCollapsed */}
+      <aside className={`fixed left-0 top-0 h-full bg-[#111111] border-r border-[#1f1f1f] flex flex-col z-50 transition-all duration-300 w-16 overflow-visible ${
+        desktopCollapsed ? 'lg:w-16' : 'lg:w-56'
+      }`}>
+        {/* Logo */}
+        <div className={`h-16 flex items-center justify-center border-b border-[#1f1f1f] ${
+          desktopCollapsed ? '' : 'lg:justify-start lg:px-4'
+        }`}>
           <Link href="/admin" className="flex items-center gap-3">
-            <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-background-dark">
-              <Icon name="ticket-01" size={20} />
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+              <Icon name="grid-view" size={18} className="text-black" />
             </div>
-            <h2 className="text-white text-lg font-bold leading-tight tracking-tight">
-              Tech Marketplace
-            </h2>
+            {/* Site name - hidden on mobile, shown on desktop when not collapsed */}
+            {!desktopCollapsed && (
+              <span className="text-white font-bold text-sm hidden lg:block">TechMarket</span>
+            )}
           </Link>
+        </div>
 
-          <nav className="hidden md:flex items-center gap-6">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
-              return (
+        {/* Navigation */}
+        <nav className="flex-1 py-4 px-2 overflow-visible">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <div key={item.href} className="relative group">
                 <Link
-                  key={item.href}
                   href={item.href}
-                  className={`text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all justify-center ${
+                    desktopCollapsed ? '' : 'lg:justify-start'
+                  } ${
                     isActive
-                      ? 'text-primary border-b-2 border-primary py-1'
-                      : 'text-slate-400 hover:text-primary'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
                   }`}
                 >
-                  {item.label}
+                  <Icon name={item.icon} size={20} className="flex-shrink-0" />
+                  {/* Label - hidden on mobile, shown on desktop when not collapsed */}
+                  {!desktopCollapsed && (
+                    <span className="text-sm font-medium hidden lg:block">{item.label}</span>
+                  )}
                 </Link>
-              )
-            })}
-          </nav>
-        </div>
-
-        <div className="flex flex-1 justify-end gap-4 items-center">
-          {/* Search */}
-          <label className="hidden sm:flex flex-col min-w-40 h-10 max-w-64">
-            <div className="flex w-full flex-1 items-stretch rounded-lg h-full overflow-hidden">
-              <div className="text-slate-500 flex bg-charcoal items-center justify-center pl-4">
-                <Icon name="search-01" size={20} />
+                {/* Tooltip - shows on mobile always, on desktop only when collapsed */}
+                <div className={`absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white text-sm font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 ${
+                  desktopCollapsed ? '' : 'lg:hidden'
+                }`}>
+                  {item.label}
+                </div>
               </div>
+            )
+          })}
+        </nav>
+
+        {/* User Section */}
+        <div className="p-3 border-t border-[#1f1f1f]">
+          <div className="relative group">
+            <div className={`flex items-center gap-3 p-2 rounded-lg bg-[#1a1a1a] justify-center ${
+              desktopCollapsed ? '' : 'lg:justify-start'
+            }`}>
+              <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center flex-shrink-0">
+                <Icon name="user" size={18} className="text-primary" />
+              </div>
+              {/* User info - hidden on mobile, shown on desktop when not collapsed */}
+              {!desktopCollapsed && (
+                <div className="flex-1 min-w-0 hidden lg:block">
+                  <p className="text-white text-sm font-medium truncate">Alex Rivera</p>
+                  <p className="text-primary text-xs">Super Admin</p>
+                </div>
+              )}
+            </div>
+            {/* Tooltip for user - shows on mobile always, on desktop only when collapsed */}
+            <div className={`absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white text-sm whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 ${
+              desktopCollapsed ? '' : 'lg:hidden'
+            }`}>
+              <p className="font-medium">Alex Rivera</p>
+              <p className="text-primary text-xs">Super Admin</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ml-16 overflow-x-hidden ${
+        desktopCollapsed ? '' : 'lg:ml-56'
+      }`}>
+        {/* Top Header */}
+        <header className="h-16 bg-[#0a0a0a] border-b border-[#1f1f1f] flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
+          {/* Left: Toggle (desktop only) + Search */}
+          <div className="flex items-center gap-4 flex-1">
+            {/* Hamburger - only visible on large screens */}
+            <button
+              onClick={() => setDesktopCollapsed(!desktopCollapsed)}
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors hidden lg:flex"
+            >
+              <Icon name="menu" size={20} />
+            </button>
+
+            {/* Search bar - always visible */}
+            <div className="relative flex-1 max-w-md">
+              <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
-                className="flex w-full border-none bg-charcoal text-white placeholder:text-slate-500 px-4 pl-2 text-sm focus:ring-0"
-                placeholder="Search ticket ID..."
                 type="text"
+                placeholder="Search..."
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
               />
             </div>
-          </label>
-
-          {/* Icons */}
-          <div className="flex gap-2">
-            <button className="flex items-center justify-center rounded-lg h-10 w-10 bg-charcoal text-white hover:bg-primary/20 transition-all">
-              <Icon name="notification-03" size={20} />
-            </button>
-            <button className="flex items-center justify-center rounded-lg h-10 w-10 bg-charcoal text-white hover:bg-primary/20 transition-all">
-              <Icon name="settings-01" size={20} />
-            </button>
           </div>
 
-          {/* Admin Avatar */}
-          <div className="w-10 h-10 rounded-full bg-charcoal border-2 border-primary/20 flex items-center justify-center">
-            <Icon name="user" size={20} className="text-slate-400" />
+          {/* Right: Notifications & Messages */}
+          <div className="flex items-center gap-2 ml-4">
+            <button className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+              <Icon name="bell" size={20} />
+              {/* Notification badge */}
+              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+            </button>
+            <button className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+              <Icon name="mail" size={20} />
+              {/* Message badge */}
+              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+            </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 lg:px-10 py-6">{children}</main>
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-4 lg:p-6">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

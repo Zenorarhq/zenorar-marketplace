@@ -20,25 +20,27 @@ export default function StarRating({ rating, size = 'sm', showEmpty = false }: S
   const iconSize = sizeMap[size]
 
   return (
-    <div className="flex text-yellow-500">
+    <div className="flex">
       {/* Full stars */}
       {Array.from({ length: fullStars }).map((_, i) => (
-        <StarIcon key={`full-${i}`} size={iconSize}  className="text-yellow-500" />
+        <StarIcon key={`full-${i}`} size={iconSize} className="text-yellow-500 fill-yellow-500" />
       ))}
 
-      {/* Half star - using solid with reduced opacity as approximation */}
+      {/* Half star */}
       {hasHalfStar && (
-        <div className="relative">
-          <StarIcon size={iconSize}  className="text-yellow-500" />
-          <div className="absolute inset-0 overflow-hidden w-1/2">
-            <StarIcon size={iconSize}  className="text-yellow-500" />
+        <div className="relative" style={{ width: iconSize, height: iconSize }}>
+          {/* Empty star background */}
+          <StarIcon size={iconSize} className="text-slate-600 fill-slate-600 absolute inset-0" />
+          {/* Half-filled overlay */}
+          <div className="absolute inset-0 overflow-hidden" style={{ width: iconSize / 2 }}>
+            <StarIcon size={iconSize} className="text-yellow-500 fill-yellow-500" />
           </div>
         </div>
       )}
 
       {/* Empty stars */}
       {showEmpty && Array.from({ length: emptyStars }).map((_, i) => (
-        <StarIcon key={`empty-${i}`} size={iconSize}  className="text-yellow-500" />
+        <StarIcon key={`empty-${i}`} size={iconSize} className="text-slate-600 fill-slate-600" />
       ))}
     </div>
   )
