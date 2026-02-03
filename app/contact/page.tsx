@@ -31,7 +31,6 @@ export default function ContactPage() {
 
     try {
       // TODO: Implement actual contact form submission
-      console.log('Contact form submitted:', formData)
       await new Promise((resolve) => setTimeout(resolve, 1000))
       setSubmitted(true)
     } catch (error) {

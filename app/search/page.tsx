@@ -43,17 +43,17 @@ function SearchContent() {
     // Filter by rating
     products = products.filter((p) => p.rating >= minRating)
 
-    // Sort
+    // Sort (use spread to avoid mutating)
     switch (sortBy) {
       case 'newest':
-        return products.reverse()
+        return [...products].reverse()
       case 'price-low':
-        return products.sort((a, b) => a.price - b.price)
+        return [...products].sort((a, b) => a.price - b.price)
       case 'price-high':
-        return products.sort((a, b) => b.price - a.price)
+        return [...products].sort((a, b) => b.price - a.price)
       case 'popular':
       default:
-        return products.sort((a, b) => b.reviewCount - a.reviewCount)
+        return [...products].sort((a, b) => b.reviewCount - a.reviewCount)
     }
   }, [searchQuery, sortBy, priceRange, minRating])
 
@@ -275,7 +275,7 @@ function SearchContent() {
               <Icon name="search" size={60} className="text-slate-600 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-white mb-2">No results found</h2>
               <p className="text-slate-400 mb-6">
-                Try adjusting your search or filters to find what you're looking for.
+                Try adjusting your search or filters to find what you&apos;re looking for.
               </p>
               <Link
                 href="/products"

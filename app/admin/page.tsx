@@ -5,175 +5,205 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 
 const stats = [
-  { label: 'Total Revenue', value: '$124,500', change: '+12.5%', changeType: 'positive', icon: 'wallet' },
-  { label: 'Active Users', value: '8,420', change: '+8.2%', changeType: 'positive', icon: 'user-group' },
-  { label: 'Open Tickets', value: '45', change: '+5', changeType: 'negative', icon: 'ticket-01' },
-  { label: 'Products Sold', value: '1,248', change: '+15.3%', changeType: 'positive', icon: 'shopping-bag-01' },
+  { label: 'Total Revenue', value: '$128,430', change: '+12.8%', changeLabel: 'vs last month', positive: true, icon: 'wallet' },
+  { label: 'Active Scripts', value: '1,240', change: '+8.2%', changeLabel: 'growth rate', positive: true, icon: 'code' },
+  { label: 'New Customers', value: '450', change: '+18%', changeLabel: 'this week', positive: true, icon: 'user-group' },
+  { label: 'Open Tickets', value: '12', change: '5', changeLabel: 'unresolved', positive: false, icon: 'ticket' },
 ]
 
-const recentTickets = [
-  { id: '#TK-1024', customer: 'Sarah Jenkins', subject: 'Payment Failed', priority: 'urgent', time: '2h ago' },
-  { id: '#TK-1025', customer: 'Mike Ross', subject: 'API Documentation', priority: 'high', time: '5h ago' },
-  { id: '#TK-1026', customer: 'David Tennant', subject: 'Account locked', priority: 'medium', time: '1d ago' },
+const recentQueries = [
+  { term: 'E-commerce React Template', user: 'mark_dev02', timestamp: '2 mins ago', results: 12 },
+  { term: 'Global eSIM App', user: 'kane_thomas', timestamp: '14 mins ago', results: 8 },
+  { term: 'Dark Mode Admin Dashboard', user: 'Speed_dev', timestamp: '1 hour ago', results: 24 },
+  { term: 'Python automation script', user: 'coding_pro', timestamp: '5 hours ago', results: 2 },
 ]
 
-const recentOrders = [
-  { id: '#ORD-7721', customer: 'Alex Morgan', product: 'Premium Scripts Bundle', amount: '$149.00', status: 'completed' },
-  { id: '#ORD-8812', customer: 'John Smith', product: 'Global eSIM Plan', amount: '$29.99', status: 'processing' },
-  { id: '#ORD-9901', customer: 'Emma Wilson', product: 'API Access', amount: '$59.00', status: 'completed' },
+const bestSellers = [
+  { name: 'Ultimate CRM Scri...', price: '$129', icon: 'code', color: 'text-blue-400' },
+  { name: 'EU Global Roam...', price: '$49', icon: 'globe', color: 'text-green-400' },
+  { name: 'Modern SaaS Theme', price: '$89', icon: 'sparkles', color: 'text-purple-400' },
+  { name: 'Payment Gateway Pro', price: '$199', icon: 'credit-card', color: 'text-orange-400' },
+]
+
+const productDistribution = [
+  { label: 'Scripts & Plugins', percentage: 73, color: 'bg-primary' },
+  { label: 'eSIM Packages', percentage: 20, color: 'bg-blue-500' },
+  { label: 'Themes', percentage: 7, color: 'bg-purple-500' },
 ]
 
 export default function AdminDashboard() {
   return (
     <AdminLayout>
-      {/* Page Title */}
-      <div className="mb-8">
-        <h1 className="text-white text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-slate-400 mt-1">Welcome back! Here&apos;s what&apos;s happening today.</p>
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">Dashboard</h1>
+        <p className="text-slate-500 text-xs sm:text-sm">Welcome back! Here's your marketplace overview</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Stats Grid - 2x2 on mobile, 4 columns on desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-surface-dark border border-border-dark rounded-xl p-6 hover:border-primary/30 transition-colors"
+            className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
-                <Icon name={stat.icon} size={24} />
+            <div className="flex items-start justify-between mb-3">
+              <p className="text-slate-400 text-xs lg:text-sm">{stat.label}</p>
+              <div className={`w-7 h-7 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center ${
+                stat.positive ? 'bg-primary/10 text-primary' : 'bg-orange-500/10 text-orange-400'
+              }`}>
+                <Icon name={stat.icon} size={16} />
               </div>
-              <span
-                className={`text-xs font-bold ${
-                  stat.changeType === 'positive' ? 'text-primary' : 'text-rose-500'
-                }`}
-              >
+            </div>
+            <p className="text-white text-lg lg:text-2xl font-bold mb-1">{stat.value}</p>
+            <p className="text-xs">
+              <span className={stat.positive ? 'text-primary' : 'text-orange-400'}>
                 {stat.change}
               </span>
-            </div>
-            <p className="text-slate-400 text-sm mb-1">{stat.label}</p>
-            <p className="text-white text-2xl font-bold">{stat.value}</p>
+              <span className="text-slate-500 ml-1">{stat.changeLabel}</span>
+            </p>
           </div>
         ))}
       </div>
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Tickets */}
-        <div className="bg-surface-dark border border-border-dark rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border-dark">
-            <h2 className="text-white font-bold flex items-center gap-2">
-              <Icon name="ticket-01" size={20} className="text-primary" />
-              Recent Tickets
-            </h2>
-            <Link href="/admin/tickets" className="text-primary text-sm font-medium hover:underline">
-              View All
-            </Link>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        {/* Sales Overview Chart */}
+        <div className="lg:col-span-2 bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-white font-semibold">Sales Overview</h3>
+              <p className="text-slate-500 text-sm">Revenue performance over the last 7 days</p>
+            </div>
+            <button className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs px-3 py-1.5 rounded-lg">
+              Last 7 Days
+            </button>
           </div>
-          <div className="divide-y divide-border-dark">
-            {recentTickets.map((ticket) => (
-              <div key={ticket.id} className="px-6 py-4 hover:bg-white/5 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-primary font-mono font-semibold text-sm">{ticket.id}</span>
-                  <span
-                    className={`text-xs font-bold px-2 py-0.5 rounded ${
-                      ticket.priority === 'urgent'
-                        ? 'bg-rose-500/20 text-rose-500'
-                        : ticket.priority === 'high'
-                        ? 'bg-orange-500/20 text-orange-500'
-                        : 'bg-blue-500/20 text-blue-500'
-                    }`}
+
+          {/* Chart Placeholder */}
+          <div className="h-48 flex items-end justify-between gap-2 px-4">
+            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day, i) => {
+              const heights = [40, 60, 45, 80, 65, 55, 70]
+              return (
+                <div key={day} className="flex-1 flex flex-col items-center gap-2">
+                  <div
+                    className="w-full bg-gradient-to-t from-primary/20 to-primary/5 rounded-t-lg relative"
+                    style={{ height: `${heights[i]}%` }}
                   >
-                    {ticket.priority}
-                  </span>
+                    <div className="absolute inset-x-0 top-0 h-1 bg-primary rounded-t-lg" />
+                  </div>
+                  <span className="text-slate-500 text-xs">{day}</span>
                 </div>
-                <p className="text-white text-sm font-medium mb-1">{ticket.subject}</p>
-                <div className="flex items-center justify-between text-slate-500 text-xs">
-                  <span>{ticket.customer}</span>
-                  <span>{ticket.time}</span>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
-        {/* Recent Orders */}
-        <div className="bg-surface-dark border border-border-dark rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border-dark">
-            <h2 className="text-white font-bold flex items-center gap-2">
-              <Icon name="shopping-bag-01" size={20} className="text-primary" />
-              Recent Orders
-            </h2>
-            <Link href="/admin/orders" className="text-primary text-sm font-medium hover:underline">
-              View All
-            </Link>
+        {/* Product Distribution */}
+        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
+          <div className="mb-4">
+            <h3 className="text-white font-semibold">Product Distribution</h3>
+            <p className="text-slate-500 text-sm">Sales by category</p>
           </div>
-          <div className="divide-y divide-border-dark">
-            {recentOrders.map((order) => (
-              <div key={order.id} className="px-6 py-4 hover:bg-white/5 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-mono font-semibold text-sm">{order.id}</span>
-                  <span
-                    className={`text-xs font-bold px-2 py-0.5 rounded ${
-                      order.status === 'completed'
-                        ? 'bg-primary/20 text-primary'
-                        : 'bg-yellow-500/20 text-yellow-500'
-                    }`}
-                  >
-                    {order.status}
-                  </span>
+
+          {/* Donut Chart Placeholder */}
+          <div className="flex items-center justify-center py-4">
+            <div className="relative w-32 h-32">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#1f1f1f" strokeWidth="3" />
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#43D678" strokeWidth="3" strokeDasharray="73 27" />
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray="20 80" strokeDashoffset="-73" />
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#a855f7" strokeWidth="3" strokeDasharray="7 93" strokeDashoffset="-93" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-white text-xl font-bold">5.2k</p>
+                  <p className="text-slate-500 text-xs">Total</p>
                 </div>
-                <p className="text-white text-sm font-medium mb-1">{order.product}</p>
-                <div className="flex items-center justify-between text-slate-500 text-xs">
-                  <span>{order.customer}</span>
-                  <span className="text-white font-medium">{order.amount}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="space-y-2 mt-2">
+            {productDistribution.map((item) => (
+              <div key={item.label} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                  <span className="text-slate-400">{item.label}</span>
                 </div>
+                <span className="text-white font-medium">{item.percentage}%</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-8">
-        <h2 className="text-white font-bold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link
-            href="/admin/tickets"
-            className="bg-surface-dark border border-border-dark rounded-xl p-4 hover:border-primary/50 transition-colors flex flex-col items-center gap-3 text-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-              <Icon name="add-01" size={24} />
-            </div>
-            <span className="text-white text-sm font-medium">New Ticket</span>
-          </Link>
-          <Link
-            href="/admin/users"
-            className="bg-surface-dark border border-border-dark rounded-xl p-4 hover:border-primary/50 transition-colors flex flex-col items-center gap-3 text-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-              <Icon name="user-add-01" size={24} />
-            </div>
-            <span className="text-white text-sm font-medium">Add User</span>
-          </Link>
-          <Link
-            href="/admin/analytics"
-            className="bg-surface-dark border border-border-dark rounded-xl p-4 hover:border-primary/50 transition-colors flex flex-col items-center gap-3 text-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-              <Icon name="chart" size={24} />
-            </div>
-            <span className="text-white text-sm font-medium">View Reports</span>
-          </Link>
-          <Link
-            href="/admin/settings"
-            className="bg-surface-dark border border-border-dark rounded-xl p-4 hover:border-primary/50 transition-colors flex flex-col items-center gap-3 text-center"
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-              <Icon name="settings-01" size={24} />
-            </div>
-            <span className="text-white text-sm font-medium">Settings</span>
-          </Link>
+      {/* Tables Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Recent Customer Queries */}
+        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between p-5 border-b border-[#1f1f1f]">
+            <h3 className="text-white font-semibold">Recent Customer Queries</h3>
+            <Link href="/admin/analytics" className="text-primary text-sm hover:underline">
+              View All
+            </Link>
+          </div>
+
+          <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#1f1f1f]">
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Search Term</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">User</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Timestamp</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Results</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentQueries.map((query, i) => (
+                  <tr key={i} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                    <td className="px-5 py-3 text-white text-sm">{query.term}</td>
+                    <td className="px-5 py-3 text-slate-400 text-sm">{query.user}</td>
+                    <td className="px-5 py-3 text-slate-500 text-sm">{query.timestamp}</td>
+                    <td className="px-5 py-3 text-primary text-sm font-medium">{query.results}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Best Sellers */}
+        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between p-5 border-b border-[#1f1f1f]">
+            <h3 className="text-white font-semibold">Best Sellers</h3>
+            <Link href="/admin/library" className="text-primary text-sm hover:underline">
+              View All
+            </Link>
+          </div>
+
+          <div className="divide-y divide-[#1f1f1f]">
+            {bestSellers.map((item, i) => (
+              <div key={i} className="flex items-center gap-4 p-4 hover:bg-white/5">
+                <div className={`w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center ${item.color}`}>
+                  <Icon name={item.icon} size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                  <p className="text-slate-500 text-xs">Digital Product</p>
+                </div>
+                <p className="text-primary font-semibold">{item.price}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* View Marketplace Stats Button */}
+          <div className="p-4 border-t border-[#1f1f1f]">
+            <button className="w-full bg-primary hover:bg-primary/90 text-black font-semibold py-2.5 rounded-lg transition-colors text-sm">
+              View Marketplace Stats
+            </button>
+          </div>
         </div>
       </div>
     </AdminLayout>

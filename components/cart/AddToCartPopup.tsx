@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
@@ -21,15 +21,30 @@ export default function AddToCartPopup({
   quantity = 1,
   price,
 }: AddToCartPopupProps) {
-  // Auto close after 5 seconds
+  const [isHovered, setIsHovered] = useState(false)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Auto close after 5 seconds (only when not hovered)
   useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => {
+    if (isOpen && !isHovered) {
+      timerRef.current = setTimeout(() => {
         onClose()
       }, 5000)
-      return () => clearTimeout(timer)
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current)
+        }
+      }
     }
-  }, [isOpen, onClose])
+  }, [isOpen, isHovered, onClose])
+
+  // Clear timer when hovered
+  useEffect(() => {
+    if (isHovered && timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }, [isHovered])
 
   // Handle escape key
   useEffect(() => {
@@ -61,7 +76,11 @@ export default function AddToCartPopup({
       />
 
       {/* Popup */}
-      <div className="fixed z-[100] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10">
+      <div
+        className="fixed z-[100] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">

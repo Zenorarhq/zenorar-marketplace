@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { Product, CartItem } from './types'
 
 interface CartContextType {
@@ -8,8 +9,8 @@ interface CartContextType {
   itemCount: number
   total: number
   addItem: (product: Product, license?: 'standard' | 'extended', customPrice?: number) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  removeItem: (productId: string, license?: 'standard' | 'extended') => void
+  updateQuantity: (productId: string, quantity: number, license?: 'standard' | 'extended') => void
   clearCart: () => void
   // Popup state
   showPopup: boolean
@@ -24,6 +25,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
   const [items, setItems] = useState<CartItem[]>([])
   const [showPopup, setShowPopup] = useState(false)
   const [popupProduct, setPopupProduct] = useState<Product | null>(null)
@@ -54,20 +56,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const removeItem = useCallback((productId: string) => {
-    setItems((currentItems) => currentItems.filter((item) => item.product.id !== productId))
+  const removeItem = useCallback((productId: string, license?: 'standard' | 'extended') => {
+    setItems((currentItems) => currentItems.filter((item) => {
+      if (license) {
+        return !(item.product.id === productId && item.license === license)
+      }
+      return item.product.id !== productId
+    }))
   }, [])
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+  const updateQuantity = useCallback((productId: string, quantity: number, license?: 'standard' | 'extended') => {
     if (quantity <= 0) {
-      removeItem(productId)
+      removeItem(productId, license)
       return
     }
 
     setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
+      currentItems.map((item) => {
+        if (license) {
+          return item.product.id === productId && item.license === license
+            ? { ...item, quantity }
+            : item
+        }
+        return item.product.id === productId ? { ...item, quantity } : item
+      })
     )
   }, [removeItem])
 
@@ -96,8 +108,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems([{ product, quantity: 1, license, price }])
 
     // Redirect to checkout
-    window.location.href = '/checkout'
-  }, [])
+    router.push('/checkout')
+  }, [router])
 
   return (
     <CartContext.Provider

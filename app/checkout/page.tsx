@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
@@ -21,6 +21,7 @@ interface ShippingForm {
 }
 
 export default function CheckoutPage() {
+  const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<ShippingForm>({
     fullName: '',
@@ -48,13 +49,12 @@ export default function CheckoutPage() {
 
     try {
       // TODO: Implement actual checkout logic
-      console.log('Checkout form data:', formData)
 
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       // Redirect to payment step
-      window.location.href = '/checkout/payment'
+      router.push('/checkout/payment')
     } catch (error) {
       console.error('Checkout error:', error)
     } finally {

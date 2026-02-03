@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 
 export default function SignupPage() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -43,13 +45,12 @@ export default function SignupPage() {
 
     try {
       // TODO: Implement actual signup logic
-      console.log('Signup attempt:', formData)
 
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       // Redirect on success
-      window.location.href = '/login?registered=true'
+      router.push('/login?registered=true')
     } catch {
       setError('An error occurred. Please try again.')
     } finally {
@@ -59,12 +60,10 @@ export default function SignupPage() {
 
   const handleGoogleSignup = () => {
     // TODO: Implement Google OAuth
-    console.log('Google signup clicked')
   }
 
   const handleWalletSignup = () => {
     // TODO: Implement wallet connection
-    console.log('Wallet signup clicked')
   }
 
   return (

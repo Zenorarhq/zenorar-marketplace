@@ -152,7 +152,7 @@ export default function SearchDropdown({
               onClick={onViewAllResults}
               className="text-xs font-bold text-primary hover:underline"
             >
-              View all results for "{searchQuery}"
+              View all results for &quot;{searchQuery}&quot;
             </button>
           </div>
         )}

@@ -20,14 +20,14 @@ export default function ProductsPage() {
     switch (sortBy) {
       case 'newest':
         // In a real app, we'd sort by date
-        return products.reverse()
+        return [...products].reverse()
       case 'price-low':
-        return products.sort((a, b) => a.price - b.price)
+        return [...products].sort((a, b) => a.price - b.price)
       case 'price-high':
-        return products.sort((a, b) => b.price - a.price)
+        return [...products].sort((a, b) => b.price - a.price)
       case 'popular':
       default:
-        return products.sort((a, b) => b.reviewCount - a.reviewCount)
+        return [...products].sort((a, b) => b.reviewCount - a.reviewCount)
     }
   }, [sortBy])
 

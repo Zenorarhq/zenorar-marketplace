@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -21,13 +23,12 @@ export default function LoginPage() {
 
     try {
       // TODO: Implement actual authentication logic
-      console.log('Login attempt:', { email, password })
 
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // Redirect on success (placeholder)
-      window.location.href = '/'
+      // Redirect on success
+      router.push('/')
     } catch {
       setError('Invalid email or password. Please try again.')
     } finally {
@@ -37,12 +38,10 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     // TODO: Implement Google OAuth
-    console.log('Google login clicked')
   }
 
   const handleWalletLogin = () => {
     // TODO: Implement wallet connection
-    console.log('Wallet login clicked')
   }
 
   return (
