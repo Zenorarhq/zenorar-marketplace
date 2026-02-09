@@ -1,12 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { formatCurrency } from '@/lib/formatNumber'
 import { financeApi } from '@/lib/api/finance'
+import PayoutRequestModal from '@/components/admin/PayoutRequestModal'
 
 export default function FinancePage() {
+  const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false)
   // Fetch finance overview with React Query
   const { data: overview = null } = useQuery({
     queryKey: ['finance-overview'],
@@ -50,7 +53,12 @@ export default function FinancePage() {
             {formatCurrency(overview?.availableBalance || 0)}
           </p>
           <p className="text-xs">
-            <button className="text-primary hover:text-primary/80 font-medium transition-colors">Request Payout →</button>
+            <button
+              onClick={() => setIsPayoutModalOpen(true)}
+              className="text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              Request Payout →
+            </button>
           </p>
         </div>
 
@@ -222,6 +230,13 @@ export default function FinancePage() {
           </div>
         )}
       </div>
+
+      {/* Payout Modal */}
+      <PayoutRequestModal
+        isOpen={isPayoutModalOpen}
+        onClose={() => setIsPayoutModalOpen(false)}
+        availableBalance={overview?.availableBalance || 0}
+      />
     </AdminLayout>
   )
 }

@@ -5,12 +5,22 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { ticketsApi, Ticket, TicketStatus, TicketPriority } from '@/lib/api/tickets'
+import NewTicketModal from '@/components/admin/NewTicketModal'
+import ViewTicketThreadModal from '@/components/admin/ViewTicketThreadModal'
+import ReplyTicketModal from '@/components/admin/ReplyTicketModal'
 
 export default function TicketsPage() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  // Modal states
+  const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false)
+  const [isViewThreadModalOpen, setIsViewThreadModalOpen] = useState(false)
+  const [isReplyModalOpen, setIsReplyModalOpen] = useState(false)
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [selectedTicketNumber, setSelectedTicketNumber] = useState<string | null>(null)
 
   // Fetch tickets with React Query (cached for 5 minutes)
   const { data: tickets = [], isLoading: ticketsLoading, error: ticketsError } = useQuery({
@@ -53,6 +63,26 @@ export default function TicketsPage() {
   function loadData() {
     queryClient.invalidateQueries({ queryKey: ['admin-tickets'] })
     queryClient.invalidateQueries({ queryKey: ['admin-tickets-stats'] })
+  }
+
+  function handleOpenNewTicket() {
+    setIsNewTicketModalOpen(true)
+  }
+
+  function handleOpenViewThread(ticketId: string, ticketNumber: string) {
+    setSelectedTicketId(ticketId)
+    setSelectedTicketNumber(ticketNumber)
+    setIsViewThreadModalOpen(true)
+  }
+
+  function handleOpenReply(ticketId: string, ticketNumber: string) {
+    setSelectedTicketId(ticketId)
+    setSelectedTicketNumber(ticketNumber)
+    setIsReplyModalOpen(true)
+  }
+
+  function handleModalSuccess() {
+    loadData()
   }
 
   const filteredTickets = tickets.filter(
@@ -199,7 +229,7 @@ export default function TicketsPage() {
           <p className="text-slate-500 text-xs sm:text-sm">Manage and resolve marketplace support requests</p>
         </div>
         <button
-          onClick={() => alert('New ticket creation coming soon!')}
+          onClick={handleOpenNewTicket}
           className="bg-primary hover:bg-primary/90 text-black text-xs sm:text-sm font-semibold px-2 sm:px-3 py-2 rounded-lg transition-colors flex items-center gap-1 sm:gap-2 flex-shrink-0"
         >
           <Icon name="add" size={14} />
@@ -304,7 +334,7 @@ export default function TicketsPage() {
                               Resolve
                             </button>
                             <button
-                              onClick={() => alert(`Reply to ticket #${ticket.ticketNumber} - Coming soon!`)}
+                              onClick={() => handleOpenReply(ticket.id, ticket.ticketNumber)}
                               className="border border-primary text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/10"
                             >
                               Reply
@@ -319,7 +349,7 @@ export default function TicketsPage() {
                               {ticket.status === 'RESOLVED' ? 'Resolved' : 'Closed'}
                             </button>
                             <button
-                              onClick={() => alert(`View ticket #${ticket.ticketNumber} thread - Coming soon!`)}
+                              onClick={() => handleOpenViewThread(ticket.id, ticket.ticketNumber)}
                               className="border border-primary text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/10"
                             >
                               View Thread
@@ -398,6 +428,27 @@ export default function TicketsPage() {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <NewTicketModal
+        isOpen={isNewTicketModalOpen}
+        onClose={() => setIsNewTicketModalOpen(false)}
+        onSuccess={handleModalSuccess}
+      />
+
+      <ViewTicketThreadModal
+        isOpen={isViewThreadModalOpen}
+        onClose={() => setIsViewThreadModalOpen(false)}
+        ticketId={selectedTicketId}
+      />
+
+      <ReplyTicketModal
+        isOpen={isReplyModalOpen}
+        onClose={() => setIsReplyModalOpen(false)}
+        onSuccess={handleModalSuccess}
+        ticketId={selectedTicketId}
+        ticketNumber={selectedTicketNumber}
+      />
     </AdminLayout>
   )
 }
