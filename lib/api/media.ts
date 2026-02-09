@@ -1,22 +1,27 @@
 import { apiFetch, buildQueryString } from './client'
 
+export type MediaType = 'IMAGE' | 'VIDEO' | 'DOCUMENT'
+
 export interface MediaFile {
   id: string
   name: string
-  originalName: string
-  mimeType: string
-  size: number
   url: string
-  thumbnailUrl?: string
+  publicId: string
+  type: MediaType
+  mimeType?: string
+  size: number
+  width?: number
+  height?: number
   alt?: string
   title?: string
   description?: string
   uploadedBy?: {
     id: string
     name: string
+    email: string
   }
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
 }
 
 export interface MediaFilters {

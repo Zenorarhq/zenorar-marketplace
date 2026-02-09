@@ -344,14 +344,14 @@ export default function AdminLibraryPage() {
                   >
                     {/* Image Preview */}
                     <div className="aspect-square bg-[#0a0a0a] flex items-center justify-center relative overflow-hidden">
-                      {upload.type === 'image' ? (
+                      {upload.type === 'IMAGE' ? (
                         <img
                           src={upload.url}
-                          alt={upload.alt || upload.title}
+                          alt={upload.alt || upload.name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Icon name={upload.type === 'video' ? 'video' : 'file'} size={48} className="text-slate-700" />
+                        <Icon name={upload.type === 'VIDEO' ? 'video' : 'file'} size={48} className="text-slate-700" />
                       )}
                       {/* Hover Overlay */}
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
