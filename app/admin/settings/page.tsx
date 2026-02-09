@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { profileApi } from '@/lib/api/profile'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 
-type SettingsTab = 'general' | 'security' | 'notifications' | 'payments' | 'api'
+type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'api'
 
 const tabs: { id: SettingsTab; label: string; icon: string }[] = [
+  { id: 'profile', label: 'Profile', icon: 'user' },
   { id: 'general', label: 'General', icon: 'settings' },
   { id: 'security', label: 'Security', icon: 'shield' },
   { id: 'notifications', label: 'Notifications', icon: 'bell' },
@@ -15,9 +18,30 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
 ]
 
 export default function AdminSettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general')
+  const { user, updateUser, refreshUser } = useAuth()
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Profile Settings State
+  const [profileSettings, setProfileSettings] = useState({
+    name: user?.name || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+
+  // Sync profile settings with user data
+  useEffect(() => {
+    if (user) {
+      setProfileSettings((prev) => ({
+        ...prev,
+        name: user.name,
+      }))
+    }
+  }, [user])
 
   const handleTabClick = (tabId: SettingsTab, index: number) => {
     setActiveTab(tabId)
@@ -83,6 +107,125 @@ export default function AdminSettingsPage() {
     ],
   })
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Avatar file size must be less than 5MB' })
+      return
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Avatar must be an image file' })
+      return
+    }
+
+    setSaving(true)
+    setMessage(null)
+
+    const result = await profileApi.uploadAvatar(file)
+
+    if (result.success && result.data) {
+      updateUser(result.data)
+      setMessage({ type: 'success', text: 'Avatar updated successfully!' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to upload avatar' })
+    }
+
+    setSaving(false)
+  }
+
+  const handleRemoveAvatar = async () => {
+    if (!confirm('Are you sure you want to remove your avatar?')) return
+
+    setSaving(true)
+    setMessage(null)
+
+    const result = await profileApi.removeAvatar()
+
+    if (result.success && result.data) {
+      updateUser(result.data)
+      setMessage({ type: 'success', text: 'Avatar removed successfully!' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to remove avatar' })
+    }
+
+    setSaving(false)
+  }
+
+  const handleUpdateProfile = async () => {
+    if (!profileSettings.name.trim()) {
+      setMessage({ type: 'error', text: 'Name is required' })
+      return
+    }
+
+    setSaving(true)
+    setMessage(null)
+
+    const result = await profileApi.update({ name: profileSettings.name })
+
+    if (result.success && result.data) {
+      updateUser(result.data)
+      setMessage({ type: 'success', text: 'Profile updated successfully!' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to update profile' })
+    }
+
+    setSaving(false)
+  }
+
+  const handleUpdatePassword = async () => {
+    // Validate inputs
+    if (!profileSettings.currentPassword) {
+      setMessage({ type: 'error', text: 'Current password is required' })
+      return
+    }
+
+    if (!profileSettings.newPassword) {
+      setMessage({ type: 'error', text: 'New password is required' })
+      return
+    }
+
+    if (profileSettings.newPassword.length < 8) {
+      setMessage({ type: 'error', text: 'Password must be at least 8 characters' })
+      return
+    }
+
+    if (profileSettings.newPassword !== profileSettings.confirmPassword) {
+      setMessage({ type: 'error', text: 'Passwords do not match' })
+      return
+    }
+
+    setSaving(true)
+    setMessage(null)
+
+    const result = await profileApi.updatePassword({
+      currentPassword: profileSettings.currentPassword,
+      newPassword: profileSettings.newPassword,
+    })
+
+    if (result.success) {
+      setMessage({ type: 'success', text: 'Password updated successfully!' })
+      setProfileSettings({
+        ...profileSettings,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to update password' })
+    }
+
+    setSaving(false)
+  }
+
   const handleSave = async () => {
     setSaving(true)
     // Simulate API call
@@ -123,6 +266,154 @@ export default function AdminSettingsPage() {
 
         {/* Tab Content */}
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 sm:p-6 mb-6">
+          {/* Success/Error Message */}
+          {message && (
+            <div className={`mb-6 p-4 rounded-lg border ${
+              message.type === 'success'
+                ? 'bg-primary/10 border-primary/20 text-primary'
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}>
+              <p className="text-sm font-medium">{message.text}</p>
+            </div>
+          )}
+
+          {/* Profile Settings */}
+          {activeTab === 'profile' && (
+            <div className="space-y-6">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+
+              <div className="flex flex-col sm:flex-row items-start gap-6">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-24 h-24 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center overflow-hidden">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <Icon name="user" size={40} className="text-slate-600" />
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAvatarClick}
+                      disabled={saving}
+                      className="bg-[#1a1a1a] hover:bg-white/5 text-white text-xs px-3 py-1.5 rounded-lg transition-colors border border-[#2a2a2a] disabled:opacity-50"
+                    >
+                      Change
+                    </button>
+                    {user?.avatar && (
+                      <button
+                        onClick={handleRemoveAvatar}
+                        disabled={saving}
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-1.5 rounded-lg transition-colors border border-red-500/20 disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 w-full space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Full Name</label>
+                    <input
+                      type="text"
+                      value={profileSettings.name}
+                      onChange={(e) => setProfileSettings({ ...profileSettings, name: e.target.value })}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Email Address</label>
+                    <input
+                      type="email"
+                      value={user?.email || ''}
+                      disabled
+                      className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-slate-500 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-slate-500">Email cannot be changed</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Role</label>
+                    <input
+                      type="text"
+                      value={user?.role || ''}
+                      disabled
+                      className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-slate-500 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleUpdateProfile}
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-black rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {saving ? 'Saving...' : 'Save Profile'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-[#2a2a2a] space-y-4">
+                <h3 className="text-white font-medium mb-4">Change Password</h3>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Current Password</label>
+                  <input
+                    type="password"
+                    value={profileSettings.currentPassword}
+                    onChange={(e) => setProfileSettings({ ...profileSettings, currentPassword: e.target.value })}
+                    placeholder="Enter your current password"
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">New Password</label>
+                    <input
+                      type="password"
+                      value={profileSettings.newPassword}
+                      onChange={(e) => setProfileSettings({ ...profileSettings, newPassword: e.target.value })}
+                      placeholder="Enter new password"
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={profileSettings.confirmPassword}
+                      onChange={(e) => setProfileSettings({ ...profileSettings, confirmPassword: e.target.value })}
+                      placeholder="Confirm new password"
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                  <p className="text-blue-400 text-sm">
+                    <strong>Password requirements:</strong> At least 8 characters, including uppercase, lowercase, number, and special character.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleUpdatePassword}
+                  disabled={saving || !profileSettings.currentPassword || !profileSettings.newPassword || !profileSettings.confirmPassword}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-black rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* General Settings */}
           {activeTab === 'general' && (
             <div className="space-y-6">

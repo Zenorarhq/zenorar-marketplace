@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface PreferencesDialogProps {
   isOpen: boolean
@@ -47,22 +49,42 @@ const languages: Language[] = [
 ]
 
 const currencies: Currency[] = [
+  // Fiat currencies
   { code: 'USD', name: 'US Dollar', symbol: '$' },
   { code: 'EUR', name: 'Euro', symbol: '€' },
   { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
+  { code: 'GHS', name: 'Ghanaian Cedi', symbol: '₵' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+  // Cryptocurrencies
   { code: 'BTC', name: 'Bitcoin', symbol: '₿' },
   { code: 'ETH', name: 'Ethereum', symbol: 'Ξ' },
+  { code: 'BNB', name: 'Binance Coin', symbol: 'Ⓑ' },
+  { code: 'SOL', name: 'Solana', symbol: '◎' },
   { code: 'USDT', name: 'Tether', symbol: '₮' },
 ]
 
 type SettingType = 'country' | 'language' | 'currency' | null
 
 export default function PreferencesDialog({ isOpen, onClose, triggerRef }: PreferencesDialogProps) {
-  const [selectedCountry, setSelectedCountry] = useState<Country>(countries[0])
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(languages[0])
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(currencies[0])
+  const { preferences, savePreferences } = usePreferences()
+  const [selectedCountry, setSelectedCountry] = useState<Country>(preferences.country)
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(preferences.language)
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(preferences.currency)
   const [activeSetting, setActiveSetting] = useState<SettingType>(null)
+  const [saved, setSaved] = useState(false)
   const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Sync local state with context when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedCountry(preferences.country)
+      setSelectedLanguage(preferences.language)
+      setSelectedCurrency(preferences.currency)
+      setSaved(false)
+      setActiveSetting(null)
+    }
+  }, [isOpen, preferences])
 
   // Handle click outside
   useEffect(() => {
@@ -105,13 +127,17 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef }: Prefe
   if (!isOpen) return null
 
   const handleSave = () => {
-    // TODO: Save preferences to localStorage or API
-    console.log('Saving preferences:', {
+    // Save preferences to context (which persists to localStorage)
+    savePreferences({
       country: selectedCountry,
       language: selectedLanguage,
       currency: selectedCurrency,
     })
-    onClose()
+    setSaved(true)
+    // Auto close after a brief delay to show success
+    setTimeout(() => {
+      onClose()
+    }, 500)
   }
 
   const renderMainView = () => (
@@ -132,8 +158,8 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef }: Prefe
           onClick={() => setActiveSetting('country')}
           className="w-full bg-[#1C1C1C] hover:bg-[#252525] h-16 rounded-xl flex items-center px-4 cursor-pointer transition-colors group border border-white/5 text-left"
         >
-          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mr-4 flex-shrink-0 text-xl">
-            {selectedCountry.flag}
+          <div className="w-10 h-10 rounded-full bg-white/5 overflow-hidden flex items-center justify-center mr-4 flex-shrink-0">
+            <FlagIcon countryCode={selectedCountry.code} className="w-full h-full object-cover" />
           </div>
           <div className="flex-grow min-w-0">
             <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-0.5">Country</p>
@@ -175,9 +201,21 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef }: Prefe
 
       <button
         onClick={handleSave}
-        className="w-full bg-primary text-black font-bold text-sm h-12 rounded-xl mt-6 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center"
+        disabled={saved}
+        className={`w-full font-bold text-sm h-12 rounded-xl mt-6 transition-all flex items-center justify-center gap-2 ${
+          saved
+            ? 'bg-green-500 text-white'
+            : 'bg-primary text-black hover:brightness-105 active:scale-[0.98]'
+        }`}
       >
-        Save Preferences
+        {saved ? (
+          <>
+            <Icon name="check" size={18} />
+            Saved!
+          </>
+        ) : (
+          'Save Preferences'
+        )}
       </button>
     </>
   )
@@ -208,7 +246,9 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef }: Prefe
                 : 'bg-[#1C1C1C] hover:bg-[#252525] border border-white/5'
             }`}
           >
-            <span className="text-xl">{country.flag}</span>
+            <div className="w-7 h-7 rounded overflow-hidden flex items-center justify-center flex-shrink-0">
+              <FlagIcon countryCode={country.code} className="w-full h-full object-cover" />
+            </div>
             <span className={`font-medium text-sm ${selectedCountry.code === country.code ? 'text-primary' : 'text-white'}`}>
               {country.name}
             </span>
@@ -291,9 +331,14 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef }: Prefe
             <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
               currency.code === 'BTC' ? 'bg-[#F7931A]/20 text-[#F7931A]' :
               currency.code === 'ETH' ? 'bg-[#627EEA]/20 text-[#627EEA]' :
+              currency.code === 'BNB' ? 'bg-[#F3BA2F]/20 text-[#F3BA2F]' :
+              currency.code === 'SOL' ? 'bg-[#9945FF]/20 text-[#9945FF]' :
+              currency.code === 'NGN' ? 'bg-[#008751]/20 text-[#008751]' :
+              currency.code === 'GHS' ? 'bg-[#EF3340]/20 text-[#EF3340]' :
+              currency.code === 'CNY' ? 'bg-[#DE2910]/20 text-[#DE2910]' :
               'bg-white/10 text-white/70'
             }`}>
-              {currency.symbol}
+              {currency.symbol.length > 2 ? currency.symbol.substring(0, 2) : currency.symbol}
             </div>
             <div className="flex-grow">
               <span className={`font-medium text-sm ${selectedCurrency.code === currency.code ? 'text-primary' : 'text-white'}`}>
@@ -318,10 +363,10 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef }: Prefe
         onClick={onClose}
       />
 
-      {/* Dropdown positioned at top right */}
+      {/* Dropdown positioned at top right - full width on mobile */}
       <div
         ref={dialogRef}
-        className="fixed z-[100] top-20 right-8 lg:right-12 w-[320px] bg-[#0D0D0D] rounded-2xl p-5 shadow-2xl border border-white/10 flex flex-col"
+        className="fixed z-[100] top-20 left-4 right-4 md:left-auto md:right-8 lg:right-12 md:w-[320px] bg-[#0D0D0D] rounded-2xl p-5 shadow-2xl border border-white/10 flex flex-col max-h-[80vh] overflow-y-auto"
       >
         {activeSetting === null && renderMainView()}
         {activeSetting === 'country' && renderCountrySelector()}

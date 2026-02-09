@@ -1,13 +1,53 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 
+interface PaymentInfo {
+  method: string
+  crypto?: string
+  txHash?: string
+  amount?: string
+  usdAmount?: number
+  walletAddress?: string
+  orderId?: string
+  orderNumber?: string
+}
+
 export default function SuccessPage() {
-  const orderNumber = `ZEN-${Date.now().toString(36).toUpperCase()}`
+  const searchParams = useSearchParams()
+  const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null)
+
+  const txHashParam = searchParams.get('txHash')
+  const orderNumberParam = searchParams.get('orderNumber')
+
+  useEffect(() => {
+    const storedPayment = sessionStorage.getItem('checkoutPayment')
+    if (storedPayment) {
+      setPaymentInfo(JSON.parse(storedPayment))
+    }
+  }, [])
+
+  const orderNumber = orderNumberParam || paymentInfo?.orderNumber || `ZEN-${Date.now().toString(36).toUpperCase()}`
+  const txHash = txHashParam || paymentInfo?.txHash
+
+  const getExplorerUrl = (network: string, hash: string) => {
+    switch (network?.toUpperCase()) {
+      case 'ETH':
+        return `https://etherscan.io/tx/${hash}`
+      case 'BNB':
+        return `https://bscscan.com/tx/${hash}`
+      case 'MATIC':
+        return `https://polygonscan.com/tx/${hash}`
+      default:
+        return `https://etherscan.io/tx/${hash}`
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background-dark flex flex-col">
@@ -34,6 +74,40 @@ export default function SuccessPage() {
             <p className="text-slate-500 text-sm mb-2">Order Number</p>
             <p className="text-2xl font-bold text-white font-mono">{orderNumber}</p>
           </div>
+
+          {/* Crypto Transaction Info */}
+          {txHash && paymentInfo?.method === 'wallet' && (
+            <div className="bg-charcoal border border-primary/30 rounded-xl p-6 mb-8">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Icon name="wallet" size={20} className="text-primary" />
+                <p className="text-primary font-bold">Crypto Payment Confirmed</p>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Network:</span>
+                  <span className="text-white font-medium">{paymentInfo.crypto}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Amount:</span>
+                  <span className="text-white font-medium">
+                    {paymentInfo.amount} {paymentInfo.crypto}
+                    <span className="text-slate-500 ml-1">(${paymentInfo.usdAmount?.toFixed(2)})</span>
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 pt-2 border-t border-border-dark mt-2">
+                  <span className="text-slate-500 text-xs">Transaction Hash:</span>
+                  <a
+                    href={getExplorerUrl(paymentInfo.crypto || 'ETH', txHash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary text-xs font-mono hover:underline break-all"
+                  >
+                    {txHash}
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Next Steps */}
           <div className="bg-surface-dark border border-border-dark rounded-xl p-8 mb-8 text-left">

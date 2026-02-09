@@ -1,16 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
+import { useAuth } from '@/contexts/AuthContext'
+import { profileApi } from '@/lib/api/profile'
 
 export default function ProfileSettingsPage() {
+  const { user, updateUser } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
-    fullName: 'Alex Morgan',
-    displayName: 'alexm_dev',
-    email: 'alex.morgan@example.com',
-    bio: 'Senior Full Stack Developer passionate about building scalable web applications and exploring new technologies in the web3 space.',
+    fullName: '',
+    displayName: '',
+    email: '',
+    bio: '',
   })
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+
+  // Initialize form data from user when available
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        fullName: user.name || '',
+        displayName: user.name?.toLowerCase().replace(/\s+/g, '_') || '',
+        email: user.email || '',
+        bio: '',
+      })
+      setAvatarPreview(user.avatar || null)
+    }
+  }, [user])
+
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [publicProfile, setPublicProfile] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -24,36 +46,166 @@ export default function ProfileSettingsPage() {
     setSaved(false)
   }
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      setAvatarError('Please select a valid image file (JPEG, PNG, GIF, or WebP)')
+      return
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('Image must be less than 5MB')
+      return
+    }
+
+    setAvatarError('')
+    setIsUploadingAvatar(true)
+
+    // Show preview immediately
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      setAvatarPreview(event.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    try {
+      const result = await profileApi.uploadAvatar(file)
+      if (result.success && result.data) {
+        setAvatarPreview(result.data.avatar || null)
+        updateUser({ avatar: result.data.avatar }) // Update user context immediately
+      } else {
+        setAvatarError(result.error || 'Failed to upload avatar')
+        // Revert preview on error
+        setAvatarPreview(user?.avatar || null)
+      }
+    } catch {
+      setAvatarError('Failed to upload avatar. Please try again.')
+      setAvatarPreview(user?.avatar || null)
+    } finally {
+      setIsUploadingAvatar(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleRemoveAvatar = async () => {
+    if (!avatarPreview) return
+
+    setIsUploadingAvatar(true)
+    setAvatarError('')
+
+    try {
+      const result = await profileApi.removeAvatar()
+      if (result.success) {
+        setAvatarPreview(null)
+        updateUser({ avatar: null }) // Update user context immediately
+      } else {
+        setAvatarError(result.error || 'Failed to remove avatar')
+      }
+    } catch {
+      setAvatarError('Failed to remove avatar. Please try again.')
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const result = await profileApi.update({
+        name: formData.fullName,
+      })
 
-    setIsLoading(false)
-    setSaved(true)
+      if (result.success && result.data) {
+        updateUser({ name: result.data.name })
+        setSaved(true)
+      }
+    } catch {
+      // Handle error
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <ProfileLayout>
       {/* Avatar Section */}
       <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12 pb-10 border-b border-border-dark">
-        <div className="relative group cursor-pointer">
-          <div className="w-28 h-28 rounded-3xl overflow-hidden bg-black ring-4 ring-black shadow-xl flex items-center justify-center">
-            <Icon name="user" size={60} className="text-slate-700" />
+        <div className="relative group">
+          <div
+            className="w-28 h-28 rounded-3xl overflow-hidden bg-black ring-4 ring-black shadow-xl flex items-center justify-center cursor-pointer"
+            onClick={handleAvatarClick}
+          >
+            {isUploadingAvatar ? (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-3xl">
+                <Icon name="loading" size={32} className="text-primary animate-spin" />
+              </div>
+            ) : null}
+            {avatarPreview ? (
+              <Image
+                src={avatarPreview}
+                alt={formData.fullName || 'Profile'}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <Icon name="user" size={60} className="text-slate-700" />
+            )}
           </div>
-          <button className="absolute -bottom-3 -right-3 w-10 h-10 bg-primary text-black rounded-xl flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-green-500/20">
+          <button
+            onClick={handleAvatarClick}
+            disabled={isUploadingAvatar}
+            className="absolute -bottom-3 -right-3 w-10 h-10 bg-primary text-black rounded-xl flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-green-500/20 disabled:opacity-50"
+          >
             <Icon name="edit" size={20} />
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            onChange={handleFileChange}
+            className="hidden"
+          />
         </div>
         <div className="flex-1 text-center md:text-left mt-2">
           <h1 className="text-3xl font-bold text-white mb-1">{formData.fullName}</h1>
           <p className="text-slate-400 mb-6 font-medium">{formData.email}</p>
-          <button className="text-xs font-bold text-primary border border-primary/30 px-5 py-2.5 rounded-xl hover:bg-primary/10 transition-colors uppercase tracking-wider flex items-center gap-2 mx-auto md:mx-0">
-            <Icon name="upload" size={14} />
-            Change Avatar
-          </button>
+          <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+            <button
+              onClick={handleAvatarClick}
+              disabled={isUploadingAvatar}
+              className="text-xs font-bold text-primary border border-primary/30 px-5 py-2.5 rounded-xl hover:bg-primary/10 transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+            >
+              <Icon name="upload" size={14} />
+              {avatarPreview ? 'Change Avatar' : 'Upload Avatar'}
+            </button>
+            {avatarPreview && (
+              <button
+                onClick={handleRemoveAvatar}
+                disabled={isUploadingAvatar}
+                className="text-xs font-bold text-red-400 border border-red-400/30 px-5 py-2.5 rounded-xl hover:bg-red-400/10 transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+              >
+                <Icon name="delete" size={14} />
+                Remove
+              </button>
+            )}
+          </div>
+          {avatarError && (
+            <p className="text-red-400 text-xs mt-3">{avatarError}</p>
+          )}
         </div>
       </div>
 
@@ -96,8 +248,10 @@ export default function ProfileSettingsPage() {
               type="email"
               value={formData.email}
               onChange={handleInputChange}
-              className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              disabled
+              className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 text-slate-400 placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all cursor-not-allowed"
             />
+            <p className="text-xs text-slate-500 ml-1">Email cannot be changed</p>
           </div>
           <div className="space-y-3 md:col-span-2">
             <label htmlFor="bio" className="text-sm font-semibold text-slate-300 ml-1">

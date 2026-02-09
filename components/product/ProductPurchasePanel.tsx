@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 import { Product } from '@/lib/types'
 import { useCart } from '@/lib/cart-context'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface ProductPurchasePanelProps {
   product: Product
@@ -13,6 +14,7 @@ interface ProductPurchasePanelProps {
 
 export default function ProductPurchasePanel({ product }: ProductPurchasePanelProps) {
   const { addItem, showAddedToCartPopup, buyNow } = useCart()
+  const { formatPrice } = usePreferences()
   const [selectedLicense, setSelectedLicense] = useState<'standard' | 'extended'>('standard')
   const [isAdding, setIsAdding] = useState(false)
   const [showAddedMessage, setShowAddedMessage] = useState(false)
@@ -42,12 +44,12 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
         {/* Price */}
         <div className="flex items-baseline gap-2 mb-6">
           <span className="text-3xl font-extrabold text-white">
-            ${currentPrice}
+            {formatPrice(currentPrice)}
           </span>
           {product.priceRange && selectedLicense === 'standard' && (
             <>
               <span className="text-slate-500 text-sm">—</span>
-              <span className="text-slate-500 text-sm">${product.priceRange.max}</span>
+              <span className="text-slate-500 text-sm">{formatPrice(product.priceRange.max)}</span>
             </>
           )}
         </div>
@@ -64,8 +66,8 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
               onChange={(e) => setSelectedLicense(e.target.value as 'standard' | 'extended')}
               className="w-full bg-background-dark border-border-dark rounded-lg text-slate-300 text-sm focus:ring-primary focus:border-primary px-4 py-3"
             >
-              <option value="standard">Standard License (${product.priceRange?.min || product.price})</option>
-              <option value="extended">Extended License (${product.priceRange?.max || product.price})</option>
+              <option value="standard">Standard License ({formatPrice(product.priceRange?.min || product.price)})</option>
+              <option value="extended">Extended License ({formatPrice(product.priceRange?.max || product.price)})</option>
             </select>
           </div>
         </div>

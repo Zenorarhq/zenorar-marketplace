@@ -2,6 +2,7 @@
 
 import Icon from '@/components/ui/Icon'
 import { useCart } from '@/lib/cart-context'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface OrderSummaryProps {
   onSubmit?: (e: React.FormEvent) => void
@@ -10,6 +11,7 @@ interface OrderSummaryProps {
 
 export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSummaryProps) {
   const { items: cartItems, total } = useCart()
+  const { formatPrice } = usePreferences()
 
   // Use only actual cart items
   const displayItems = cartItems.map((item) => ({
@@ -54,7 +56,7 @@ export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSu
               <div className="flex-grow">
                 <div className="flex justify-between items-start">
                   <h3 className="font-bold text-white text-sm">{item.name}</h3>
-                  <span className="font-bold text-white">${(item.price * item.quantity).toFixed(2)}</span>
+                  <span className="font-bold text-white">{formatPrice(item.price * item.quantity)}</span>
                 </div>
                 <div className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">
                   {item.license}
@@ -70,7 +72,7 @@ export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSu
       <div className="space-y-4 pt-8 border-t border-border-dark">
         <div className="flex justify-between items-center text-sm">
           <span className="text-slate-400">Subtotal</span>
-          <span className="text-white font-medium">${total.toFixed(2)}</span>
+          <span className="text-white font-medium">{formatPrice(total)}</span>
         </div>
         <div className="flex justify-between items-center text-sm">
           <span className="text-slate-400">Shipping</span>
@@ -78,11 +80,11 @@ export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSu
         </div>
         <div className="flex justify-between items-center text-sm">
           <span className="text-slate-400">Tax</span>
-          <span className="text-white font-medium">${tax.toFixed(2)}</span>
+          <span className="text-white font-medium">{formatPrice(tax)}</span>
         </div>
         <div className="flex justify-between items-center pt-4 border-t border-border-dark">
           <span className="text-lg font-bold text-white">Total</span>
-          <span className="text-2xl font-black text-white">${orderTotal.toFixed(2)}</span>
+          <span className="text-2xl font-black text-white">{formatPrice(orderTotal)}</span>
         </div>
       </div>
 

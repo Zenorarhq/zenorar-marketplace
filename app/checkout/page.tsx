@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import OrderSummary from '@/components/checkout/OrderSummary'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
+import { useAuth } from '@/contexts/AuthContext'
+import { useCart } from '@/lib/cart-context'
 
 interface ShippingForm {
   fullName: string
@@ -20,9 +23,22 @@ interface ShippingForm {
   deliveryMethod: 'standard' | 'express'
 }
 
+interface FormErrors {
+  fullName?: string
+  email?: string
+  address?: string
+  city?: string
+  state?: string
+  zipCode?: string
+  phone?: string
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { items } = useCart()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<FormErrors>({})
   const [formData, setFormData] = useState<ShippingForm>({
     fullName: '',
     email: '',
@@ -34,21 +50,87 @@ export default function CheckoutPage() {
     deliveryMethod: 'standard',
   })
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      sessionStorage.setItem('redirectAfterLogin', '/checkout')
+      router.push('/login')
+    }
+  }, [isAuthenticated, authLoading, router])
+
+  // Redirect to cart if cart is empty
+  useEffect(() => {
+    if (!authLoading && items.length === 0) {
+      router.push('/cart')
+    }
+  }, [items, authLoading, router])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+    // Clear error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }))
+    }
   }
 
   const handleDeliveryChange = (method: 'standard' | 'express') => {
     setFormData((prev) => ({ ...prev, deliveryMethod: method }))
   }
 
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
+
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Full name is required'
+    } else if (formData.fullName.trim().length < 2) {
+      newErrors.fullName = 'Full name must be at least 2 characters'
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email address is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address'
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = 'Shipping address is required'
+    }
+
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required'
+    }
+
+    if (!formData.state.trim()) {
+      newErrors.state = 'State/Province is required'
+    }
+
+    if (!formData.zipCode.trim()) {
+      newErrors.zipCode = 'Zip code is required'
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required'
+    } else if (!/^[\d\s\-+()]+$/.test(formData.phone)) {
+      newErrors.phone = 'Please enter a valid phone number'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!validateForm()) {
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      // TODO: Implement actual checkout logic
+      // Store shipping data for the payment step
+      sessionStorage.setItem('checkoutShipping', JSON.stringify(formData))
 
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
@@ -60,6 +142,46 @@ export default function CheckoutPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background-dark flex items-center justify-center">
+        <div className="text-center">
+          <Icon name="loading" size={48} className="text-primary animate-spin mx-auto mb-4" />
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show empty cart message
+  if (items.length === 0) {
+    return (
+      <div className="min-h-screen bg-background-dark flex flex-col">
+        <Header />
+        <CategoryNav />
+        <main className="flex-grow flex items-center justify-center px-8 py-24">
+          <div className="text-center max-w-md mx-auto">
+            <div className="w-32 h-32 rounded-full bg-surface-dark flex items-center justify-center mx-auto mb-8">
+              <Icon name="cart" size={64} className="text-slate-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-4">Your cart is empty</h1>
+            <p className="text-slate-400 mb-8">
+              Add some products to your cart before checkout.
+            </p>
+            <Link
+              href="/scripts"
+              className="bg-primary text-black font-bold px-8 py-4 rounded-xl hover:brightness-105 transition-all inline-flex items-center gap-2"
+            >
+              Browse Products
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   return (
@@ -134,10 +256,14 @@ export default function CheckoutPage() {
                         value={formData.fullName}
                         onChange={handleInputChange}
                         placeholder="John Doe"
-                        required
                         autoComplete="name"
-                        className="w-full bg-charcoal border-border-dark rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                        className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                          errors.fullName ? 'border-red-500' : 'border-border-dark'
+                        }`}
                       />
+                      {errors.fullName && (
+                        <p className="text-red-400 text-xs mt-1">{errors.fullName}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="email" className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
@@ -150,10 +276,14 @@ export default function CheckoutPage() {
                         value={formData.email}
                         onChange={handleInputChange}
                         placeholder="john@example.com"
-                        required
                         autoComplete="email"
-                        className="w-full bg-charcoal border-border-dark rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                        className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                          errors.email ? 'border-red-500' : 'border-border-dark'
+                        }`}
                       />
+                      {errors.email && (
+                        <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+                      )}
                     </div>
                   </div>
 
@@ -169,10 +299,14 @@ export default function CheckoutPage() {
                       value={formData.address}
                       onChange={handleInputChange}
                       placeholder="Street address, apartment, suite"
-                      required
                       autoComplete="street-address"
-                      className="w-full bg-charcoal border-border-dark rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all mb-4"
+                      className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all mb-4 ${
+                        errors.address ? 'border-red-500' : 'border-border-dark'
+                      }`}
                     />
+                    {errors.address && (
+                      <p className="text-red-400 text-xs mb-2">{errors.address}</p>
+                    )}
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <label htmlFor="city" className="sr-only">City</label>
@@ -183,10 +317,14 @@ export default function CheckoutPage() {
                           value={formData.city}
                           onChange={handleInputChange}
                           placeholder="City"
-                          required
                           autoComplete="address-level2"
-                          className="w-full bg-charcoal border-border-dark rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                            errors.city ? 'border-red-500' : 'border-border-dark'
+                          }`}
                         />
+                        {errors.city && (
+                          <p className="text-red-400 text-xs mt-1">{errors.city}</p>
+                        )}
                       </div>
                       <div>
                         <label htmlFor="state" className="sr-only">State/Province</label>
@@ -197,10 +335,14 @@ export default function CheckoutPage() {
                           value={formData.state}
                           onChange={handleInputChange}
                           placeholder="State/Province"
-                          required
                           autoComplete="address-level1"
-                          className="w-full bg-charcoal border-border-dark rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                            errors.state ? 'border-red-500' : 'border-border-dark'
+                          }`}
                         />
+                        {errors.state && (
+                          <p className="text-red-400 text-xs mt-1">{errors.state}</p>
+                        )}
                       </div>
                       <div>
                         <label htmlFor="zipCode" className="sr-only">Zip Code</label>
@@ -211,10 +353,14 @@ export default function CheckoutPage() {
                           value={formData.zipCode}
                           onChange={handleInputChange}
                           placeholder="Zip Code"
-                          required
                           autoComplete="postal-code"
-                          className="w-full bg-charcoal border-border-dark rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                            errors.zipCode ? 'border-red-500' : 'border-border-dark'
+                          }`}
                         />
+                        {errors.zipCode && (
+                          <p className="text-red-400 text-xs mt-1">{errors.zipCode}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -235,11 +381,15 @@ export default function CheckoutPage() {
                         value={formData.phone}
                         onChange={handleInputChange}
                         placeholder="+1 (555) 000-0000"
-                        required
                         autoComplete="tel"
-                        className="w-full bg-charcoal border-border-dark rounded-xl py-4 pl-14 pr-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                        className={`w-full bg-charcoal border rounded-xl py-4 pl-14 pr-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                          errors.phone ? 'border-red-500' : 'border-border-dark'
+                        }`}
                       />
                     </div>
+                    {errors.phone && (
+                      <p className="text-red-400 text-xs mt-1">{errors.phone}</p>
+                    )}
                   </div>
                 </div>
 

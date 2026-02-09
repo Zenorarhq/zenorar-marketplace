@@ -2,10 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { useCart } from '@/lib/cart-context'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePreferences } from '@/contexts/PreferencesContext'
+import { useNotifications } from '@/hooks/use-notifications'
 import Icon from '@/components/ui/Icon'
-import Flag from '@/components/ui/Flag'
+import FlagIcon from '@/components/ui/FlagIcon'
 import PreferencesDialog from '@/components/dialogs/PreferencesDialog'
 import SearchDropdown from '@/components/search/SearchDropdown'
 import { navCategories } from '@/lib/mock-data'
@@ -14,11 +18,18 @@ export default function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const { itemCount } = useCart()
+  const { user, isAuthenticated, logout } = useAuth()
+  const { preferences } = usePreferences()
+  const { unreadCount } = useNotifications()
   const [searchQuery, setSearchQuery] = useState('')
   const [showPreferences, setShowPreferences] = useState(false)
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showMobileUserMenu, setShowMobileUserMenu] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+  const mobileUserMenuRef = useRef<HTMLDivElement>(null)
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -72,11 +83,44 @@ export default function Header() {
     setMobileMenuOpen(false)
   }
 
+  const handleLogout = () => {
+    logout()
+    setShowUserMenu(false)
+    setShowMobileUserMenu(false)
+    router.push('/')
+  }
+
+  // Close user menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false)
+      }
+    }
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showUserMenu])
+
+  // Close mobile user menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileUserMenuRef.current && !mobileUserMenuRef.current.contains(event.target as Node)) {
+        setShowMobileUserMenu(false)
+      }
+    }
+    if (showMobileUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showMobileUserMenu])
+
   return (
     <>
       <header className="border-b border-border-dark bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
         {/* Main Header Row */}
-        <div className="max-w-container mx-auto px-3 sm:px-4 md:px-8 lg:px-12 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3 md:gap-4">
+        <div className="max-w-container mx-auto px-3 sm:px-4 md:px-4 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3 md:gap-3">
           {/* Left Section: Menu Button (mobile/tablet) + Logo */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Mobile Menu Button */}
@@ -102,7 +146,7 @@ export default function Header() {
           </div>
 
           {/* Desktop Search Bar */}
-          <div className="hidden md:flex flex-1 min-w-0 max-w-xl relative z-[60] mx-4 lg:mx-8">
+          <div className="hidden md:flex flex-1 relative z-[60] mx-2 lg:mx-6" style={{ minWidth: '280px', maxWidth: '600px' }}>
             <form onSubmit={handleSearch} className="relative w-full">
               <label htmlFor="header-search-desktop" className="sr-only">
                 Search products
@@ -137,30 +181,114 @@ export default function Header() {
             />
           </div>
 
-          {/* Spacer for desktop */}
-          <div className="flex-grow hidden md:block" />
-
           {/* Right Section: Icons */}
           <div className="flex items-center gap-1 sm:gap-2">
-            {/* Mobile/Tablet: Icon-only buttons */}
+            {/* Mobile/Tablet: Notifications (authenticated only) */}
+            {isAuthenticated && (
+              <Link
+                href="/notifications"
+                prefetch={true}
+                className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors relative"
+                aria-label="Notifications"
+              >
+                <Icon name="bell" size={22} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 bg-red-500 text-[9px] text-white font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
+
+            {/* Mobile/Tablet: Language/Currency */}
             <button
               type="button"
               onClick={() => setShowPreferences(true)}
               aria-label="Change language and currency"
-              className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors"
+              className="md:hidden flex items-center gap-0.5 p-2 hover:text-primary transition-colors"
             >
-              <Flag country="US" size={18} />
+              <div className="relative w-9 h-6">
+                {/* Flag circle (bottom/back) */}
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-surface-dark border border-border-dark overflow-hidden flex items-center justify-center">
+                  <FlagIcon countryCode={preferences.country.code} className="w-full h-full object-cover" />
+                </div>
+                {/* Currency circle (top/front) */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-primary text-black flex items-center justify-center text-xs font-bold shadow-md">
+                  {preferences.currency.symbol}
+                </div>
+              </div>
+              <Icon name="chevron-down" size={14} className="text-slate-400" />
             </button>
 
-            <Link
-              href="/login"
-              prefetch={true}
-              className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors"
-              aria-label="Login"
-            >
-              <Icon name="user-circle" size={22} />
-            </Link>
+            {/* Mobile/Tablet: User Menu/Login */}
+            {isAuthenticated ? (
+              <div className="md:hidden relative" ref={mobileUserMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileUserMenu(!showMobileUserMenu)}
+                  className="flex items-center gap-0.5 p-2 text-slate-400 hover:text-primary transition-colors"
+                  aria-label="User menu"
+                >
+                  {user?.avatar ? (
+                    <div className="w-6 h-6 rounded-full overflow-hidden relative ring-2 ring-transparent hover:ring-primary/50 transition-all">
+                      <Image src={user.avatar} alt={user.name || 'Profile'} fill className="object-cover" />
+                    </div>
+                  ) : (
+                    <Icon name="user-circle" size={22} />
+                  )}
+                  <Icon name="chevron-down" size={14} className={`text-slate-400 transition-transform ${showMobileUserMenu ? 'rotate-180' : ''}`} />
+                </button>
 
+                {showMobileUserMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
+                    <Link
+                      href="/profile"
+                      onClick={() => setShowMobileUserMenu(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="user" size={16} />
+                      My Profile
+                    </Link>
+                    <Link
+                      href="/profile/orders"
+                      onClick={() => setShowMobileUserMenu(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="box" size={16} />
+                      Orders
+                    </Link>
+                    <Link
+                      href="/profile/library"
+                      onClick={() => setShowMobileUserMenu(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="library" size={16} />
+                      Library
+                    </Link>
+                    <div className="border-t border-border-dark" />
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="logout" size={16} />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                prefetch={true}
+                className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors"
+                aria-label="Login"
+              >
+                <Icon name="user-circle" size={22} />
+              </Link>
+            )}
+
+            {/* Mobile/Tablet: Cart */}
             <Link
               href="/cart"
               prefetch={true}
@@ -176,39 +304,126 @@ export default function Header() {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-medium text-slate-400 flex-shrink-0">
-              <Link
-                href="/login"
-                prefetch={true}
-                className="flex items-center gap-1.5 hover:text-primary transition-colors"
-              >
-                <Icon name="user-circle" size={20} />
-                Login
-              </Link>
+            <nav className="hidden md:flex items-center gap-3 lg:gap-4 text-sm font-medium text-slate-400 flex-shrink-0">
+              {/* Notifications (authenticated only) */}
+              {isAuthenticated && (
+                <Link
+                  href="/notifications"
+                  prefetch={true}
+                  className="flex items-center justify-center hover:text-primary transition-colors relative"
+                  aria-label="Notifications"
+                >
+                  <Icon name="bell" size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-[10px] text-white font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
+              )}
 
-              <Link
-                href="/cart"
-                prefetch={true}
-                className="flex items-center gap-1.5 hover:text-primary transition-colors relative"
-              >
-                <Icon name="cart" size={20} />
-                Cart
-                {itemCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2 bg-primary text-[10px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                    {itemCount > 99 ? '99+' : itemCount}
-                  </span>
-                )}
-              </Link>
-
+              {/* Language & Currency */}
               <button
                 type="button"
                 onClick={() => setShowPreferences(true)}
                 aria-label="Change language and currency"
-                className="flex items-center gap-2 hover:text-primary transition-colors uppercase tracking-wider text-[11px] border border-border-dark px-2.5 py-1.5 rounded-md bg-surface-dark"
+                className="flex items-center gap-1 hover:text-primary transition-colors"
               >
-                <Flag country="US" size={14} />
-                EN/BTC
+                <div className="relative w-9 h-6">
+                  {/* Flag circle (bottom/back) */}
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-surface-dark border border-border-dark overflow-hidden flex items-center justify-center">
+                    <FlagIcon countryCode={preferences.country.code} className="w-full h-full object-cover" />
+                  </div>
+                  {/* Currency circle (top/front) */}
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-primary text-black flex items-center justify-center text-xs font-bold shadow-md">
+                    {preferences.currency.symbol}
+                  </div>
+                </div>
+                <Icon name="chevron-down" size={14} className={`text-slate-400 transition-transform`} />
               </button>
+
+              {/* User Menu / Login */}
+              {isAuthenticated ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-1 hover:text-primary transition-colors"
+                    aria-label="User menu"
+                  >
+                    {user?.avatar ? (
+                      <div className="w-6 h-6 rounded-full overflow-hidden relative ring-2 ring-transparent hover:ring-primary/50 transition-all">
+                        <Image src={user.avatar} alt={user.name || 'Profile'} fill className="object-cover" />
+                      </div>
+                    ) : (
+                      <Icon name="user-circle" size={20} />
+                    )}
+                    <Icon name="chevron-down" size={14} className={`transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showUserMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
+                      <Link
+                        href="/profile"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="user" size={16} />
+                        My Profile
+                      </Link>
+                      <Link
+                        href="/profile/orders"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="box" size={16} />
+                        Orders
+                      </Link>
+                      <Link
+                        href="/profile/library"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="library" size={16} />
+                        Library
+                      </Link>
+                      <div className="border-t border-border-dark" />
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="logout" size={16} />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  prefetch={true}
+                  className="flex items-center justify-center hover:text-primary transition-colors"
+                  aria-label="Login"
+                >
+                  <Icon name="user-circle" size={20} />
+                </Link>
+              )}
+
+              {/* Cart */}
+              <Link
+                href="/cart"
+                prefetch={true}
+                className="flex items-center justify-center hover:text-primary transition-colors relative"
+                aria-label="Cart"
+              >
+                <Icon name="cart" size={20} />
+                {itemCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-primary text-[10px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </Link>
             </nav>
           </div>
         </div>
@@ -325,8 +540,17 @@ export default function Header() {
                   }}
                   className="w-full flex items-center gap-3 py-3 text-white"
                 >
-                  <Flag country="US" size={20} />
-                  <span className="text-[15px] font-medium">EN / USD</span>
+                  <div className="relative w-10 h-7">
+                    {/* Flag circle (bottom/back) */}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#1a1a1a] border border-border-dark overflow-hidden flex items-center justify-center">
+                      <FlagIcon countryCode={preferences.country.code} className="w-full h-full object-cover" />
+                    </div>
+                    {/* Currency circle (top/front) */}
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-primary text-black flex items-center justify-center text-sm font-bold shadow-md">
+                      {preferences.currency.symbol}
+                    </div>
+                  </div>
+                  <span className="text-[15px] font-medium">{preferences.language.code.toUpperCase()} / {preferences.currency.code}</span>
                 </button>
 
                 <Link

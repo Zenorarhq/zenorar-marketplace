@@ -1,73 +1,134 @@
 'use client'
 
-import { useState, useMemo, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
-import { scriptProducts } from '@/lib/mock-data'
+import { searchApi, SearchResult, categoriesApi } from '@/lib/api'
 import { useCart } from '@/lib/cart-context'
 
 type SortOption = 'popular' | 'newest' | 'price-low' | 'price-high'
 
+interface Category {
+  id: string
+  name: string
+  slug: string
+}
+
 function SearchContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const searchQuery = searchParams.get('q') || ''
+  const categoryParam = searchParams.get('category') || ''
   const { addItem, showAddedToCartPopup } = useCart()
 
   const [sortBy, setSortBy] = useState<SortOption>('popular')
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['scripts'])
-  const [priceRange, setPriceRange] = useState(500)
-  const [minRating, setMinRating] = useState(4)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(categoryParam ? [categoryParam] : [])
+  const [priceRange, setPriceRange] = useState(1000)
+  const [minRating, setMinRating] = useState(0)
+  const [products, setProducts] = useState<SearchResult[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalResults, setTotalResults] = useState(0)
 
-  const filteredProducts = useMemo(() => {
-    let products = [...scriptProducts]
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const result = await categoriesApi.list()
+      if (result.success && result.data) {
+        setCategories(result.data)
+      }
+    }
+    fetchCategories()
+  }, [])
 
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      products = products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query) ||
-          p.tags?.some((tag) => tag.toLowerCase().includes(query))
-      )
+  // Fetch search results
+  const fetchResults = useCallback(async () => {
+    setIsLoading(true)
+
+    const sortMap: Record<SortOption, string> = {
+      'popular': 'relevance',
+      'newest': 'newest',
+      'price-low': 'price_asc',
+      'price-high': 'price_desc',
     }
 
-    // Filter by price
-    products = products.filter((p) => p.price <= priceRange)
+    const result = await searchApi.searchProducts({
+      query: searchQuery || undefined,
+      categories: selectedCategories.length > 0 ? selectedCategories : undefined,
+      maxPrice: priceRange < 1000 ? priceRange : undefined,
+      minRating: minRating > 0 ? minRating : undefined,
+      sortBy: sortMap[sortBy],
+      page,
+      limit: 12,
+    })
 
-    // Filter by rating
-    products = products.filter((p) => p.rating >= minRating)
-
-    // Sort (use spread to avoid mutating)
-    switch (sortBy) {
-      case 'newest':
-        return [...products].reverse()
-      case 'price-low':
-        return [...products].sort((a, b) => a.price - b.price)
-      case 'price-high':
-        return [...products].sort((a, b) => b.price - a.price)
-      case 'popular':
-      default:
-        return [...products].sort((a, b) => b.reviewCount - a.reviewCount)
+    if (result.success && result.data) {
+      setProducts(result.data)
+      // Calculate total based on response (if API supports pagination metadata)
+      setTotalResults(result.data.length)
+      setTotalPages(Math.ceil(result.data.length / 12) || 1)
+    } else {
+      setProducts([])
+      setTotalResults(0)
     }
-  }, [searchQuery, sortBy, priceRange, minRating])
 
-  const handleAddToCart = (product: typeof scriptProducts[0]) => {
-    addItem(product, 'standard')
-    showAddedToCartPopup(product, product.price)
+    setIsLoading(false)
+  }, [searchQuery, selectedCategories, priceRange, minRating, sortBy, page])
+
+  useEffect(() => {
+    fetchResults()
+  }, [fetchResults])
+
+  const handleAddToCart = async (product: SearchResult) => {
+    await addItem({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      description: product.description || '',
+      price: Number(product.price),
+      rating: 0,
+      reviewCount: product.reviewCount,
+      category: product.category?.name || '',
+      icon: 'package',
+      iconColor: 'text-primary',
+      tags: [],
+      image: product.image || undefined,
+    }, 'standard')
+    showAddedToCartPopup({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      description: product.description || '',
+      price: Number(product.price),
+      rating: 0,
+      reviewCount: product.reviewCount,
+      category: product.category?.name || '',
+      icon: 'package',
+      iconColor: 'text-primary',
+      tags: [],
+      image: product.image || undefined,
+    }, Number(product.price))
   }
 
-  const toggleCategory = (category: string) => {
+  const toggleCategory = (categorySlug: string) => {
     setSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
+      prev.includes(categorySlug)
+        ? prev.filter((c) => c !== categorySlug)
+        : [...prev, categorySlug]
     )
+    setPage(1)
+  }
+
+  const handleSortChange = (newSort: SortOption) => {
+    setSortBy(newSort)
+    setPage(1)
   }
 
   return (
@@ -94,39 +155,19 @@ function SearchContent() {
             <div className="mb-8">
               <h4 className="text-sm font-semibold mb-4">Category</h4>
               <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes('scripts')}
-                    onChange={() => toggleCategory('scripts')}
-                    className="w-4 h-4 rounded border-border-dark bg-transparent text-primary focus:ring-primary focus:ring-offset-0"
-                  />
-                  <span className="text-sm text-slate-300 group-hover:text-white">
-                    Scripts
-                  </span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes('esims')}
-                    onChange={() => toggleCategory('esims')}
-                    className="w-4 h-4 rounded border-border-dark bg-transparent text-primary focus:ring-primary focus:ring-offset-0"
-                  />
-                  <span className="text-sm text-slate-300 group-hover:text-white">
-                    eSIMs
-                  </span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes('virtual-numbers')}
-                    onChange={() => toggleCategory('virtual-numbers')}
-                    className="w-4 h-4 rounded border-border-dark bg-transparent text-primary focus:ring-primary focus:ring-offset-0"
-                  />
-                  <span className="text-sm text-slate-300 group-hover:text-white">
-                    Virtual Numbers
-                  </span>
-                </label>
+                {categories.map((category) => (
+                  <label key={category.id} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(category.slug)}
+                      onChange={() => toggleCategory(category.slug)}
+                      className="w-4 h-4 rounded border-border-dark bg-transparent text-primary focus:ring-primary focus:ring-offset-0"
+                    />
+                    <span className="text-sm text-slate-300 group-hover:text-white">
+                      {category.name}
+                    </span>
+                  </label>
+                ))}
               </div>
             </div>
 
@@ -138,12 +179,15 @@ function SearchContent() {
                 min="0"
                 max="1000"
                 value={priceRange}
-                onChange={(e) => setPriceRange(Number(e.target.value))}
+                onChange={(e) => {
+                  setPriceRange(Number(e.target.value))
+                  setPage(1)
+                }}
                 className="w-full h-1.5 bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
               />
               <div className="flex justify-between mt-3 text-xs text-slate-400">
                 <span>$0</span>
-                <span>${priceRange}+</span>
+                <span>{priceRange >= 1000 ? 'Any' : `$${priceRange}`}</span>
               </div>
             </div>
 
@@ -151,7 +195,7 @@ function SearchContent() {
             <div className="mb-8">
               <h4 className="text-sm font-semibold mb-4">Rating</h4>
               <div className="space-y-3">
-                {[4, 3, 2].map((rating) => (
+                {[4, 3, 2, 0].map((rating) => (
                   <label
                     key={rating}
                     className="flex items-center gap-3 cursor-pointer group"
@@ -160,20 +204,27 @@ function SearchContent() {
                       type="radio"
                       name="rating"
                       checked={minRating === rating}
-                      onChange={() => setMinRating(rating)}
+                      onChange={() => {
+                        setMinRating(rating)
+                        setPage(1)
+                      }}
                       className="w-4 h-4 border-border-dark bg-transparent text-primary focus:ring-primary focus:ring-offset-0"
                     />
-                    <div className="flex items-center gap-1 text-yellow-500">
-                      {[...Array(5)].map((_, i) => (
-                        <Icon
-                          key={i}
-                          name="star"
-                          size={12}
-                          className={i < rating ? 'text-yellow-500' : 'text-slate-600'}
-                        />
-                      ))}
-                      <span className="text-xs text-slate-300 ml-1">& Up</span>
-                    </div>
+                    {rating > 0 ? (
+                      <div className="flex items-center gap-1 text-yellow-500">
+                        {[...Array(5)].map((_, i) => (
+                          <Icon
+                            key={i}
+                            name="star"
+                            size={12}
+                            className={i < rating ? 'text-yellow-500' : 'text-slate-600'}
+                          />
+                        ))}
+                        <span className="text-xs text-slate-300 ml-1">& Up</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-300">Any Rating</span>
+                    )}
                   </label>
                 ))}
               </div>
@@ -182,9 +233,10 @@ function SearchContent() {
             {/* Clear Filters */}
             <button
               onClick={() => {
-                setSelectedCategories(['scripts'])
-                setPriceRange(500)
-                setMinRating(4)
+                setSelectedCategories([])
+                setPriceRange(1000)
+                setMinRating(0)
+                setPage(1)
               }}
               className="w-full text-sm text-slate-400 hover:text-primary transition-colors"
             >
@@ -203,17 +255,17 @@ function SearchContent() {
                   : 'All Products'}
               </h1>
               <p className="text-sm text-slate-500">
-                {filteredProducts.length} results found
+                {isLoading ? 'Searching...' : `${totalResults} results found`}
               </p>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-xs text-slate-500">Sort by:</span>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                onChange={(e) => handleSortChange(e.target.value as SortOption)}
                 className="bg-charcoal border border-border-dark rounded-lg text-sm px-3 py-1.5 focus:ring-primary focus:border-primary text-slate-300"
               >
-                <option value="popular">Most Popular</option>
+                <option value="popular">Most Relevant</option>
                 <option value="newest">Newest</option>
                 <option value="price-low">Price: Low to High</option>
                 <option value="price-high">Price: High to Low</option>
@@ -221,43 +273,50 @@ function SearchContent() {
             </div>
           </div>
 
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-16">
+              <Icon name="loading" size={40} className="animate-spin text-primary" />
+            </div>
+          )}
+
           {/* Results Grid */}
-          {filteredProducts.length > 0 ? (
+          {!isLoading && products.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
+              {products.map((product) => (
                 <div
                   key={product.id}
                   className="bg-charcoal rounded-xl border border-border-dark overflow-hidden group hover:border-primary/50 transition-all"
                 >
-                  <div className="p-5">
-                    <div className="w-12 h-12 mb-4 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                      <Icon name={product.icon || 'code'} size={24} />
+                  {product.image && (
+                    <div className="aspect-video bg-surface-dark overflow-hidden">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
                     </div>
+                  )}
+                  <div className="p-5">
+                    {!product.image && (
+                      <div className="w-12 h-12 mb-4 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <Icon name="package" size={24} />
+                      </div>
+                    )}
                     <Link href={`/products/${product.slug}`}>
                       <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">
                         {product.name}
                       </h3>
                     </Link>
-                    <div className="flex items-center gap-1 text-yellow-500 mb-4">
-                      {[...Array(5)].map((_, i) => (
-                        <Icon
-                          key={i}
-                          name="star"
-                          size={12}
-                          className={
-                            i < Math.floor(product.rating)
-                              ? 'text-yellow-500'
-                              : 'text-slate-600'
-                          }
-                        />
-                      ))}
-                      <span className="text-xs text-slate-500 ml-1">
-                        ({product.reviewCount})
-                      </span>
-                    </div>
+                    {product.category && (
+                      <span className="text-xs text-slate-500 mb-2 block">{product.category.name}</span>
+                    )}
+                    <p className="text-sm text-slate-400 mb-4 line-clamp-2">
+                      {product.description}
+                    </p>
                     <div className="flex items-center justify-between">
                       <span className="text-xl font-bold text-white">
-                        ${product.price.toFixed(2)}
+                        ${Number(product.price).toFixed(2)}
                       </span>
                       <button
                         onClick={() => handleAddToCart(product)}
@@ -270,7 +329,10 @@ function SearchContent() {
                 </div>
               ))}
             </div>
-          ) : (
+          )}
+
+          {/* No Results */}
+          {!isLoading && products.length === 0 && (
             <div className="text-center py-16">
               <Icon name="search" size={60} className="text-slate-600 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-white mb-2">No results found</h2>
@@ -288,21 +350,36 @@ function SearchContent() {
           )}
 
           {/* Pagination */}
-          {filteredProducts.length > 0 && (
+          {!isLoading && products.length > 0 && totalPages > 1 && (
             <div className="flex justify-center mt-12 gap-2">
-              <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark hover:border-primary transition-colors">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark hover:border-primary transition-colors disabled:opacity-50"
+              >
                 <Icon name="chevron-left" size={18} />
               </button>
-              <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-primary text-black font-bold">
-                1
-              </button>
-              <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark hover:border-primary transition-colors">
-                2
-              </button>
-              <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark hover:border-primary transition-colors">
-                3
-              </button>
-              <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark hover:border-primary transition-colors">
+              {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                const pageNum = i + 1
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`w-10 h-10 flex items-center justify-center rounded-lg ${
+                      page === pageNum
+                        ? 'bg-primary text-black font-bold'
+                        : 'border border-border-dark hover:border-primary transition-colors'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark hover:border-primary transition-colors disabled:opacity-50"
+              >
                 <Icon name="chevron-right" size={18} />
               </button>
             </div>

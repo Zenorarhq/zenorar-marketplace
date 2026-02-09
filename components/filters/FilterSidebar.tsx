@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import Icon from '@/components/ui/Icon'
 import { filterCategories, filterLanguages } from '@/lib/mock-data'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface FilterState {
   categories: string[]
@@ -16,6 +17,7 @@ interface FilterSidebarProps {
 }
 
 export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
+  const { formatPrice } = usePreferences()
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     languages: [],
@@ -96,7 +98,7 @@ export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
       <div>
         <div className="flex justify-between items-center mb-4">
           <label htmlFor="price-range" className="text-white font-bold text-sm">Price Range</label>
-          <span className="text-[11px] text-primary font-bold">$0 - ${filters.priceRange}</span>
+          <span className="text-[11px] text-primary font-bold">{formatPrice(0)} - {formatPrice(filters.priceRange)}</span>
         </div>
         <input
           id="price-range"
@@ -107,7 +109,7 @@ export default function FilterSidebar({ onFilterChange }: FilterSidebarProps) {
           value={filters.priceRange}
           onChange={(e) => handlePriceChange(Number(e.target.value))}
           className="w-full h-1.5 bg-border-dark rounded-lg appearance-none cursor-pointer"
-          aria-label={`Price up to $${filters.priceRange}`}
+          aria-label={`Price up to ${formatPrice(filters.priceRange)}`}
         />
       </div>
 

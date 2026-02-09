@@ -1,17 +1,25 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Product, CartItem } from './types'
+import { cartApi, CartSummary } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface CartContextType {
+  // Local items for UI (supports legacy behavior)
   items: CartItem[]
   itemCount: number
   total: number
-  addItem: (product: Product, license?: 'standard' | 'extended', customPrice?: number) => void
-  removeItem: (productId: string, license?: 'standard' | 'extended') => void
-  updateQuantity: (productId: string, quantity: number, license?: 'standard' | 'extended') => void
-  clearCart: () => void
+  // API cart data
+  apiCart: CartSummary | null
+  isLoading: boolean
+  // Actions
+  addItem: (product: Product, license?: 'standard' | 'extended', customPrice?: number) => Promise<void>
+  removeItem: (productId: string, license?: 'standard' | 'extended') => Promise<void>
+  updateQuantity: (productId: string, quantity: number, license?: 'standard' | 'extended') => Promise<void>
+  clearCart: () => Promise<void>
+  refreshCart: () => Promise<void>
   // Popup state
   showPopup: boolean
   popupProduct: Product | null
@@ -26,23 +34,68 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
+  const { isAuthenticated } = useAuth()
   const [items, setItems] = useState<CartItem[]>([])
+  const [apiCart, setApiCart] = useState<CartSummary | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [showPopup, setShowPopup] = useState(false)
   const [popupProduct, setPopupProduct] = useState<Product | null>(null)
   const [popupPrice, setPopupPrice] = useState<number | null>(null)
 
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const itemCount = apiCart?.itemCount ?? items.reduce((sum, item) => sum + item.quantity, 0)
+  const total = apiCart?.total ?? items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
-  const addItem = useCallback((product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
+  // Fetch cart from API
+  const refreshCart = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const result = await cartApi.get()
+      if (result.success && result.data) {
+        setApiCart(result.data)
+        // Convert API cart items to local format for compatibility
+        const convertedItems: CartItem[] = result.data.items.map((item) => ({
+          product: {
+            id: item.product.id,
+            name: item.product.name,
+            slug: item.product.slug,
+            description: item.product.description || '',
+            price: Number(item.product.price),
+            rating: 0,
+            reviewCount: 0,
+            category: item.product.category?.name || '',
+            icon: 'package',
+            iconColor: 'text-blue-500',
+            tags: [],
+            image: item.product.images?.[0]?.url,
+          },
+          quantity: item.quantity,
+          license: 'standard' as const,
+          price: Number(item.product.price),
+        }))
+        setItems(convertedItems)
+      }
+    } catch (error) {
+      console.error('Failed to fetch cart:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  // Fetch cart on mount and when auth changes
+  useEffect(() => {
+    refreshCart()
+  }, [refreshCart, isAuthenticated])
+
+  const addItem = useCallback(async (product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
+    const price = customPrice ?? (license === 'extended'
+      ? (product.priceRange?.max || product.price)
+      : (product.priceRange?.min || product.price))
+
+    // Optimistically update local state
     setItems((currentItems) => {
       const existingItem = currentItems.find(
         (item) => item.product.id === product.id && item.license === license
       )
-
-      const price = customPrice ?? (license === 'extended'
-        ? (product.priceRange?.max || product.price)
-        : (product.priceRange?.min || product.price))
 
       if (existingItem) {
         return currentItems.map((item) =>
@@ -54,23 +107,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       return [...currentItems, { product, quantity: 1, license, price }]
     })
-  }, [])
 
-  const removeItem = useCallback((productId: string, license?: 'standard' | 'extended') => {
+    // Sync with API
+    try {
+      const result = await cartApi.addItem(product.id, 1)
+      if (result.success && result.data) {
+        setApiCart(result.data)
+      }
+    } catch (error) {
+      console.error('Failed to add item to cart:', error)
+      // Refresh to get correct state
+      await refreshCart()
+    }
+  }, [refreshCart])
+
+  const removeItem = useCallback(async (productId: string, license?: 'standard' | 'extended') => {
+    // Optimistically update local state
     setItems((currentItems) => currentItems.filter((item) => {
       if (license) {
         return !(item.product.id === productId && item.license === license)
       }
       return item.product.id !== productId
     }))
-  }, [])
 
-  const updateQuantity = useCallback((productId: string, quantity: number, license?: 'standard' | 'extended') => {
+    // Sync with API
+    try {
+      const result = await cartApi.removeItem(productId)
+      if (result.success && result.data) {
+        setApiCart(result.data)
+      }
+    } catch (error) {
+      console.error('Failed to remove item from cart:', error)
+      await refreshCart()
+    }
+  }, [refreshCart])
+
+  const updateQuantity = useCallback(async (productId: string, quantity: number, license?: 'standard' | 'extended') => {
     if (quantity <= 0) {
-      removeItem(productId, license)
-      return
+      return removeItem(productId, license)
     }
 
+    // Optimistically update local state
     setItems((currentItems) =>
       currentItems.map((item) => {
         if (license) {
@@ -81,10 +158,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return item.product.id === productId ? { ...item, quantity } : item
       })
     )
-  }, [removeItem])
 
-  const clearCart = useCallback(() => {
+    // Sync with API
+    try {
+      const result = await cartApi.updateItem(productId, quantity)
+      if (result.success && result.data) {
+        setApiCart(result.data)
+      }
+    } catch (error) {
+      console.error('Failed to update item quantity:', error)
+      await refreshCart()
+    }
+  }, [removeItem, refreshCart])
+
+  const clearCart = useCallback(async () => {
     setItems([])
+    setApiCart(null)
+
+    try {
+      await cartApi.clear()
+    } catch (error) {
+      console.error('Failed to clear cart:', error)
+    }
   }, [])
 
   const showAddedToCartPopup = useCallback((product: Product, price?: number) => {
@@ -100,11 +195,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const buyNow = useCallback((product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
-    // Clear cart and add only this item
     const price = customPrice ?? (license === 'extended'
       ? (product.priceRange?.max || product.price)
       : (product.priceRange?.min || product.price))
 
+    // Clear cart and add only this item
     setItems([{ product, quantity: 1, license, price }])
 
     // Redirect to checkout
@@ -117,10 +212,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
         items,
         itemCount,
         total,
+        apiCart,
+        isLoading,
         addItem,
         removeItem,
         updateQuantity,
         clearCart,
+        refreshCart,
         showPopup,
         popupProduct,
         popupPrice,

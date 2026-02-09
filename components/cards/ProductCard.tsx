@@ -1,7 +1,10 @@
+'use client'
+
 import Link from 'next/link'
 import { Product } from '@/lib/types'
 import StarRating from '@/components/ui/StarRating'
 import Icon from '@/components/ui/Icon'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface ProductCardProps {
   product: Product
@@ -21,6 +24,7 @@ const iconColorClasses: Record<string, string> = {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const { formatPrice } = usePreferences()
   const colorClass = iconColorClasses[product.iconColor] || iconColorClasses.primary
 
   return (
@@ -42,8 +46,8 @@ export default function ProductCard({ product }: ProductCardProps) {
 
       <p className="text-slate-500 text-xs">
         {product.priceRange
-          ? `$${product.priceRange.min} - $${product.priceRange.max}`
-          : `$${product.price}`}
+          ? `${formatPrice(product.priceRange.min)} - ${formatPrice(product.priceRange.max)}`
+          : formatPrice(product.price)}
       </p>
     </Link>
   )

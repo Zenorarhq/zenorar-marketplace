@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import Icon from '@/components/ui/Icon'
 
 interface AdminLayoutProps {
@@ -11,7 +12,13 @@ interface AdminLayoutProps {
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard' },
-  { href: '/admin/frontend', label: 'Frontend Editor', icon: 'code' },
+  { href: '/admin/products', label: 'Products', icon: 'box' },
+  { href: '/admin/categories', label: 'Categories', icon: 'grid-view' },
+  { href: '/admin/purchases', label: 'Purchases', icon: 'shopping-cart' },
+  { href: '/admin/analytics', label: 'Analytics', icon: 'analytics' },
+  { href: '/admin/discounts', label: 'Discounts', icon: 'tag' },
+  { href: '/admin/finance', label: 'Finance', icon: 'wallet' },
+  { href: '/admin/frontend', label: 'Page Builder', icon: 'layers' },
   { href: '/admin/library', label: 'Upload Library', icon: 'upload' },
   { href: '/admin/tickets', label: 'Tickets', icon: 'ticket' },
   { href: '/admin/reports', label: 'Reports', icon: 'chart' },
@@ -20,7 +27,38 @@ const navItems = [
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, isLoading, isAuthenticated, logout } = useAuth()
   const [desktopCollapsed, setDesktopCollapsed] = useState(false)
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/admin/login')
+    }
+  }, [isLoading, isAuthenticated, router])
+
+  const handleLogout = () => {
+    logout()
+    router.push('/admin/login')
+  }
+
+  // Show loading spinner while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <Icon name="loading" size={40} className="text-primary animate-spin" />
+      </div>
+    )
+  }
+
+  // Don't render anything if not authenticated (will redirect)
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <Icon name="loading" size={40} className="text-primary animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex overflow-x-hidden">
@@ -39,7 +77,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             {/* Site name - hidden on mobile, shown on desktop when not collapsed */}
             {!desktopCollapsed && (
-              <span className="text-white font-bold text-sm hidden lg:block">TechMarket</span>
+              <span className="text-white font-bold text-sm hidden lg:block">Zenorar</span>
             )}
           </Link>
         </div>
@@ -89,8 +127,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               {/* User info - hidden on mobile, shown on desktop when not collapsed */}
               {!desktopCollapsed && (
                 <div className="flex-1 min-w-0 hidden lg:block">
-                  <p className="text-white text-sm font-medium truncate">Alex Rivera</p>
-                  <p className="text-primary text-xs">Super Admin</p>
+                  <p className="text-white text-sm font-medium truncate">{user?.name || 'User'}</p>
+                  <p className="text-primary text-xs capitalize">{user?.role?.toLowerCase() || 'User'}</p>
                 </div>
               )}
             </div>
@@ -98,10 +136,23 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <div className={`absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white text-sm whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 ${
               desktopCollapsed ? '' : 'lg:hidden'
             }`}>
-              <p className="font-medium">Alex Rivera</p>
-              <p className="text-primary text-xs">Super Admin</p>
+              <p className="font-medium">{user?.name || 'User'}</p>
+              <p className="text-primary text-xs capitalize">{user?.role?.toLowerCase() || 'User'}</p>
             </div>
           </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className={`flex items-center gap-3 w-full mt-2 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors justify-center ${
+              desktopCollapsed ? '' : 'lg:justify-start'
+            }`}
+          >
+            <Icon name="logout" size={18} className="flex-shrink-0" />
+            {!desktopCollapsed && (
+              <span className="text-sm font-medium hidden lg:block">Logout</span>
+            )}
+          </button>
         </div>
       </aside>
 
