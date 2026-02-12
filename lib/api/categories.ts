@@ -2,6 +2,7 @@
 
 import { apiFetch, localApiFetch, buildQueryString } from './client'
 import { Category } from './products'
+export type { Category }
 
 export interface CategoryWithChildren extends Category {
   children?: CategoryWithChildren[]
