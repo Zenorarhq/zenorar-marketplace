@@ -90,7 +90,8 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef, variant
   // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dialogRef.current && !dialogRef.current.contains(event.target as Node)) {
+      if (!dialogRef.current || !dialogRef.current.offsetParent) return
+      if (!dialogRef.current.contains(event.target as Node)) {
         // Check if clicking on the trigger button (to allow toggle)
         if (triggerRef?.current && triggerRef.current.contains(event.target as Node)) {
           return
