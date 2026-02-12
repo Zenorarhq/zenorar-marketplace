@@ -208,6 +208,8 @@ import {
   UmbrellaIcon,
   Ticket01Icon,
   ArrowRightDoubleIcon,
+  Login01Icon,
+  Logout01Icon,
 } from 'hugeicons-react'
 
 // Map of icon names to HugeIcon components
@@ -267,6 +269,10 @@ const iconMap = {
   'link-external-01': LinkSquare02Icon,
   refresh: RefreshIcon,
   loading: Loading01Icon,
+  spinner: Loading01Icon,
+  x: Cancel01Icon,
+  trash: Delete01Icon,
+  dollar: Wallet01Icon,
 
   // Communication
   mail: Mail01Icon,
@@ -352,6 +358,8 @@ const iconMap = {
   key: Key01Icon,
   'lock-person': SquareLock01Icon,
   'shield-person': SecurityCheckIcon,
+  login: Login01Icon,
+  logout: Logout01Icon,
 
   // User & Account
   'user-group': UserGroupIcon,

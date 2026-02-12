@@ -1,6 +1,12 @@
+import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+
+export const metadata: Metadata = {
+  title: 'Terms of Service',
+  description: 'Review the terms and conditions for using Zenorar Marketplace. Understand your rights and responsibilities.',
+}
 
 export default function TermsPage() {
   const currentYear = new Date().getFullYear()

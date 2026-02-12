@@ -1,48 +1,126 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
-
-const stats = [
-  { label: 'Total Revenue', value: '$128,430', change: '+12.8%', changeLabel: 'vs last month', positive: true, icon: 'wallet' },
-  { label: 'Active Scripts', value: '1,240', change: '+8.2%', changeLabel: 'growth rate', positive: true, icon: 'code' },
-  { label: 'New Customers', value: '450', change: '+18%', changeLabel: 'this week', positive: true, icon: 'user-group' },
-  { label: 'Open Tickets', value: '12', change: '5', changeLabel: 'unresolved', positive: false, icon: 'ticket' },
-]
-
-const recentQueries = [
-  { term: 'E-commerce React Template', user: 'mark_dev02', timestamp: '2 mins ago', results: 12 },
-  { term: 'Global eSIM App', user: 'kane_thomas', timestamp: '14 mins ago', results: 8 },
-  { term: 'Dark Mode Admin Dashboard', user: 'Speed_dev', timestamp: '1 hour ago', results: 24 },
-  { term: 'Python automation script', user: 'coding_pro', timestamp: '5 hours ago', results: 2 },
-]
-
-const bestSellers = [
-  { name: 'Ultimate CRM Scri...', price: '$129', icon: 'code', color: 'text-blue-400' },
-  { name: 'EU Global Roam...', price: '$49', icon: 'globe', color: 'text-green-400' },
-  { name: 'Modern SaaS Theme', price: '$89', icon: 'sparkles', color: 'text-purple-400' },
-  { name: 'Payment Gateway Pro', price: '$199', icon: 'credit-card', color: 'text-orange-400' },
-]
-
-const productDistribution = [
-  { label: 'Scripts & Plugins', percentage: 73, color: 'bg-primary' },
-  { label: 'eSIM Packages', percentage: 20, color: 'bg-blue-500' },
-  { label: 'Themes', percentage: 7, color: 'bg-purple-500' },
-]
+import { analyticsApi, DashboardStats } from '@/lib/api/analytics'
+import { Product } from '@/lib/api/products'
+import { formatCurrency, formatNumber } from '@/lib/formatNumber'
 
 export default function AdminDashboard() {
+  const queryClient = useQueryClient()
+
+  // Fetch dashboard stats with React Query (cached for 5 minutes)
+  const { data: stats = null, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const result = await analyticsApi.getDashboardStats()
+      if (result.success && result.data) {
+        return result.data
+      }
+      throw new Error(result.error || 'Failed to load dashboard stats')
+    },
+  })
+
+  // Fetch top products with React Query (cached)
+  const { data: topProducts = [] } = useQuery({
+    queryKey: ['dashboard-top-products'],
+    queryFn: async () => {
+      const result = await analyticsApi.getTopProducts(4)
+      if (result.success && result.data) {
+        return result.data
+      }
+      return []
+    },
+  })
+
+  const loading = statsLoading
+  const error = statsError ? String(statsError) : ''
+
+  function loadDashboardData() {
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-top-products'] })
+  }
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-slate-400">Loading dashboard...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+          <Icon name="alert" size={48} className="text-red-400 mx-auto mb-4" />
+          <p className="text-red-400 text-lg font-semibold mb-2">Error Loading Dashboard</p>
+          <p className="text-slate-400 mb-4">{error}</p>
+          <button
+            onClick={loadDashboardData}
+            className="bg-primary hover:bg-primary/90 text-black font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </AdminLayout>
+    )
+  }
+
+  const statCards = [
+    {
+      label: 'Total Revenue',
+      value: formatCurrency(stats?.totalRevenue || 0),
+      change: stats?.revenueChange ? `${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}%` : '-',
+      changeLabel: 'vs last month',
+      positive: true,
+      icon: 'wallet'
+    },
+    {
+      label: 'Total Products',
+      value: formatNumber(stats?.totalProducts || 0),
+      change: '-',
+      changeLabel: 'active items',
+      positive: true,
+      icon: 'code'
+    },
+    {
+      label: 'Total Orders',
+      value: formatNumber(stats?.totalOrders || 0),
+      change: stats?.ordersChange ? `${stats.ordersChange > 0 ? '+' : ''}${stats.ordersChange}%` : '-',
+      changeLabel: 'this week',
+      positive: true,
+      icon: 'shopping-cart'
+    },
+    {
+      label: 'Open Tickets',
+      value: formatNumber(stats?.openTickets || 0),
+      change: formatNumber(stats?.totalTickets || 0),
+      changeLabel: 'total tickets',
+      positive: false,
+      icon: 'ticket'
+    },
+  ]
+
   return (
     <AdminLayout>
       {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">Dashboard</h1>
-        <p className="text-slate-500 text-xs sm:text-sm">Welcome back! Here's your marketplace overview</p>
+        <p className="text-slate-500 text-xs sm:text-sm">Welcome back! Here&apos;s your marketplace overview</p>
       </div>
 
       {/* Stats Grid - 2x2 on mobile, 4 columns on desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <div
             key={stat.label}
             className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4"
@@ -102,107 +180,120 @@ export default function AdminDashboard() {
         {/* Product Distribution */}
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
           <div className="mb-4">
-            <h3 className="text-white font-semibold">Product Distribution</h3>
-            <p className="text-slate-500 text-sm">Sales by category</p>
+            <h3 className="text-white font-semibold">Quick Actions</h3>
+            <p className="text-slate-500 text-sm">Manage your marketplace</p>
           </div>
 
-          {/* Donut Chart Placeholder */}
-          <div className="flex items-center justify-center py-4">
-            <div className="relative w-32 h-32">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#1f1f1f" strokeWidth="3" />
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#43D678" strokeWidth="3" strokeDasharray="73 27" />
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray="20 80" strokeDashoffset="-73" />
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#a855f7" strokeWidth="3" strokeDasharray="7 93" strokeDashoffset="-93" />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-white text-xl font-bold">5.2k</p>
-                  <p className="text-slate-500 text-xs">Total</p>
-                </div>
+          <div className="space-y-3">
+            <Link
+              href="/admin/products/new"
+              className="flex items-center gap-3 p-3 bg-[#1a1a1a] hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Icon name="add" size={20} />
               </div>
-            </div>
-          </div>
+              <div className="flex-1">
+                <p className="text-white text-sm font-medium">Add Product</p>
+                <p className="text-slate-500 text-xs">Create new listing</p>
+              </div>
+            </Link>
 
-          {/* Legend */}
-          <div className="space-y-2 mt-2">
-            {productDistribution.map((item) => (
-              <div key={item.label} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
-                  <span className="text-slate-400">{item.label}</span>
-                </div>
-                <span className="text-white font-medium">{item.percentage}%</span>
+            <Link
+              href="/admin/purchases"
+              className="flex items-center gap-3 p-3 bg-[#1a1a1a] hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <Icon name="shopping-cart" size={20} />
               </div>
-            ))}
+              <div className="flex-1">
+                <p className="text-white text-sm font-medium">View Orders</p>
+                <p className="text-slate-500 text-xs">{stats?.totalOrders || 0} total</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/admin/tickets"
+              className="flex items-center gap-3 p-3 bg-[#1a1a1a] hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <div className="w-10 h-10 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center">
+                <Icon name="ticket" size={20} />
+              </div>
+              <div className="flex-1">
+                <p className="text-white text-sm font-medium">Support Tickets</p>
+                <p className="text-slate-500 text-xs">{stats?.openTickets || 0} open</p>
+              </div>
+            </Link>
           </div>
         </div>
       </div>
 
       {/* Tables Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Recent Customer Queries */}
+        {/* Recent Activity */}
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
           <div className="flex items-center justify-between p-5 border-b border-[#1f1f1f]">
-            <h3 className="text-white font-semibold">Recent Customer Queries</h3>
+            <h3 className="text-white font-semibold">Recent Activity</h3>
             <Link href="/admin/analytics" className="text-primary text-sm hover:underline">
               View All
             </Link>
           </div>
 
-          <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#1f1f1f]">
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Search Term</th>
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">User</th>
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Timestamp</th>
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Results</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentQueries.map((query, i) => (
-                  <tr key={i} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
-                    <td className="px-5 py-3 text-white text-sm">{query.term}</td>
-                    <td className="px-5 py-3 text-slate-400 text-sm">{query.user}</td>
-                    <td className="px-5 py-3 text-slate-500 text-sm">{query.timestamp}</td>
-                    <td className="px-5 py-3 text-primary text-sm font-medium">{query.results}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-5">
+            <p className="text-slate-400 text-sm text-center py-8">
+              Activity tracking coming soon
+            </p>
           </div>
         </div>
 
         {/* Best Sellers */}
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
           <div className="flex items-center justify-between p-5 border-b border-[#1f1f1f]">
-            <h3 className="text-white font-semibold">Best Sellers</h3>
-            <Link href="/admin/library" className="text-primary text-sm hover:underline">
+            <h3 className="text-white font-semibold">Top Products</h3>
+            <Link href="/admin/products" className="text-primary text-sm hover:underline">
               View All
             </Link>
           </div>
 
           <div className="divide-y divide-[#1f1f1f]">
-            {bestSellers.map((item, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 hover:bg-white/5">
-                <div className={`w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center ${item.color}`}>
-                  <Icon name={item.icon} size={20} />
+            {topProducts.length > 0 ? (
+              topProducts.map((product) => (
+                <div key={product.id} className="flex items-center gap-4 p-4 hover:bg-white/5">
+                  {product.images[0]?.url ? (
+                    <img
+                      src={product.images[0].url}
+                      alt={product.name}
+                      className="w-10 h-10 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-primary">
+                      <Icon name="image" size={20} />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{product.name}</p>
+                    <p className="text-slate-500 text-xs">
+                      {product.isDigital ? 'Digital' : 'Physical'} Product
+                    </p>
+                  </div>
+                  <p className="text-primary font-semibold">${Number(product.price).toFixed(2)}</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-medium truncate">{item.name}</p>
-                  <p className="text-slate-500 text-xs">Digital Product</p>
-                </div>
-                <p className="text-primary font-semibold">{item.price}</p>
+              ))
+            ) : (
+              <div className="p-8 text-center">
+                <Icon name="shopping-cart" size={48} className="text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-400 text-sm">No products yet</p>
               </div>
-            ))}
+            )}
           </div>
 
           {/* View Marketplace Stats Button */}
           <div className="p-4 border-t border-[#1f1f1f]">
-            <button className="w-full bg-primary hover:bg-primary/90 text-black font-semibold py-2.5 rounded-lg transition-colors text-sm">
+            <Link
+              href="/admin/analytics"
+              className="block w-full bg-primary hover:bg-primary/90 text-black font-semibold py-2.5 rounded-lg transition-colors text-sm text-center"
+            >
               View Marketplace Stats
-            </button>
+            </Link>
           </div>
         </div>
       </div>

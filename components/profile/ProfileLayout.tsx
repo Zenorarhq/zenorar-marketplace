@@ -8,6 +8,7 @@ import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
+import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 interface ProfileLayoutProps {
   children: React.ReactNode
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/profile/billing', label: 'Billing & Payments', shortLabel: 'Billing', icon: 'credit-card' },
   { href: '/profile/orders', label: 'My Orders', shortLabel: 'Orders', icon: 'shopping-bag' },
   { href: '/profile/library', label: 'My Library', shortLabel: 'Library', icon: 'library' },
+  { href: '/profile/wishlist', label: 'My Wishlist', shortLabel: 'Wishlist', icon: 'heart' },
   { href: '/profile/referrals', label: 'Referral & Rewards', shortLabel: 'Referrals', icon: 'gift' },
   { href: '/profile/tickets', label: 'Support Tickets', shortLabel: 'Support', icon: 'ticket' },
 ]
@@ -43,9 +45,10 @@ export default function ProfileLayout({ children }: ProfileLayoutProps) {
   }, [pathname])
 
   return (
-    <div className="min-h-screen bg-background-dark flex flex-col">
-      <Header />
-      <CategoryNav />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-background-dark flex flex-col">
+        <Header />
+        <CategoryNav />
 
       <main className="flex-grow max-w-container mx-auto px-4 md:px-8 lg:px-12 w-full pb-24">
         {/* Breadcrumbs - hidden on mobile */}
@@ -125,7 +128,8 @@ export default function ProfileLayout({ children }: ProfileLayoutProps) {
         </div>
       </main>
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </ProtectedRoute>
   )
 }

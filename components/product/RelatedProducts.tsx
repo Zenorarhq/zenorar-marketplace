@@ -1,9 +1,13 @@
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 import { relatedProducts } from '@/lib/mock-data'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 export default function RelatedProducts() {
+  const { formatPrice } = usePreferences()
   return (
     <div className="mt-16 w-full">
       <h2 className="text-2xl font-bold text-white mb-8">Related Products</h2>
@@ -47,7 +51,7 @@ export default function RelatedProducts() {
 
             {/* Price & Cart Button */}
             <div className="flex items-center justify-between mt-auto">
-              <span className="text-lg font-extrabold text-white">${product.price}</span>
+              <span className="text-lg font-extrabold text-white">{formatPrice(product.price)}</span>
               <button className="w-8 h-8 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center hover:bg-primary hover:text-black transition-colors">
                 <Icon name="add-shopping-cart" size={18} />
               </button>

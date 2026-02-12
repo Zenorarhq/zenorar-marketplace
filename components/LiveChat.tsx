@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Icon from '@/components/ui/Icon'
+import { useTimezone } from '@/hooks/use-timezone'
+import { formatTime } from '@/lib/date-utils'
 
 interface Message {
   id: string
@@ -67,13 +69,7 @@ export default function LiveChat() {
     }, 1500)
   }
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    })
-  }
+  const tz = useTimezone()
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
@@ -123,7 +119,7 @@ export default function LiveChat() {
                       message.sender === 'user' ? 'text-black/60' : 'text-slate-500'
                     }`}
                   >
-                    {formatTime(message.timestamp)}
+                    {formatTime(message.timestamp, tz)}
                   </p>
                 </div>
               </div>

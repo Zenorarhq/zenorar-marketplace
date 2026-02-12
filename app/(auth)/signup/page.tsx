@@ -1,13 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
+import { useAuth } from '@/contexts/AuthContext'
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
+import { BrowserProvider } from 'ethers'
+import { authApi } from '@/lib/api'
 
 export default function SignupPage() {
   const router = useRouter()
+  const { register, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth()
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -19,8 +24,53 @@ export default function SignupPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isWalletLoading, setIsWalletLoading] = useState(false)
+  const [isGoogleReady, setIsGoogleReady] = useState(false)
+  const [isGoogleFailed, setIsGoogleFailed] = useState(false)
 
   const currentYear = new Date().getFullYear()
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      router.push('/')
+    }
+  }, [isAuthenticated, authLoading, router])
+
+  // Check when Google script is ready
+  useEffect(() => {
+    const checkGoogleReady = () => {
+      const win = window as typeof window & { google?: { accounts?: { id?: unknown } } }
+      if (win.google?.accounts?.id) {
+        setIsGoogleReady(true)
+        setIsGoogleFailed(false)
+        return true
+      }
+      return false
+    }
+
+    if (checkGoogleReady()) return
+
+    const interval = setInterval(() => {
+      if (checkGoogleReady()) {
+        clearInterval(interval)
+      }
+    }, 500)
+
+    const failTimeout = setTimeout(() => {
+      clearInterval(interval)
+      if (!checkGoogleReady()) {
+        setIsGoogleFailed(true)
+        setIsGoogleReady(true)
+      }
+    }, 8000)
+
+    return () => {
+      clearInterval(interval)
+      clearTimeout(failTimeout)
+    }
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -44,13 +94,12 @@ export default function SignupPage() {
     setIsLoading(true)
 
     try {
-      // TODO: Implement actual signup logic
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Redirect on success
-      router.push('/login?registered=true')
+      const result = await register(formData.email, formData.password, formData.fullName)
+      if (result.success) {
+        router.push('/')
+      } else {
+        setError(result.error || 'An error occurred. Please try again.')
+      }
     } catch {
       setError('An error occurred. Please try again.')
     } finally {
@@ -58,12 +107,137 @@ export default function SignupPage() {
     }
   }
 
-  const handleGoogleSignup = () => {
-    // TODO: Implement Google OAuth
+  // Google Login - using GoogleLogin component callback
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    setIsGoogleLoading(true)
+    setError('')
+    try {
+      if (!credentialResponse.credential) {
+        throw new Error('No credential received from Google')
+      }
+      // Send the ID token (credential) to our backend
+      const result = await authApi.googleAuth(credentialResponse.credential)
+      if (result.success) {
+        refreshUser()
+        router.push('/')
+      } else {
+        setError(result.error || 'Failed to authenticate with Google')
+      }
+    } catch (err) {
+      console.error('Google auth error:', err)
+      setError('Failed to authenticate with Google')
+    } finally {
+      setIsGoogleLoading(false)
+    }
   }
 
-  const handleWalletSignup = () => {
-    // TODO: Implement wallet connection
+  const handleGoogleError = () => {
+    console.error('Google OAuth error')
+    setIsGoogleFailed(true)
+    setError('Google sign-in failed. Please try again or use another method.')
+  }
+
+  // Retry loading Google Sign-In
+  const retryGoogleLoad = () => {
+    setIsGoogleFailed(false)
+    setIsGoogleReady(false)
+
+    const existingScript = document.querySelector('script[src*="accounts.google.com/gsi/client"]')
+    if (existingScript) {
+      existingScript.remove()
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      setTimeout(() => {
+        const win = window as typeof window & { google?: { accounts?: { id?: unknown } } }
+        if (win.google?.accounts?.id) {
+          setIsGoogleReady(true)
+          setIsGoogleFailed(false)
+        } else {
+          setIsGoogleFailed(true)
+          setIsGoogleReady(true)
+        }
+      }, 1000)
+    }
+    script.onerror = () => {
+      setIsGoogleFailed(true)
+      setIsGoogleReady(true)
+    }
+    document.head.appendChild(script)
+  }
+
+  // Wallet Login
+  const handleWalletLogin = async () => {
+    setError('')
+
+    if (typeof window === 'undefined' || !window.ethereum) {
+      setError('Please install MetaMask or another Web3 wallet')
+      return
+    }
+
+    setIsWalletLoading(true)
+    try {
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts',
+      }) as string[]
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No wallet account found. Please connect your wallet.')
+      }
+
+      const walletAddress = accounts[0]
+      console.log('Wallet connected:', walletAddress)
+
+      const nonceResult = await authApi.getWalletNonce(walletAddress)
+      if (!nonceResult.success || !nonceResult.data) {
+        console.error('Nonce error:', nonceResult)
+        throw new Error(nonceResult.error || 'Failed to get authentication nonce from server')
+      }
+
+      const { nonce, message } = nonceResult.data
+      console.log('Nonce received, requesting signature...')
+
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+      const signature = await signer.signMessage(message)
+      console.log('Message signed successfully')
+
+      const result = await authApi.walletAuth(walletAddress, signature, nonce)
+      if (result.success) {
+        console.log('Wallet authentication successful')
+        refreshUser()
+        router.push('/')
+      } else {
+        console.error('Auth failed:', result)
+        throw new Error(result.error || 'Authentication failed. Please try again.')
+      }
+    } catch (err: unknown) {
+      console.error('Wallet auth error:', err)
+      if (err instanceof Error) {
+        if (err.message.includes('user rejected') || err.message.includes('User denied')) {
+          setError('Wallet connection was cancelled.')
+        } else {
+          setError(err.message)
+        }
+      } else if (typeof err === 'object' && err !== null && 'code' in err) {
+        const rpcError = err as { code: number; message: string }
+        if (rpcError.code === -32603 && rpcError.message?.includes('No active wallet')) {
+          setError('No wallet account found. Please open MetaMask and create or import a wallet first.')
+        } else if (rpcError.code === 4001) {
+          setError('Wallet connection was cancelled.')
+        } else {
+          setError(rpcError.message || 'Wallet authentication failed. Please try again.')
+        }
+      } else {
+        setError('Wallet authentication failed. Please try again.')
+      }
+    } finally {
+      setIsWalletLoading(false)
+    }
   }
 
   return (
@@ -178,25 +352,60 @@ export default function SignupPage() {
 
           {/* Social Signup */}
           <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="flex items-center justify-center bg-surface-light border border-border-dark rounded-2xl transition-all overflow-hidden min-h-[52px]">
+              {isGoogleLoading ? (
+                <div className="flex items-center justify-center gap-3 py-3.5 w-full">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M23.766 12.2764C23.766 11.4607 23.6999 10.6406 23.5588 9.83807H12.24V14.4591H18.7217C18.4528 15.9494 17.5885 17.2678 16.323 18.1056V21.1039H20.19C22.4608 19.0139 23.766 15.9274 23.766 12.2764Z" fill="#4285F4" />
+                    <path d="M12.24 24.0008C15.4765 24.0008 18.2058 22.9382 20.19 21.1039L16.323 18.1056C15.2424 18.8375 13.8643 19.252 12.2435 19.252C9.11388 19.252 6.45946 17.1399 5.50705 14.3003H1.5166V17.3912C3.55371 21.4434 7.7029 24.0008 12.24 24.0008Z" fill="#34A853" />
+                    <path d="M5.50253 14.3003C5.00236 12.8099 5.00236 11.1961 5.50253 9.70575V6.61481H1.5166C-0.18551 10.0056 -0.18551 14.0004 1.5166 17.3912L5.50253 14.3003Z" fill="#FBBC05" />
+                    <path d="M12.24 4.74966C13.9509 4.7232 15.6044 5.36697 16.8434 6.54867L20.2695 3.12262C18.1001 1.0855 15.2208 -0.034466 12.24 0.000808666C7.7029 0.000808666 3.55371 2.55822 1.5166 6.61481L5.50253 9.70575C6.45064 6.86173 9.10947 4.74966 12.24 4.74966Z" fill="#EA4335" />
+                  </svg>
+                  <span className="font-medium text-sm text-white">Signing up...</span>
+                </div>
+              ) : !isGoogleReady ? (
+                <div className="flex items-center justify-center gap-3 py-3.5 w-full">
+                  <Icon name="loading" size={20} className="animate-spin text-slate-400" />
+                  <span className="font-medium text-sm text-slate-400">Loading...</span>
+                </div>
+              ) : isGoogleFailed ? (
+                <button
+                  type="button"
+                  onClick={retryGoogleLoad}
+                  className="flex items-center justify-center gap-2 py-3.5 w-full hover:bg-[#222] transition-colors"
+                >
+                  <svg className="w-5 h-5 opacity-50" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M23.766 12.2764C23.766 11.4607 23.6999 10.6406 23.5588 9.83807H12.24V14.4591H18.7217C18.4528 15.9494 17.5885 17.2678 16.323 18.1056V21.1039H20.19C22.4608 19.0139 23.766 15.9274 23.766 12.2764Z" fill="#4285F4" />
+                    <path d="M12.24 24.0008C15.4765 24.0008 18.2058 22.9382 20.19 21.1039L16.323 18.1056C15.2424 18.8375 13.8643 19.252 12.2435 19.252C9.11388 19.252 6.45946 17.1399 5.50705 14.3003H1.5166V17.3912C3.55371 21.4434 7.7029 24.0008 12.24 24.0008Z" fill="#34A853" />
+                    <path d="M5.50253 14.3003C5.00236 12.8099 5.00236 11.1961 5.50253 9.70575V6.61481H1.5166C-0.18551 10.0056 -0.18551 14.0004 1.5166 17.3912L5.50253 14.3003Z" fill="#FBBC05" />
+                    <path d="M12.24 4.74966C13.9509 4.7232 15.6044 5.36697 16.8434 6.54867L20.2695 3.12262C18.1001 1.0855 15.2208 -0.034466 12.24 0.000808666C7.7029 0.000808666 3.55371 2.55822 1.5166 6.61481L5.50253 9.70575C6.45064 6.86173 9.10947 4.74966 12.24 4.74966Z" fill="#EA4335" />
+                  </svg>
+                  <span className="font-medium text-xs text-slate-400">Retry Google</span>
+                </button>
+              ) : (
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  type="standard"
+                  theme="filled_black"
+                  size="large"
+                  text="signup_with"
+                  shape="rectangular"
+                  width="200"
+                />
+              )}
+            </div>
             <button
               type="button"
-              onClick={handleGoogleSignup}
-              className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group"
+              onClick={handleWalletLogin}
+              disabled={isWalletLoading}
+              className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group disabled:opacity-50"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M23.766 12.2764C23.766 11.4607 23.6999 10.6406 23.5588 9.83807H12.24V14.4591H18.7217C18.4528 15.9494 17.5885 17.2678 16.323 18.1056V21.1039H20.19C22.4608 19.0139 23.766 15.9274 23.766 12.2764Z" fill="#4285F4" />
-                <path d="M12.24 24.0008C15.4765 24.0008 18.2058 22.9382 20.19 21.1039L16.323 18.1056C15.2424 18.8375 13.8643 19.252 12.2435 19.252C9.11388 19.252 6.45946 17.1399 5.50705 14.3003H1.5166V17.3912C3.55371 21.4434 7.7029 24.0008 12.24 24.0008Z" fill="#34A853" />
-                <path d="M5.50253 14.3003C5.00236 12.8099 5.00236 11.1961 5.50253 9.70575V6.61481H1.5166C-0.18551 10.0056 -0.18551 14.0004 1.5166 17.3912L5.50253 14.3003Z" fill="#FBBC05" />
-                <path d="M12.24 4.74966C13.9509 4.7232 15.6044 5.36697 16.8434 6.54867L20.2695 3.12262C18.1001 1.0855 15.2208 -0.034466 12.24 0.000808666C7.7029 0.000808666 3.55371 2.55822 1.5166 6.61481L5.50253 9.70575C6.45064 6.86173 9.10947 4.74966 12.24 4.74966Z" fill="#EA4335" />
-              </svg>
-              <span className="font-medium text-sm">Google</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleWalletSignup}
-              className="flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group"
-            >
-              <Icon name="wallet" size={20} className="text-white group-hover:text-primary transition-colors" />
+              {isWalletLoading ? (
+                <Icon name="loading" size={20} className="animate-spin" />
+              ) : (
+                <Icon name="wallet" size={20} className="text-white group-hover:text-primary transition-colors" />
+              )}
               <span className="font-medium text-sm">Wallet</span>
             </button>
           </div>

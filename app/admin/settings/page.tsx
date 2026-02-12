@@ -1,12 +1,18 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { profileApi } from '@/lib/api/profile'
+import { settingsApi } from '@/lib/api/settings'
+import { mediaApi } from '@/lib/api/media'
+import { getAccessToken } from '@/lib/api/client'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 
-type SettingsTab = 'general' | 'security' | 'notifications' | 'payments' | 'api'
+type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'api'
 
 const tabs: { id: SettingsTab; label: string; icon: string }[] = [
+  { id: 'profile', label: 'Profile', icon: 'user' },
   { id: 'general', label: 'General', icon: 'settings' },
   { id: 'security', label: 'Security', icon: 'shield' },
   { id: 'notifications', label: 'Notifications', icon: 'bell' },
@@ -15,9 +21,32 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
 ]
 
 export default function AdminSettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general')
+  const { user, updateUser, refreshUser } = useAuth()
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+  const faviconInputRef = useRef<HTMLInputElement>(null)
+
+  // Profile Settings State
+  const [profileSettings, setProfileSettings] = useState({
+    name: user?.name || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+
+  // Sync profile settings with user data
+  useEffect(() => {
+    if (user) {
+      setProfileSettings((prev) => ({
+        ...prev,
+        name: user.name,
+      }))
+    }
+  }, [user])
 
   const handleTabClick = (tabId: SettingsTab, index: number) => {
     setActiveTab(tabId)
@@ -38,10 +67,17 @@ export default function AdminSettingsPage() {
     siteName: 'Zenorar Marketplace',
     siteDescription: 'Premium digital marketplace for scripts, plugins, and eSIMs',
     supportEmail: 'support@zenorar.com',
-    timezone: 'UTC',
+    timezone: 'auto',
     currency: 'USD',
     maintenanceMode: false,
+    logoUrl: '',
+    logoMediaId: '',
+    faviconUrl: '',
+    faviconMediaId: '',
+    promoBannerCode: '',
   })
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingFavicon, setUploadingFavicon] = useState(false)
 
   // Security Settings State
   const [securitySettings, setSecuritySettings] = useState({
@@ -83,10 +119,256 @@ export default function AdminSettingsPage() {
     ],
   })
 
+  // Load general settings from API on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('general').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setGeneralSettings((prev) => ({
+          ...prev,
+          siteName: d.siteName ?? prev.siteName,
+          siteDescription: d.siteDescription ?? prev.siteDescription,
+          supportEmail: d.supportEmail ?? prev.supportEmail,
+          timezone: d.timezone ?? prev.timezone,
+          currency: d.currency ?? prev.currency,
+          maintenanceMode: d.maintenanceMode ?? prev.maintenanceMode,
+          logoUrl: d.logoUrl ?? prev.logoUrl,
+          logoMediaId: d.logoMediaId ?? prev.logoMediaId,
+          faviconUrl: d.faviconUrl ?? prev.faviconUrl,
+          faviconMediaId: d.faviconMediaId ?? prev.faviconMediaId,
+          promoBannerCode: d.promoBannerCode ?? prev.promoBannerCode,
+        }))
+      }
+    })
+  }, [])
+
+  // Load security settings from API on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('security').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setSecuritySettings((prev) => ({
+          ...prev,
+          twoFactorAuth: d.twoFactorAuth ?? prev.twoFactorAuth,
+          sessionTimeout: d.sessionTimeout ?? prev.sessionTimeout,
+          loginAttempts: d.loginAttempts ?? prev.loginAttempts,
+          passwordExpiry: d.passwordExpiry ?? prev.passwordExpiry,
+          ipWhitelist: d.ipWhitelist ?? prev.ipWhitelist,
+        }))
+      }
+    })
+  }, [])
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Avatar file size must be less than 5MB' })
+      return
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Avatar must be an image file' })
+      return
+    }
+
+    setSaving(true)
+    setMessage(null)
+
+    // Remove old avatar from Cloudinary before uploading new one
+    if (user?.avatar) {
+      await profileApi.removeAvatar()
+    }
+    const result = await profileApi.uploadAvatar(file)
+
+    if (result.success && result.data) {
+      updateUser(result.data)
+      setMessage({ type: 'success', text: 'Avatar updated successfully!' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to upload avatar' })
+    }
+
+    setSaving(false)
+  }
+
+  const handleRemoveAvatar = async () => {
+    if (!confirm('Are you sure you want to remove your avatar?')) return
+
+    setSaving(true)
+    setMessage(null)
+
+    const result = await profileApi.removeAvatar()
+
+    if (result.success && result.data) {
+      updateUser(result.data)
+      setMessage({ type: 'success', text: 'Avatar removed successfully!' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to remove avatar' })
+    }
+
+    setSaving(false)
+  }
+
+  const handleUpdateProfile = async () => {
+    if (!profileSettings.name.trim()) {
+      setMessage({ type: 'error', text: 'Name is required' })
+      return
+    }
+
+    setSaving(true)
+    setMessage(null)
+
+    const result = await profileApi.update({ name: profileSettings.name })
+
+    if (result.success && result.data) {
+      updateUser(result.data)
+      setMessage({ type: 'success', text: 'Profile updated successfully!' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to update profile' })
+    }
+
+    setSaving(false)
+  }
+
+  const handleUpdatePassword = async () => {
+    // Validate inputs
+    if (!profileSettings.currentPassword) {
+      setMessage({ type: 'error', text: 'Current password is required' })
+      return
+    }
+
+    if (!profileSettings.newPassword) {
+      setMessage({ type: 'error', text: 'New password is required' })
+      return
+    }
+
+    if (profileSettings.newPassword.length < 8) {
+      setMessage({ type: 'error', text: 'Password must be at least 8 characters' })
+      return
+    }
+
+    if (profileSettings.newPassword !== profileSettings.confirmPassword) {
+      setMessage({ type: 'error', text: 'Passwords do not match' })
+      return
+    }
+
+    setSaving(true)
+    setMessage(null)
+
+    const result = await profileApi.updatePassword({
+      currentPassword: profileSettings.currentPassword,
+      newPassword: profileSettings.newPassword,
+    })
+
+    if (result.success) {
+      // Update password_changed_at timestamp for expiry tracking
+      fetch('/api/auth/password-changed', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
+      }).catch(() => {}) // Non-critical
+      setMessage({ type: 'success', text: 'Password updated successfully!' })
+      setProfileSettings({
+        ...profileSettings,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to update password' })
+    }
+
+    setSaving(false)
+  }
+
+  // Logo upload handler
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Logo file must be less than 5MB' })
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Logo must be an image file' })
+      return
+    }
+    setUploadingLogo(true)
+    setMessage(null)
+    const result = await mediaApi.upload(file, { title: 'Site Logo' })
+    if (result.success && result.data) {
+      setGeneralSettings((prev) => ({ ...prev, logoUrl: result.data!.url, logoMediaId: result.data!.id }))
+      setMessage({ type: 'success', text: 'Logo uploaded! Click Save Changes to apply.' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to upload logo' })
+    }
+    setUploadingLogo(false)
+    if (logoInputRef.current) logoInputRef.current.value = ''
+  }
+
+  // Favicon upload handler
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Favicon file must be less than 2MB' })
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Favicon must be an image file' })
+      return
+    }
+    setUploadingFavicon(true)
+    setMessage(null)
+    const result = await mediaApi.upload(file, { title: 'Site Favicon' })
+    if (result.success && result.data) {
+      setGeneralSettings((prev) => ({ ...prev, faviconUrl: result.data!.url, faviconMediaId: result.data!.id }))
+      setMessage({ type: 'success', text: 'Favicon uploaded! Click Save Changes to apply.' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to upload favicon' })
+    }
+    setUploadingFavicon(false)
+    if (faviconInputRef.current) faviconInputRef.current.value = ''
+  }
+
   const handleSave = async () => {
     setSaving(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    setMessage(null)
+
+    const settingsToSave = [
+      { key: 'siteName', value: generalSettings.siteName, group: 'general', isPublic: true },
+      { key: 'siteDescription', value: generalSettings.siteDescription, group: 'general', isPublic: true },
+      { key: 'supportEmail', value: generalSettings.supportEmail, group: 'general', isPublic: true },
+      { key: 'timezone', value: generalSettings.timezone, group: 'general', isPublic: true },
+      { key: 'currency', value: generalSettings.currency, group: 'general', isPublic: true },
+      { key: 'maintenanceMode', value: generalSettings.maintenanceMode, group: 'general', isPublic: true },
+      { key: 'logoUrl', value: generalSettings.logoUrl, group: 'general', isPublic: true },
+      { key: 'logoMediaId', value: generalSettings.logoMediaId, group: 'general', isPublic: false },
+      { key: 'faviconUrl', value: generalSettings.faviconUrl, group: 'general', isPublic: true },
+      { key: 'faviconMediaId', value: generalSettings.faviconMediaId, group: 'general', isPublic: false },
+      { key: 'promoBannerCode', value: generalSettings.promoBannerCode, group: 'general', isPublic: true },
+      // Security settings
+      { key: 'twoFactorAuth', value: securitySettings.twoFactorAuth, group: 'security', isPublic: false },
+      { key: 'sessionTimeout', value: securitySettings.sessionTimeout, group: 'security', isPublic: false },
+      { key: 'loginAttempts', value: securitySettings.loginAttempts, group: 'security', isPublic: false },
+      { key: 'passwordExpiry', value: securitySettings.passwordExpiry, group: 'security', isPublic: false },
+      { key: 'ipWhitelist', value: securitySettings.ipWhitelist, group: 'security', isPublic: false },
+    ]
+
+    const result = await settingsApi.updateSettings(settingsToSave)
+
+    if (result.success) {
+      setMessage({ type: 'success', text: 'Settings saved successfully!' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to save settings' })
+    }
+
     setSaving(false)
   }
 
@@ -123,6 +405,154 @@ export default function AdminSettingsPage() {
 
         {/* Tab Content */}
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 sm:p-6 mb-6">
+          {/* Success/Error Message */}
+          {message && (
+            <div className={`mb-6 p-4 rounded-lg border ${
+              message.type === 'success'
+                ? 'bg-primary/10 border-primary/20 text-primary'
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}>
+              <p className="text-sm font-medium">{message.text}</p>
+            </div>
+          )}
+
+          {/* Profile Settings */}
+          {activeTab === 'profile' && (
+            <div className="space-y-6">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+
+              <div className="flex flex-col sm:flex-row items-start gap-6">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-24 h-24 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center overflow-hidden">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <Icon name="user" size={40} className="text-slate-600" />
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAvatarClick}
+                      disabled={saving}
+                      className="bg-[#1a1a1a] hover:bg-white/5 text-white text-xs px-3 py-1.5 rounded-lg transition-colors border border-[#2a2a2a] disabled:opacity-50"
+                    >
+                      Change
+                    </button>
+                    {user?.avatar && (
+                      <button
+                        onClick={handleRemoveAvatar}
+                        disabled={saving}
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-1.5 rounded-lg transition-colors border border-red-500/20 disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 w-full space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Full Name</label>
+                    <input
+                      type="text"
+                      value={profileSettings.name}
+                      onChange={(e) => setProfileSettings({ ...profileSettings, name: e.target.value })}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Email Address</label>
+                    <input
+                      type="email"
+                      value={user?.email || ''}
+                      disabled
+                      className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-slate-500 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-slate-500">Email cannot be changed</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Role</label>
+                    <input
+                      type="text"
+                      value={user?.role || ''}
+                      disabled
+                      className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-slate-500 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleUpdateProfile}
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-black rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {saving ? 'Saving...' : 'Save Profile'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-[#2a2a2a] space-y-4">
+                <h3 className="text-white font-medium mb-4">Change Password</h3>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Current Password</label>
+                  <input
+                    type="password"
+                    value={profileSettings.currentPassword}
+                    onChange={(e) => setProfileSettings({ ...profileSettings, currentPassword: e.target.value })}
+                    placeholder="Enter your current password"
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">New Password</label>
+                    <input
+                      type="password"
+                      value={profileSettings.newPassword}
+                      onChange={(e) => setProfileSettings({ ...profileSettings, newPassword: e.target.value })}
+                      placeholder="Enter new password"
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={profileSettings.confirmPassword}
+                      onChange={(e) => setProfileSettings({ ...profileSettings, confirmPassword: e.target.value })}
+                      placeholder="Confirm new password"
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                  <p className="text-blue-400 text-sm">
+                    <strong>Password requirements:</strong> At least 8 characters, including uppercase, lowercase, number, and special character.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleUpdatePassword}
+                  disabled={saving || !profileSettings.currentPassword || !profileSettings.newPassword || !profileSettings.confirmPassword}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-black rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* General Settings */}
           {activeTab === 'general' && (
             <div className="space-y-6">
@@ -165,6 +595,7 @@ export default function AdminSettingsPage() {
                     onChange={(e) => setGeneralSettings({ ...generalSettings, timezone: e.target.value })}
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
                   >
+                    <option value="auto">Default (User&apos;s Location)</option>
                     <option value="UTC">UTC</option>
                     <option value="America/New_York">Eastern Time (ET)</option>
                     <option value="America/Los_Angeles">Pacific Time (PT)</option>
@@ -187,6 +618,18 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300">Promo Banner Code</label>
+                <input
+                  type="text"
+                  value={generalSettings.promoBannerCode}
+                  onChange={(e) => setGeneralSettings({ ...generalSettings, promoBannerCode: e.target.value.toUpperCase() })}
+                  placeholder="e.g. WELCOME10"
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 font-mono"
+                />
+                <p className="text-slate-500 text-xs">Enter an active discount code to display on the homepage promo banner. Leave empty to hide the banner.</p>
+              </div>
+
               <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
                 <div>
                   <p className="text-white font-medium">Maintenance Mode</p>
@@ -204,6 +647,100 @@ export default function AdminSettingsPage() {
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Logo & Favicon Uploads */}
+              <div className="pt-6 border-t border-[#2a2a2a]">
+                <h3 className="text-white font-medium mb-4">Branding</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Logo Upload */}
+                  <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                    <p className="text-white font-medium mb-1">Site Logo</p>
+                    <p className="text-slate-500 text-xs mb-4">Displayed in the header and footer. Recommended: 200-400px wide, 50-80px tall. PNG or SVG, max 5MB.</p>
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {generalSettings.logoUrl ? (
+                          <img src={generalSettings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                        ) : (
+                          <Icon name="image" size={24} className="text-slate-600" />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => logoInputRef.current?.click()}
+                          disabled={uploadingLogo}
+                          className="bg-[#222] hover:bg-white/5 text-white text-xs px-3 py-1.5 rounded-lg transition-colors border border-[#2a2a2a] disabled:opacity-50"
+                        >
+                          {uploadingLogo ? 'Uploading...' : generalSettings.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                        </button>
+                        {generalSettings.logoUrl && (
+                          <button
+                            onClick={async () => {
+                              if (generalSettings.logoMediaId) {
+                                await mediaApi.delete(generalSettings.logoMediaId)
+                              }
+                              setGeneralSettings((prev) => ({ ...prev, logoUrl: '', logoMediaId: '' }))
+                            }}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-1.5 rounded-lg transition-colors border border-red-500/20"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Favicon Upload */}
+                  <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                    <p className="text-white font-medium mb-1">Favicon</p>
+                    <p className="text-slate-500 text-xs mb-4">Browser tab icon. Recommended: 512x512px square. PNG or ICO, max 2MB.</p>
+                    <input
+                      ref={faviconInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFaviconUpload}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {generalSettings.faviconUrl ? (
+                          <img src={generalSettings.faviconUrl} alt="Favicon" className="w-full h-full object-contain" />
+                        ) : (
+                          <Icon name="globe" size={24} className="text-slate-600" />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => faviconInputRef.current?.click()}
+                          disabled={uploadingFavicon}
+                          className="bg-[#222] hover:bg-white/5 text-white text-xs px-3 py-1.5 rounded-lg transition-colors border border-[#2a2a2a] disabled:opacity-50"
+                        >
+                          {uploadingFavicon ? 'Uploading...' : generalSettings.faviconUrl ? 'Change Favicon' : 'Upload Favicon'}
+                        </button>
+                        {generalSettings.faviconUrl && (
+                          <button
+                            onClick={async () => {
+                              if (generalSettings.faviconMediaId) {
+                                await mediaApi.delete(generalSettings.faviconMediaId)
+                              }
+                              setGeneralSettings((prev) => ({ ...prev, faviconUrl: '', faviconMediaId: '' }))
+                            }}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-1.5 rounded-lg transition-colors border border-red-500/20"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

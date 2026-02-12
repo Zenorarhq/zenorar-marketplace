@@ -1,6 +1,12 @@
+import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description: 'Read our privacy policy to understand how Zenorar Marketplace collects, uses, and protects your personal information.',
+}
 
 export default function PrivacyPage() {
   const currentYear = new Date().getFullYear()

@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface CartItem {
   id: string
@@ -39,6 +40,7 @@ const mockCartItems: CartItem[] = [
 ]
 
 export default function CartSlideOver({ isOpen, onClose }: CartSlideOverProps) {
+  const { formatPrice } = usePreferences()
   const subtotal = mockCartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   if (!isOpen) return null
@@ -105,7 +107,7 @@ export default function CartSlideOver({ isOpen, onClose }: CartSlideOverProps) {
                     </button>
                   </div>
 
-                  <span className="font-bold text-white">${item.price}</span>
+                  <span className="font-bold text-white">{formatPrice(item.price)}</span>
                 </div>
               </div>
             </div>
@@ -116,7 +118,7 @@ export default function CartSlideOver({ isOpen, onClose }: CartSlideOverProps) {
         <div className="p-8 border-t border-border-dark bg-background-dark sticky bottom-0">
           <div className="flex justify-between items-center mb-6">
             <span className="text-slate-500 font-medium">Subtotal</span>
-            <span className="text-2xl font-bold text-white">${subtotal.toFixed(2)}</span>
+            <span className="text-2xl font-bold text-white">{formatPrice(subtotal)}</span>
           </div>
 
           <Link

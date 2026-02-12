@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
@@ -8,9 +9,54 @@ import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
+import { discountsApi, type ValidateDiscountResponse } from '@/lib/api/discounts'
 
 export default function CartPage() {
   const { items, itemCount, total, updateQuantity, removeItem, clearCart } = useCart()
+  const [promoCode, setPromoCode] = useState('')
+  const [discount, setDiscount] = useState<ValidateDiscountResponse | null>(null)
+  const [promoError, setPromoError] = useState('')
+  const [isValidating, setIsValidating] = useState(false)
+
+  // Pre-fill promo code from banner
+  useEffect(() => {
+    const savedCode = sessionStorage.getItem('promo_code')
+    if (savedCode) setPromoCode(savedCode)
+  }, [])
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return
+    setIsValidating(true)
+    setPromoError('')
+    try {
+      const res = await discountsApi.validate(promoCode.trim(), total)
+      if (res.success && res.data) {
+        setDiscount(res.data)
+        sessionStorage.setItem('discount_code', res.data.code)
+        sessionStorage.setItem('discount_amount', String(res.data.discountAmount))
+      } else {
+        setPromoError(res.error || 'Invalid promo code')
+        setDiscount(null)
+        sessionStorage.removeItem('discount_code')
+        sessionStorage.removeItem('discount_amount')
+      }
+    } catch {
+      setPromoError('Failed to validate code')
+    }
+    setIsValidating(false)
+  }
+
+  const handleRemovePromo = () => {
+    setDiscount(null)
+    setPromoCode('')
+    setPromoError('')
+    sessionStorage.removeItem('promo_code')
+    sessionStorage.removeItem('discount_code')
+    sessionStorage.removeItem('discount_amount')
+  }
+
+  const discountAmount = discount?.discountAmount ?? 0
+  const finalTotal = total - discountAmount
 
   if (items.length === 0) {
     return (
@@ -98,7 +144,7 @@ export default function CartPage() {
                       {item.product.name}
                     </Link>
                     <button
-                      onClick={() => removeItem(item.product.id)}
+                      onClick={() => removeItem(item.product.id, item.license)}
                       className="text-slate-400 hover:text-red-400 transition-colors"
                       aria-label="Remove item"
                     >
@@ -150,10 +196,15 @@ export default function CartPage() {
                   <span>Subtotal</span>
                   <span className="text-white font-medium">${total.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-400">
-                  <span>Discount</span>
-                  <span className="text-primary font-medium">-$0.00</span>
-                </div>
+                {discount && (
+                  <div className="flex justify-between text-slate-400">
+                    <span className="flex items-center gap-1">
+                      Discount
+                      <span className="text-xs text-primary">({discount.code})</span>
+                    </span>
+                    <span className="text-primary font-medium">-${discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
                   <span className="text-white font-medium">$0.00</span>
@@ -163,7 +214,7 @@ export default function CartPage() {
               <div className="border-t border-border-dark pt-4 mb-8">
                 <div className="flex justify-between">
                   <span className="text-lg font-bold text-white">Total</span>
-                  <span className="text-2xl font-extrabold text-white">${total.toFixed(2)}</span>
+                  <span className="text-2xl font-extrabold text-white">${finalTotal.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -172,17 +223,41 @@ export default function CartPage() {
                 <label htmlFor="promo" className="block text-sm font-bold text-slate-400 mb-2">
                   Promo Code
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    id="promo"
-                    type="text"
-                    placeholder="Enter code"
-                    className="flex-grow bg-background-dark border border-border-dark rounded-lg py-2 px-4 text-white placeholder:text-slate-500 focus:ring-primary focus:border-primary transition-all"
-                  />
-                  <button className="bg-surface-dark border border-border-dark text-white px-4 py-2 rounded-lg font-bold hover:border-primary transition-colors">
-                    Apply
-                  </button>
-                </div>
+                {discount ? (
+                  <div className="w-full flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg py-2 px-4">
+                    <span className="flex-grow text-primary font-mono font-bold">{discount.code}</span>
+                    <button
+                      onClick={handleRemovePromo}
+                      className="text-slate-400 hover:text-red-400 text-sm font-bold whitespace-nowrap px-4 py-2"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-full flex gap-2">
+                      <input
+                        id="promo"
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
+                        placeholder="Enter code"
+                        className="flex-grow bg-background-dark border border-border-dark rounded-lg py-2 px-4 text-white placeholder:text-slate-500 focus:ring-primary focus:border-primary transition-all font-mono"
+                      />
+                      <button
+                        onClick={handleApplyPromo}
+                        disabled={isValidating || !promoCode.trim()}
+                        className="bg-surface-dark border border-border-dark text-white px-4 py-2 rounded-lg font-bold hover:border-primary transition-colors disabled:opacity-50"
+                      >
+                        {isValidating ? '...' : 'Apply'}
+                      </button>
+                    </div>
+                    {promoError && (
+                      <p className="text-red-400 text-xs mt-1">{promoError}</p>
+                    )}
+                  </>
+                )}
               </div>
 
               <Link

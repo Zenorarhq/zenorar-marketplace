@@ -1,7 +1,10 @@
+'use client'
+
 import Link from 'next/link'
 import { Product } from '@/lib/types'
 import StarRating from '@/components/ui/StarRating'
 import Icon from '@/components/ui/Icon'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface RecommendedCardProps {
   product: Product
@@ -27,6 +30,7 @@ const badgeClasses: Record<string, string> = {
 }
 
 export default function RecommendedCard({ product }: RecommendedCardProps) {
+  const { formatPrice } = usePreferences()
   const colorClass = iconColorClasses[product.iconColor] || iconColorClasses.primary
   const badgeClass = product.badge ? badgeClasses[product.badge] || badgeClasses.HOT : ''
 
@@ -35,9 +39,19 @@ export default function RecommendedCard({ product }: RecommendedCardProps) {
       href={`/products/${product.slug}`}
       className="flex items-center gap-4 group cursor-pointer"
     >
-      <div className={`w-12 h-12 rounded-lg flex items-center justify-center border ${colorClass}`}>
-        <Icon name={product.icon} size={24} />
-      </div>
+      {product.image ? (
+        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : (
+        <div className={`w-12 h-12 rounded-lg flex items-center justify-center border flex-shrink-0 ${colorClass}`}>
+          <Icon name={product.icon} size={24} />
+        </div>
+      )}
 
       <div className="flex-1 min-w-0">
         <h4 className="text-sm font-bold truncate group-hover:text-primary transition-colors">
@@ -49,7 +63,7 @@ export default function RecommendedCard({ product }: RecommendedCardProps) {
         </div>
 
         <div className="flex justify-between items-center mt-1">
-          <span className="text-xs text-slate-500">${product.price}</span>
+          <span className="text-xs text-slate-500">{formatPrice(product.price)}</span>
           {product.badge && (
             <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${badgeClass}`}>
               {product.badge}

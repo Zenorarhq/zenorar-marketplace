@@ -1,40 +1,337 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { BrowserProvider, parseEther, formatEther } from 'ethers'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
 import { useCart } from '@/lib/cart-context'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
-type PaymentMethod = 'crypto' | 'card'
+// Receiving wallet address - should be set via environment variable in production
+const RECEIVING_WALLET = process.env.NEXT_PUBLIC_RECEIVING_WALLET || '0x742d35Cc6634C0532925a3b844Bc9e7595f5bE21'
+
+// Crypto conversion rates (in production, fetch from API)
+const CRYPTO_RATES: Record<string, number> = {
+  ETH: 0.00042, // 1 USD = 0.00042 ETH (approx $2380/ETH)
+  BNB: 0.0033,  // 1 USD = 0.0033 BNB (approx $300/BNB)
+  MATIC: 1.25,  // 1 USD = 1.25 MATIC (approx $0.80/MATIC)
+}
+
+type PaymentMethod = 'wallet' | 'crypto-processor' | 'card'
+type CryptoNetwork = 'ETH' | 'BNB' | 'MATIC'
+
+interface CardErrors {
+  cardNumber?: string
+  expiry?: string
+  cvv?: string
+  cardName?: string
+}
+
+interface WalletState {
+  address: string | null
+  balance: string | null
+  network: string | null
+  isConnected: boolean
+}
 
 export default function PaymentPage() {
   const router = useRouter()
-  const { items, total } = useCart()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { items, total, clearCart } = useCart()
+  const { formatPrice } = usePreferences()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('crypto')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('wallet')
+  const [errors, setErrors] = useState<CardErrors>({})
   const [cardData, setCardData] = useState({
     cardNumber: '',
     expiry: '',
     cvv: '',
     cardName: '',
   })
-  const [selectedCrypto, setSelectedCrypto] = useState<string>('BTC')
+  const [selectedNetwork, setSelectedNetwork] = useState<CryptoNetwork>('ETH')
+  const [walletState, setWalletState] = useState<WalletState>({
+    address: null,
+    balance: null,
+    network: null,
+    isConnected: false,
+  })
+  const [walletError, setWalletError] = useState<string>('')
+  const [txHash, setTxHash] = useState<string>('')
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'connecting' | 'paying' | 'confirming' | 'success' | 'error'>('idle')
+  const [discountCode, setDiscountCode] = useState('')
+  const [discountAmount, setDiscountAmount] = useState(0)
+
+  // Load discount from sessionStorage
+  useEffect(() => {
+    const code = sessionStorage.getItem('discount_code')
+    const amount = sessionStorage.getItem('discount_amount')
+    if (code && amount) {
+      setDiscountCode(code)
+      setDiscountAmount(parseFloat(amount))
+    }
+  }, [])
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      sessionStorage.setItem('redirectAfterLogin', '/checkout/payment')
+      router.push('/login')
+    }
+  }, [isAuthenticated, authLoading, router])
+
+  // Calculate crypto amount based on USD total (after discount)
+  const finalTotal = total - discountAmount
+  const getCryptoAmount = (network: CryptoNetwork): string => {
+    const rate = CRYPTO_RATES[network] || 0.00042
+    return (finalTotal * rate).toFixed(6)
+  }
+
+  // Connect wallet
+  const connectWallet = async () => {
+    if (typeof window === 'undefined' || !window.ethereum) {
+      setWalletError('Please install MetaMask or another Web3 wallet')
+      return
+    }
+
+    setPaymentStatus('connecting')
+    setWalletError('')
+
+    try {
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts',
+      }) as string[]
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No wallet account found')
+      }
+
+      const provider = new BrowserProvider(window.ethereum)
+      const balance = await provider.getBalance(accounts[0])
+      const network = await provider.getNetwork()
+
+      setWalletState({
+        address: accounts[0],
+        balance: formatEther(balance),
+        network: network.name,
+        isConnected: true,
+      })
+      setPaymentStatus('idle')
+    } catch (err) {
+      console.error('Wallet connection error:', err)
+      setWalletError(err instanceof Error ? err.message : 'Failed to connect wallet')
+      setPaymentStatus('error')
+    }
+  }
+
+  // Disconnect wallet
+  const disconnectWallet = () => {
+    setWalletState({
+      address: null,
+      balance: null,
+      network: null,
+      isConnected: false,
+    })
+    setPaymentStatus('idle')
+    setTxHash('')
+  }
+
+  // Process wallet payment
+  const processWalletPayment = async () => {
+    if (!walletState.isConnected || !window.ethereum) {
+      setWalletError('Please connect your wallet first')
+      return
+    }
+
+    setPaymentStatus('paying')
+    setWalletError('')
+
+    try {
+      // Get shipping info from session storage
+      const shippingDataStr = sessionStorage.getItem('checkoutShipping')
+      const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
+
+      // First, create the order
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      const orderResponse = await fetch(`${apiUrl}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('accessToken') && {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+          }),
+        },
+        body: JSON.stringify({
+          email: shippingData.email || '',
+          phone: shippingData.phone,
+          customerNote: shippingData.notes,
+          paymentMethod: `crypto_${selectedNetwork.toLowerCase()}`,
+          discountCode: discountCode || undefined,
+          discountAmount: discountAmount > 0 ? discountAmount : undefined,
+        }),
+      })
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json()
+        throw new Error(errorData.error || 'Failed to create order')
+      }
+
+      const orderResult = await orderResponse.json()
+      const orderId = orderResult.data.id
+
+      // Record discount usage if a discount was applied
+      if (discountCode && discountAmount > 0) {
+        fetch('/api/orders/apply-discount', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, discountCode, discountAmount }),
+        }).catch(err => console.error('Failed to save discount to order:', err))
+
+        fetch('/api/discounts/use', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: discountCode }),
+        }).catch(err => console.error('Failed to increment discount usage:', err))
+      }
+
+      const provider = new BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+      const cryptoAmount = getCryptoAmount(selectedNetwork)
+
+      // Create transaction
+      const tx = await signer.sendTransaction({
+        to: RECEIVING_WALLET,
+        value: parseEther(cryptoAmount),
+      })
+
+      setTxHash(tx.hash)
+      setPaymentStatus('confirming')
+
+      // Wait for confirmation
+      const receipt = await tx.wait()
+
+      if (receipt && receipt.status === 1) {
+        // Record the crypto payment in the backend
+        const paymentResponse = await fetch(`${apiUrl}/payments/crypto`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderId,
+            txHash: tx.hash,
+            walletAddress: walletState.address,
+            network: selectedNetwork,
+            cryptoAmount,
+            usdAmount: finalTotal,
+          }),
+        })
+
+        if (!paymentResponse.ok) {
+          console.error('Failed to record payment, but transaction was successful')
+        }
+
+        // Store payment info
+        sessionStorage.setItem('checkoutPayment', JSON.stringify({
+          method: 'wallet',
+          crypto: selectedNetwork,
+          txHash: tx.hash,
+          amount: cryptoAmount,
+          usdAmount: finalTotal,
+          walletAddress: walletState.address,
+          orderId,
+          orderNumber: orderResult.data.orderNumber,
+        }))
+
+        setPaymentStatus('success')
+
+        // Redirect to success page after short delay
+        setTimeout(() => {
+          clearCart()
+          router.push(`/checkout/success?txHash=${tx.hash}&orderNumber=${orderResult.data.orderNumber}`)
+        }, 2000)
+      } else {
+        throw new Error('Transaction failed')
+      }
+    } catch (err: unknown) {
+      console.error('Payment error:', err)
+      setPaymentStatus('error')
+      if (err instanceof Error) {
+        if (err.message.includes('user rejected') || err.message.includes('User denied')) {
+          setWalletError('Transaction was cancelled')
+        } else if (err.message.includes('insufficient funds')) {
+          setWalletError('Insufficient funds in your wallet')
+        } else {
+          setWalletError(err.message)
+        }
+      } else {
+        setWalletError('Payment failed. Please try again.')
+      }
+    }
+  }
 
   const handleCardChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setCardData((prev) => ({ ...prev, [name]: value }))
+    // Clear error when user starts typing
+    if (errors[name as keyof CardErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }))
+    }
+  }
+
+  const validateCardPayment = (): boolean => {
+    if (paymentMethod !== 'card') return true
+
+    const newErrors: CardErrors = {}
+
+    if (!cardData.cardNumber.trim()) {
+      newErrors.cardNumber = 'Card number is required'
+    } else if (!/^\d{13,19}$/.test(cardData.cardNumber.replace(/\s/g, ''))) {
+      newErrors.cardNumber = 'Please enter a valid card number'
+    }
+
+    if (!cardData.expiry.trim()) {
+      newErrors.expiry = 'Expiry date is required'
+    } else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardData.expiry)) {
+      newErrors.expiry = 'Use format MM/YY'
+    }
+
+    if (!cardData.cvv.trim()) {
+      newErrors.cvv = 'CVV is required'
+    } else if (!/^\d{3,4}$/.test(cardData.cvv)) {
+      newErrors.cvv = 'Invalid CVV'
+    }
+
+    if (!cardData.cardName.trim()) {
+      newErrors.cardName = 'Cardholder name is required'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!validateCardPayment()) {
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
+      // Store payment data for the review step
+      sessionStorage.setItem('checkoutPayment', JSON.stringify({
+        method: paymentMethod,
+        crypto: paymentMethod === 'crypto-processor' ? selectedNetwork : null,
+        usdAmount: finalTotal,
+      }))
+
       // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 1500))
       router.push('/checkout/review')
@@ -43,6 +340,18 @@ export default function PaymentPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background-dark flex items-center justify-center">
+        <div className="text-center">
+          <Icon name="loading" size={48} className="text-primary animate-spin mx-auto mb-4" />
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   if (items.length === 0) {
@@ -137,20 +446,37 @@ export default function PaymentPage() {
 
               <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Payment Method Selection */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod('crypto')}
-                    className={`relative flex flex-col items-center p-6 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
-                      paymentMethod === 'crypto' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
+                    onClick={() => setPaymentMethod('wallet')}
+                    className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
+                      paymentMethod === 'wallet' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
                     }`}
                   >
-                    <Icon name="bitcoin" size={32} className="text-primary mb-3" />
-                    <div className="text-white font-bold text-sm">Cryptocurrency</div>
-                    <div className="text-slate-500 text-xs mt-1">BTC, ETH, USDT</div>
-                    {paymentMethod === 'crypto' && (
-                      <div className="absolute top-3 right-3">
-                        <Icon name="check-circle" size={20} className="text-primary" />
+                    <Icon name="wallet" size={28} className="text-primary mb-2" />
+                    <div className="text-white font-bold text-sm">Pay with Wallet</div>
+                    <div className="text-slate-500 text-[10px] mt-1">ETH, BNB, MATIC</div>
+                    {paymentMethod === 'wallet' && (
+                      <div className="absolute top-2 right-2">
+                        <Icon name="check-circle" size={18} className="text-primary" />
+                      </div>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('crypto-processor')}
+                    className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
+                      paymentMethod === 'crypto-processor' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
+                    }`}
+                  >
+                    <Icon name="bitcoin" size={28} className="text-primary mb-2" />
+                    <div className="text-white font-bold text-sm">Crypto Invoice</div>
+                    <div className="text-slate-500 text-[10px] mt-1">BTC, ETH, USDT</div>
+                    {paymentMethod === 'crypto-processor' && (
+                      <div className="absolute top-2 right-2">
+                        <Icon name="check-circle" size={18} className="text-primary" />
                       </div>
                     )}
                   </button>
@@ -158,30 +484,173 @@ export default function PaymentPage() {
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('card')}
-                    className={`relative flex flex-col items-center p-6 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
+                    className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
                       paymentMethod === 'card' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
                     }`}
                   >
-                    <Icon name="credit-card" size={32} className="text-primary mb-3" />
+                    <Icon name="credit-card" size={28} className="text-primary mb-2" />
                     <div className="text-white font-bold text-sm">Credit Card</div>
-                    <div className="text-slate-500 text-xs mt-1">Visa, Mastercard</div>
+                    <div className="text-slate-500 text-[10px] mt-1">Visa, Mastercard</div>
                     {paymentMethod === 'card' && (
-                      <div className="absolute top-3 right-3">
-                        <Icon name="check-circle" size={20} className="text-primary" />
+                      <div className="absolute top-2 right-2">
+                        <Icon name="check-circle" size={18} className="text-primary" />
                       </div>
                     )}
                   </button>
                 </div>
 
-                {/* Crypto Payment */}
-                {paymentMethod === 'crypto' && (
+                {/* Wallet Payment */}
+                {paymentMethod === 'wallet' && (
                   <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
-                    <div className="text-center">
-                      <h3 className="text-white font-bold mb-2">Select Cryptocurrency</h3>
-                      <p className="text-slate-500 text-sm">Choose your preferred cryptocurrency</p>
+                    {/* Network Selection */}
+                    <div>
+                      <h3 className="text-white font-bold mb-3">Select Network</h3>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { name: 'Ethereum', symbol: 'ETH', icon: 'diamond' },
+                          { name: 'BNB Chain', symbol: 'BNB', icon: 'hexagon' },
+                          { name: 'Polygon', symbol: 'MATIC', icon: 'layers' },
+                        ].map((network) => (
+                          <button
+                            key={network.symbol}
+                            type="button"
+                            onClick={() => setSelectedNetwork(network.symbol as CryptoNetwork)}
+                            className={`p-3 bg-surface-dark border rounded-xl transition-colors text-center ${
+                              selectedNetwork === network.symbol
+                                ? 'border-primary ring-2 ring-primary/20'
+                                : 'border-border-dark hover:border-primary/50'
+                            }`}
+                          >
+                            <Icon name={network.icon} size={20} className="text-primary mx-auto mb-1" />
+                            <div className="text-white text-xs font-bold">{network.symbol}</div>
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    {/* Wallet Connection */}
+                    {!walletState.isConnected ? (
+                      <div className="text-center py-4">
+                        <Icon name="wallet" size={48} className="text-slate-600 mx-auto mb-4" />
+                        <p className="text-slate-400 text-sm mb-4">Connect your wallet to pay with crypto</p>
+                        <button
+                          type="button"
+                          onClick={connectWallet}
+                          disabled={paymentStatus === 'connecting'}
+                          className="bg-primary text-black font-bold px-8 py-3 rounded-xl hover:brightness-105 transition-all disabled:opacity-50"
+                        >
+                          {paymentStatus === 'connecting' ? (
+                            <span className="flex items-center gap-2">
+                              <Icon name="loading" size={18} className="animate-spin" />
+                              Connecting...
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              <Icon name="wallet" size={18} />
+                              Connect Wallet
+                            </span>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Connected Wallet Info */}
+                        <div className="bg-surface-dark rounded-xl p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                              <Icon name="wallet" size={20} className="text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-white text-sm font-bold">
+                                {walletState.address?.slice(0, 6)}...{walletState.address?.slice(-4)}
+                              </p>
+                              <p className="text-slate-500 text-xs">
+                                Balance: {parseFloat(walletState.balance || '0').toFixed(4)} {selectedNetwork}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={disconnectWallet}
+                            className="text-slate-400 hover:text-red-400 text-xs"
+                          >
+                            Disconnect
+                          </button>
+                        </div>
+
+                        {/* Payment Amount */}
+                        <div className="bg-surface-dark rounded-xl p-4 text-center">
+                          <p className="text-slate-400 text-sm mb-1">Amount to pay:</p>
+                          <p className="text-2xl font-bold text-white">{formatPrice(finalTotal)}</p>
+                          <p className="text-primary text-sm mt-1">≈ {getCryptoAmount(selectedNetwork)} {selectedNetwork}</p>
+                        </div>
+
+                        {/* Payment Status */}
+                        {paymentStatus === 'success' && (
+                          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center">
+                            <Icon name="check-circle" size={32} className="text-green-500 mx-auto mb-2" />
+                            <p className="text-green-400 font-bold">Payment Successful!</p>
+                            <p className="text-slate-400 text-xs mt-1">Redirecting...</p>
+                          </div>
+                        )}
+
+                        {txHash && paymentStatus === 'confirming' && (
+                          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center">
+                            <Icon name="loading" size={24} className="text-yellow-500 mx-auto mb-2 animate-spin" />
+                            <p className="text-yellow-400 font-bold text-sm">Confirming transaction...</p>
+                            <a
+                              href={`https://etherscan.io/tx/${txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary text-xs hover:underline mt-2 inline-block"
+                            >
+                              View on Etherscan →
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Pay Button */}
+                        {paymentStatus !== 'success' && paymentStatus !== 'confirming' && (
+                          <button
+                            type="button"
+                            onClick={processWalletPayment}
+                            disabled={paymentStatus === 'paying'}
+                            className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {paymentStatus === 'paying' ? (
+                              <>
+                                <Icon name="loading" size={20} className="animate-spin" />
+                                Processing Payment...
+                              </>
+                            ) : (
+                              <>
+                                <Icon name="flash" size={20} />
+                                Pay {getCryptoAmount(selectedNetwork)} {selectedNetwork}
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Wallet Error */}
+                    {walletError && (
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+                        <p className="text-red-400 text-sm">{walletError}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Crypto Processor Payment (Invoice-based) */}
+                {paymentMethod === 'crypto-processor' && (
+                  <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
+                    <div className="text-center">
+                      <h3 className="text-white font-bold mb-2">Pay with Crypto Invoice</h3>
+                      <p className="text-slate-500 text-sm">Send crypto to a unique payment address</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
                       {[
                         { name: 'Bitcoin', symbol: 'BTC', icon: 'bitcoin' },
                         { name: 'Ethereum', symbol: 'ETH', icon: 'diamond' },
@@ -190,24 +659,32 @@ export default function PaymentPage() {
                         <button
                           key={crypto.symbol}
                           type="button"
-                          onClick={() => setSelectedCrypto(crypto.symbol)}
-                          className={`p-4 bg-surface-dark border rounded-xl transition-colors text-center ${
-                            selectedCrypto === crypto.symbol
+                          onClick={() => setSelectedNetwork(crypto.symbol as CryptoNetwork)}
+                          className={`p-3 bg-surface-dark border rounded-xl transition-colors text-center ${
+                            selectedNetwork === crypto.symbol
                               ? 'border-primary ring-2 ring-primary/20'
                               : 'border-border-dark hover:border-primary/50'
                           }`}
                         >
-                          <Icon name={crypto.icon} size={24} className="text-primary mx-auto mb-2" />
-                          <div className="text-white text-sm font-bold">{crypto.symbol}</div>
-                          <div className="text-slate-500 text-xs">{crypto.name}</div>
+                          <Icon name={crypto.icon} size={20} className="text-primary mx-auto mb-1" />
+                          <div className="text-white text-xs font-bold">{crypto.symbol}</div>
                         </button>
                       ))}
                     </div>
 
                     <div className="bg-surface-dark rounded-xl p-4 text-center">
-                      <p className="text-slate-400 text-sm mb-2">Amount to pay:</p>
-                      <p className="text-2xl font-bold text-white">${total.toFixed(2)}</p>
-                      <p className="text-primary text-sm mt-1">≈ 0.00234 BTC</p>
+                      <p className="text-slate-400 text-sm mb-1">Amount to pay:</p>
+                      <p className="text-2xl font-bold text-white">{formatPrice(finalTotal)}</p>
+                      <p className="text-slate-500 text-xs mt-2">
+                        A payment invoice will be generated on the next step
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-surface-dark rounded-xl">
+                      <Icon name="info" size={20} className="text-slate-400" />
+                      <p className="text-slate-400 text-xs">
+                        Payments are processed securely. You&apos;ll receive a unique address to send your crypto.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -228,10 +705,14 @@ export default function PaymentPage() {
                           value={cardData.cardNumber}
                           onChange={handleCardChange}
                           placeholder="1234 5678 9012 3456"
-                          required={paymentMethod === 'card'}
-                          className="w-full bg-charcoal border-border-dark rounded-xl py-4 pl-14 pr-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                          className={`w-full bg-charcoal border rounded-xl py-4 pl-14 pr-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                            errors.cardNumber ? 'border-red-500' : 'border-border-dark'
+                          }`}
                         />
                       </div>
+                      {errors.cardNumber && (
+                        <p className="text-red-400 text-xs mt-1">{errors.cardNumber}</p>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-6">
@@ -246,9 +727,13 @@ export default function PaymentPage() {
                           value={cardData.expiry}
                           onChange={handleCardChange}
                           placeholder="MM/YY"
-                          required={paymentMethod === 'card'}
-                          className="w-full bg-charcoal border-border-dark rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                            errors.expiry ? 'border-red-500' : 'border-border-dark'
+                          }`}
                         />
+                        {errors.expiry && (
+                          <p className="text-red-400 text-xs mt-1">{errors.expiry}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <label htmlFor="cvv" className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
@@ -263,10 +748,14 @@ export default function PaymentPage() {
                           value={cardData.cvv}
                           onChange={handleCardChange}
                           placeholder="•••"
-                          required={paymentMethod === 'card'}
                           autoComplete="cc-csc"
-                          className="w-full bg-charcoal border-border-dark rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                            errors.cvv ? 'border-red-500' : 'border-border-dark'
+                          }`}
                         />
+                        {errors.cvv && (
+                          <p className="text-red-400 text-xs mt-1">{errors.cvv}</p>
+                        )}
                       </div>
                     </div>
 
@@ -281,9 +770,13 @@ export default function PaymentPage() {
                         value={cardData.cardName}
                         onChange={handleCardChange}
                         placeholder="John Doe"
-                        required={paymentMethod === 'card'}
-                        className="w-full bg-charcoal border-border-dark rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all"
+                        className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                          errors.cardName ? 'border-red-500' : 'border-border-dark'
+                        }`}
                       />
+                      {errors.cardName && (
+                        <p className="text-red-400 text-xs mt-1">{errors.cardName}</p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -296,24 +789,37 @@ export default function PaymentPage() {
                   </p>
                 </div>
 
-                {/* Navigation Buttons */}
-                <div className="flex gap-4">
+                {/* Navigation Buttons - Only show for non-wallet payments */}
+                {paymentMethod !== 'wallet' && (
+                  <div className="flex gap-4">
+                    <Link
+                      href="/checkout"
+                      className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-4 rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Icon name="arrow-left" size={18} />
+                      Back
+                    </Link>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Processing...' : 'Continue to Review'}
+                      {!isSubmitting && <Icon name="arrow-right" size={18} />}
+                    </button>
+                  </div>
+                )}
+
+                {/* Back button only for wallet payment */}
+                {paymentMethod === 'wallet' && !walletState.isConnected && (
                   <Link
                     href="/checkout"
-                    className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-4 rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2"
+                    className="w-full bg-surface-dark border border-border-dark text-white font-bold py-4 rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2"
                   >
                     <Icon name="arrow-left" size={18} />
-                    Back
+                    Back to Shipping
                   </Link>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Processing...' : 'Continue to Review'}
-                    {!isSubmitting && <Icon name="arrow-right" size={18} />}
-                  </button>
-                </div>
+                )}
               </form>
             </div>
           </div>
@@ -343,13 +849,19 @@ export default function PaymentPage() {
                   <span>Subtotal</span>
                   <span className="text-white">${total.toFixed(2)}</span>
                 </div>
+                {discountCode && discountAmount > 0 && (
+                  <div className="flex justify-between text-slate-400">
+                    <span>Discount <span className="text-xs text-primary">({discountCode})</span></span>
+                    <span className="text-primary">-${discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
                   <span className="text-white">$0.00</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-3 border-t border-border-dark">
                   <span className="text-white">Total</span>
-                  <span className="text-white">${total.toFixed(2)}</span>
+                  <span className="text-white">${(total - discountAmount).toFixed(2)}</span>
                 </div>
               </div>
             </div>

@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
+import { searchApi, AutocompleteResult } from '@/lib/api'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface SearchDropdownProps {
   isOpen: boolean
@@ -11,17 +13,6 @@ interface SearchDropdownProps {
   onViewAllResults: () => void
   inputRef?: React.RefObject<HTMLInputElement>
 }
-
-const recentSearches = [
-  'Python Bot',
-  'Global eSIM',
-]
-
-const trendingProducts = [
-  'High-Speed US Virtual Number',
-  'Discord Automation Suite',
-  '5G Travel eSIM Europe',
-]
 
 const popularCategories = [
   { label: 'Scripts', href: '/scripts' },
@@ -38,6 +29,78 @@ export default function SearchDropdown({
   inputRef,
 }: SearchDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const { formatPrice } = usePreferences()
+  const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteResult | null>(null)
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [trendingProducts, setTrendingProducts] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Load recent searches from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('recentSearches')
+      if (stored) {
+        try {
+          setRecentSearches(JSON.parse(stored).slice(0, 5))
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+    }
+  }, [])
+
+  // Fetch trending products on mount
+  useEffect(() => {
+    const fetchTrending = async () => {
+      const result = await searchApi.getTrending()
+      if (result.success && result.data) {
+        setTrendingProducts(result.data.slice(0, 5))
+      }
+    }
+    fetchTrending()
+  }, [])
+
+  // Debounced autocomplete
+  const fetchAutocomplete = useCallback(async (query: string) => {
+    if (!query || query.length < 2) {
+      setAutocompleteResults(null)
+      return
+    }
+
+    setIsLoading(true)
+    const result = await searchApi.autocomplete(query)
+    if (result.success && result.data) {
+      setAutocompleteResults(result.data)
+    }
+    setIsLoading(false)
+  }, [])
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchAutocomplete(searchQuery)
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery, fetchAutocomplete])
+
+  // Save search to recent searches
+  const saveRecentSearch = useCallback((search: string) => {
+    if (typeof window !== 'undefined' && search.trim()) {
+      const stored = localStorage.getItem('recentSearches')
+      let searches: string[] = []
+      if (stored) {
+        try {
+          searches = JSON.parse(stored)
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+      // Remove if exists and add to front
+      searches = [search, ...searches.filter((s) => s !== search)].slice(0, 10)
+      localStorage.setItem('recentSearches', JSON.stringify(searches))
+      setRecentSearches(searches.slice(0, 5))
+    }
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -68,13 +131,26 @@ export default function SearchDropdown({
     }
   }, [isOpen, onClose, inputRef])
 
+  const handleViewAll = () => {
+    if (searchQuery.trim()) {
+      saveRecentSearch(searchQuery.trim())
+    }
+    onViewAllResults()
+  }
+
   if (!isOpen) return null
+
+  const hasAutocomplete = autocompleteResults && (
+    autocompleteResults.products.length > 0 ||
+    autocompleteResults.categories.length > 0 ||
+    autocompleteResults.suggestions.length > 0
+  )
 
   return (
     <>
-      {/* Backdrop - positioned below the header */}
+      {/* Backdrop - positioned below the header, lower z-index than header */}
       <div
-        className="fixed inset-0 top-16 z-40 bg-black/65 backdrop-blur-sm"
+        className="fixed inset-x-0 bottom-0 top-[120px] md:top-[130px] z-40 bg-black/65 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -83,73 +159,177 @@ export default function SearchDropdown({
         ref={dropdownRef}
         className="absolute top-full left-0 w-full mt-2 bg-charcoal border-t-2 border-primary rounded-lg shadow-2xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto"
       >
-        {/* Recent Searches */}
-        <div className="p-4 border-b border-white/5">
-          <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
-            Recent Searches
-          </h5>
-          <div className="space-y-1">
-            {recentSearches.map((search, idx) => (
-              <Link
-                key={idx}
-                href={`/search?q=${encodeURIComponent(search)}`}
-                prefetch={true}
-                onClick={onClose}
-                className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
-              >
-                <Icon name="history" size={18} className="text-slate-500 group-hover:text-primary" />
-                {search}
-              </Link>
-            ))}
+        {/* Loading indicator */}
+        {isLoading && searchQuery.length >= 2 && (
+          <div className="p-4 text-center">
+            <Icon name="loading" size={20} className="animate-spin text-primary mx-auto" />
           </div>
-        </div>
+        )}
 
-        {/* Trending Products */}
-        <div className="p-4 border-b border-white/5">
-          <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
-            Trending Products
-          </h5>
-          <div className="space-y-1">
-            {trendingProducts.map((product, idx) => (
-              <Link
-                key={idx}
-                href={`/search?q=${encodeURIComponent(product)}`}
-                prefetch={true}
-                onClick={onClose}
-                className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
-              >
-                <Icon name="fire" size={18} className="text-orange-500" />
-                {product}
-              </Link>
-            ))}
-          </div>
-        </div>
+        {/* Autocomplete Results */}
+        {hasAutocomplete && !isLoading && (
+          <>
+            {/* Product Suggestions */}
+            {autocompleteResults.products.length > 0 && (
+              <div className="p-4 border-b border-white/5">
+                <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                  Products
+                </h5>
+                <div className="space-y-1">
+                  {autocompleteResults.products.map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/products/${product.slug}`}
+                      prefetch={true}
+                      onClick={() => {
+                        saveRecentSearch(searchQuery)
+                        onClose()
+                      }}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                    >
+                      <Icon name="package" size={18} className="text-slate-500 group-hover:text-primary" />
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate">{product.name}</div>
+                        <div className="text-xs text-slate-500">{formatPrice(Number(product.price))}</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* Popular Categories */}
-        <div className="p-4">
-          <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
-            Popular Categories
-          </h5>
-          <div className="flex flex-wrap gap-2 px-2">
-            {popularCategories.map((category) => (
-              <Link
-                key={category.label}
-                href={category.href}
-                prefetch={true}
-                onClick={onClose}
-                className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
-              >
-                {category.label}
-              </Link>
-            ))}
-          </div>
-        </div>
+            {/* Category Suggestions */}
+            {autocompleteResults.categories.length > 0 && (
+              <div className="p-4 border-b border-white/5">
+                <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                  Categories
+                </h5>
+                <div className="flex flex-wrap gap-2 px-2">
+                  {autocompleteResults.categories.map((category) => (
+                    <Link
+                      key={category.id}
+                      href={`/search?category=${category.slug}`}
+                      prefetch={true}
+                      onClick={() => {
+                        saveRecentSearch(searchQuery)
+                        onClose()
+                      }}
+                      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
+                    >
+                      {category.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Search Suggestions */}
+            {autocompleteResults.suggestions.length > 0 && (
+              <div className="p-4 border-b border-white/5">
+                <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                  Suggestions
+                </h5>
+                <div className="space-y-1">
+                  {autocompleteResults.suggestions.map((suggestion, idx) => (
+                    <Link
+                      key={idx}
+                      href={`/search?q=${encodeURIComponent(suggestion)}`}
+                      prefetch={true}
+                      onClick={() => {
+                        saveRecentSearch(suggestion)
+                        onClose()
+                      }}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                    >
+                      <Icon name="search" size={18} className="text-slate-500 group-hover:text-primary" />
+                      {suggestion}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Default content when no search query or no results */}
+        {!hasAutocomplete && !isLoading && (
+          <>
+            {/* Recent Searches */}
+            {recentSearches.length > 0 && (
+              <div className="p-4 border-b border-white/5">
+                <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                  Recent Searches
+                </h5>
+                <div className="space-y-1">
+                  {recentSearches.map((search, idx) => (
+                    <Link
+                      key={idx}
+                      href={`/search?q=${encodeURIComponent(search)}`}
+                      prefetch={true}
+                      onClick={onClose}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                    >
+                      <Icon name="history" size={18} className="text-slate-500 group-hover:text-primary" />
+                      {search}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Trending Products */}
+            {trendingProducts.length > 0 && (
+              <div className="p-4 border-b border-white/5">
+                <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                  Trending Searches
+                </h5>
+                <div className="space-y-1">
+                  {trendingProducts.map((product, idx) => (
+                    <Link
+                      key={idx}
+                      href={`/search?q=${encodeURIComponent(product)}`}
+                      prefetch={true}
+                      onClick={() => {
+                        saveRecentSearch(product)
+                        onClose()
+                      }}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                    >
+                      <Icon name="fire" size={18} className="text-orange-500" />
+                      {product}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Popular Categories */}
+            <div className="p-4">
+              <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                Popular Categories
+              </h5>
+              <div className="flex flex-wrap gap-2 px-2">
+                {popularCategories.map((category) => (
+                  <Link
+                    key={category.label}
+                    href={category.href}
+                    prefetch={true}
+                    onClick={onClose}
+                    className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
+                  >
+                    {category.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* View All Results */}
         {searchQuery && (
           <div className="bg-white/5 p-3 text-center border-t border-white/5">
             <button
-              onClick={onViewAllResults}
+              onClick={handleViewAll}
               className="text-xs font-bold text-primary hover:underline"
             >
               View all results for &quot;{searchQuery}&quot;

@@ -1,0 +1,484 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import AdminLayout from '@/components/admin/AdminLayout'
+import Icon from '@/components/ui/Icon'
+import MediaPickerModal from '@/components/admin/MediaPickerModal'
+import { productsApi } from '@/lib/api/products'
+import { categoriesApi, Category } from '@/lib/api/categories'
+
+export default function NewProductPage() {
+  const router = useRouter()
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showMediaPicker, setShowMediaPicker] = useState(false)
+
+  const [formData, setFormData] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    shortDescription: '',
+    price: '',
+    comparePrice: '',
+    costPrice: '',
+    stock: '',
+    lowStockThreshold: '10',
+    categoryId: '',
+    status: 'DRAFT' as 'DRAFT' | 'ACTIVE' | 'ARCHIVED',
+    isDigital: true,
+    isFeatured: false,
+    imageUrl: '',
+  })
+
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
+  async function loadCategories() {
+    const result = await categoriesApi.list()
+    if (result.success && result.data) {
+      setCategories(result.data)
+    }
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    const { name, value, type } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }))
+  }
+
+  function generateSlug(name: string) {
+    return name.toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+  }
+
+  function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const name = e.target.value
+    setFormData(prev => ({
+      ...prev,
+      name,
+      slug: generateSlug(name)
+    }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      // Validate required fields
+      if (!formData.name || !formData.name.trim()) {
+        setError('Product name is required')
+        setLoading(false)
+        return
+      }
+
+      if (!formData.price || parseFloat(formData.price) <= 0) {
+        setError('Valid price is required')
+        setLoading(false)
+        return
+      }
+
+      const productData = {
+        name: formData.name.trim(),
+        slug: formData.slug || generateSlug(formData.name),
+        description: formData.description && formData.description.trim() ? formData.description.trim() : undefined,
+        shortDescription: formData.shortDescription && formData.shortDescription.trim() ? formData.shortDescription.trim() : undefined,
+        price: parseFloat(formData.price),
+        comparePrice: formData.comparePrice ? parseFloat(formData.comparePrice) : undefined,
+        costPrice: formData.costPrice ? parseFloat(formData.costPrice) : undefined,
+        stock: formData.stock ? parseInt(formData.stock) : 0,
+        lowStockThreshold: formData.lowStockThreshold ? parseInt(formData.lowStockThreshold) : 10,
+        categoryId: formData.categoryId || undefined,
+        status: formData.status,
+        isDigital: formData.isDigital,
+        isFeatured: formData.isFeatured,
+      }
+
+      console.log('Creating product with data:', productData)
+
+      const result = await productsApi.create(productData)
+
+      if (result.success && result.data) {
+        // Add image if provided
+        if (formData.imageUrl && formData.imageUrl.trim()) {
+          await productsApi.addImage(result.data.id, {
+            url: formData.imageUrl,
+            isPrimary: true,
+          })
+        }
+
+        router.push('/admin/products')
+      } else {
+        const errorMsg = result.error || 'Failed to create product'
+        console.error('Product creation failed:', errorMsg)
+        setError(errorMsg)
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'An error occurred while creating the product'
+      console.error('Product creation error:', err)
+      setError(errorMsg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <AdminLayout>
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => router.back()}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <Icon name="arrow-left" size={20} className="text-white" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Add New Product</h1>
+            <p className="text-slate-400 text-sm">Create a new product for your marketplace</p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
+            <p className="text-red-400">{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Basic Information</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Product Name *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleNameChange}
+                  required
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Ultimate CRM Script Pro"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  URL Slug
+                </label>
+                <input
+                  type="text"
+                  name="slug"
+                  value={formData.slug}
+                  onChange={handleChange}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="ultimate-crm-script-pro"
+                />
+                <p className="text-xs text-slate-500 mt-1">Auto-generated from product name</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Short Description
+                </label>
+                <input
+                  type="text"
+                  name="shortDescription"
+                  value={formData.shortDescription}
+                  onChange={handleChange}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Brief one-line description"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Full Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows={4}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Detailed product description..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing & Inventory */}
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Pricing & Inventory</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Price * ($)
+                </label>
+                <input
+                  type="number"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  step="0.01"
+                  min="0"
+                  required
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="49.99"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Compare at Price ($)
+                </label>
+                <input
+                  type="number"
+                  name="comparePrice"
+                  value={formData.comparePrice}
+                  onChange={handleChange}
+                  step="0.01"
+                  min="0"
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="99.99"
+                />
+                <p className="text-xs text-slate-500 mt-1">Original price (for discounts)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Cost Price ($)
+                </label>
+                <input
+                  type="number"
+                  name="costPrice"
+                  value={formData.costPrice}
+                  onChange={handleChange}
+                  step="0.01"
+                  min="0"
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="25.00"
+                />
+                <p className="text-xs text-slate-500 mt-1">Your cost (for profit tracking)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Stock Quantity
+                </label>
+                <input
+                  type="number"
+                  name="stock"
+                  value={formData.stock}
+                  onChange={handleChange}
+                  min="0"
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Low Stock Alert
+                </label>
+                <input
+                  type="number"
+                  name="lowStockThreshold"
+                  value={formData.lowStockThreshold}
+                  onChange={handleChange}
+                  min="0"
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="10"
+                />
+                <p className="text-xs text-slate-500 mt-1">Alert when stock falls below this</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Category
+                </label>
+                <select
+                  name="categoryId"
+                  value={formData.categoryId}
+                  onChange={handleChange}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">No Category</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Product Image */}
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Product Image</h2>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Product Image
+              </label>
+
+              {formData.imageUrl ? (
+                <div className="space-y-3">
+                  <div className="relative w-48 h-48 rounded-lg border-2 border-[#2a2a2a] overflow-hidden group">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Product preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowMediaPicker(true)}
+                        className="p-2 bg-primary text-black rounded-lg hover:bg-primary/90 transition-colors"
+                      >
+                        <Icon name="edit" size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                        className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                      >
+                        <Icon name="trash" size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMediaPicker(true)}
+                    className="text-primary text-sm hover:underline"
+                  >
+                    Change Image
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowMediaPicker(true)}
+                  className="w-full border-2 border-dashed border-[#2a2a2a] rounded-lg p-8 hover:border-primary/50 transition-colors"
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-12 h-12 bg-[#1a1a1a] rounded-lg flex items-center justify-center">
+                      <Icon name="image" size={24} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Select from Library</p>
+                      <p className="text-slate-500 text-sm">or upload a new image</p>
+                    </div>
+                  </div>
+                </button>
+              )}
+              <p className="text-xs text-slate-500 mt-2">Recommended: 800x800px or larger</p>
+            </div>
+          </div>
+
+          {/* Settings */}
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Product Settings</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="DRAFT">Draft</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="ARCHIVED">Archived</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isDigital"
+                  name="isDigital"
+                  checked={formData.isDigital}
+                  onChange={handleChange}
+                  className="w-4 h-4 bg-[#1a1a1a] border-[#2a2a2a] rounded focus:ring-primary"
+                />
+                <label htmlFor="isDigital" className="text-sm text-slate-300">
+                  Digital Product (no shipping required)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isFeatured"
+                  name="isFeatured"
+                  checked={formData.isFeatured}
+                  onChange={handleChange}
+                  className="w-4 h-4 bg-[#1a1a1a] border-[#2a2a2a] rounded focus:ring-primary"
+                />
+                <label htmlFor="isFeatured" className="text-sm text-slate-300">
+                  Featured Product (show on homepage)
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="px-6 py-2 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2 bg-primary hover:bg-primary/90 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Icon name="add" size={16} />
+                  Create Product
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Media Picker Modal */}
+      <MediaPickerModal
+        isOpen={showMediaPicker}
+        onClose={() => setShowMediaPicker(false)}
+        onSelect={(file) => {
+          setFormData(prev => ({ ...prev, imageUrl: file.url }))
+          setShowMediaPicker(false)
+        }}
+        allowedTypes={['image']}
+        title="Select Product Image"
+      />
+    </AdminLayout>
+  )
+}

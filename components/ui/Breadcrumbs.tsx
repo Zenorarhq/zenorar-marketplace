@@ -60,8 +60,23 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
     return null
   }
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: breadcrumbs.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.label,
+      ...(item.href ? { item: item.href } : {}),
+    })),
+  }
+
   return (
     <nav className={`flex items-center gap-2 mb-6 ${className}`} aria-label="Breadcrumb">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <ol className="flex items-center gap-2 text-sm">
         {breadcrumbs.map((item, index) => {
           const isLast = index === breadcrumbs.length - 1

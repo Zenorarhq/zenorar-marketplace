@@ -2,6 +2,7 @@ import HeroSection from '@/components/sections/HeroSection'
 import MostPopular from '@/components/sections/MostPopular'
 import PromoBanner from '@/components/sections/PromoBanner'
 import ScriptCategories from '@/components/sections/ScriptCategories'
+import TrustBanner from '@/components/sections/TrustBanner'
 import Connectivity from '@/components/sections/Connectivity'
 
 export default function Home() {
@@ -9,6 +10,7 @@ export default function Home() {
     <main className="max-w-container mx-auto px-8 lg:px-12 py-8 w-full">
       <HeroSection />
       <MostPopular />
+      <TrustBanner />
       <PromoBanner />
       <ScriptCategories />
       <Connectivity />

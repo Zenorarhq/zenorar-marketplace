@@ -1,42 +1,81 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { recommendedProducts } from '@/lib/mock-data'
 import RecommendedCard from '@/components/cards/RecommendedCard'
 import Icon from '@/components/ui/Icon'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
+// Recommended product shape from our local API
+interface RecommendedProduct {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  price: number
+  is_featured: boolean
+  category_name: string | null
+  average_rating: number
+  review_count: number
+  images: { url: string; isPrimary: boolean }[] | null
+}
 
-const banners = [
-  {
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC9zmjTWwkSIvRt_r_zJS1pESJGySilOPv_BT2beUj4tLs8wRpIY4iW-nRJQd6OJ8IyrG8LJqg9QEkdv8fJxxqkZb3a4HFt31h8q2F8BZ_LANkp-OfbK4graOrsBsDt_4oxxO7ZJEVt4-OJfGKJHbHLxrqO1cHeksGSqsL_JhUaq-tsTCFwj0P98Zm3q6YSDwAFYy54t87GRKruTCmcWfOsij78_GYuyfu2OUsm_iReGEX1oCqxRIOveP0rQio4MOzBF7sB7e-m2OTF',
-    title: 'Power Your',
-    titleHighlight: 'Digital World',
-    subtitle: 'Access premium scripts, instant connectivity, and essential tools for the modern digital life.',
-    buttonText: 'Shop Now',
-    buttonLink: '/products',
-  },
+const DEFAULT_BANNERS = [
   {
     image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070&auto=format&fit=crop',
     title: 'Premium',
     titleHighlight: 'Scripts & Tools',
     subtitle: 'Discover our collection of high-quality automation scripts, bots, and developer tools.',
     buttonText: 'Browse Scripts',
-    buttonLink: '/products?category=scripts',
+    buttonLink: '/scripts',
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?q=80&w=2070&auto=format&fit=crop',
+    title: 'Digital',
+    titleHighlight: 'Gift Cards',
+    subtitle: 'Shop gift cards for your favorite platforms, games, and services worldwide.',
+    buttonText: 'Buy Gift Cards',
+    buttonLink: '/gift-cards',
   },
   {
     image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=2070&auto=format&fit=crop',
-    title: 'Stay Connected',
-    titleHighlight: 'Anywhere',
-    subtitle: 'Global eSIMs and virtual numbers for seamless connectivity in 190+ countries.',
-    buttonText: 'Get Connected',
-    buttonLink: '/products?category=esims',
+    title: 'Global',
+    titleHighlight: 'eSIMs',
+    subtitle: 'Stay connected anywhere with instant eSIMs for 190+ countries worldwide.',
+    buttonText: 'Get eSIM',
+    buttonLink: '/esim',
+  },
+  {
+    image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=2070&auto=format&fit=crop',
+    title: 'Virtual',
+    titleHighlight: 'Phone Numbers',
+    subtitle: 'Get instant virtual numbers for SMS verification and privacy protection.',
+    buttonText: 'Get Number',
+    buttonLink: '/virtual-numbers',
   },
 ]
 
 export default function HeroSection() {
+  const { rawSettings } = useSiteSettings()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [recommended, setRecommended] = useState<RecommendedProduct[]>([])
+  const touchStartX = useRef(0)
+  const touchEndX = useRef(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Use CMS slides if available, otherwise fall back to defaults
+  const banners = useMemo(() => {
+    try {
+      const raw = rawSettings.home_hero_slides
+      if (!raw) return DEFAULT_BANNERS
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      // Handle wrapped format { value: "..." }
+      const data = parsed?.value ? (typeof parsed.value === 'string' ? JSON.parse(parsed.value) : parsed.value) : parsed
+      if (Array.isArray(data) && data.length > 0) return data
+    } catch {}
+    return DEFAULT_BANNERS
+  }, [rawSettings.home_hero_slides])
 
   const goToSlide = useCallback((index: number) => {
     if (isTransitioning) return
@@ -49,18 +88,66 @@ export default function HeroSection() {
     goToSlide((currentSlide + 1) % banners.length)
   }, [currentSlide, goToSlide])
 
+  const prevSlide = useCallback(() => {
+    goToSlide((currentSlide - 1 + banners.length) % banners.length)
+  }, [currentSlide, goToSlide])
+
+  // Reset slide index if slides change and current is out of bounds
+  useEffect(() => {
+    if (currentSlide >= banners.length) setCurrentSlide(0)
+  }, [banners.length, currentSlide])
+
   // Auto-slide every 5 seconds
   useEffect(() => {
     const interval = setInterval(nextSlide, 5000)
     return () => clearInterval(interval)
   }, [nextSlide])
 
+  // Fetch recommended products from local API (no auth required)
+  useEffect(() => {
+    fetch('/api/products/recommended')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          setRecommended(data.data)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Handle touch/swipe events
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current - touchEndX.current > 50) {
+      // Swiped left - go to next slide
+      nextSlide()
+    }
+
+    if (touchStartX.current - touchEndX.current < -50) {
+      // Swiped right - go to previous slide
+      prevSlide()
+    }
+  }
+
   const currentBanner = banners[currentSlide]
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
       {/* Main Hero */}
-      <div className="lg:col-span-2 relative rounded-2xl overflow-hidden bg-surface-dark border border-border-dark min-h-[440px] flex items-center">
+      <div
+        ref={containerRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="lg:col-span-2 relative rounded-2xl overflow-hidden bg-surface-dark border border-border-dark min-h-[300px] md:min-h-[400px] lg:min-h-[440px] flex items-center touch-pan-y"
+      >
         {/* Background Images */}
         {banners.map((banner, index) => (
           <div
@@ -82,38 +169,38 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
 
         {/* Content */}
-        <div className="relative z-10 px-12 max-w-lg">
+        <div className="relative z-10 px-4 sm:px-6 md:px-8 lg:px-12 max-w-lg">
           <div
             key={currentSlide}
             className="animate-fade-in"
           >
-            <h1 className="text-5xl font-bold text-white mb-4 leading-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 md:mb-4 leading-tight">
               {currentBanner.title} <br />
               <span className="text-primary">{currentBanner.titleHighlight}</span>
             </h1>
-            <p className="text-slate-300 mb-8 text-lg">
+            <p className="text-slate-300 mb-4 md:mb-6 lg:mb-8 text-sm sm:text-base md:text-lg">
               {currentBanner.subtitle}
             </p>
 
             <Link
               href={currentBanner.buttonLink}
-              className="bg-primary text-black font-bold px-8 py-3 rounded-lg flex items-center gap-2 hover:scale-105 transition-transform group inline-flex"
+              className="bg-primary text-black font-bold px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-lg flex items-center gap-2 hover:scale-105 transition-transform group inline-flex text-sm sm:text-base"
             >
               {currentBanner.buttonText}
-              <Icon name="arrow-up-right" size={20} className="transition-transform group-hover:translate-x-1" />
+              <Icon name="arrow-up-right" size={18} className="transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
 
           {/* Carousel Dots */}
-          <div className="flex gap-2 mt-12">
+          <div className="flex gap-2 mt-6 md:mt-8 lg:mt-12">
             {banners.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
+                className={`h-1 md:h-1.5 rounded-full transition-all duration-300 ${
                   index === currentSlide
-                    ? 'w-8 bg-primary'
-                    : 'w-2 bg-slate-600 hover:bg-slate-500'
+                    ? 'w-6 md:w-8 bg-primary'
+                    : 'w-1.5 md:w-2 bg-slate-600 hover:bg-slate-500'
                 }`}
                 aria-label={`Go to slide ${index + 1}`}
               />
@@ -121,17 +208,17 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* Navigation Arrows */}
+        {/* Navigation Arrows - Hidden on mobile to avoid interference with swipe */}
         <button
-          onClick={() => goToSlide((currentSlide - 1 + banners.length) % banners.length)}
-          className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 border border-white/20 flex items-center justify-center text-white hover:bg-black/70 transition-colors z-20"
+          onClick={prevSlide}
+          className="hidden md:flex absolute left-2 md:left-4 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/50 border border-white/20 items-center justify-center text-white hover:bg-black/70 transition-colors z-20"
           aria-label="Previous slide"
         >
           <Icon name="arrow-left" size={16} />
         </button>
         <button
-          onClick={() => goToSlide((currentSlide + 1) % banners.length)}
-          className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 border border-white/20 flex items-center justify-center text-white hover:bg-black/70 transition-colors z-20"
+          onClick={nextSlide}
+          className="hidden md:flex absolute right-2 md:right-4 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/50 border border-white/20 items-center justify-center text-white hover:bg-black/70 transition-colors z-20"
           aria-label="Next slide"
         >
           <Icon name="arrow-right" size={16} />
@@ -143,8 +230,24 @@ export default function HeroSection() {
         <h3 className="font-bold text-lg mb-6">Recommended for you</h3>
 
         <div className="space-y-6">
-          {recommendedProducts.map((product) => (
-            <RecommendedCard key={product.id} product={product} />
+          {recommended.map((product) => (
+            <RecommendedCard
+              key={product.id}
+              product={{
+                id: product.id,
+                name: product.name,
+                slug: product.slug,
+                description: product.description || '',
+                price: product.price,
+                rating: Number(product.average_rating) || 0,
+                reviewCount: Number(product.review_count) || 0,
+                category: product.category_name || '',
+                icon: 'box',
+                iconColor: 'primary',
+                tags: [],
+                image: product.images?.find((img) => img.isPrimary)?.url || product.images?.[0]?.url,
+              }}
+            />
           ))}
         </div>
       </div>
