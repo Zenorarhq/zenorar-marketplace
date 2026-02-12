@@ -97,7 +97,7 @@ export default function AdminReportsPage() {
 
   // Calculate stats from real data
   const totalRevenue = financeOverview?.totalRevenue || 0
-  const totalOrders = ordersStats?.total || 0
+  const totalOrders = ordersStats?.totalOrders || 0
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
   const refundRate = financeOverview?.totalRefunds && totalRevenue > 0
     ? (financeOverview.totalRefunds / totalRevenue) * 100

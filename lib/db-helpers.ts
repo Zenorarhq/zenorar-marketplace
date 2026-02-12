@@ -2,7 +2,7 @@ import db from './db'
 import { PoolClient, QueryResult } from 'pg'
 
 // Execute a single query with error handling
-export async function executeQuery<T = any>(
+export async function executeQuery<T extends Record<string, any> = any>(
   query: string,
   params: any[] = []
 ): Promise<QueryResult<T>> {

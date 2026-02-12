@@ -250,9 +250,9 @@ export default function MediaPickerModal({
                         <div className="p-2">
                           <h4
                             className="text-white text-xs font-medium truncate"
-                            title={file.title || file.originalName}
+                            title={file.title || file.name}
                           >
-                            {file.title || file.originalName}
+                            {file.title || file.name}
                           </h4>
                           <p className="text-slate-500 text-xs">{formatFileSize(file.size)}</p>
                         </div>

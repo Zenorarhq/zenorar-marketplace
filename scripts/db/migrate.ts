@@ -27,7 +27,7 @@ async function migrate() {
     const executedResult = await client.query(
       'SELECT name FROM migrations ORDER BY name'
     )
-    const executed = new Set(executedResult.rows.map(r => r.name))
+    const executed = new Set(executedResult.rows.map((r: any) => r.name))
 
     // Read migration files from migrations directory
     const migrationsDir = join(__dirname, 'migrations')

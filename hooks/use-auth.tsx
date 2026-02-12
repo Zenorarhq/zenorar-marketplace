@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const result = await authApi.me()
     if (result.success && result.data) {
-      setUser(result.data)
+      setUser((result.data as any)?.user || result.data)
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(result.data))
       }

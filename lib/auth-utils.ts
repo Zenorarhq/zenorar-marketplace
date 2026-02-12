@@ -25,11 +25,11 @@ export interface TokenPayload {
 
 export function signAccessToken(userId: string, role: string, email: string): string {
   const payload: TokenPayload = { userId, role, email }
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions)
 }
 
 export function signRefreshToken(userId: string): string {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN })
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN } as jwt.SignOptions)
 }
 
 export function verifyAccessToken(token: string): TokenPayload | null {
