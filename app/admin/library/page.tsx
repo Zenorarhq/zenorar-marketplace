@@ -457,7 +457,7 @@ export default function AdminLibraryPage() {
                 <label className="text-sm font-medium text-slate-300">File Name</label>
                 <input
                   type="text"
-                  value={editingUpload.originalName}
+                  value={editingUpload.name}
                   disabled
                   className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-slate-500 cursor-not-allowed"
                 />
