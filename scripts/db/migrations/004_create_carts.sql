@@ -1,7 +1,7 @@
 -- Create carts table
 CREATE TABLE IF NOT EXISTS carts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
   session_id VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
@@ -10,14 +10,15 @@ CREATE TABLE IF NOT EXISTS carts (
 
 -- Create cart_items table
 CREATE TABLE IF NOT EXISTS cart_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cart_id UUID REFERENCES carts(id) ON DELETE CASCADE,
-  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
-  variant_id UUID REFERENCES product_variants(id) ON DELETE SET NULL,
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+  cart_id TEXT REFERENCES carts(id) ON DELETE CASCADE,
+  product_id TEXT REFERENCES products(id) ON DELETE CASCADE,
   quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  license VARCHAR(20) DEFAULT 'standard',
+  price DECIMAL(10, 2),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(cart_id, product_id, variant_id)
+  UNIQUE(cart_id, product_id, license)
 );
 
 -- Create indexes for carts

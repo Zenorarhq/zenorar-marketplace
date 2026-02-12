@@ -3,11 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 
 export default function Footer() {
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [subscribed, setSubscribed] = useState(false)
+  const { siteName, siteDescription, logoUrl } = useSiteSettings()
   const currentYear = new Date().getFullYear()
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
@@ -38,11 +40,14 @@ export default function Footer() {
               href="/"
               className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary mb-6"
             >
-              <Icon name="grid-view" size={24} />
-              Marketplace
+              {logoUrl ? (
+                <img src={logoUrl} alt={siteName} className="h-9 w-auto object-contain" />
+              ) : siteName ? (
+                <span>{siteName}</span>
+              ) : null}
             </Link>
             <p className="text-slate-500 text-sm leading-relaxed">
-              The premier destination for high-quality scripts, global connectivity solutions, and digital tools for professionals.
+              {siteDescription || 'The premier destination for high-quality scripts, global connectivity solutions, and digital tools for professionals.'}
             </p>
           </div>
 
@@ -190,7 +195,7 @@ export default function Footer() {
 
       {/* Bottom Bar */}
       <div className="max-w-container mx-auto px-4 sm:px-8 lg:px-12 border-t border-border-dark pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-xs">
-        <p>&copy; {currentYear} Marketplace Inc. All rights reserved.</p>
+        <p>&copy; {currentYear} {siteName}. All rights reserved.</p>
         <div className="flex gap-8">
           <Link href="/terms" className="hover:text-slate-300 transition-colors">
             Terms

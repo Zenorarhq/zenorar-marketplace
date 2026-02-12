@@ -1,13 +1,26 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { recommendedProducts } from '@/lib/mock-data'
 import RecommendedCard from '@/components/cards/RecommendedCard'
 import Icon from '@/components/ui/Icon'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
+// Recommended product shape from our local API
+interface RecommendedProduct {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  price: number
+  is_featured: boolean
+  category_name: string | null
+  average_rating: number
+  review_count: number
+  images: { url: string; isPrimary: boolean }[] | null
+}
 
-const banners = [
+const DEFAULT_BANNERS = [
   {
     image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070&auto=format&fit=crop',
     title: 'Premium',
@@ -43,11 +56,26 @@ const banners = [
 ]
 
 export default function HeroSection() {
+  const { rawSettings } = useSiteSettings()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [recommended, setRecommended] = useState<RecommendedProduct[]>([])
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Use CMS slides if available, otherwise fall back to defaults
+  const banners = useMemo(() => {
+    try {
+      const raw = rawSettings.home_hero_slides
+      if (!raw) return DEFAULT_BANNERS
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      // Handle wrapped format { value: "..." }
+      const data = parsed?.value ? (typeof parsed.value === 'string' ? JSON.parse(parsed.value) : parsed.value) : parsed
+      if (Array.isArray(data) && data.length > 0) return data
+    } catch {}
+    return DEFAULT_BANNERS
+  }, [rawSettings.home_hero_slides])
 
   const goToSlide = useCallback((index: number) => {
     if (isTransitioning) return
@@ -64,11 +92,28 @@ export default function HeroSection() {
     goToSlide((currentSlide - 1 + banners.length) % banners.length)
   }, [currentSlide, goToSlide])
 
+  // Reset slide index if slides change and current is out of bounds
+  useEffect(() => {
+    if (currentSlide >= banners.length) setCurrentSlide(0)
+  }, [banners.length, currentSlide])
+
   // Auto-slide every 5 seconds
   useEffect(() => {
     const interval = setInterval(nextSlide, 5000)
     return () => clearInterval(interval)
   }, [nextSlide])
+
+  // Fetch recommended products from local API (no auth required)
+  useEffect(() => {
+    fetch('/api/products/recommended')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          setRecommended(data.data)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   // Handle touch/swipe events
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -185,8 +230,24 @@ export default function HeroSection() {
         <h3 className="font-bold text-lg mb-6">Recommended for you</h3>
 
         <div className="space-y-6">
-          {recommendedProducts.map((product) => (
-            <RecommendedCard key={product.id} product={product} />
+          {recommended.map((product) => (
+            <RecommendedCard
+              key={product.id}
+              product={{
+                id: product.id,
+                name: product.name,
+                slug: product.slug,
+                description: product.description || '',
+                price: product.price,
+                rating: Number(product.average_rating) || 0,
+                reviewCount: Number(product.review_count) || 0,
+                category: product.category_name || '',
+                icon: 'box',
+                iconColor: 'primary',
+                tags: [],
+                image: product.images?.find((img) => img.isPrimary)?.url || product.images?.[0]?.url,
+              }}
+            />
           ))}
         </div>
       </div>

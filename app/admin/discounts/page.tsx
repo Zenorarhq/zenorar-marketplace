@@ -6,9 +6,15 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { formatNumber, formatCurrency } from '@/lib/formatNumber'
 import { discountsApi, Discount } from '@/lib/api/discounts'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTimezone } from '@/hooks/use-timezone'
+import { formatDateShort } from '@/lib/date-utils'
 
 export default function DiscountsPage() {
   const queryClient = useQueryClient()
+  const { isAuthenticated } = useAuth()
+  const tz = useTimezone()
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingDiscount, setEditingDiscount] = useState<Discount | null>(null)
   const [formData, setFormData] = useState({
@@ -32,6 +38,7 @@ export default function DiscountsPage() {
       }
       return []
     },
+    enabled: isAuthenticated,
   })
 
   // Fetch stats
@@ -44,36 +51,61 @@ export default function DiscountsPage() {
       }
       return null
     },
+    enabled: isAuthenticated,
   })
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: any) => discountsApi.create(data),
+    mutationFn: async (data: any) => {
+      const result = await discountsApi.create(data)
+      if (!result.success) throw new Error(result.error || 'Failed to create discount')
+      return result
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-discounts'] })
       queryClient.invalidateQueries({ queryKey: ['admin-discount-stats'] })
       setShowAddModal(false)
       resetForm()
+      setMessage({ type: 'success', text: 'Discount code created successfully!' })
+    },
+    onError: (error: Error) => {
+      setMessage({ type: 'error', text: error.message })
     },
   })
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => discountsApi.update(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const result = await discountsApi.update(id, data)
+      if (!result.success) throw new Error(result.error || 'Failed to update discount')
+      return result
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-discounts'] })
       queryClient.invalidateQueries({ queryKey: ['admin-discount-stats'] })
       setEditingDiscount(null)
       resetForm()
+      setMessage({ type: 'success', text: 'Discount code updated successfully!' })
+    },
+    onError: (error: Error) => {
+      setMessage({ type: 'error', text: error.message })
     },
   })
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => discountsApi.delete(id),
+    mutationFn: async (id: string) => {
+      const result = await discountsApi.delete(id)
+      if (!result.success) throw new Error(result.error || 'Failed to delete discount')
+      return result
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-discounts'] })
       queryClient.invalidateQueries({ queryKey: ['admin-discount-stats'] })
+      setMessage({ type: 'success', text: 'Discount code deleted!' })
+    },
+    onError: (error: Error) => {
+      setMessage({ type: 'error', text: error.message })
     },
   })
 
@@ -138,6 +170,12 @@ export default function DiscountsPage() {
 
   return (
     <AdminLayout>
+      {message && (
+        <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+          {message.text}
+          <button onClick={() => setMessage(null)} className="float-right text-xs opacity-70 hover:opacity-100">✕</button>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-3 mb-6">
         <div className="min-w-0 flex-1">
           <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">Discounts</h1>
@@ -278,11 +316,7 @@ export default function DiscountsPage() {
                     </td>
                     <td className="px-5 py-3 text-slate-400 text-sm">
                       {discount.expiresAt
-                        ? new Date(discount.expiresAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
+                        ? formatDateShort(discount.expiresAt, tz)
                         : 'Never'}
                     </td>
                     <td className="px-5 py-3">

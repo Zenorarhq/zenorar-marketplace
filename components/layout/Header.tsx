@@ -12,6 +12,9 @@ import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import PreferencesDialog from '@/components/dialogs/PreferencesDialog'
 import SearchDropdown from '@/components/search/SearchDropdown'
+import CartPopupWrapper from '@/components/cart/CartPopupWrapper'
+import CartDropdown from '@/components/cart/CartDropdown'
+import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import { navCategories } from '@/lib/mock-data'
 
 export default function Header() {
@@ -21,15 +24,18 @@ export default function Header() {
   const { user, isAuthenticated, logout } = useAuth()
   const { preferences } = usePreferences()
   const { unreadCount } = useNotifications()
+  const { siteName, logoUrl } = useSiteSettings()
   const [searchQuery, setSearchQuery] = useState('')
   const [showPreferences, setShowPreferences] = useState(false)
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showMobileUserMenu, setShowMobileUserMenu] = useState(false)
+  const [showCartDropdown, setShowCartDropdown] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const mobileUserMenuRef = useRef<HTMLDivElement>(null)
+  const cartDropdownRef = useRef<HTMLDivElement>(null)
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -116,6 +122,19 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showMobileUserMenu])
 
+  // Close cart dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cartDropdownRef.current && !cartDropdownRef.current.contains(event.target as Node)) {
+        setShowCartDropdown(false)
+      }
+    }
+    if (showCartDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showCartDropdown])
+
   return (
     <>
       <header className="border-b border-border-dark bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
@@ -138,10 +157,11 @@ export default function Header() {
               href="/"
               className="flex items-center gap-1.5 sm:gap-2 font-bold text-base sm:text-lg md:text-xl tracking-tight text-primary flex-shrink-0"
             >
-              <span className="hidden md:flex w-6 h-6 items-center justify-center [&>svg]:w-full [&>svg]:h-full">
-                <Icon name="grid-view" size={24} />
-              </span>
-              <span>Marketplace</span>
+              {logoUrl ? (
+                <img src={logoUrl} alt={siteName} className="h-8 sm:h-9 md:h-10 w-auto object-contain" />
+              ) : siteName ? (
+                <span>{siteName}</span>
+              ) : null}
             </Link>
           </div>
 
@@ -265,6 +285,14 @@ export default function Header() {
                       <Icon name="library" size={16} />
                       Library
                     </Link>
+                    <Link
+                      href="/profile/wishlist"
+                      onClick={() => setShowMobileUserMenu(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="heart" size={16} />
+                      Wishlist
+                    </Link>
                     <div className="border-t border-border-dark" />
                     <button
                       type="button"
@@ -323,24 +351,30 @@ export default function Header() {
               )}
 
               {/* Language & Currency */}
-              <button
-                type="button"
-                onClick={() => setShowPreferences(true)}
-                aria-label="Change language and currency"
-                className="flex items-center gap-1 hover:text-primary transition-colors"
-              >
-                <div className="relative w-9 h-6">
-                  {/* Flag circle (bottom/back) */}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-surface-dark border border-border-dark overflow-hidden flex items-center justify-center">
-                    <FlagIcon countryCode={preferences.country.code} className="w-full h-full object-cover" />
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowPreferences(!showPreferences)}
+                  aria-label="Change language and currency"
+                  className="flex items-center gap-1 hover:text-primary transition-colors"
+                >
+                  <div className="relative w-9 h-6">
+                    {/* Flag circle (bottom/back) */}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-surface-dark border border-border-dark overflow-hidden flex items-center justify-center">
+                      <FlagIcon countryCode={preferences.country.code} className="w-full h-full object-cover" />
+                    </div>
+                    {/* Currency circle (top/front) */}
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-primary text-black flex items-center justify-center text-xs font-bold shadow-md">
+                      {preferences.currency.symbol}
+                    </div>
                   </div>
-                  {/* Currency circle (top/front) */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-primary text-black flex items-center justify-center text-xs font-bold shadow-md">
-                    {preferences.currency.symbol}
-                  </div>
-                </div>
-                <Icon name="chevron-down" size={14} className={`text-slate-400 transition-transform`} />
-              </button>
+                  <Icon name="chevron-down" size={14} className={`text-slate-400 transition-transform ${showPreferences ? 'rotate-180' : ''}`} />
+                </button>
+                <PreferencesDialog
+                  isOpen={showPreferences}
+                  onClose={() => setShowPreferences(false)}
+                />
+              </div>
 
               {/* User Menu / Login */}
               {isAuthenticated ? (
@@ -387,6 +421,14 @@ export default function Header() {
                         <Icon name="library" size={16} />
                         Library
                       </Link>
+                      <Link
+                        href="/profile/wishlist"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="heart" size={16} />
+                        Wishlist
+                      </Link>
                       <div className="border-t border-border-dark" />
                       <button
                         type="button"
@@ -411,19 +453,38 @@ export default function Header() {
               )}
 
               {/* Cart */}
-              <Link
-                href="/cart"
-                prefetch={true}
-                className="flex items-center justify-center hover:text-primary transition-colors relative"
-                aria-label="Cart"
-              >
-                <Icon name="cart" size={20} />
-                {itemCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-primary text-[10px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                    {itemCount > 99 ? '99+' : itemCount}
-                  </span>
-                )}
-              </Link>
+              <div className="relative" ref={cartDropdownRef}>
+                <div className="flex items-center gap-0.5">
+                  <Link
+                    href="/cart"
+                    prefetch={true}
+                    className="flex items-center justify-center hover:text-primary transition-colors relative"
+                    aria-label="Cart"
+                  >
+                    <Icon name="cart" size={20} />
+                    {itemCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-primary text-[10px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                        {itemCount > 99 ? '99+' : itemCount}
+                      </span>
+                    )}
+                  </Link>
+                  {itemCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowCartDropdown(!showCartDropdown)}
+                      className="hover:text-primary transition-colors"
+                      aria-label="Toggle cart dropdown"
+                    >
+                      <Icon name="chevron-down" size={14} className={`transition-transform ${showCartDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+                <CartPopupWrapper />
+                <CartDropdown
+                  isOpen={showCartDropdown}
+                  onClose={() => setShowCartDropdown(false)}
+                />
+              </div>
             </nav>
           </div>
         </div>
@@ -465,10 +526,15 @@ export default function Header() {
           </div>
         </div>
 
-        <PreferencesDialog
-          isOpen={showPreferences}
-          onClose={() => setShowPreferences(false)}
-        />
+
+        {/* Mobile Preferences Modal */}
+        <div className="md:hidden">
+          <PreferencesDialog
+            variant="modal"
+            isOpen={showPreferences}
+            onClose={() => setShowPreferences(false)}
+          />
+        </div>
       </header>
 
       {/* Mobile Menu - Using Portal-like pattern outside header */}

@@ -1,4 +1,4 @@
-import { apiFetch, buildQueryString } from './client'
+import { localApiFetch, buildQueryString } from './client'
 
 export interface Discount {
   id: string
@@ -54,21 +54,21 @@ export const discountsApi = {
    */
   async list(filters: DiscountFilters = {}) {
     const query = buildQueryString(filters)
-    return apiFetch<Discount[]>(`/discounts${query}`)
+    return localApiFetch<Discount[]>(`/discounts${query}`)
   },
 
   /**
    * Get discount statistics (admin only)
    */
   async getStats() {
-    return apiFetch<DiscountStats>('/discounts/stats')
+    return localApiFetch<DiscountStats>('/discounts/stats')
   },
 
   /**
    * Create new discount code (admin only)
    */
   async create(data: CreateDiscountData) {
-    return apiFetch<Discount>('/discounts', {
+    return localApiFetch<Discount>('/discounts', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -78,7 +78,7 @@ export const discountsApi = {
    * Update discount code (admin only)
    */
   async update(id: string, data: Partial<CreateDiscountData>) {
-    return apiFetch<Discount>(`/discounts/${id}`, {
+    return localApiFetch<Discount>(`/discounts/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     })
@@ -88,7 +88,7 @@ export const discountsApi = {
    * Delete discount code (admin only)
    */
   async delete(id: string) {
-    return apiFetch<{ message: string }>(`/discounts/${id}`, {
+    return localApiFetch<{ message: string }>(`/discounts/${id}`, {
       method: 'DELETE',
     })
   },
@@ -97,7 +97,7 @@ export const discountsApi = {
    * Validate discount code (public - for checkout)
    */
   async validate(code: string, orderTotal: number) {
-    return apiFetch<ValidateDiscountResponse>('/discounts/validate', {
+    return localApiFetch<ValidateDiscountResponse>('/discounts/validate', {
       method: 'POST',
       body: JSON.stringify({ code, orderTotal }),
     })

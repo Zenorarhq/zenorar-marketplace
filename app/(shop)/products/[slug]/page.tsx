@@ -1,22 +1,143 @@
+import { Metadata } from 'next'
 import Image from 'next/image'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import ProductTabs from '@/components/product/ProductTabs'
 import ProductPurchasePanel from '@/components/product/ProductPurchasePanel'
 import RelatedProducts from '@/components/product/RelatedProducts'
-import { scriptProducts } from '@/lib/mock-data'
+import { executeQuery } from '@/lib/db-helpers'
+import { Product } from '@/lib/types'
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>
 }
 
+// Fetch product from database by slug
+async function getProductBySlug(slug: string): Promise<Product | null> {
+  try {
+    const productResult = await executeQuery(`
+      SELECT
+        p.id, p.name, p.slug, p.description, p.price, p."isFeatured" as is_featured,
+        c.name as category_name,
+        COALESCE(AVG(r.rating), 0) as average_rating,
+        COUNT(DISTINCT r.id) as review_count,
+        (
+          SELECT json_agg(json_build_object('url', pi.url, 'isPrimary', pi."isPrimary") ORDER BY pi."isPrimary" DESC)
+          FROM product_images pi WHERE pi."productId" = p.id
+        ) as images
+      FROM products p
+      LEFT JOIN categories c ON p."categoryId" = c.id
+      LEFT JOIN reviews r ON r."productId" = p.id
+      WHERE p.slug = $1 AND p.status = 'ACTIVE'
+      GROUP BY p.id, c.name
+    `, [slug])
+
+    if (productResult.rows.length === 0) return null
+
+    const row = productResult.rows[0]
+
+    // Fetch reviews
+    const reviewsResult = await executeQuery(`
+      SELECT r.id, r.rating, r.content, r."createdAt",
+             u.name as author_name
+      FROM reviews r
+      LEFT JOIN users u ON r."userId" = u.id
+      WHERE r."productId" = $1
+      ORDER BY r."createdAt" DESC
+      LIMIT 20
+    `, [row.id])
+
+    const reviews = reviewsResult.rows.map((r: any) => ({
+      id: r.id,
+      author: r.author_name || 'Anonymous',
+      rating: Number(r.rating),
+      content: r.content || '',
+      date: r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : '',
+    }))
+
+    // Get primary image URL
+    const imagesList = row.images || []
+    const primaryImage = imagesList.find((img: any) => img.isPrimary)?.url || imagesList[0]?.url || undefined
+
+    return {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      description: row.description || '',
+      price: Number(row.price),
+      rating: Number(row.average_rating) || 0,
+      reviewCount: Number(row.review_count) || 0,
+      category: row.category_name || '',
+      icon: 'box',
+      iconColor: 'primary',
+      tags: [],
+      image: primaryImage,
+      images: imagesList,
+      badge: row.is_featured ? 'HOT' : undefined,
+      reviews,
+    }
+  } catch (error) {
+    console.error('Failed to fetch product by slug:', error)
+    return null
+  }
+}
+
+export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
+  const { slug } = await params
+  const product = await getProductBySlug(slug)
+
+  if (!product) {
+    return { title: 'Product Not Found' }
+  }
+
+  return {
+    title: product.name,
+    description: product.description || `${product.name} - Premium digital asset available on Zenorar Marketplace`,
+    openGraph: {
+      title: product.name,
+      description: product.description || undefined,
+      images: product.image ? [{ url: product.image }] : undefined,
+    },
+  }
+}
+
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params
-  // Find product by slug (in real app, this would fetch from API)
-  const product = scriptProducts.find((p) => p.slug === slug) || scriptProducts[0]
+  const product = await getProductBySlug(slug)
+
+  if (!product) {
+    notFound()
+  }
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description,
+    image: product.image,
+    offers: {
+      '@type': 'Offer',
+      price: product.price,
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+    },
+    ...(product.rating && product.reviewCount ? {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: product.rating,
+        reviewCount: product.reviewCount,
+      },
+    } : {}),
+  }
 
   return (
     <main className="max-w-container mx-auto px-8 lg:px-12 pb-24">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Breadcrumbs */}
       <div className="py-4">
         <Breadcrumbs
@@ -86,11 +207,4 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <RelatedProducts />
     </main>
   )
-}
-
-// Generate static params for demo purposes
-export function generateStaticParams() {
-  return scriptProducts.map((product) => ({
-    slug: product.slug,
-  }))
 }

@@ -7,9 +7,11 @@ import { usePreferences } from '@/contexts/PreferencesContext'
 interface OrderSummaryProps {
   onSubmit?: (e: React.FormEvent) => void
   isSubmitting?: boolean
+  discountCode?: string
+  discountAmount?: number
 }
 
-export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSummaryProps) {
+export default function OrderSummary({ onSubmit, isSubmitting = false, discountCode, discountAmount = 0 }: OrderSummaryProps) {
   const { items: cartItems, total } = useCart()
   const { formatPrice } = usePreferences()
 
@@ -25,7 +27,7 @@ export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSu
 
   const shipping = 0 // Free shipping
   const tax = 0
-  const orderTotal = total + shipping + tax
+  const orderTotal = total + shipping + tax - discountAmount
 
   const handleClick = (e: React.MouseEvent) => {
     if (onSubmit) {
@@ -74,6 +76,12 @@ export default function OrderSummary({ onSubmit, isSubmitting = false }: OrderSu
           <span className="text-slate-400">Subtotal</span>
           <span className="text-white font-medium">{formatPrice(total)}</span>
         </div>
+        {discountCode && discountAmount > 0 && (
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-400">Discount <span className="text-xs text-primary">({discountCode})</span></span>
+            <span className="text-primary font-medium">-{formatPrice(discountAmount)}</span>
+          </div>
+        )}
         <div className="flex justify-between items-center text-sm">
           <span className="text-slate-400">Shipping</span>
           <span className="text-primary font-medium">Free</span>

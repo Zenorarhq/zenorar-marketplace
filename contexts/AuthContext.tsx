@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import { User, getAccessToken, clearAccessToken, setAccessToken, apiFetch } from '@/lib/api'
+import { useSessionTimeout } from '@/hooks/use-session-timeout'
 
 interface AuthContextType {
   user: User | null
@@ -65,15 +66,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const result = await apiFetch('/auth/login', {
+      // Route through local proxy for security enforcement
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       })
+      const result = await response.json()
 
       if (result.success && result.data) {
         // Store access token
         if (result.data.accessToken) {
           setAccessToken(result.data.accessToken)
+        }
+        // Store session timeout if provided by proxy
+        if (typeof window !== 'undefined' && result.data.sessionTimeout) {
+          localStorage.setItem('sessionTimeout', result.data.sessionTimeout.toString())
         }
         // Store user
         setUser(result.data.user)
@@ -120,6 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('user')
     }
   }, [])
+
+  // Auto-logout on session timeout (based on admin setting)
+  useSessionTimeout(logout, !!user)
 
   const updateUser = useCallback((userData: Partial<User>) => {
     setUser((prevUser) => {

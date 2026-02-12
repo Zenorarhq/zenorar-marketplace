@@ -5,8 +5,14 @@ import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { pagesApi, Page } from '@/lib/cms/api'
+import { useTimezone } from '@/hooks/use-timezone'
+import { formatDateShort } from '@/lib/date-utils'
 
 type TabType = 'all' | 'published' | 'draft' | 'archived'
+
+const SYSTEM_PAGES = [
+  { id: 'home', name: 'Home Page', path: '/', sections: ['Hero Slider'], icon: 'home' as const },
+]
 
 export default function PageBuilderPage() {
   const [pages, setPages] = useState<Page[]>([])
@@ -113,13 +119,7 @@ export default function PageBuilderPage() {
     }
   }
 
-  function formatDate(dateString: string) {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
+  const tz = useTimezone()
 
   return (
     <AdminLayout>
@@ -137,6 +137,37 @@ export default function PageBuilderPage() {
           New Page
         </Link>
       </div>
+
+      {/* System Pages */}
+      <div className="mb-6">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">System Pages</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {SYSTEM_PAGES.map((sp) => (
+            <div key={sp.id} className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Icon name={sp.icon} size={20} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-medium text-sm">{sp.name}</h3>
+                  <p className="text-slate-500 text-xs mt-0.5">{sp.path}</p>
+                  <p className="text-slate-500 text-xs mt-1">{sp.sections.length} editable {sp.sections.length === 1 ? 'section' : 'sections'}</p>
+                </div>
+              </div>
+              <Link
+                href={`/admin/frontend/system/${sp.id}`}
+                className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-lg text-xs font-medium hover:bg-[#222] hover:text-white transition-colors"
+              >
+                <Icon name="edit" size={14} />
+                Edit Sections
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom Pages */}
+      <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Custom Pages</h2>
 
       {/* Tabs and Search */}
       <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl mb-6">
@@ -238,7 +269,7 @@ export default function PageBuilderPage() {
                       </span>
                       <span className="hidden sm:flex items-center gap-1">
                         <Icon name="calendar" size={14} />
-                        {formatDate(page.updatedAt)}
+                        {formatDateShort(page.updatedAt, tz)}
                       </span>
                     </div>
                   </div>

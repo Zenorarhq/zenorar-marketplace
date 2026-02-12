@@ -23,13 +23,14 @@ export default function AddToCartPopup({
 }: AddToCartPopupProps) {
   const [isHovered, setIsHovered] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
 
-  // Auto close after 5 seconds (only when not hovered)
+  // Auto close after 3 seconds (only when not hovered)
   useEffect(() => {
     if (isOpen && !isHovered) {
       timerRef.current = setTimeout(() => {
         onClose()
-      }, 5000)
+      }, 3000)
       return () => {
         if (timerRef.current) {
           clearTimeout(timerRef.current)
@@ -63,24 +64,34 @@ export default function AddToCartPopup({
     }
   }, [isOpen, onClose])
 
+  // Handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen, onClose])
+
   if (!isOpen || !product) return null
 
   const displayPrice = price ?? product.price
 
   return (
-    <>
-      {/* Backdrop with blur */}
-      <div
-        className="fixed inset-0 z-[99] bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Popup */}
-      <div
-        className="fixed z-[100] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+    <div
+      ref={popupRef}
+      className="absolute right-0 top-full mt-2 w-[380px] bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10 z-[70]"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -144,6 +155,7 @@ export default function AddToCartPopup({
         </div>
 
         {/* View Cart Link */}
+        {/* View Cart Link */}
         <Link
           href="/cart"
           onClick={onClose}
@@ -151,7 +163,6 @@ export default function AddToCartPopup({
         >
           View Cart
         </Link>
-      </div>
-    </>
+    </div>
   )
 }

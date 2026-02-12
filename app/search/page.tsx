@@ -71,9 +71,13 @@ function SearchContent() {
 
     if (result.success && result.data) {
       setProducts(result.data)
-      // Calculate total based on response (if API supports pagination metadata)
-      setTotalResults(result.data.length)
-      setTotalPages(Math.ceil(result.data.length / 12) || 1)
+      if (result.pagination) {
+        setTotalResults(result.pagination.total)
+        setTotalPages(result.pagination.totalPages)
+      } else {
+        setTotalResults(result.data.length)
+        setTotalPages(1)
+      }
     } else {
       setProducts([])
       setTotalResults(0)

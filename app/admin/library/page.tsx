@@ -6,6 +6,8 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { formatNumber } from '@/lib/formatNumber'
 import { mediaApi, MediaFile } from '@/lib/api/media'
+import { useTimezone } from '@/hooks/use-timezone'
+import { formatDateShort } from '@/lib/date-utils'
 
 type UploadType = 'all' | 'images' | 'documents' | 'videos'
 
@@ -49,6 +51,7 @@ function getFileType(mimeType: string | null | undefined): 'image' | 'document' 
 
 export default function AdminLibraryPage() {
   const queryClient = useQueryClient()
+  const tz = useTimezone()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<UploadType>('all')
   const [editingUpload, setEditingUpload] = useState<MediaFile | null>(null)
@@ -174,11 +177,7 @@ export default function AdminLibraryPage() {
     type: getFileType(file.mimeType),
     size: formatFileSize(file.size),
     uploadedBy: file.uploadedBy?.name || 'Unknown',
-    uploadedAt: new Date(file.createdAt).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }),
+    uploadedAt: formatDateShort(file.createdAt, tz),
     usedIn: 0, // TODO: Track usage count in backend
   }))
 
@@ -513,11 +512,7 @@ export default function AdminLibraryPage() {
                 <div>
                   <p className="text-slate-500 text-xs mb-1">Upload Date</p>
                   <p className="text-white text-sm">
-                    {new Date(editingUpload.createdAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
+                    {formatDateShort(editingUpload.createdAt, tz)}
                   </p>
                 </div>
                 <div>

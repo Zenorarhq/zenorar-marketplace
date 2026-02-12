@@ -9,6 +9,8 @@ import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import { useNotifications } from '@/hooks/use-notifications'
+import { useTimezone } from '@/hooks/use-timezone'
+import { formatTimeAgo, formatFullDate } from '@/lib/date-utils'
 import { Notification, NotificationType } from '@/lib/api'
 
 const notificationIcons: Record<NotificationType, string> = {
@@ -62,31 +64,6 @@ const notificationTypeLabels: Record<NotificationType, string> = {
   SYSTEM: 'System',
 }
 
-function formatTimeAgo(dateString: string): string {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-  if (diffInSeconds < 60) return 'Just now'
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
-  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
-
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function formatFullDate(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
 function NotificationModal({
   notification,
   onClose,
@@ -99,6 +76,7 @@ function NotificationModal({
   onDelete: (id: string) => void
 }) {
   const router = useRouter()
+  const tz = useTimezone()
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Close modal on escape key
@@ -172,7 +150,7 @@ function NotificationModal({
             {notification.message}
           </p>
           <p className="text-sm text-slate-500">
-            {formatFullDate(notification.createdAt)}
+            {formatFullDate(notification.createdAt, tz)}
           </p>
         </div>
 
@@ -219,6 +197,7 @@ function NotificationItem({
   onSelect: (notification: Notification) => void
   onDelete: (id: string) => void
 }) {
+  const tz = useTimezone()
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleClick = () => {
@@ -250,7 +229,7 @@ function NotificationItem({
             {notification.title}
           </h3>
           <span className="text-xs text-slate-500 flex-shrink-0">
-            {formatTimeAgo(notification.createdAt)}
+            {formatTimeAgo(notification.createdAt, tz)}
           </span>
         </div>
         <p className={`text-sm mt-1 line-clamp-2 ${notification.isRead ? 'text-slate-500' : 'text-slate-400'}`}>

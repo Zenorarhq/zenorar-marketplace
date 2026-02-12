@@ -11,6 +11,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/lib/cart-context'
+import { discountsApi } from '@/lib/api/discounts'
 
 interface ShippingForm {
   fullName: string
@@ -36,9 +37,14 @@ interface FormErrors {
 export default function CheckoutPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const { items } = useCart()
+  const { items, total } = useCart()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [discountCode, setDiscountCode] = useState('')
+  const [discountAmount, setDiscountAmount] = useState(0)
+  const [discountInput, setDiscountInput] = useState('')
+  const [discountError, setDiscountError] = useState('')
+  const [isValidating, setIsValidating] = useState(false)
   const [formData, setFormData] = useState<ShippingForm>({
     fullName: '',
     email: '',
@@ -64,6 +70,53 @@ export default function CheckoutPage() {
       router.push('/cart')
     }
   }, [items, authLoading, router])
+
+  // Load discount from sessionStorage (set in cart page)
+  useEffect(() => {
+    const code = sessionStorage.getItem('discount_code')
+    const amount = sessionStorage.getItem('discount_amount')
+    if (code && amount) {
+      setDiscountCode(code)
+      setDiscountAmount(parseFloat(amount))
+      setDiscountInput(code)
+    }
+  }, [])
+
+  const handleApplyDiscount = async () => {
+    if (!discountInput.trim()) return
+    setIsValidating(true)
+    setDiscountError('')
+
+    try {
+      const res = await discountsApi.validate(discountInput.trim(), total)
+
+      if (res.success && res.data) {
+        setDiscountCode(res.data.code)
+        setDiscountAmount(res.data.discountAmount)
+        sessionStorage.setItem('discount_code', res.data.code)
+        sessionStorage.setItem('discount_amount', String(res.data.discountAmount))
+      } else {
+        setDiscountError(res.error || 'Invalid discount code')
+        setDiscountCode('')
+        setDiscountAmount(0)
+        sessionStorage.removeItem('discount_code')
+        sessionStorage.removeItem('discount_amount')
+      }
+    } catch {
+      setDiscountError('Failed to validate discount code')
+    }
+
+    setIsValidating(false)
+  }
+
+  const handleRemoveDiscount = () => {
+    setDiscountCode('')
+    setDiscountAmount(0)
+    setDiscountInput('')
+    setDiscountError('')
+    sessionStorage.removeItem('discount_code')
+    sessionStorage.removeItem('discount_amount')
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -439,6 +492,60 @@ export default function CheckoutPage() {
                   </div>
                 </fieldset>
 
+                {/* Discount Code */}
+                <div className="pt-6 border-t border-border-dark">
+                  <label htmlFor="discount" className="block text-white font-bold mb-4">
+                    Discount Code
+                  </label>
+                  {discountCode ? (
+                    <div className="w-full flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-xl py-3 px-5">
+                      <div className="flex-grow flex items-center gap-3">
+                        <Icon name="check-circle" size={20} className="text-primary" />
+                        <span className="text-primary font-mono font-bold">{discountCode}</span>
+                        <span className="text-slate-400 text-sm">-${discountAmount.toFixed(2)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveDiscount}
+                        className="text-slate-400 hover:text-red-400 text-sm font-bold transition-colors whitespace-nowrap px-4 py-2"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-full">
+                      <div className="w-full flex gap-3">
+                        <div className="flex-grow relative">
+                          <Icon name="ticket" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                          <input
+                            id="discount"
+                            type="text"
+                            value={discountInput}
+                            onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
+                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleApplyDiscount())}
+                            placeholder="Enter discount code"
+                            className="w-full bg-charcoal border border-border-dark rounded-xl py-4 pl-12 pr-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all font-mono"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleApplyDiscount}
+                          disabled={isValidating || !discountInput.trim()}
+                          className="bg-primary text-black font-bold px-6 py-4 rounded-xl hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {isValidating ? 'Checking...' : 'Apply'}
+                        </button>
+                      </div>
+                      {discountError && (
+                        <p className="text-red-400 text-xs mt-2 flex items-center gap-1">
+                          <Icon name="alert-circle" size={14} />
+                          {discountError}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Hidden submit button for mobile - form is submitted via OrderSummary button */}
                 <button type="submit" className="sr-only">Continue to Payment</button>
               </form>
@@ -447,7 +554,7 @@ export default function CheckoutPage() {
 
           {/* Right Column - Order Summary */}
           <div className="col-span-12 lg:col-span-5 relative">
-            <OrderSummary onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+            <OrderSummary onSubmit={handleSubmit} isSubmitting={isSubmitting} discountCode={discountCode} discountAmount={discountAmount} />
           </div>
         </div>
       </main>

@@ -39,6 +39,7 @@ export interface Product {
   iconColor: string
   tags: string[]
   image?: string
+  images?: { url: string; isPrimary: boolean }[]
   seller?: Seller
   features?: Feature[]
   specs?: Spec[]

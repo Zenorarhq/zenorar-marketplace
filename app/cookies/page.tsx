@@ -1,8 +1,14 @@
+import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
+
+export const metadata: Metadata = {
+  title: 'Cookie Policy',
+  description: 'Learn about how Zenorar Marketplace uses cookies and similar technologies to improve your experience.',
+}
 
 export default function CookiesPage() {
   const currentYear = new Date().getFullYear()

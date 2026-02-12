@@ -126,10 +126,13 @@ export const productsApi = {
 
   // Images
   async addImage(productId: string, imageData: { url: string; alt?: string; isPrimary?: boolean }) {
-    return apiFetch<ProductImage>(`/products/${productId}/images`, {
+    // Use local API route (bypasses Railway backend)
+    const res = await fetch(`/api/products/${productId}/images`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(imageData),
     })
+    return res.json() as Promise<ApiResponse<ProductImage>>
   },
 
   async deleteImage(productId: string, imageId: string) {

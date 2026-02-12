@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { profileApi } from '@/lib/api/profile'
+import { settingsApi } from '@/lib/api/settings'
+import { mediaApi } from '@/lib/api/media'
+import { getAccessToken } from '@/lib/api/client'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 
@@ -24,6 +27,8 @@ export default function AdminSettingsPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+  const faviconInputRef = useRef<HTMLInputElement>(null)
 
   // Profile Settings State
   const [profileSettings, setProfileSettings] = useState({
@@ -62,10 +67,17 @@ export default function AdminSettingsPage() {
     siteName: 'Zenorar Marketplace',
     siteDescription: 'Premium digital marketplace for scripts, plugins, and eSIMs',
     supportEmail: 'support@zenorar.com',
-    timezone: 'UTC',
+    timezone: 'auto',
     currency: 'USD',
     maintenanceMode: false,
+    logoUrl: '',
+    logoMediaId: '',
+    faviconUrl: '',
+    faviconMediaId: '',
+    promoBannerCode: '',
   })
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingFavicon, setUploadingFavicon] = useState(false)
 
   // Security Settings State
   const [securitySettings, setSecuritySettings] = useState({
@@ -107,6 +119,46 @@ export default function AdminSettingsPage() {
     ],
   })
 
+  // Load general settings from API on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('general').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setGeneralSettings((prev) => ({
+          ...prev,
+          siteName: d.siteName ?? prev.siteName,
+          siteDescription: d.siteDescription ?? prev.siteDescription,
+          supportEmail: d.supportEmail ?? prev.supportEmail,
+          timezone: d.timezone ?? prev.timezone,
+          currency: d.currency ?? prev.currency,
+          maintenanceMode: d.maintenanceMode ?? prev.maintenanceMode,
+          logoUrl: d.logoUrl ?? prev.logoUrl,
+          logoMediaId: d.logoMediaId ?? prev.logoMediaId,
+          faviconUrl: d.faviconUrl ?? prev.faviconUrl,
+          faviconMediaId: d.faviconMediaId ?? prev.faviconMediaId,
+          promoBannerCode: d.promoBannerCode ?? prev.promoBannerCode,
+        }))
+      }
+    })
+  }, [])
+
+  // Load security settings from API on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('security').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setSecuritySettings((prev) => ({
+          ...prev,
+          twoFactorAuth: d.twoFactorAuth ?? prev.twoFactorAuth,
+          sessionTimeout: d.sessionTimeout ?? prev.sessionTimeout,
+          loginAttempts: d.loginAttempts ?? prev.loginAttempts,
+          passwordExpiry: d.passwordExpiry ?? prev.passwordExpiry,
+          ipWhitelist: d.ipWhitelist ?? prev.ipWhitelist,
+        }))
+      }
+    })
+  }, [])
+
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
   }
@@ -130,6 +182,10 @@ export default function AdminSettingsPage() {
     setSaving(true)
     setMessage(null)
 
+    // Remove old avatar from Cloudinary before uploading new one
+    if (user?.avatar) {
+      await profileApi.removeAvatar()
+    }
     const result = await profileApi.uploadAvatar(file)
 
     if (result.success && result.data) {
@@ -212,6 +268,11 @@ export default function AdminSettingsPage() {
     })
 
     if (result.success) {
+      // Update password_changed_at timestamp for expiry tracking
+      fetch('/api/auth/password-changed', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
+      }).catch(() => {}) // Non-critical
       setMessage({ type: 'success', text: 'Password updated successfully!' })
       setProfileSettings({
         ...profileSettings,
@@ -226,10 +287,88 @@ export default function AdminSettingsPage() {
     setSaving(false)
   }
 
+  // Logo upload handler
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Logo file must be less than 5MB' })
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Logo must be an image file' })
+      return
+    }
+    setUploadingLogo(true)
+    setMessage(null)
+    const result = await mediaApi.upload(file, { title: 'Site Logo' })
+    if (result.success && result.data) {
+      setGeneralSettings((prev) => ({ ...prev, logoUrl: result.data!.url, logoMediaId: result.data!.id }))
+      setMessage({ type: 'success', text: 'Logo uploaded! Click Save Changes to apply.' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to upload logo' })
+    }
+    setUploadingLogo(false)
+    if (logoInputRef.current) logoInputRef.current.value = ''
+  }
+
+  // Favicon upload handler
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Favicon file must be less than 2MB' })
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Favicon must be an image file' })
+      return
+    }
+    setUploadingFavicon(true)
+    setMessage(null)
+    const result = await mediaApi.upload(file, { title: 'Site Favicon' })
+    if (result.success && result.data) {
+      setGeneralSettings((prev) => ({ ...prev, faviconUrl: result.data!.url, faviconMediaId: result.data!.id }))
+      setMessage({ type: 'success', text: 'Favicon uploaded! Click Save Changes to apply.' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to upload favicon' })
+    }
+    setUploadingFavicon(false)
+    if (faviconInputRef.current) faviconInputRef.current.value = ''
+  }
+
   const handleSave = async () => {
     setSaving(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    setMessage(null)
+
+    const settingsToSave = [
+      { key: 'siteName', value: generalSettings.siteName, group: 'general', isPublic: true },
+      { key: 'siteDescription', value: generalSettings.siteDescription, group: 'general', isPublic: true },
+      { key: 'supportEmail', value: generalSettings.supportEmail, group: 'general', isPublic: true },
+      { key: 'timezone', value: generalSettings.timezone, group: 'general', isPublic: true },
+      { key: 'currency', value: generalSettings.currency, group: 'general', isPublic: true },
+      { key: 'maintenanceMode', value: generalSettings.maintenanceMode, group: 'general', isPublic: true },
+      { key: 'logoUrl', value: generalSettings.logoUrl, group: 'general', isPublic: true },
+      { key: 'logoMediaId', value: generalSettings.logoMediaId, group: 'general', isPublic: false },
+      { key: 'faviconUrl', value: generalSettings.faviconUrl, group: 'general', isPublic: true },
+      { key: 'faviconMediaId', value: generalSettings.faviconMediaId, group: 'general', isPublic: false },
+      { key: 'promoBannerCode', value: generalSettings.promoBannerCode, group: 'general', isPublic: true },
+      // Security settings
+      { key: 'twoFactorAuth', value: securitySettings.twoFactorAuth, group: 'security', isPublic: false },
+      { key: 'sessionTimeout', value: securitySettings.sessionTimeout, group: 'security', isPublic: false },
+      { key: 'loginAttempts', value: securitySettings.loginAttempts, group: 'security', isPublic: false },
+      { key: 'passwordExpiry', value: securitySettings.passwordExpiry, group: 'security', isPublic: false },
+      { key: 'ipWhitelist', value: securitySettings.ipWhitelist, group: 'security', isPublic: false },
+    ]
+
+    const result = await settingsApi.updateSettings(settingsToSave)
+
+    if (result.success) {
+      setMessage({ type: 'success', text: 'Settings saved successfully!' })
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Failed to save settings' })
+    }
+
     setSaving(false)
   }
 
@@ -456,6 +595,7 @@ export default function AdminSettingsPage() {
                     onChange={(e) => setGeneralSettings({ ...generalSettings, timezone: e.target.value })}
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
                   >
+                    <option value="auto">Default (User&apos;s Location)</option>
                     <option value="UTC">UTC</option>
                     <option value="America/New_York">Eastern Time (ET)</option>
                     <option value="America/Los_Angeles">Pacific Time (PT)</option>
@@ -478,6 +618,18 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300">Promo Banner Code</label>
+                <input
+                  type="text"
+                  value={generalSettings.promoBannerCode}
+                  onChange={(e) => setGeneralSettings({ ...generalSettings, promoBannerCode: e.target.value.toUpperCase() })}
+                  placeholder="e.g. WELCOME10"
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 font-mono"
+                />
+                <p className="text-slate-500 text-xs">Enter an active discount code to display on the homepage promo banner. Leave empty to hide the banner.</p>
+              </div>
+
               <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
                 <div>
                   <p className="text-white font-medium">Maintenance Mode</p>
@@ -495,6 +647,100 @@ export default function AdminSettingsPage() {
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Logo & Favicon Uploads */}
+              <div className="pt-6 border-t border-[#2a2a2a]">
+                <h3 className="text-white font-medium mb-4">Branding</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Logo Upload */}
+                  <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                    <p className="text-white font-medium mb-1">Site Logo</p>
+                    <p className="text-slate-500 text-xs mb-4">Displayed in the header and footer. Recommended: 200-400px wide, 50-80px tall. PNG or SVG, max 5MB.</p>
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {generalSettings.logoUrl ? (
+                          <img src={generalSettings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                        ) : (
+                          <Icon name="image" size={24} className="text-slate-600" />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => logoInputRef.current?.click()}
+                          disabled={uploadingLogo}
+                          className="bg-[#222] hover:bg-white/5 text-white text-xs px-3 py-1.5 rounded-lg transition-colors border border-[#2a2a2a] disabled:opacity-50"
+                        >
+                          {uploadingLogo ? 'Uploading...' : generalSettings.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                        </button>
+                        {generalSettings.logoUrl && (
+                          <button
+                            onClick={async () => {
+                              if (generalSettings.logoMediaId) {
+                                await mediaApi.delete(generalSettings.logoMediaId)
+                              }
+                              setGeneralSettings((prev) => ({ ...prev, logoUrl: '', logoMediaId: '' }))
+                            }}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-1.5 rounded-lg transition-colors border border-red-500/20"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Favicon Upload */}
+                  <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                    <p className="text-white font-medium mb-1">Favicon</p>
+                    <p className="text-slate-500 text-xs mb-4">Browser tab icon. Recommended: 512x512px square. PNG or ICO, max 2MB.</p>
+                    <input
+                      ref={faviconInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFaviconUpload}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {generalSettings.faviconUrl ? (
+                          <img src={generalSettings.faviconUrl} alt="Favicon" className="w-full h-full object-contain" />
+                        ) : (
+                          <Icon name="globe" size={24} className="text-slate-600" />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => faviconInputRef.current?.click()}
+                          disabled={uploadingFavicon}
+                          className="bg-[#222] hover:bg-white/5 text-white text-xs px-3 py-1.5 rounded-lg transition-colors border border-[#2a2a2a] disabled:opacity-50"
+                        >
+                          {uploadingFavicon ? 'Uploading...' : generalSettings.faviconUrl ? 'Change Favicon' : 'Upload Favicon'}
+                        </button>
+                        {generalSettings.faviconUrl && (
+                          <button
+                            onClick={async () => {
+                              if (generalSettings.faviconMediaId) {
+                                await mediaApi.delete(generalSettings.faviconMediaId)
+                              }
+                              setGeneralSettings((prev) => ({ ...prev, faviconUrl: '', faviconMediaId: '' }))
+                            }}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-1.5 rounded-lg transition-colors border border-red-500/20"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

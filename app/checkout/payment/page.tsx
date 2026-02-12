@@ -64,6 +64,18 @@ export default function PaymentPage() {
   const [walletError, setWalletError] = useState<string>('')
   const [txHash, setTxHash] = useState<string>('')
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'connecting' | 'paying' | 'confirming' | 'success' | 'error'>('idle')
+  const [discountCode, setDiscountCode] = useState('')
+  const [discountAmount, setDiscountAmount] = useState(0)
+
+  // Load discount from sessionStorage
+  useEffect(() => {
+    const code = sessionStorage.getItem('discount_code')
+    const amount = sessionStorage.getItem('discount_amount')
+    if (code && amount) {
+      setDiscountCode(code)
+      setDiscountAmount(parseFloat(amount))
+    }
+  }, [])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -73,10 +85,11 @@ export default function PaymentPage() {
     }
   }, [isAuthenticated, authLoading, router])
 
-  // Calculate crypto amount based on USD total
+  // Calculate crypto amount based on USD total (after discount)
+  const finalTotal = total - discountAmount
   const getCryptoAmount = (network: CryptoNetwork): string => {
     const rate = CRYPTO_RATES[network] || 0.00042
-    return (total * rate).toFixed(6)
+    return (finalTotal * rate).toFixed(6)
   }
 
   // Connect wallet
@@ -158,6 +171,8 @@ export default function PaymentPage() {
           phone: shippingData.phone,
           customerNote: shippingData.notes,
           paymentMethod: `crypto_${selectedNetwork.toLowerCase()}`,
+          discountCode: discountCode || undefined,
+          discountAmount: discountAmount > 0 ? discountAmount : undefined,
         }),
       })
 
@@ -168,6 +183,21 @@ export default function PaymentPage() {
 
       const orderResult = await orderResponse.json()
       const orderId = orderResult.data.id
+
+      // Record discount usage if a discount was applied
+      if (discountCode && discountAmount > 0) {
+        fetch('/api/orders/apply-discount', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, discountCode, discountAmount }),
+        }).catch(err => console.error('Failed to save discount to order:', err))
+
+        fetch('/api/discounts/use', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: discountCode }),
+        }).catch(err => console.error('Failed to increment discount usage:', err))
+      }
 
       const provider = new BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
@@ -198,7 +228,7 @@ export default function PaymentPage() {
             walletAddress: walletState.address,
             network: selectedNetwork,
             cryptoAmount,
-            usdAmount: total,
+            usdAmount: finalTotal,
           }),
         })
 
@@ -212,7 +242,7 @@ export default function PaymentPage() {
           crypto: selectedNetwork,
           txHash: tx.hash,
           amount: cryptoAmount,
-          usdAmount: total,
+          usdAmount: finalTotal,
           walletAddress: walletState.address,
           orderId,
           orderNumber: orderResult.data.orderNumber,
@@ -299,7 +329,7 @@ export default function PaymentPage() {
       sessionStorage.setItem('checkoutPayment', JSON.stringify({
         method: paymentMethod,
         crypto: paymentMethod === 'crypto-processor' ? selectedNetwork : null,
-        usdAmount: total,
+        usdAmount: finalTotal,
       }))
 
       // Simulate payment processing
@@ -551,7 +581,7 @@ export default function PaymentPage() {
                         {/* Payment Amount */}
                         <div className="bg-surface-dark rounded-xl p-4 text-center">
                           <p className="text-slate-400 text-sm mb-1">Amount to pay:</p>
-                          <p className="text-2xl font-bold text-white">{formatPrice(total)}</p>
+                          <p className="text-2xl font-bold text-white">{formatPrice(finalTotal)}</p>
                           <p className="text-primary text-sm mt-1">≈ {getCryptoAmount(selectedNetwork)} {selectedNetwork}</p>
                         </div>
 
@@ -644,7 +674,7 @@ export default function PaymentPage() {
 
                     <div className="bg-surface-dark rounded-xl p-4 text-center">
                       <p className="text-slate-400 text-sm mb-1">Amount to pay:</p>
-                      <p className="text-2xl font-bold text-white">{formatPrice(total)}</p>
+                      <p className="text-2xl font-bold text-white">{formatPrice(finalTotal)}</p>
                       <p className="text-slate-500 text-xs mt-2">
                         A payment invoice will be generated on the next step
                       </p>
@@ -819,13 +849,19 @@ export default function PaymentPage() {
                   <span>Subtotal</span>
                   <span className="text-white">${total.toFixed(2)}</span>
                 </div>
+                {discountCode && discountAmount > 0 && (
+                  <div className="flex justify-between text-slate-400">
+                    <span>Discount <span className="text-xs text-primary">({discountCode})</span></span>
+                    <span className="text-primary">-${discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
                   <span className="text-white">$0.00</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-3 border-t border-border-dark">
                   <span className="text-white">Total</span>
-                  <span className="text-white">${total.toFixed(2)}</span>
+                  <span className="text-white">${(total - discountAmount).toFixed(2)}</span>
                 </div>
               </div>
             </div>

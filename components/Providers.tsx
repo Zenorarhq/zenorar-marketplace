@@ -8,8 +8,8 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { PreferencesProvider } from '@/contexts/PreferencesContext'
 import { WishlistProvider } from '@/hooks/use-wishlist'
 import { NotificationsProvider } from '@/hooks/use-notifications'
+import { SiteSettingsProvider } from '@/contexts/SiteSettingsContext'
 import LiveChat from '@/components/LiveChat'
-import CartPopupWrapper from '@/components/cart/CartPopupWrapper'
 
 interface ProvidersProps {
   children: ReactNode
@@ -33,21 +33,22 @@ export default function Providers({ children }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <GoogleOAuthProvider clientId={googleClientId}>
-        <AuthProvider>
-          <PreferencesProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <NotificationsProvider>
-                  {children}
-                  <LiveChat />
-                  <CartPopupWrapper />
-                </NotificationsProvider>
-              </WishlistProvider>
-            </CartProvider>
-          </PreferencesProvider>
-        </AuthProvider>
-      </GoogleOAuthProvider>
+      <SiteSettingsProvider>
+        <GoogleOAuthProvider clientId={googleClientId}>
+          <AuthProvider>
+            <PreferencesProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <NotificationsProvider>
+                    {children}
+                    <LiveChat />
+                  </NotificationsProvider>
+                </WishlistProvider>
+              </CartProvider>
+            </PreferencesProvider>
+          </AuthProvider>
+        </GoogleOAuthProvider>
+      </SiteSettingsProvider>
     </QueryClientProvider>
   )
 }

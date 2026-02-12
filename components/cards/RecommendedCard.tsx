@@ -39,9 +39,19 @@ export default function RecommendedCard({ product }: RecommendedCardProps) {
       href={`/products/${product.slug}`}
       className="flex items-center gap-4 group cursor-pointer"
     >
-      <div className={`w-12 h-12 rounded-lg flex items-center justify-center border ${colorClass}`}>
-        <Icon name={product.icon} size={24} />
-      </div>
+      {product.image ? (
+        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : (
+        <div className={`w-12 h-12 rounded-lg flex items-center justify-center border flex-shrink-0 ${colorClass}`}>
+          <Icon name={product.icon} size={24} />
+        </div>
+      )}
 
       <div className="flex-1 min-w-0">
         <h4 className="text-sm font-bold truncate group-hover:text-primary transition-colors">

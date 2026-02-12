@@ -6,6 +6,8 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
+import { useTimezone } from '@/hooks/use-timezone'
+import { formatDate } from '@/lib/date-utils'
 
 export default function PurchasesPage() {
   const queryClient = useQueryClient()
@@ -73,17 +75,7 @@ export default function PurchasesPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    })
-  }
+  const tz = useTimezone()
 
   if (loading) {
     return (
@@ -243,7 +235,7 @@ export default function PurchasesPage() {
                         {order.status.charAt(0) + order.status.slice(1).toLowerCase()}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-slate-400 text-sm">{formatDate(order.createdAt)}</td>
+                    <td className="px-5 py-3 text-slate-400 text-sm">{formatDate(order.createdAt, tz)}</td>
                     <td className="px-5 py-3">
                       <button className="p-1.5 hover:bg-white/10 rounded-lg transition-colors" title="View Details">
                         <Icon name="eye" size={16} className="text-slate-400" />

@@ -1,6 +1,6 @@
 // Tickets API
 
-import { apiFetch, buildQueryString } from './client'
+import { apiFetch, localApiFetch, buildQueryString } from './client'
 
 export type TicketCategory = 'GENERAL' | 'ORDER' | 'SHIPPING' | 'PAYMENT' | 'REFUND' | 'PRODUCT' | 'ACCOUNT' | 'TECHNICAL' | 'OTHER'
 export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
@@ -141,12 +141,12 @@ export const ticketsApi = {
   },
 
   async getStats() {
-    return apiFetch<{
+    return localApiFetch<{
       total: number
       byStatus: Array<{ status: string; count: number }>
       byCategory: Array<{ category: string; count: number }>
       byPriority: Array<{ priority: string; count: number }>
       avgResolutionTime: number
-    }>('/tickets/stats/overview')
+    }>('/tickets/stats')
   },
 }

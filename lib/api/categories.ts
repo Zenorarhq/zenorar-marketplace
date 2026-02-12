@@ -1,6 +1,6 @@
 // Categories API
 
-import { apiFetch, buildQueryString } from './client'
+import { apiFetch, localApiFetch, buildQueryString } from './client'
 import { Category } from './products'
 
 export interface CategoryWithChildren extends Category {
@@ -22,7 +22,7 @@ export interface CategoryFilters {
 export const categoriesApi = {
   async list(filters: CategoryFilters = {}) {
     const query = buildQueryString(filters)
-    return apiFetch<CategoryWithChildren[]>(`/categories${query}`)
+    return localApiFetch<CategoryWithChildren[]>(`/categories${query}`)
   },
 
   async getById(id: string) {

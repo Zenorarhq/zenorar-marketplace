@@ -7,9 +7,12 @@ import Icon from '@/components/ui/Icon'
 import { formatCurrency } from '@/lib/formatNumber'
 import { financeApi } from '@/lib/api/finance'
 import PayoutRequestModal from '@/components/admin/PayoutRequestModal'
+import { useTimezone } from '@/hooks/use-timezone'
+import { formatDate } from '@/lib/date-utils'
 
 export default function FinancePage() {
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false)
+  const tz = useTimezone()
   // Fetch finance overview with React Query
   const { data: overview = null } = useQuery({
     queryKey: ['finance-overview'],
@@ -206,13 +209,7 @@ export default function FinancePage() {
                       {transaction.currency}
                     </td>
                     <td className="px-5 py-3 text-slate-400 text-sm">
-                      {new Date(transaction.createdAt).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}
+                      {formatDate(transaction.createdAt, tz)}
                     </td>
                     <td className="px-5 py-3">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${

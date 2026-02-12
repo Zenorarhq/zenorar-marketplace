@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { ticketsApi, TicketDetail } from '@/lib/api/tickets'
 import Icon from '@/components/ui/Icon'
+import { useTimezone } from '@/hooks/use-timezone'
+import { formatDate } from '@/lib/date-utils'
 
 interface ViewTicketThreadModalProps {
   isOpen: boolean
@@ -82,16 +84,7 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId }: Vie
     )
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+  const tz = useTimezone()
 
   if (!isOpen) return null
 
@@ -114,7 +107,7 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId }: Vie
             </div>
             {ticket && (
               <p className="text-sm text-slate-400">
-                Created {formatDate(ticket.createdAt)} by{' '}
+                Created {formatDate(ticket.createdAt, tz)} by{' '}
                 {ticket.user?.name || ticket.guestName || ticket.guestEmail || 'Anonymous'}
               </p>
             )}
@@ -180,7 +173,7 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId }: Vie
                   {ticket.resolvedAt && (
                     <div>
                       <p className="text-xs text-slate-500 mb-1">Resolved At</p>
-                      <p className="text-sm text-white font-medium">{formatDate(ticket.resolvedAt)}</p>
+                      <p className="text-sm text-white font-medium">{formatDate(ticket.resolvedAt, tz)}</p>
                     </div>
                   )}
                 </div>
@@ -224,7 +217,7 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId }: Vie
                                 {response.user?.name || 'Unknown User'}
                               </p>
                               <p className="text-xs text-slate-500">
-                                {formatDate(response.createdAt)}
+                                {formatDate(response.createdAt, tz)}
                               </p>
                             </div>
                           </div>

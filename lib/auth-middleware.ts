@@ -33,12 +33,19 @@ export async function authenticateRequest(request: NextRequest): Promise<Authent
       return null
     }
 
-    // Verify user still exists and is active
+    // Handle both Railway JWT format (id) and local format (userId)
+    const userId = payload.userId || (payload as any).id
+
+    if (!userId) {
+      return null
+    }
+
+    // Verify user still exists
     const client = await db.connect()
     try {
       const result = await client.query(
-        'SELECT id, email, name, role, avatar FROM users WHERE id = $1 AND is_active = true',
-        [payload.userId]
+        'SELECT id, email, name, role, avatar FROM users WHERE id = $1',
+        [userId]
       )
 
       if (result.rows.length === 0) {

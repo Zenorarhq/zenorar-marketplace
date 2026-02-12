@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
@@ -15,6 +15,17 @@ export default function ReviewPage() {
   const { items, total, clearCart } = useCart()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [discountCode, setDiscountCode] = useState('')
+  const [discountAmount, setDiscountAmount] = useState(0)
+
+  useEffect(() => {
+    const code = sessionStorage.getItem('discount_code')
+    const amount = sessionStorage.getItem('discount_amount')
+    if (code && amount) {
+      setDiscountCode(code)
+      setDiscountAmount(parseFloat(amount))
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,6 +37,10 @@ export default function ReviewPage() {
       // Simulate order processing
       await new Promise(resolve => setTimeout(resolve, 2000))
       clearCart()
+      // Clean up discount from sessionStorage
+      sessionStorage.removeItem('discount_code')
+      sessionStorage.removeItem('discount_amount')
+      sessionStorage.removeItem('promo_code')
       router.push('/checkout/success')
     } catch (error) {
       console.error('Order error:', error)
@@ -246,6 +261,12 @@ export default function ReviewPage() {
                   <span>Subtotal ({items.length} items)</span>
                   <span className="text-white">${total.toFixed(2)}</span>
                 </div>
+                {discountCode && discountAmount > 0 && (
+                  <div className="flex justify-between text-slate-400">
+                    <span>Discount <span className="text-xs text-primary">({discountCode})</span></span>
+                    <span className="text-primary">-${discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-400">
                   <span>Shipping</span>
                   <span className="text-primary">Free</span>
@@ -259,7 +280,7 @@ export default function ReviewPage() {
               <div className="border-t border-border-dark pt-4 mb-6">
                 <div className="flex justify-between">
                   <span className="text-lg font-bold text-white">Total</span>
-                  <span className="text-2xl font-extrabold text-white">${total.toFixed(2)}</span>
+                  <span className="text-2xl font-extrabold text-white">${(total - discountAmount).toFixed(2)}</span>
                 </div>
               </div>
 

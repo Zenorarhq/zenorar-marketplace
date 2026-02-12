@@ -1,8 +1,16 @@
 'use client'
 
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react'
-import { wishlistApi, WishlistItem } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
+import { localApiFetch } from '@/lib/api/client'
+
+const WISHLIST_STORAGE_KEY = 'zenorar_wishlist'
+
+export interface WishlistItem {
+  id: string
+  productId: string
+  addedAt: string
+}
 
 interface WishlistContextType {
   items: WishlistItem[]
@@ -12,64 +20,121 @@ interface WishlistContextType {
   addItem: (productId: string) => Promise<{ success: boolean; error?: string }>
   removeItem: (productId: string) => Promise<{ success: boolean; error?: string }>
   toggleItem: (productId: string) => Promise<{ success: boolean; error?: string }>
-  moveToCart: (productId: string, quantity?: number) => Promise<{ success: boolean; error?: string }>
   clearWishlist: () => Promise<void>
   refreshWishlist: () => Promise<void>
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined)
 
+// localStorage helpers (for guest users)
+function loadFromStorage(): WishlistItem[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem(WISHLIST_STORAGE_KEY)
+    if (stored) return JSON.parse(stored)
+  } catch (error) {
+    console.error('Failed to load wishlist from storage:', error)
+  }
+  return []
+}
+
+function saveToStorage(items: WishlistItem[]) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(items))
+}
+
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth()
   const [items, setItems] = useState<WishlistItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [wishlistSet, setWishlistSet] = useState<Set<string>>(new Set())
+  const [isLoaded, setIsLoaded] = useState(false)
 
-  const refreshWishlist = useCallback(async () => {
-    if (!isAuthenticated) {
-      setItems([])
-      setWishlistSet(new Set())
-      return
+  // Load wishlist on mount and when auth state changes
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadWishlist() {
+      setIsLoading(true)
+
+      if (isAuthenticated) {
+        // Logged in: fetch from database via API
+        try {
+          const result = await localApiFetch<WishlistItem[]>('/wishlist')
+          if (!cancelled && result.success && Array.isArray(result.data)) {
+            setItems(result.data)
+          }
+        } catch (error) {
+          console.error('Failed to load wishlist from API:', error)
+        }
+      } else {
+        // Guest: load from localStorage
+        if (!cancelled) {
+          setItems(loadFromStorage())
+        }
+      }
+
+      if (!cancelled) {
+        setIsLoading(false)
+        setIsLoaded(true)
+      }
     }
 
-    setIsLoading(true)
-    const result = await wishlistApi.get()
-    if (result.success && result.data) {
-      setItems(result.data)
-      setWishlistSet(new Set(result.data.map(item => item.product.id)))
-    }
-    setIsLoading(false)
+    loadWishlist()
+    return () => { cancelled = true }
   }, [isAuthenticated])
 
+  // Save to localStorage for guest users (only after initial load)
   useEffect(() => {
-    refreshWishlist()
-  }, [refreshWishlist])
+    if (!isLoaded || isAuthenticated) return
+    saveToStorage(items)
+  }, [items, isLoaded, isAuthenticated])
 
   const isInWishlist = useCallback((productId: string) => {
-    return wishlistSet.has(productId)
-  }, [wishlistSet])
+    return items.some(item => item.productId === productId)
+  }, [items])
 
   const addItem = useCallback(async (productId: string) => {
-    if (!isAuthenticated) {
-      return { success: false, error: 'Please login to add items to wishlist' }
+    // Optimistic update
+    setItems(current => {
+      if (current.some(item => item.productId === productId)) return current
+      return [...current, {
+        id: `wish_${Date.now()}`,
+        productId,
+        addedAt: new Date().toISOString(),
+      }]
+    })
+
+    if (isAuthenticated) {
+      const result = await localApiFetch<WishlistItem>('/wishlist', {
+        method: 'POST',
+        body: JSON.stringify({ productId }),
+      })
+      if (!result.success) {
+        // Revert on failure
+        setItems(current => current.filter(item => item.productId !== productId))
+        return { success: false, error: result.error }
+      }
     }
 
-    const result = await wishlistApi.add(productId)
-    if (result.success) {
-      await refreshWishlist()
-      return { success: true }
-    }
-    return { success: false, error: result.error || 'Failed to add to wishlist' }
-  }, [isAuthenticated, refreshWishlist])
+    return { success: true }
+  }, [isAuthenticated])
 
   const removeItem = useCallback(async (productId: string) => {
-    const result = await wishlistApi.remove(productId)
-    if (result.success) {
-      await refreshWishlist()
-      return { success: true }
+    // Optimistic update
+    const previousItems = items
+    setItems(current => current.filter(item => item.productId !== productId))
+
+    if (isAuthenticated) {
+      const result = await localApiFetch(`/wishlist/${productId}`, { method: 'DELETE' })
+      if (!result.success) {
+        // Revert on failure
+        setItems(previousItems)
+        return { success: false, error: result.error }
+      }
     }
-    return { success: false, error: result.error || 'Failed to remove from wishlist' }
-  }, [refreshWishlist])
+
+    return { success: true }
+  }, [isAuthenticated, items])
 
   const toggleItem = useCallback(async (productId: string) => {
     if (isInWishlist(productId)) {
@@ -79,20 +144,23 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     }
   }, [isInWishlist, addItem, removeItem])
 
-  const moveToCart = useCallback(async (productId: string, quantity = 1) => {
-    const result = await wishlistApi.moveToCart(productId, quantity)
-    if (result.success) {
-      await refreshWishlist()
-      return { success: true }
-    }
-    return { success: false, error: result.error || 'Failed to move to cart' }
-  }, [refreshWishlist])
-
   const clearWishlist = useCallback(async () => {
-    await wishlistApi.clear()
     setItems([])
-    setWishlistSet(new Set())
-  }, [])
+    if (isAuthenticated) {
+      await localApiFetch('/wishlist', { method: 'DELETE' })
+    }
+  }, [isAuthenticated])
+
+  const refreshWishlist = useCallback(async () => {
+    if (isAuthenticated) {
+      const result = await localApiFetch<WishlistItem[]>('/wishlist')
+      if (result.success && Array.isArray(result.data)) {
+        setItems(result.data)
+      }
+    } else {
+      setItems(loadFromStorage())
+    }
+  }, [isAuthenticated])
 
   return (
     <WishlistContext.Provider
@@ -104,7 +172,6 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         addItem,
         removeItem,
         toggleItem,
-        moveToCart,
         clearWishlist,
         refreshWishlist,
       }}

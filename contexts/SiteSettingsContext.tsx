@@ -1,0 +1,119 @@
+'use client'
+
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { settingsApi } from '@/lib/api/settings'
+
+interface SiteSettings {
+  siteName: string
+  siteDescription: string
+  supportEmail: string
+  logoUrl: string
+  faviconUrl: string
+  maintenanceMode: boolean
+  timezone: string
+  promoBannerCode: string
+}
+
+const CACHE_KEY = 'site_settings'
+
+const DEFAULTS: SiteSettings = {
+  siteName: '',
+  siteDescription: '',
+  supportEmail: '',
+  logoUrl: '',
+  faviconUrl: '',
+  maintenanceMode: false,
+  timezone: 'auto',
+  promoBannerCode: '',
+}
+
+function loadCached(): SiteSettings {
+  if (typeof window === 'undefined') return DEFAULTS
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) }
+  } catch {}
+  return DEFAULTS
+}
+
+function saveCache(settings: SiteSettings) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(settings))
+  } catch {}
+}
+
+// Extract a string value from API response data, handling both flat and wrapped formats
+// e.g. { siteName: "Zenorar" } or { siteName: { value: "Zenorar" } }
+function extractValue(data: Record<string, any>, key: string): string {
+  const v = data[key]
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'object' && 'value' in v) return String(v.value ?? '')
+  return String(v)
+}
+
+const SiteSettingsContext = createContext<SiteSettings & { isLoaded: boolean; rawSettings: Record<string, any> }>({ ...DEFAULTS, isLoaded: false, rawSettings: {} })
+
+export function SiteSettingsProvider({ children }: { children: ReactNode }) {
+  // Always start with DEFAULTS to avoid hydration mismatch (server has no localStorage)
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULTS)
+  const [rawSettings, setRawSettings] = useState<Record<string, any>>({})
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    // Load cached values first (client-only, after hydration)
+    const cached = loadCached()
+    if (cached.siteName || cached.logoUrl || cached.faviconUrl || cached.maintenanceMode) {
+      setSettings(cached)
+      setIsLoaded(true)
+    }
+
+    // Then fetch fresh from API
+    settingsApi.getPublicSettings().then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setRawSettings(d)
+        // When API returns a key (even empty ""), use it directly — don't fall back to stale cache
+        const fresh: SiteSettings = {
+          siteName: ('siteName' in d ? extractValue(d, 'siteName') : cached.siteName) || DEFAULTS.siteName,
+          siteDescription: ('siteDescription' in d ? extractValue(d, 'siteDescription') : cached.siteDescription) || DEFAULTS.siteDescription,
+          supportEmail: ('supportEmail' in d ? extractValue(d, 'supportEmail') : cached.supportEmail) || DEFAULTS.supportEmail,
+          logoUrl: 'logoUrl' in d ? extractValue(d, 'logoUrl') : (cached.logoUrl || ''),
+          faviconUrl: 'faviconUrl' in d ? extractValue(d, 'faviconUrl') : (cached.faviconUrl || ''),
+          maintenanceMode: 'maintenanceMode' in d ? Boolean(d.maintenanceMode) : false,
+          timezone: 'timezone' in d ? extractValue(d, 'timezone') : (cached.timezone || 'auto'),
+          promoBannerCode: 'promoBannerCode' in d ? extractValue(d, 'promoBannerCode') : (cached.promoBannerCode || ''),
+        }
+        setSettings(fresh)
+        saveCache(fresh)
+      } else {
+        console.warn('[SiteSettings] fetch failed:', res.error || 'no data')
+      }
+      setIsLoaded(true)
+    }).catch((err) => {
+      console.error('[SiteSettings] fetch error:', err)
+      setIsLoaded(true)
+    })
+  }, [])
+
+  // Dynamically set favicon
+  useEffect(() => {
+    if (!settings.faviconUrl || typeof document === 'undefined') return
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'icon'
+      document.head.appendChild(link)
+    }
+    link.href = settings.faviconUrl
+  }, [settings.faviconUrl])
+
+  return (
+    <SiteSettingsContext.Provider value={{ ...settings, isLoaded, rawSettings }}>
+      {children}
+    </SiteSettingsContext.Provider>
+  )
+}
+
+export function useSiteSettings() {
+  return useContext(SiteSettingsContext)
+}

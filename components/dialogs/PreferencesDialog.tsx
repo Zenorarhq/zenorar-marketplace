@@ -9,6 +9,7 @@ interface PreferencesDialogProps {
   isOpen: boolean
   onClose: () => void
   triggerRef?: React.RefObject<HTMLButtonElement>
+  variant?: 'dropdown' | 'modal'
 }
 
 interface Country {
@@ -66,7 +67,7 @@ const currencies: Currency[] = [
 
 type SettingType = 'country' | 'language' | 'currency' | null
 
-export default function PreferencesDialog({ isOpen, onClose, triggerRef }: PreferencesDialogProps) {
+export default function PreferencesDialog({ isOpen, onClose, triggerRef, variant = 'dropdown' }: PreferencesDialogProps) {
   const { preferences, savePreferences } = usePreferences()
   const [selectedCountry, setSelectedCountry] = useState<Country>(preferences.country)
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(preferences.language)
@@ -355,24 +356,35 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef }: Prefe
     </>
   )
 
-  return (
+  const content = (
     <>
-      {/* Backdrop with blur */}
-      <div
-        className="fixed inset-0 z-[99] bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Dropdown positioned at top right - full width on mobile */}
-      <div
-        ref={dialogRef}
-        className="fixed z-[100] top-20 left-4 right-4 md:left-auto md:right-8 lg:right-12 md:w-[320px] bg-[#0D0D0D] rounded-2xl p-5 shadow-2xl border border-white/10 flex flex-col max-h-[80vh] overflow-y-auto"
-      >
-        {activeSetting === null && renderMainView()}
-        {activeSetting === 'country' && renderCountrySelector()}
-        {activeSetting === 'language' && renderLanguageSelector()}
-        {activeSetting === 'currency' && renderCurrencySelector()}
-      </div>
+      {activeSetting === null && renderMainView()}
+      {activeSetting === 'country' && renderCountrySelector()}
+      {activeSetting === 'language' && renderLanguageSelector()}
+      {activeSetting === 'currency' && renderCurrencySelector()}
     </>
+  )
+
+  if (variant === 'modal') {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20">
+        <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+        <div
+          ref={dialogRef}
+          className="relative w-[320px] bg-[#0D0D0D] rounded-2xl p-5 shadow-2xl border border-white/10 flex flex-col max-h-[80vh] overflow-y-auto z-[101]"
+        >
+          {content}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      ref={dialogRef}
+      className="absolute right-0 top-full mt-2 w-[320px] bg-[#0D0D0D] rounded-2xl p-5 shadow-2xl border border-white/10 flex flex-col max-h-[80vh] overflow-y-auto z-[70]"
+    >
+      {content}
+    </div>
   )
 }

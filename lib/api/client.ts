@@ -109,6 +109,33 @@ export async function apiFetch<T>(
   }
 }
 
+// API fetch for local Next.js API routes (uses /api instead of /backend)
+export async function localApiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<ApiResponse<T>> {
+  const token = getAccessToken()
+  const isFormData = options.body instanceof FormData
+  const headers: HeadersInit = {
+    ...(!isFormData && { 'Content-Type': 'application/json' }),
+    ...options.headers,
+  }
+  if (token) {
+    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+  }
+  try {
+    const response = await fetch(`/api${endpoint}`, { ...options, headers })
+    const data = await response.json()
+    if (!response.ok && data.success !== false) {
+      return { success: false, error: data.error || data.message || `HTTP Error: ${response.status}` }
+    }
+    return data
+  } catch (error) {
+    console.error('Local API fetch error:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Network error' }
+  }
+}
+
 // Helper to build query strings
 export function buildQueryString(params: Record<string, any>): string {
   const query = new URLSearchParams()

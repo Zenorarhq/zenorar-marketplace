@@ -20,6 +20,7 @@ const navItems = [
   { href: '/profile/billing', label: 'Billing & Payments', shortLabel: 'Billing', icon: 'credit-card' },
   { href: '/profile/orders', label: 'My Orders', shortLabel: 'Orders', icon: 'shopping-bag' },
   { href: '/profile/library', label: 'My Library', shortLabel: 'Library', icon: 'library' },
+  { href: '/profile/wishlist', label: 'My Wishlist', shortLabel: 'Wishlist', icon: 'heart' },
   { href: '/profile/referrals', label: 'Referral & Rewards', shortLabel: 'Referrals', icon: 'gift' },
   { href: '/profile/tickets', label: 'Support Tickets', shortLabel: 'Support', icon: 'ticket' },
 ]

@@ -1,6 +1,6 @@
 // Orders API
 
-import { apiFetch, buildQueryString } from './client'
+import { apiFetch, localApiFetch, buildQueryString } from './client'
 import { Product, ProductVariant } from './products'
 
 export interface OrderItem {
@@ -66,6 +66,7 @@ export interface CreateOrderData {
   customerNote?: string
   shippingMethod?: string
   paymentMethod?: string
+  discountCode?: string
 }
 
 export interface OrderFilters {
@@ -136,11 +137,11 @@ export const ordersApi = {
   },
 
   async getStats() {
-    return apiFetch<{
+    return localApiFetch<{
       totalOrders: number
       totalRevenue: number
       pendingOrders: number
       completedOrders: number
-    }>('/orders/stats/overview')
+    }>('/orders/stats')
   },
 }

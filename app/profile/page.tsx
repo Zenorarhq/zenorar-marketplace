@@ -78,6 +78,10 @@ export default function ProfileSettingsPage() {
     reader.readAsDataURL(file)
 
     try {
+      // Remove old avatar from Cloudinary before uploading new one
+      if (user?.avatar) {
+        await profileApi.removeAvatar()
+      }
       const result = await profileApi.uploadAvatar(file)
       if (result.success && result.data) {
         setAvatarPreview(result.data.avatar || null)
