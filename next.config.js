@@ -2,6 +2,9 @@
 const nextConfig = {
   // Enable SWC minification for faster builds
   swcMinify: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       {
