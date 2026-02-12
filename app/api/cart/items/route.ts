@@ -14,14 +14,14 @@ export async function POST(request: NextRequest) {
 
     // Find or create cart for user
     let cartResult = await executeQuery(
-      `SELECT id FROM carts WHERE "userId" = $1 LIMIT 1`,
+      `SELECT id FROM carts WHERE user_id = $1 LIMIT 1`,
       [user.id]
     )
 
     let cartId: string
     if (cartResult.rows.length === 0) {
       const newCart = await executeQuery(
-        `INSERT INTO carts (id, "userId", "createdAt", "updatedAt") VALUES (gen_random_uuid()::TEXT, $1, NOW(), NOW()) RETURNING id`,
+        `INSERT INTO carts (id, user_id, created_at, updated_at) VALUES (gen_random_uuid()::TEXT, $1, NOW(), NOW()) RETURNING id`,
         [user.id]
       )
       cartId = newCart.rows[0].id
@@ -31,20 +31,20 @@ export async function POST(request: NextRequest) {
 
     // Upsert cart item (increment quantity if same product+license exists)
     const result = await executeQuery(
-      `INSERT INTO cart_items (id, "cartId", "productId", quantity, license, price, "createdAt", "updatedAt")
+      `INSERT INTO cart_items (id, cart_id, product_id, quantity, license, price, created_at, updated_at)
        VALUES (gen_random_uuid()::TEXT, $1, $2, $3, $4, $5, NOW(), NOW())
-       ON CONFLICT ("cartId", "productId", license) DO UPDATE SET
+       ON CONFLICT (cart_id, product_id, license) DO UPDATE SET
          quantity = $3,
          price = $5,
-         "updatedAt" = NOW()
-       RETURNING id, "productId", quantity, license, price`,
+         updated_at = NOW()
+       RETURNING id, product_id, quantity, license, price`,
       [cartId, productId, quantity, license, price]
     )
 
     const row = result.rows[0]
     return successResponse({
       id: row.id,
-      productId: row.productId,
+      productId: row.product_id,
       quantity: row.quantity,
       license: row.license,
       price: parseFloat(row.price),

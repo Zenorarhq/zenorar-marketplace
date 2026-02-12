@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     // Find user's cart
     const cartResult = await executeQuery(
-      `SELECT id FROM carts WHERE "userId" = $1 LIMIT 1`,
+      `SELECT id FROM carts WHERE user_id = $1 LIMIT 1`,
       [user.id]
     )
 
@@ -23,28 +23,28 @@ export async function GET(request: NextRequest) {
     // Get cart items with product data
     const itemsResult = await executeQuery(
       `SELECT
-        ci.id, ci."productId", ci.quantity, ci.license, ci.price,
+        ci.id, ci.product_id, ci.quantity, ci.license, ci.price,
         p.name, p.slug, p.description, p.price as product_price,
         c.name as category_name,
         (
-          SELECT json_agg(json_build_object('url', pi.url, 'isPrimary', pi."isPrimary") ORDER BY pi."isPrimary" DESC)
-          FROM product_images pi WHERE pi."productId" = p.id
+          SELECT json_agg(json_build_object('url', pi.url, 'isPrimary', pi.is_primary) ORDER BY pi.is_primary DESC)
+          FROM product_images pi WHERE pi.product_id = p.id
         ) as images
       FROM cart_items ci
-      JOIN products p ON p.id = ci."productId"
-      LEFT JOIN categories c ON p."categoryId" = c.id
-      WHERE ci."cartId" = $1
-      ORDER BY ci."createdAt" DESC`,
+      JOIN products p ON p.id = ci.product_id
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE ci.cart_id = $1
+      ORDER BY ci.created_at DESC`,
       [cartId]
     )
 
     const items = itemsResult.rows.map((row: any) => ({
-      productId: row.productId,
+      productId: row.product_id,
       quantity: row.quantity,
       license: row.license || 'standard',
       price: parseFloat(row.price || row.product_price),
       product: {
-        id: row.productId,
+        id: row.product_id,
         name: row.name,
         slug: row.slug,
         description: row.description || '',
@@ -74,13 +74,13 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const cartResult = await executeQuery(
-      `SELECT id FROM carts WHERE "userId" = $1 LIMIT 1`,
+      `SELECT id FROM carts WHERE user_id = $1 LIMIT 1`,
       [user.id]
     )
 
     if (cartResult.rows.length > 0) {
       await executeQuery(
-        `DELETE FROM cart_items WHERE "cartId" = $1`,
+        `DELETE FROM cart_items WHERE cart_id = $1`,
         [cartResult.rows[0].id]
       )
     }
