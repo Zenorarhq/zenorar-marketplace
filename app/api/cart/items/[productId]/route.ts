@@ -18,7 +18,7 @@ export async function PUT(
 
     // Find user's cart
     const cartResult = await executeQuery(
-      `SELECT id FROM carts WHERE "userId" = $1 LIMIT 1`,
+      `SELECT id FROM carts WHERE user_id = $1 LIMIT 1`,
       [user.id]
     )
 
@@ -31,7 +31,7 @@ export async function PUT(
     if (quantity <= 0) {
       // Remove item if quantity is 0 or less
       await executeQuery(
-        `DELETE FROM cart_items WHERE "cartId" = $1 AND "productId" = $2 AND license = $3`,
+        `DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2 AND license = $3`,
         [cartId, productId, license]
       )
       return successResponse({ message: 'Item removed' })
@@ -39,9 +39,9 @@ export async function PUT(
 
     // Update quantity
     const result = await executeQuery(
-      `UPDATE cart_items SET quantity = $1, "updatedAt" = NOW()
-       WHERE "cartId" = $2 AND "productId" = $3 AND license = $4
-       RETURNING id, "productId", quantity, license, price`,
+      `UPDATE cart_items SET quantity = $1, updated_at = NOW()
+       WHERE cart_id = $2 AND product_id = $3 AND license = $4
+       RETURNING id, product_id, quantity, license, price`,
       [quantity, cartId, productId, license]
     )
 
@@ -52,7 +52,7 @@ export async function PUT(
     const row = result.rows[0]
     return successResponse({
       id: row.id,
-      productId: row.productId,
+      productId: row.product_id,
       quantity: row.quantity,
       license: row.license,
       price: parseFloat(row.price),
@@ -78,7 +78,7 @@ export async function DELETE(
 
     // Find user's cart
     const cartResult = await executeQuery(
-      `SELECT id FROM carts WHERE "userId" = $1 LIMIT 1`,
+      `SELECT id FROM carts WHERE user_id = $1 LIMIT 1`,
       [user.id]
     )
 
@@ -89,7 +89,7 @@ export async function DELETE(
     const cartId = cartResult.rows[0].id
 
     await executeQuery(
-      `DELETE FROM cart_items WHERE "cartId" = $1 AND "productId" = $2 AND license = $3`,
+      `DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2 AND license = $3`,
       [cartId, productId, license]
     )
 
