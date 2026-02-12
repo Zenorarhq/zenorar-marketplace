@@ -483,6 +483,11 @@ const iconMap = {
   // Layout
   'layout-left': LeftToRightListNumberIcon,
   layers: Layers01Icon,
+  web: GlobeIcon,
+  campaign: Notification01Icon,
+  'photo-library': Image01Icon,
+  'smart-button': FlashIcon,
+  category: GridViewIcon,
 
   // Export/Import
   'ios-share': Share01Icon,

@@ -41,6 +41,16 @@ export default function ProductsPage() {
     },
   })
 
+  // Fetch staff pick IDs from local DB
+  const { data: staffPickIds = [] } = useQuery({
+    queryKey: ['admin-staff-picks'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/products/staff-picks')
+      const data = await res.json()
+      return data.success ? data.data : []
+    },
+  })
+
   const loading = productsLoading
   const error = productsError ? String(productsError) : ''
 
@@ -53,6 +63,18 @@ export default function ProductsPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
     } else {
       alert(result.error || 'Failed to delete product')
+    }
+  }
+
+  async function handleToggleStaffPick(productId: string) {
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/staff-pick`, { method: 'PATCH' })
+      const data = await res.json()
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ['admin-staff-picks'] })
+      }
+    } catch {
+      // silently fail
     }
   }
 
@@ -305,6 +327,13 @@ export default function ProductsPage() {
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleStaffPick(product.id)}
+                        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                        title={staffPickIds.includes(product.id) ? 'Remove from Staff Picks' : 'Add to Staff Picks'}
+                      >
+                        <Icon name="star" size={16} className={staffPickIds.includes(product.id) ? 'text-yellow-500 fill-yellow-500' : 'text-slate-600'} />
+                      </button>
                       <Link
                         href={`/admin/products/${product.id}/edit`}
                         className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"

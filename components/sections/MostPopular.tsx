@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import ProductCard from '@/components/cards/ProductCard'
 import Icon from '@/components/ui/Icon'
 
@@ -19,7 +20,7 @@ interface PopularProduct {
   images: { url: string; isPrimary: boolean }[] | null
 }
 
-export default function MostPopular() {
+export default function MostPopular({ config }: { config?: { title?: string; columns?: string; style?: Record<string, any> } } = {}) {
   const [products, setProducts] = useState<PopularProduct[]>([])
 
   useEffect(() => {
@@ -37,13 +38,21 @@ export default function MostPopular() {
 
   return (
     <section className="mb-12">
-      <h2 className="text-2xl font-bold mb-6 text-primary flex items-center gap-2">
-        <Icon name="chart" size={24} />
-        Most Popular
-      </h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className={`${({ small: 'text-xl', large: 'text-3xl', xl: 'text-4xl' } as Record<string, string>)[config?.style?.headingSize] || 'text-2xl'} ${({ normal: 'font-normal', semibold: 'font-semibold', extrabold: 'font-extrabold' } as Record<string, string>)[config?.style?.headingWeight] || 'font-bold'} text-primary flex items-center gap-2`}>
+          <Icon name="chart" size={24} />
+          {config?.title || 'Most Popular'}
+        </h2>
+        <Link
+          href="#"
+          className="text-sm text-slate-400 hover:text-primary transition-colors"
+        >
+          See all
+        </Link>
+      </div>
 
       <div
-        className="grid grid-rows-2 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 md:grid-cols-4 md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible"
+        className={`grid grid-rows-2 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 ${({ '2': 'md:grid-cols-2', '3': 'md:grid-cols-3', '4': 'md:grid-cols-4' } as Record<string, string>)[config?.columns || '4'] || 'md:grid-cols-4'} md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible`}
         style={{ scrollbarWidth: 'none' }}
       >
         {products.map((p) => {

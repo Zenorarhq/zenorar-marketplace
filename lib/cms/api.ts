@@ -1,6 +1,6 @@
 // CMS API Client for Page Builder
 
-const API_BASE = process.env.NEXT_PUBLIC_CMS_API_URL || 'http://localhost:4000/api'
+const API_BASE = '/api/cms'
 
 // Types
 export interface User {
@@ -97,29 +97,23 @@ export interface ApiResponse<T> {
   }
 }
 
-// Token management
+// Token management — reuses the marketplace auth token
 let accessToken: string | null = null
 
 export function setAccessToken(token: string) {
   accessToken = token
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('cms_token', token)
-  }
 }
 
 export function getAccessToken(): string | null {
   if (accessToken) return accessToken
   if (typeof window !== 'undefined') {
-    accessToken = localStorage.getItem('cms_token')
+    accessToken = localStorage.getItem('auth_token')
   }
   return accessToken
 }
 
 export function clearAccessToken() {
   accessToken = null
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('cms_token')
-  }
 }
 
 // API fetch helper

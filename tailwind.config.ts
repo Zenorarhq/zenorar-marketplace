@@ -18,17 +18,18 @@ const config: Config = {
     },
     extend: {
       colors: {
-        primary: '#43D678',
-        'background-dark': '#000000',
+        primary: 'var(--theme-primary, #43D678)',
+        secondary: 'var(--theme-secondary, #3B82F6)',
+        'background-dark': 'var(--theme-background, #000000)',
         'background-light': '#F8FAFC',
-        'surface-dark': '#121212',
-        'surface-light': '#1A1A1A',
-        'border-dark': '#1F1F1F',
-        charcoal: '#121212',
+        'surface-dark': 'var(--theme-surface, #121212)',
+        'surface-light': 'var(--theme-surface-light, #1A1A1A)',
+        'border-dark': 'var(--theme-border, #1F1F1F)',
+        charcoal: 'var(--theme-surface, #121212)',
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Inter', 'sans-serif'],
+        sans: ['var(--theme-font-body)', 'Inter', 'sans-serif'],
+        display: ['var(--theme-font-heading)', 'Inter', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: '0.5rem',

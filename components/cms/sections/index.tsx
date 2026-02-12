@@ -17,6 +17,14 @@ import SpacerSection from './SpacerSection'
 import DividerSection from './DividerSection'
 import HeaderSection from './HeaderSection'
 import FooterSection from './FooterSection'
+import VideoEmbedSection from './VideoEmbedSection'
+import ButtonCtaSection from './ButtonCtaSection'
+import FaqAccordionSection from './FaqAccordionSection'
+import CustomHtmlSection from './CustomHtmlSection'
+import SocialLinksSection from './SocialLinksSection'
+import NewsletterSection from './NewsletterSection'
+import StatsCounterSection from './StatsCounterSection'
+import MapSection from './MapSection'
 
 interface SectionRendererProps {
   section: Section
@@ -52,6 +60,14 @@ const leafComponents: Record<string, React.ComponentType<LeafComponentProps>> = 
   'divider': DividerSection,
   'header': HeaderSection,
   'footer': FooterSection,
+  'video-embed': VideoEmbedSection,
+  'button-cta': ButtonCtaSection,
+  'faq-accordion': FaqAccordionSection,
+  'custom-html': CustomHtmlSection,
+  'social-links': SocialLinksSection,
+  'newsletter': NewsletterSection,
+  'stats-counter': StatsCounterSection,
+  'map': MapSection,
 }
 
 const containerComponents: Record<string, React.ComponentType<ContainerComponentProps>> = {
@@ -121,4 +137,12 @@ export {
   DividerSection,
   HeaderSection,
   FooterSection,
+  VideoEmbedSection,
+  ButtonCtaSection,
+  FaqAccordionSection,
+  CustomHtmlSection,
+  SocialLinksSection,
+  NewsletterSection,
+  StatsCounterSection,
+  MapSection,
 }

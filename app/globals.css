@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --theme-primary: #43D678;
+  --theme-secondary: #3B82F6;
+  --theme-background: #000000;
+  --theme-surface: #121212;
+  --theme-surface-light: #1A1A1A;
+  --theme-border: #1F1F1F;
+  --theme-text-primary: #FFFFFF;
+  --theme-text-secondary: #94A3B8;
+  --theme-font-heading: 'Inter', sans-serif;
+  --theme-font-body: 'Inter', sans-serif;
+}
+
 @layer base {
   body {
     font-family: 'Inter', sans-serif;
@@ -62,7 +75,7 @@
 
 /* Form element styling */
 input[type="range"] {
-  accent-color: #43D678;
+  accent-color: var(--theme-primary);
 }
 
 input[type="checkbox"] {
@@ -71,8 +84,8 @@ input[type="checkbox"] {
 }
 
 input[type="checkbox"]:checked {
-  background-color: #43D678;
-  border-color: #43D678;
+  background-color: var(--theme-primary);
+  border-color: var(--theme-primary);
 }
 
 /* Animations */

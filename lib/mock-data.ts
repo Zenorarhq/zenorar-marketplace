@@ -1,4 +1,4 @@
-import { Product, Category, ConnectivityOption, NavItem } from './types'
+import { Product, Category, NavItem } from './types'
 
 export const navCategories: NavItem[] = [
   { label: 'Scripts', href: '/scripts' },
@@ -241,16 +241,6 @@ export const scriptCategories: Category[] = [
   { id: 'c4', name: 'Blockchain', icon: 'bitcoin', href: '/products?category=blockchain' },
 ]
 
-export const connectivityOptions: ConnectivityOption[] = [
-  { id: 'conn1', name: 'Global Roaming eSIM', icon: 'sim-card', href: '/products?category=esims&type=global' },
-  { id: 'conn2', name: 'North America eSIM', icon: 'map', href: '/products?category=esims&type=north-america' },
-  { id: 'conn3', name: 'Europe eSIM', icon: 'compass', href: '/products?category=esims&type=europe' },
-  { id: 'conn4', name: 'Asia eSIM', icon: 'globe', href: '/products?category=esims&type=asia' },
-  { id: 'conn5', name: 'USA Virtual Number', icon: 'call', href: '/products?category=virtual-numbers&country=usa' },
-  { id: 'conn6', name: 'UK Virtual Number', icon: 'call', href: '/products?category=virtual-numbers&country=uk' },
-  { id: 'conn7', name: 'Canada Virtual Number', icon: 'call', href: '/products?category=virtual-numbers&country=canada' },
-  { id: 'conn8', name: 'Toll-Free Numbers', icon: 'phone', href: '/products?category=virtual-numbers&type=toll-free' },
-]
 
 export const relatedProducts: Product[] = [
   {

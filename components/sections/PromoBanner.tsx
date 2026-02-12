@@ -6,7 +6,7 @@ import Icon from '@/components/ui/Icon'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import { discountsApi, type ValidateDiscountResponse } from '@/lib/api/discounts'
 
-export default function PromoBanner() {
+export default function PromoBanner({ config }: { config?: Record<string, any> } = {}) {
   const { promoBannerCode } = useSiteSettings()
   const [discount, setDiscount] = useState<ValidateDiscountResponse | null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -59,7 +59,8 @@ export default function PromoBanner() {
 
   return (
     <>
-      <div className="relative bg-gradient-to-r from-primary to-green-600 rounded-2xl p-10 text-black mb-12 overflow-hidden shadow-2xl shadow-primary/20">
+      <div className={`relative rounded-2xl p-10 text-black mb-12 overflow-hidden shadow-2xl shadow-primary/20 ${config?.style?.backgroundColor ? '' : 'bg-gradient-to-r from-primary to-green-600'}`}
+        style={config?.style?.backgroundColor ? { backgroundColor: config.style.backgroundColor } : undefined}>
         {/* Decorative Circle */}
         <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/20 rounded-full blur-3xl" />
 

@@ -55,7 +55,7 @@ const DEFAULT_BANNERS = [
   },
 ]
 
-export default function HeroSection() {
+export default function HeroSection({ config }: { config?: Record<string, any> } = {}) {
   const { rawSettings } = useSiteSettings()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -140,7 +140,8 @@ export default function HeroSection() {
   const currentBanner = banners[currentSlide]
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12"
+      style={config?.style?.backgroundColor ? { backgroundColor: config.style.backgroundColor, borderRadius: '1rem', padding: '1rem' } : undefined}>
       {/* Main Hero */}
       <div
         ref={containerRef}

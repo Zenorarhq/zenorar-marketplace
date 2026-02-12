@@ -17,6 +17,36 @@ import CartDropdown from '@/components/cart/CartDropdown'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import { navCategories } from '@/lib/mock-data'
 
+function MobileNavItem({ item, pathname, onClose }: { item: { label: string; url: string; children?: { label: string; url: string }[] }; pathname: string; onClose: () => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const hasChildren = item.children && item.children.length > 0
+  const isActive = pathname === item.url
+
+  return (
+    <div>
+      <div className="flex items-center">
+        <Link href={item.url} onClick={onClose} className={`flex-1 block py-4 text-lg font-medium ${isActive ? 'text-primary' : 'text-white'}`}>
+          {item.label}
+        </Link>
+        {hasChildren && (
+          <button onClick={() => setExpanded(!expanded)} className="p-2 text-slate-400">
+            <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={18} />
+          </button>
+        )}
+      </div>
+      {hasChildren && expanded && (
+        <div className="pl-4 pb-2">
+          {item.children!.map((child, ci) => (
+            <Link key={ci} href={child.url} onClick={onClose} className={`block py-2 text-base ${pathname === child.url ? 'text-primary' : 'text-slate-400'}`}>
+              {child.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Header() {
   const router = useRouter()
   const pathname = usePathname()
@@ -24,7 +54,25 @@ export default function Header() {
   const { user, isAuthenticated, logout } = useAuth()
   const { preferences } = usePreferences()
   const { unreadCount } = useNotifications()
-  const { siteName, logoUrl } = useSiteSettings()
+  const { siteName, logoUrl, rawSettings } = useSiteSettings()
+
+  // Parse CMS header config
+  const headerConfig = (() => {
+    try {
+      const raw = rawSettings?.site_header
+      if (!raw) return null
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      const data = parsed?.value ? (typeof parsed.value === 'string' ? JSON.parse(parsed.value) : parsed.value) : parsed
+      return data && typeof data === 'object' ? data : null
+    } catch { return null }
+  })()
+  const showSearch = headerConfig?.showSearch !== false
+  const showCart = headerConfig?.showCart !== false
+  const showSiteName = headerConfig?.showSiteName !== false
+  const logoMaxHeight = headerConfig?.logoMaxHeight || 'medium'
+  const logoHeightClass = ({ small: 'h-7 sm:h-7 md:h-7', medium: 'h-8 sm:h-9 md:h-10', large: 'h-10 sm:h-11 md:h-12' } as Record<string, string>)[logoMaxHeight] || 'h-8 sm:h-9 md:h-10'
+  const isSticky = headerConfig?.sticky !== false
+  const bgStyle = headerConfig?.backgroundStyle || 'blur'
   const [searchQuery, setSearchQuery] = useState('')
   const [showPreferences, setShowPreferences] = useState(false)
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
@@ -137,7 +185,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="border-b border-border-dark bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+      <header className={`border-b border-border-dark z-50 ${isSticky ? 'sticky top-0' : ''} ${bgStyle === 'blur' ? 'bg-background-dark/80 backdrop-blur-md' : bgStyle === 'transparent' ? 'bg-transparent' : 'bg-background-dark'}`}>
         {/* Main Header Row */}
         <div className="max-w-container mx-auto px-3 sm:px-4 md:px-4 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3 md:gap-3">
           {/* Left Section: Menu Button (mobile/tablet) + Logo */}
@@ -158,7 +206,10 @@ export default function Header() {
               className="flex items-center gap-1.5 sm:gap-2 font-bold text-base sm:text-lg md:text-xl tracking-tight text-primary flex-shrink-0"
             >
               {logoUrl ? (
-                <img src={logoUrl} alt={siteName} className="h-8 sm:h-9 md:h-10 w-auto object-contain" />
+                <>
+                  <img src={logoUrl} alt={siteName} className={`${logoHeightClass} w-auto object-contain`} />
+                  {showSiteName && <span>{siteName}</span>}
+                </>
               ) : siteName ? (
                 <span>{siteName}</span>
               ) : null}
@@ -166,7 +217,7 @@ export default function Header() {
           </div>
 
           {/* Desktop Search Bar */}
-          <div className="hidden md:flex flex-1 relative z-[60] mx-2 lg:mx-6" style={{ minWidth: '280px', maxWidth: '600px' }}>
+          {showSearch && <div className="hidden md:flex flex-1 relative z-[60] mx-2 lg:mx-6" style={{ minWidth: '280px', maxWidth: '600px' }}>
             <form onSubmit={handleSearch} className="relative w-full">
               <label htmlFor="header-search-desktop" className="sr-only">
                 Search products
@@ -199,7 +250,7 @@ export default function Header() {
               onViewAllResults={handleViewAllResults}
               inputRef={searchInputRef}
             />
-          </div>
+          </div>}
 
           {/* Right Section: Icons */}
           <div className="flex items-center gap-1 sm:gap-2">
@@ -317,19 +368,21 @@ export default function Header() {
             )}
 
             {/* Mobile/Tablet: Cart */}
-            <Link
-              href="/cart"
-              prefetch={true}
-              className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors relative"
-              aria-label="Cart"
-            >
-              <Icon name="cart" size={22} />
-              {itemCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 bg-primary text-[9px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                  {itemCount > 9 ? '9+' : itemCount}
-                </span>
-              )}
-            </Link>
+            {showCart && (
+              <Link
+                href="/cart"
+                prefetch={true}
+                className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors relative"
+                aria-label="Cart"
+              >
+                <Icon name="cart" size={22} />
+                {itemCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 bg-primary text-[9px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                    {itemCount > 9 ? '9+' : itemCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-3 lg:gap-4 text-sm font-medium text-slate-400 flex-shrink-0">
@@ -453,7 +506,7 @@ export default function Header() {
               )}
 
               {/* Cart */}
-              <div className="relative" ref={cartDropdownRef}>
+              {showCart && <div className="relative" ref={cartDropdownRef}>
                 <div className="flex items-center gap-0.5">
                   <Link
                     href="/cart"
@@ -484,13 +537,13 @@ export default function Header() {
                   isOpen={showCartDropdown}
                   onClose={() => setShowCartDropdown(false)}
                 />
-              </div>
+              </div>}
             </nav>
           </div>
         </div>
 
         {/* Mobile Search Bar */}
-        <div className="md:hidden border-t border-border-dark bg-background-dark/80 px-3 sm:px-4 py-2">
+        {showSearch && <div className="md:hidden border-t border-border-dark bg-background-dark/80 px-3 sm:px-4 py-2">
           <div className="relative z-[60]">
             <form onSubmit={handleSearch} className="relative">
               <label htmlFor="header-search-mobile" className="sr-only">
@@ -524,7 +577,7 @@ export default function Header() {
               inputRef={searchInputRef}
             />
           </div>
-        </div>
+        </div>}
 
 
         {/* Mobile Preferences Modal */}
@@ -559,24 +612,29 @@ export default function Header() {
 
           {/* Side Drawer */}
           <div className="absolute top-0 left-0 bottom-0 w-[85vw] max-w-[320px] bg-[#1a1a1a] flex flex-col">
-            {/* Categories - All direct links */}
+            {/* Categories - CMS navigation or default */}
             <nav className="flex-1 overflow-y-auto pt-8 px-5">
-              {navCategories.map((category) => {
-                const isActive = pathname === category.href
-
-                return (
-                  <Link
-                    key={category.label}
-                    href={category.href}
-                    onClick={closeMobileMenu}
-                    className={`block py-4 text-lg font-medium ${
-                      isActive ? 'text-primary' : 'text-white'
-                    }`}
-                  >
-                    {category.label}
-                  </Link>
-                )
-              })}
+              {(headerConfig?.navigation && headerConfig.navigation.length > 0) ? (
+                headerConfig.navigation.map((navItem: any, idx: number) => (
+                  <MobileNavItem key={idx} item={navItem} pathname={pathname} onClose={closeMobileMenu} />
+                ))
+              ) : (
+                navCategories.map((category) => {
+                  const isActive = pathname === category.href
+                  return (
+                    <Link
+                      key={category.label}
+                      href={category.href}
+                      onClick={closeMobileMenu}
+                      className={`block py-4 text-lg font-medium ${
+                        isActive ? 'text-primary' : 'text-white'
+                      }`}
+                    >
+                      {category.label}
+                    </Link>
+                  )
+                })
+              )}
             </nav>
 
             {/* Bottom Section */}

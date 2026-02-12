@@ -95,6 +95,48 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // Dynamically apply theme CSS variables
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    try {
+      const raw = rawSettings.site_theme
+      if (!raw) return
+      const theme = typeof raw === 'string' ? JSON.parse(raw) : raw
+      const data = theme?.value ? (typeof theme.value === 'string' ? JSON.parse(theme.value) : theme.value) : theme
+
+      // Backward compat: old format had { primaryColor: "..." }
+      if (data?.primaryColor && !data?.colors) {
+        document.documentElement.style.setProperty('--theme-primary', data.primaryColor)
+        return
+      }
+
+      // New format: { colors: { primary, secondary, ... }, typography: { ... } }
+      if (data?.colors) {
+        const colorMap: Record<string, string> = {
+          primary: '--theme-primary',
+          secondary: '--theme-secondary',
+          background: '--theme-background',
+          surface: '--theme-surface',
+          surfaceLight: '--theme-surface-light',
+          border: '--theme-border',
+          textPrimary: '--theme-text-primary',
+          textSecondary: '--theme-text-secondary',
+        }
+        for (const [key, varName] of Object.entries(colorMap)) {
+          if (data.colors[key]) {
+            document.documentElement.style.setProperty(varName, data.colors[key])
+          }
+        }
+      }
+      if (data?.typography?.headingFont) {
+        document.documentElement.style.setProperty('--theme-font-heading', `'${data.typography.headingFont}', sans-serif`)
+      }
+      if (data?.typography?.bodyFont) {
+        document.documentElement.style.setProperty('--theme-font-body', `'${data.typography.bodyFont}', sans-serif`)
+      }
+    } catch {}
+  }, [rawSettings.site_theme])
+
   // Dynamically set favicon
   useEffect(() => {
     if (!settings.faviconUrl || typeof document === 'undefined') return

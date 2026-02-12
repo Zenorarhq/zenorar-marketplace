@@ -2,22 +2,19 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import PageWithAdminBar from '@/components/cms/PageWithAdminBar'
 
-const API_BASE = process.env.NEXT_PUBLIC_CMS_API_URL || 'http://localhost:4000/api'
-
 interface PageProps {
   params: Promise<{ slug: string }>
 }
 
 async function getPage(slug: string) {
   try {
-    const res = await fetch(`${API_BASE}/pages/public/${slug}`, {
-      next: { revalidate: 60 }, // Revalidate every 60 seconds
+    // Use absolute URL for server-side fetch
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+    const res = await fetch(`${baseUrl}/api/cms/pages/public/${slug}`, {
+      next: { revalidate: 60 },
     })
 
-    if (!res.ok) {
-      return null
-    }
-
+    if (!res.ok) return null
     const data = await res.json()
     return data.success ? data.data : null
   } catch (error) {

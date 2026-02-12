@@ -6,12 +6,14 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { pagesApi, Page } from '@/lib/cms/api'
 import { useTimezone } from '@/hooks/use-timezone'
+import ThemeEditor from '@/components/admin/ThemeEditor'
+import HeaderFooterEditor from '@/components/admin/HeaderFooterEditor'
 import { formatDateShort } from '@/lib/date-utils'
 
 type TabType = 'all' | 'published' | 'draft' | 'archived'
 
 const SYSTEM_PAGES = [
-  { id: 'home', name: 'Home Page', path: '/', sections: ['Hero Slider'], icon: 'home' as const },
+  { id: 'home', name: 'Home Page', path: '/', sections: ['Hero Slider', 'Most Popular', 'Trust Banner', 'Promo Banner', 'Script Categories', 'Staff Picks', 'Connectivity'], icon: 'home' as const },
 ]
 
 export default function PageBuilderPage() {
@@ -137,6 +139,12 @@ export default function PageBuilderPage() {
           New Page
         </Link>
       </div>
+
+      {/* Global Theme */}
+      <ThemeEditor />
+
+      {/* Header & Footer */}
+      <HeaderFooterEditor />
 
       {/* System Pages */}
       <div className="mb-6">

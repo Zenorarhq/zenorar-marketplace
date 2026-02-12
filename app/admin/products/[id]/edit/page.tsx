@@ -36,6 +36,7 @@ export default function EditProductPage() {
     status: 'DRAFT' as 'DRAFT' | 'ACTIVE' | 'ARCHIVED',
     isDigital: true,
     isFeatured: false,
+    isStaffPick: false,
   })
 
   useEffect(() => {
@@ -52,6 +53,14 @@ export default function EditProductPage() {
     if (categoriesResult.success && categoriesResult.data) {
       setCategories(categoriesResult.data)
     }
+
+    // Fetch staff pick status from local DB
+    let isStaffPick = false
+    try {
+      const spRes = await fetch(`/api/admin/products/${productId}/staff-pick`)
+      const spData = await spRes.json()
+      if (spData.success) isStaffPick = spData.isStaffPick
+    } catch {}
 
     if (productResult.success && productResult.data) {
       const p = productResult.data
@@ -70,6 +79,7 @@ export default function EditProductPage() {
         status: p.status,
         isDigital: p.isDigital,
         isFeatured: p.isFeatured,
+        isStaffPick,
       })
     } else {
       setError(productResult.error || 'Product not found')
@@ -137,6 +147,12 @@ export default function EditProductPage() {
       const result = await productsApi.update(productId, productData)
 
       if (result.success) {
+        // Save staff pick status via local API
+        await fetch(`/api/admin/products/${productId}/staff-pick`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: formData.isStaffPick }),
+        }).catch(() => {})
         router.push('/admin/products')
       } else {
         setError(result.error || 'Failed to update product')
@@ -465,6 +481,20 @@ export default function EditProductPage() {
                 />
                 <label htmlFor="isFeatured" className="text-sm text-slate-300">
                   Featured Product
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isStaffPick"
+                  name="isStaffPick"
+                  checked={formData.isStaffPick}
+                  onChange={handleChange}
+                  className="w-4 h-4 bg-[#1a1a1a] border-[#2a2a2a] rounded focus:ring-primary"
+                />
+                <label htmlFor="isStaffPick" className="text-sm text-slate-300">
+                  Staff Pick (show in Staff Picks section)
                 </label>
               </div>
             </div>

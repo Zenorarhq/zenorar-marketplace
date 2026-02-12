@@ -29,6 +29,7 @@ export default function NewProductPage() {
     status: 'DRAFT' as 'DRAFT' | 'ACTIVE' | 'ARCHIVED',
     isDigital: true,
     isFeatured: false,
+    isStaffPick: false,
     imageUrl: '',
   })
 
@@ -112,6 +113,15 @@ export default function NewProductPage() {
             url: formData.imageUrl,
             isPrimary: true,
           })
+        }
+
+        // Set staff pick if checked
+        if (formData.isStaffPick) {
+          await fetch(`/api/admin/products/${result.data.id}/staff-pick`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: true }),
+          }).catch(() => {})
         }
 
         router.push('/admin/products')
@@ -433,6 +443,20 @@ export default function NewProductPage() {
                 />
                 <label htmlFor="isFeatured" className="text-sm text-slate-300">
                   Featured Product (show on homepage)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isStaffPick"
+                  name="isStaffPick"
+                  checked={formData.isStaffPick}
+                  onChange={handleChange}
+                  className="w-4 h-4 bg-[#1a1a1a] border-[#2a2a2a] rounded focus:ring-primary"
+                />
+                <label htmlFor="isStaffPick" className="text-sm text-slate-300">
+                  Staff Pick (show in Staff Picks section)
                 </label>
               </div>
             </div>

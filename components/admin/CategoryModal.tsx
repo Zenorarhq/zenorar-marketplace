@@ -12,15 +12,29 @@ interface CategoryModalProps {
   onSuccess: () => void
 }
 
+const ICON_OPTIONS = [
+  'home', 'cart', 'code', 'api', 'terminal', 'database', 'server', 'cloud',
+  'shield', 'lock', 'key', 'globe', 'smartphone', 'laptop', 'bitcoin', 'wallet',
+  'credit-card', 'chart', 'analytics', 'rocket', 'sparkles', 'flash', 'fire',
+  'diamond', 'trophy', 'crown', 'star', 'heart', 'gift', 'tag', 'discount',
+  'store', 'package', 'delivery', 'image', 'video', 'music', 'camera', 'mail',
+  'message', 'call', 'location', 'map', 'compass', 'calendar', 'clock',
+  'user-group', 'library', 'file', 'folder', 'bug', 'layers', 'airplane',
+  'building', 'sim-card', 'wifi', 'headphones',
+]
+
 export default function CategoryModal({ isOpen, onClose, category, onSuccess }: CategoryModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showMediaPicker, setShowMediaPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
+  const [iconSearch, setIconSearch] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
     description: '',
     image: '',
+    icon: 'code',
   })
 
   useEffect(() => {
@@ -30,6 +44,7 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
         slug: category.slug,
         description: category.description || '',
         image: category.image || '',
+        icon: (category as any).icon || 'code',
       })
     } else {
       setFormData({
@@ -37,9 +52,12 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
         slug: '',
         description: '',
         image: '',
+        icon: 'code',
       })
     }
     setError('')
+    setShowIconPicker(false)
+    setIconSearch('')
   }, [category, isOpen])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -83,6 +101,7 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
         slug: formData.slug || generateSlug(formData.name),
         description: formData.description && formData.description.trim() ? formData.description.trim() : undefined,
         image: formData.image && formData.image.trim() ? formData.image.trim() : undefined,
+        icon: formData.icon || 'code',
       }
 
       const result = category
@@ -174,6 +193,57 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
               className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Brief description of this category"
             />
+          </div>
+
+          {/* Icon Picker */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Category Icon
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowIconPicker(!showIconPicker)}
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] hover:border-primary/50 rounded-lg px-4 py-3 flex items-center gap-3 transition-colors"
+            >
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Icon name={formData.icon} size={18} className="text-primary" />
+              </div>
+              <span className="text-white text-sm font-medium">{formData.icon}</span>
+              <Icon name={showIconPicker ? 'chevron-up' : 'chevron-down'} size={14} className="text-slate-400 ml-auto" />
+            </button>
+
+            {showIconPicker && (
+              <div className="mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                <input
+                  type="text"
+                  value={iconSearch}
+                  onChange={(e) => setIconSearch(e.target.value)}
+                  placeholder="Search icons..."
+                  className="w-full bg-[#141414] border border-[#2a2a2a] text-white px-3 py-2 rounded-lg text-sm mb-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <div className="grid grid-cols-8 gap-1.5 max-h-[200px] overflow-y-auto">
+                  {ICON_OPTIONS.filter(name => name.includes(iconSearch.toLowerCase())).map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, icon: name }))
+                        setShowIconPicker(false)
+                        setIconSearch('')
+                      }}
+                      title={name}
+                      className={`w-full aspect-square rounded-lg flex items-center justify-center transition-colors ${
+                        formData.icon === name
+                          ? 'bg-primary/20 border border-primary'
+                          : 'bg-[#141414] border border-transparent hover:border-white/20'
+                      }`}
+                    >
+                      <Icon name={name} size={18} className={formData.icon === name ? 'text-primary' : 'text-slate-400'} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
