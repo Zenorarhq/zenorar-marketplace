@@ -18,7 +18,7 @@ export default function ProductsPage() {
   const itemsPerPage = 10
 
   // Fetch products with React Query (cached for 5 minutes)
-  const { data: products = [], isLoading: productsLoading, error: productsError } = useQuery({
+  const { data: products = [], isLoading: productsLoading, error: productsError, refetch } = useQuery({
     queryKey: ['admin-products'],
     queryFn: async () => {
       const result = await productsApi.list({ limit: 1000 })
@@ -104,7 +104,7 @@ export default function ProductsPage() {
           <p className="text-red-400 text-lg font-semibold mb-2">Error Loading Products</p>
           <p className="text-slate-400 mb-4">{error}</p>
           <button
-            onClick={loadData}
+            onClick={() => refetch()}
             className="bg-primary hover:bg-primary/90 text-black font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             Try Again

@@ -31,10 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const result = await apiFetch('/auth/me')
-      if (result.success && result.data?.user) {
-        setUser(result.data.user)
+      if (result.success && (result.data as any)?.user) {
+        setUser((result.data as any).user)
         if (typeof window !== 'undefined') {
-          localStorage.setItem('user', JSON.stringify(result.data.user))
+          localStorage.setItem('user', JSON.stringify((result.data as any).user))
         }
       } else {
         clearAccessToken()
@@ -105,9 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (result.success && result.data) {
-        setUser(result.data.user)
+        setUser((result.data as any).user)
         if (typeof window !== 'undefined') {
-          localStorage.setItem('user', JSON.stringify(result.data.user))
+          localStorage.setItem('user', JSON.stringify((result.data as any).user))
         }
         return { success: true }
       } else {
