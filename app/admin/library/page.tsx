@@ -171,7 +171,7 @@ export default function AdminLibraryPage() {
   const uploads: Upload[] = mediaFiles.map((file) => ({
     id: file.id,
     name: file.name,
-    title: file.title || file.originalName,
+    title: file.title || file.name,
     alt: file.alt || '',
     url: file.url,
     type: getFileType(file.mimeType),
