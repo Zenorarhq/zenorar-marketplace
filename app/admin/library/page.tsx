@@ -355,7 +355,7 @@ export default function AdminLibraryPage() {
                       {/* Hover Overlay */}
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <button
-                          onClick={() => handleEditClick(upload)}
+                          onClick={() => { const original = mediaFiles.find(f => f.id === upload.id); if (original) handleEditClick(original); }}
                           className="p-2 bg-primary text-black rounded-lg hover:bg-primary/90 transition-colors"
                           title="Edit"
                         >
