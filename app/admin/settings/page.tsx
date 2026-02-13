@@ -195,7 +195,7 @@ export default function AdminSettingsPage() {
   const fetchSentNotifications = async () => {
     setLoadingSent(true)
     try {
-      const data = await apiFetch('/notifications/sent?limit=20')
+      const data = await apiFetch<any[]>('/notifications/sent?limit=20')
       if (data.success) {
         setSentNotifications(data.data || [])
       }
@@ -209,7 +209,7 @@ export default function AdminSettingsPage() {
   const fetchRecipients = async (batchId: string) => {
     setLoadingRecipients(true)
     try {
-      const data = await apiFetch(`/notifications/sent/${batchId}/recipients`)
+      const data = await apiFetch<any[]>(`/notifications/sent/${batchId}/recipients`)
       if (data.success) {
         setRecipients(data.data || [])
       }
@@ -223,7 +223,7 @@ export default function AdminSettingsPage() {
   const deleteBatch = async (batchId: string) => {
     if (!confirm('Are you sure? This will delete this notification from all users.')) return
     try {
-      const data = await apiFetch(`/notifications/sent/${batchId}`, {
+      const data = await apiFetch<{ count: number }>(`/notifications/sent/${batchId}`, {
         method: 'DELETE',
       })
       if (data.success) {
@@ -1018,7 +1018,7 @@ export default function AdminSettingsPage() {
                       setSendingNotif(true)
                       setMessage(null)
                       try {
-                        const data = await apiFetch('/notifications/broadcast', {
+                        const data = await apiFetch<{ message: string }>('/notifications/broadcast', {
                           method: 'POST',
                           body: JSON.stringify(sendNotif),
                         })

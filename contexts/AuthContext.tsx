@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     try {
       // Login via Railway (security checks handled server-side)
-      const result = await apiFetch('/auth/login', {
+      const result = await apiFetch<{ accessToken?: string; sessionTimeout?: number; user: User }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       })
@@ -97,15 +97,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (email: string, password: string, name: string) => {
     try {
-      const result = await apiFetch('/auth/register', {
+      const result = await apiFetch<{ user: User }>('/auth/register', {
         method: 'POST',
         body: JSON.stringify({ email, password, name })
       })
 
       if (result.success && result.data) {
-        setUser((result.data as any).user)
+        setUser(result.data.user)
         if (typeof window !== 'undefined') {
-          localStorage.setItem('user', JSON.stringify((result.data as any).user))
+          localStorage.setItem('user', JSON.stringify(result.data.user))
         }
         return { success: true }
       } else {

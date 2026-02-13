@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
 
     // Find the most recent non-closed conversation for this session
     const result = await executeQuery(
-      `SELECT id, status, created_at
+      `SELECT id, status, "createdAt"
        FROM chat_conversations
-       WHERE session_id = $1 AND status IN ('OPEN', 'ASSIGNED')
-       ORDER BY created_at DESC
+       WHERE "sessionId" = $1 AND status IN ('OPEN', 'ASSIGNED')
+       ORDER BY "createdAt" DESC
        LIMIT 1`,
       [sessionId]
     )
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       data: {
         id: result.rows[0].id,
         status: result.rows[0].status,
-        createdAt: result.rows[0].created_at,
+        createdAt: result.rows[0].createdAt,
       },
     })
   } catch (error) {

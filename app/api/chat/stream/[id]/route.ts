@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { executeQuery } from '@/lib/db-helpers'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/chat/stream/[id] — SSE stream for a single conversation
 export async function GET(
   request: NextRequest,
@@ -24,36 +26,36 @@ export async function GET(
           const result = await executeQuery(
             `SELECT m.*, s.name as sender_name, s.avatar as sender_avatar
              FROM chat_messages m
-             LEFT JOIN users s ON m.sender_id = s.id
-             WHERE m.conversation_id = $1 AND m.created_at > $2
-             ORDER BY m.created_at ASC`,
+             LEFT JOIN users s ON m."senderId" = s.id
+             WHERE m."conversationId" = $1 AND m."createdAt" > $2
+             ORDER BY m."createdAt" ASC`,
             [id, since]
           )
 
           if (result.rows.length > 0) {
             const messages = result.rows.map(m => ({
               id: m.id,
-              conversationId: m.conversation_id,
-              senderType: m.sender_type,
-              senderId: m.sender_id,
+              conversationId: m.conversationId,
+              senderType: m.senderType,
+              senderId: m.senderId,
               senderName: m.sender_name,
               content: m.content,
               attachments: m.attachments || [],
-              isRead: m.is_read,
-              createdAt: m.created_at,
+              isRead: m.isRead,
+              createdAt: m.createdAt,
             }))
 
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'messages', data: messages })}\n\n`))
-            since = result.rows[result.rows.length - 1].created_at
+            since = result.rows[result.rows.length - 1].createdAt
           }
 
           // Also check conversation status
           const convResult = await executeQuery(
-            `SELECT status, assigned_to FROM chat_conversations WHERE id = $1`,
+            `SELECT status, "assignedToId" FROM chat_conversations WHERE id = $1`,
             [id]
           )
           if (convResult.rows.length > 0) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', data: { status: convResult.rows[0].status, assignedTo: convResult.rows[0].assigned_to } })}\n\n`))
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', data: { status: convResult.rows[0].status, assignedTo: convResult.rows[0].assignedToId } })}\n\n`))
           }
         } catch (error) {
           // Connection might be closed

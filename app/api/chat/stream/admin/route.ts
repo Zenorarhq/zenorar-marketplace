@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { executeQuery } from '@/lib/db-helpers'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/chat/stream/admin — SSE stream for admin conversation list updates
 export async function GET(request: NextRequest) {
   const encoder = new TextEncoder()
@@ -16,18 +18,18 @@ export async function GET(request: NextRequest) {
         try {
           // Get conversations updated since last check
           const result = await executeQuery(
-            `SELECT c.id, c.status, c.assigned_to, c.updated_at,
-              COALESCE(c.guest_name, c.guest_email, u.name, 'Guest') as display_name,
-              (SELECT content FROM chat_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
-              (SELECT COUNT(*) FROM chat_messages WHERE conversation_id = c.id AND is_read = false AND sender_type = 'USER') as unread_count,
+            `SELECT c.id, c.status, c."assignedToId", c."updatedAt",
+              COALESCE(c."guestName", c."guestEmail", u.name, 'Guest') as display_name,
+              (SELECT content FROM chat_messages WHERE "conversationId" = c.id ORDER BY "createdAt" DESC LIMIT 1) as last_message,
+              (SELECT COUNT(*) FROM chat_messages WHERE "conversationId" = c.id AND "isRead" = false AND "senderType" = 'USER') as unread_count,
               a.name as agent_name
             FROM chat_conversations c
-            LEFT JOIN users u ON c.user_id = u.id
-            LEFT JOIN users a ON c.assigned_to = a.id
-            WHERE c.updated_at > $1 OR EXISTS (
-              SELECT 1 FROM chat_messages WHERE conversation_id = c.id AND created_at > $1
+            LEFT JOIN users u ON c."userId" = u.id
+            LEFT JOIN users a ON c."assignedToId" = a.id
+            WHERE c."updatedAt" > $1 OR EXISTS (
+              SELECT 1 FROM chat_messages WHERE "conversationId" = c.id AND "createdAt" > $1
             )
-            ORDER BY c.updated_at DESC`,
+            ORDER BY c."updatedAt" DESC`,
             [lastCheck]
           )
 
@@ -35,12 +37,12 @@ export async function GET(request: NextRequest) {
             const updates = result.rows.map(row => ({
               id: row.id,
               status: row.status,
-              assignedTo: row.assigned_to,
+              assignedTo: row.assignedToId,
               agentName: row.agent_name,
               displayName: row.display_name,
               lastMessage: row.last_message,
               unreadCount: parseInt(row.unread_count) || 0,
-              updatedAt: row.updated_at,
+              updatedAt: row.updatedAt,
             }))
 
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'updates', data: updates })}\n\n`))
@@ -50,8 +52,8 @@ export async function GET(request: NextRequest) {
           const statsResult = await executeQuery(`
             SELECT
               COUNT(*) FILTER (WHERE status IN ('OPEN', 'ASSIGNED')) as active,
-              COUNT(*) FILTER (WHERE status = 'OPEN' AND assigned_to IS NULL) as unassigned,
-              (SELECT COUNT(*) FROM chat_messages WHERE is_read = false AND sender_type = 'USER') as total_unread
+              COUNT(*) FILTER (WHERE status = 'OPEN' AND "assignedToId" IS NULL) as unassigned,
+              (SELECT COUNT(*) FROM chat_messages WHERE "isRead" = false AND "senderType" = 'USER') as total_unread
             FROM chat_conversations
           `)
           const stats = statsResult.rows[0]

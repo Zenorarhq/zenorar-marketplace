@@ -34,7 +34,7 @@ export async function PATCH(
     }
     if (statusLabels[status]) {
       await executeQuery(
-        `INSERT INTO chat_messages (conversation_id, sender_type, content)
+        `INSERT INTO chat_messages ("conversationId", "senderType", content)
          VALUES ($1, 'SYSTEM', $2)`,
         [id, statusLabels[status]]
       )

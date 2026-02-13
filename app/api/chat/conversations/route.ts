@@ -27,11 +27,11 @@ export async function GET(request: NextRequest) {
       values.push(status)
     }
     if (assignedTo) {
-      conditions.push(`c.assigned_to = $${idx++}`)
+      conditions.push(`c."assignedToId" = $${idx++}`)
       values.push(assignedTo)
     }
     if (unassigned === 'true') {
-      conditions.push(`c.assigned_to IS NULL AND c.status = 'OPEN'`)
+      conditions.push(`c."assignedToId" IS NULL AND c.status = 'OPEN'`)
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -48,32 +48,32 @@ export async function GET(request: NextRequest) {
       `SELECT c.*,
         u.name as user_name, u.email as user_email, u.avatar as user_avatar,
         a.name as agent_name, a.avatar as agent_avatar,
-        (SELECT content FROM chat_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT created_at FROM chat_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
-        (SELECT COUNT(*) FROM chat_messages WHERE conversation_id = c.id AND is_read = false AND sender_type = 'USER') as unread_count
+        (SELECT content FROM chat_messages WHERE "conversationId" = c.id ORDER BY "createdAt" DESC LIMIT 1) as last_message,
+        (SELECT "createdAt" FROM chat_messages WHERE "conversationId" = c.id ORDER BY "createdAt" DESC LIMIT 1) as last_message_at,
+        (SELECT COUNT(*) FROM chat_messages WHERE "conversationId" = c.id AND "isRead" = false AND "senderType" = 'USER') as unread_count
       FROM chat_conversations c
-      LEFT JOIN users u ON c.user_id = u.id
-      LEFT JOIN users a ON c.assigned_to = a.id
+      LEFT JOIN users u ON c."userId" = u.id
+      LEFT JOIN users a ON c."assignedToId" = a.id
       ${where}
-      ORDER BY c.updated_at DESC
+      ORDER BY c."updatedAt" DESC
       LIMIT $${idx} OFFSET $${idx + 1}`,
       [...values, limit, offset]
     )
 
     const conversations = result.rows.map(row => ({
       id: row.id,
-      userId: row.user_id,
-      user: row.user_name ? { id: row.user_id, name: row.user_name, email: row.user_email, avatar: row.user_avatar } : null,
-      guestEmail: row.guest_email,
-      guestName: row.guest_name,
-      sessionId: row.session_id,
+      userId: row.userId,
+      user: row.user_name ? { id: row.userId, name: row.user_name, email: row.user_email, avatar: row.user_avatar } : null,
+      guestEmail: row.guestEmail,
+      guestName: row.guestName,
+      sessionId: row.sessionId,
       status: row.status,
-      assignedTo: row.assigned_to ? { id: row.assigned_to, name: row.agent_name, avatar: row.agent_avatar } : null,
+      assignedTo: row.assignedToId ? { id: row.assignedToId, name: row.agent_name, avatar: row.agent_avatar } : null,
       lastMessage: row.last_message,
       lastMessageAt: row.last_message_at,
       unreadCount: parseInt(row.unread_count) || 0,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     }))
 
     return NextResponse.json({
@@ -107,14 +107,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if chat is online
-    const settingsResult = await executeQuery('SELECT is_online, offline_message FROM chat_settings LIMIT 1')
-    const isOnline = settingsResult.rows[0]?.is_online ?? true
-    const offlineMessage = settingsResult.rows[0]?.offline_message || "We're currently offline. We'll reach out via email when we're back, or you can create a support ticket."
+    const settingsResult = await executeQuery('SELECT "isOnline", "offlineMessage" FROM chat_settings LIMIT 1')
+    const isOnline = settingsResult.rows[0]?.isOnline ?? true
+    const offlineMessage = settingsResult.rows[0]?.offlineMessage || "We're currently offline. We'll reach out via email when we're back, or you can create a support ticket."
 
     const result = await executeTransaction(async (client) => {
       // Create conversation
       const convResult = await client.query(
-        `INSERT INTO chat_conversations (user_id, guest_email, guest_name, session_id, status)
+        `INSERT INTO chat_conversations ("userId", "guestEmail", "guestName", "sessionId", status)
          VALUES ($1, $2, $3, $4, 'OPEN')
          RETURNING *`,
         [user?.id || null, user ? null : guestEmail, user ? null : guestName, sessionId]
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
       // Insert initial user message
       await client.query(
-        `INSERT INTO chat_messages (conversation_id, sender_type, sender_id, content)
+        `INSERT INTO chat_messages ("conversationId", "senderType", "senderId", content)
          VALUES ($1, 'USER', $2, $3)`,
         [conversation.id, user?.id || null, initialMessage.trim()]
       )
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       // If offline, insert system auto-reply
       if (!isOnline) {
         await client.query(
-          `INSERT INTO chat_messages (conversation_id, sender_type, content)
+          `INSERT INTO chat_messages ("conversationId", "senderType", content)
            VALUES ($1, 'SYSTEM', $2)`,
           [conversation.id, offlineMessage]
         )
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
         id: result.id,
         status: result.status,
         isOnline,
-        createdAt: result.created_at,
+        createdAt: result.createdAt,
       },
     })
   } catch (error) {

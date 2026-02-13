@@ -6,14 +6,14 @@ import { authenticateRequest } from '@/lib/auth-middleware'
 export async function GET() {
   try {
     const result = await executeQuery(
-      'SELECT is_online, offline_message FROM chat_settings LIMIT 1'
+      'SELECT "isOnline", "offlineMessage" FROM chat_settings LIMIT 1'
     )
-    const settings = result.rows[0] || { is_online: false, offline_message: '' }
+    const settings = result.rows[0] || { isOnline: false, offlineMessage: '' }
     return NextResponse.json({
       success: true,
       data: {
-        isOnline: settings.is_online,
-        offlineMessage: settings.offline_message,
+        isOnline: settings.isOnline,
+        offlineMessage: settings.offlineMessage,
       },
     })
   } catch (error) {
@@ -36,11 +36,11 @@ export async function PATCH(request: NextRequest) {
     let idx = 1
 
     if (typeof body.isOnline === 'boolean') {
-      updates.push(`is_online = $${idx++}`)
+      updates.push(`"isOnline" = $${idx++}`)
       values.push(body.isOnline)
     }
     if (typeof body.offlineMessage === 'string') {
-      updates.push(`offline_message = $${idx++}`)
+      updates.push(`"offlineMessage" = $${idx++}`)
       values.push(body.offlineMessage)
     }
 
@@ -48,10 +48,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'No fields to update' }, { status: 400 })
     }
 
-    updates.push(`updated_at = NOW()`)
+    updates.push(`"updatedAt" = NOW()`)
 
     const result = await executeQuery(
-      `UPDATE chat_settings SET ${updates.join(', ')} WHERE id = 1 RETURNING is_online, offline_message`,
+      `UPDATE chat_settings SET ${updates.join(', ')} WHERE id = 1 RETURNING "isOnline", "offlineMessage"`,
       values
     )
 
@@ -59,8 +59,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        isOnline: settings.is_online,
-        offlineMessage: settings.offline_message,
+        isOnline: settings.isOnline,
+        offlineMessage: settings.offlineMessage,
       },
     })
   } catch (error) {

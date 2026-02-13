@@ -17,14 +17,14 @@ export async function GET(request: NextRequest) {
         COUNT(*) FILTER (WHERE status = 'ASSIGNED') as assigned,
         COUNT(*) FILTER (WHERE status = 'RESOLVED') as resolved,
         COUNT(*) FILTER (WHERE status = 'CLOSED') as closed,
-        COUNT(*) FILTER (WHERE status = 'OPEN' AND assigned_to IS NULL) as unassigned
+        COUNT(*) FILTER (WHERE status = 'OPEN' AND "assignedToId" IS NULL) as unassigned
       FROM chat_conversations
     `)
 
     const unreadResult = await executeQuery(`
       SELECT COUNT(*) as unread
       FROM chat_messages
-      WHERE is_read = false AND sender_type = 'USER'
+      WHERE "isRead" = false AND "senderType" = 'USER'
     `)
 
     const stats = result.rows[0]

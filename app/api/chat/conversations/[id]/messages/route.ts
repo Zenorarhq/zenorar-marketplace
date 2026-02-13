@@ -15,31 +15,31 @@ export async function GET(
     let query = `
       SELECT m.*, s.name as sender_name, s.avatar as sender_avatar
       FROM chat_messages m
-      LEFT JOIN users s ON m.sender_id = s.id
-      WHERE m.conversation_id = $1
+      LEFT JOIN users s ON m."senderId" = s.id
+      WHERE m."conversationId" = $1
     `
     const values: any[] = [id]
 
     if (after) {
-      query += ` AND m.created_at > $2`
+      query += ` AND m."createdAt" > $2`
       values.push(after)
     }
 
-    query += ` ORDER BY m.created_at ASC`
+    query += ` ORDER BY m."createdAt" ASC`
 
     const result = await executeQuery(query, values)
 
     const messages = result.rows.map(m => ({
       id: m.id,
-      conversationId: m.conversation_id,
-      senderType: m.sender_type,
-      senderId: m.sender_id,
+      conversationId: m.conversationId,
+      senderType: m.senderType,
+      senderId: m.senderId,
       senderName: m.sender_name,
       senderAvatar: m.sender_avatar,
       content: m.content,
       attachments: m.attachments || [],
-      isRead: m.is_read,
-      createdAt: m.created_at,
+      isRead: m.isRead,
+      createdAt: m.createdAt,
     }))
 
     return NextResponse.json({ success: true, data: messages })
@@ -65,7 +65,7 @@ export async function POST(
 
     // Check conversation exists
     const convResult = await executeQuery(
-      'SELECT id, status, assigned_to FROM chat_conversations WHERE id = $1',
+      'SELECT id, status, "assignedToId" FROM chat_conversations WHERE id = $1',
       [id]
     )
     if (convResult.rows.length === 0) {
@@ -81,16 +81,16 @@ export async function POST(
 
     // Insert message
     const msgResult = await executeQuery(
-      `INSERT INTO chat_messages (conversation_id, sender_type, sender_id, content, attachments)
+      `INSERT INTO chat_messages ("conversationId", "senderType", "senderId", content, attachments)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
       [id, senderType, user?.id || null, content?.trim() || '', JSON.stringify(attachments || [])]
     )
 
     // If agent is sending and conversation is unassigned, auto-assign
-    if (isAgent && !conversation.assigned_to) {
+    if (isAgent && !conversation.assignedToId) {
       await executeQuery(
-        `UPDATE chat_conversations SET assigned_to = $1, status = 'ASSIGNED' WHERE id = $2`,
+        `UPDATE chat_conversations SET "assignedToId" = $1, status = 'ASSIGNED' WHERE id = $2`,
         [user.id, id]
       )
     }
@@ -98,7 +98,7 @@ export async function POST(
     // Mark user messages as read when agent replies
     if (isAgent) {
       await executeQuery(
-        `UPDATE chat_messages SET is_read = true WHERE conversation_id = $1 AND sender_type = 'USER' AND is_read = false`,
+        `UPDATE chat_messages SET "isRead" = true WHERE "conversationId" = $1 AND "senderType" = 'USER' AND "isRead" = false`,
         [id]
       )
     }
@@ -108,14 +108,14 @@ export async function POST(
       success: true,
       data: {
         id: msg.id,
-        conversationId: msg.conversation_id,
-        senderType: msg.sender_type,
-        senderId: msg.sender_id,
+        conversationId: msg.conversationId,
+        senderType: msg.senderType,
+        senderId: msg.senderId,
         senderName: user?.name || null,
         content: msg.content,
         attachments: msg.attachments || [],
-        isRead: msg.is_read,
-        createdAt: msg.created_at,
+        isRead: msg.isRead,
+        createdAt: msg.createdAt,
       },
     })
   } catch (error) {

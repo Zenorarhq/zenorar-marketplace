@@ -47,7 +47,7 @@ export default function ProductsPage() {
     queryKey: ['admin-staff-picks'],
     queryFn: async () => {
       const data = await apiFetch<string[]>('/products/admin/staff-picks')
-      return data.success ? data.data : []
+      return (data.success && data.data) ? data.data : []
     },
   })
 

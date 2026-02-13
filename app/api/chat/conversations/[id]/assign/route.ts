@@ -19,9 +19,9 @@ export async function POST(
 
     // Check conversation exists and current assignment
     const convResult = await executeQuery(
-      `SELECT c.assigned_to, a.name as agent_name
+      `SELECT c."assignedToId", a.name as agent_name
        FROM chat_conversations c
-       LEFT JOIN users a ON c.assigned_to = a.id
+       LEFT JOIN users a ON c."assignedToId" = a.id
        WHERE c.id = $1`,
       [id]
     )
@@ -33,23 +33,23 @@ export async function POST(
     const conv = convResult.rows[0]
 
     // Prevent double-assignment (unless admin is reassigning)
-    if (conv.assigned_to && conv.assigned_to !== agentId) {
+    if (conv.assignedToId && conv.assignedToId !== agentId) {
       return NextResponse.json({
         success: false,
         error: `Already assigned to ${conv.agent_name}`,
-        data: { assignedTo: { id: conv.assigned_to, name: conv.agent_name } },
+        data: { assignedTo: { id: conv.assignedToId, name: conv.agent_name } },
       }, { status: 409 })
     }
 
     // Assign
     await executeQuery(
-      `UPDATE chat_conversations SET assigned_to = $1, status = 'ASSIGNED' WHERE id = $2`,
+      `UPDATE chat_conversations SET "assignedToId" = $1, status = 'ASSIGNED' WHERE id = $2`,
       [agentId, id]
     )
 
     // Insert system message
     await executeQuery(
-      `INSERT INTO chat_messages (conversation_id, sender_type, content)
+      `INSERT INTO chat_messages ("conversationId", "senderType", content)
        VALUES ($1, 'SYSTEM', $2)`,
       [id, `${user.name} picked up this conversation`]
     )
