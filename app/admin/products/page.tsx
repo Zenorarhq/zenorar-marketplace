@@ -19,7 +19,7 @@ export default function ProductsPage() {
   const itemsPerPage = 10
 
   // Fetch products with React Query (cached for 5 minutes)
-  const { data: products = [], isLoading: productsLoading, error: productsError, refetch } = useQuery({
+  const { data: products = [], isLoading: productsLoading, error: productsError, refetch } = useQuery<Product[]>({
     queryKey: ['admin-products'],
     queryFn: async () => {
       const result = await productsApi.list({ limit: 1000 })
@@ -31,7 +31,7 @@ export default function ProductsPage() {
   })
 
   // Fetch categories with React Query (cached)
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['admin-categories'],
     queryFn: async () => {
       const result = await categoriesApi.list()
