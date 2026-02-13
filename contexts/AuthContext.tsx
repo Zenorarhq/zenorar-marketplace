@@ -66,13 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      // Route through local proxy for security enforcement
-      const response = await fetch('/api/auth/login', {
+      // Login via Railway (security checks handled server-side)
+      const result = await apiFetch('/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      const result = await response.json()
 
       if (result.success && result.data) {
         // Store access token

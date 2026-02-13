@@ -12,6 +12,7 @@ import Icon from '@/components/ui/Icon'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { apiFetch } from '@/lib/api/client'
 
 // Receiving wallet address - should be set via environment variable in production
 const RECEIVING_WALLET = process.env.NEXT_PUBLIC_RECEIVING_WALLET || '0x742d35Cc6634C0532925a3b844Bc9e7595f5bE21'
@@ -183,18 +184,23 @@ export default function PaymentPage() {
 
       const orderResult = await orderResponse.json()
       const orderId = orderResult.data.id
+      const orderNumber = orderResult.data.orderNumber
+
+      // Notify user: order placed
+      apiFetch('/notifications/create', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'ORDER_PLACED', title: 'Order Placed', message: `Your order #${orderNumber} has been placed successfully.`, data: { orderId, orderNumber } }),
+      }).catch(() => {})
 
       // Record discount usage if a discount was applied
       if (discountCode && discountAmount > 0) {
-        fetch('/api/orders/apply-discount', {
+        apiFetch('/orders/apply-discount', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orderId, discountCode, discountAmount }),
         }).catch(err => console.error('Failed to save discount to order:', err))
 
-        fetch('/api/discounts/use', {
+        apiFetch('/discounts/use', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code: discountCode }),
         }).catch(err => console.error('Failed to increment discount usage:', err))
       }
@@ -248,12 +254,18 @@ export default function PaymentPage() {
           orderNumber: orderResult.data.orderNumber,
         }))
 
+        // Notify user: payment confirmed
+        apiFetch('/notifications/create', {
+          method: 'POST',
+          body: JSON.stringify({ type: 'PAYMENT_RECEIVED', title: 'Payment Confirmed', message: `Payment for order #${orderNumber} confirmed. Tx: ${tx.hash.slice(0, 10)}...`, data: { orderId, orderNumber, txHash: tx.hash } }),
+        }).catch(() => {})
+
         setPaymentStatus('success')
 
         // Redirect to success page after short delay
         setTimeout(() => {
           clearCart()
-          router.push(`/checkout/success?txHash=${tx.hash}&orderNumber=${orderResult.data.orderNumber}`)
+          router.push(`/checkout/success?txHash=${tx.hash}&orderNumber=${orderNumber}`)
         }, 2000)
       } else {
         throw new Error('Transaction failed')

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ConnectivityCard from '@/components/cards/ConnectivityCard'
+import { apiFetch } from '@/lib/api/client'
 
 interface ConnectivityItem {
   id: string
@@ -16,11 +17,20 @@ export default function Connectivity({ config }: { config?: { title?: string; co
   const [options, setOptions] = useState<ConnectivityItem[]>([])
 
   useEffect(() => {
-    fetch('/api/categories?type=connectivity')
-      .then((res) => res.json())
+    apiFetch('/categories/public?type=connectivity')
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
-          setOptions(data.data)
+          const connectivityParents = ['esim', 'virtual-numbers']
+          const filtered = data.data
+            .filter((c: any) => connectivityParents.includes(c.parent?.slug))
+            .map((c: any) => ({
+              id: c.id,
+              name: c.name,
+              slug: c.slug,
+              icon: c.icon || 'globe',
+              href: `/products?category=${c.parent.slug}&subcategory=${c.slug}`,
+            }))
+          setOptions(filtered)
         }
       })
       .catch(() => {})

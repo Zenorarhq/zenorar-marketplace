@@ -8,6 +8,7 @@ import Icon from '@/components/ui/Icon'
 import { productsApi, Product } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
 import MediaPickerModal from '@/components/admin/MediaPickerModal'
+import { apiFetch } from '@/lib/api/client'
 
 export default function EditProductPage() {
   const router = useRouter()
@@ -54,12 +55,11 @@ export default function EditProductPage() {
       setCategories(categoriesResult.data)
     }
 
-    // Fetch staff pick status from local DB
+    // Fetch staff pick status from Railway
     let isStaffPick = false
     try {
-      const spRes = await fetch(`/api/admin/products/${productId}/staff-pick`)
-      const spData = await spRes.json()
-      if (spData.success) isStaffPick = spData.isStaffPick
+      const spData = await apiFetch(`/products/${productId}/staff-pick`)
+      if (spData.success) isStaffPick = (spData.data as any)?.isStaffPick ?? false
     } catch {}
 
     if (productResult.success && productResult.data) {
@@ -147,10 +147,9 @@ export default function EditProductPage() {
       const result = await productsApi.update(productId, productData)
 
       if (result.success) {
-        // Save staff pick status via local API
-        await fetch(`/api/admin/products/${productId}/staff-pick`, {
+        // Save staff pick status via Railway
+        await apiFetch(`/products/${productId}/staff-pick`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ value: formData.isStaffPick }),
         }).catch(() => {})
         router.push('/admin/products')

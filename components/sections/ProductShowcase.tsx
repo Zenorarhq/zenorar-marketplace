@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import ProductCard from '@/components/cards/ProductCard'
+import { apiFetch } from '@/lib/api/client'
 
 interface ShowcaseProduct {
   id: string
@@ -24,12 +25,10 @@ export default function ProductShowcase({ config }: { config?: { title?: string;
     const ids = config.productIds.split(',').map(s => s.trim()).filter(Boolean)
     if (ids.length === 0) return
 
-    fetch('/api/products/by-ids', {
+    apiFetch('/products/public/by-ids', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids }),
     })
-      .then(res => res.json())
       .then(data => {
         if (data.success && Array.isArray(data.data)) setProducts(data.data)
       })

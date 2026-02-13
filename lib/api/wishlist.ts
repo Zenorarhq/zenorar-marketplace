@@ -5,18 +5,8 @@ import { Product } from './products'
 
 export interface WishlistItem {
   id: string
+  productId: string
   addedAt: string
-  product: {
-    id: string
-    name: string
-    slug: string
-    price: number
-    comparePrice: number | null
-    image: string | null
-    inStock: boolean
-    stock: number
-    category: { id: string; name: string; slug: string } | null
-  }
 }
 
 export const wishlistApi = {

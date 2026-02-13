@@ -1,6 +1,6 @@
 // Search API
 
-import { localApiFetch, buildQueryString } from './client'
+import { apiFetch, buildQueryString } from './client'
 import { Product } from './products'
 
 export interface SearchFilters {
@@ -86,22 +86,22 @@ export interface GlobalSearchResult {
 export const searchApi = {
   async searchProducts(filters: SearchFilters) {
     const query = buildQueryString(filters)
-    return localApiFetch<SearchResult[]>(`/search/products${query}`)
+    return apiFetch<SearchResult[]>(`/search/products${query}`)
   },
 
   async autocomplete(query: string, limit = 5) {
-    return localApiFetch<AutocompleteResult>(`/search/autocomplete?q=${encodeURIComponent(query)}&limit=${limit}`)
+    return apiFetch<AutocompleteResult>(`/search/autocomplete?q=${encodeURIComponent(query)}&limit=${limit}`)
   },
 
   async globalSearch(query: string, limit = 10) {
-    return localApiFetch<GlobalSearchResult>(`/search/global?q=${encodeURIComponent(query)}&limit=${limit}`)
+    return apiFetch<GlobalSearchResult>(`/search/global?q=${encodeURIComponent(query)}&limit=${limit}`)
   },
 
   async getTrending(limit = 10) {
-    return localApiFetch<string[]>(`/search/trending?limit=${limit}`)
+    return apiFetch<string[]>(`/search/trending?limit=${limit}`)
   },
 
   async getCategorySuggestions(categorySlug: string, limit = 10) {
-    return localApiFetch<string[]>(`/search/suggestions/${categorySlug}?limit=${limit}`)
+    return apiFetch<string[]>(`/search/suggestions/${categorySlug}?limit=${limit}`)
   },
 }

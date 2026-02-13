@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ProductCard from '@/components/cards/ProductCard'
 import Icon from '@/components/ui/Icon'
+import { apiFetch } from '@/lib/api/client'
 
 interface PopularProduct {
   id: string
@@ -24,8 +25,7 @@ export default function MostPopular({ config }: { config?: { title?: string; col
   const [products, setProducts] = useState<PopularProduct[]>([])
 
   useEffect(() => {
-    fetch('/api/products/popular')
-      .then((res) => res.json())
+    apiFetch('/products/public/popular')
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           setProducts(data.data)
@@ -55,29 +55,30 @@ export default function MostPopular({ config }: { config?: { title?: string; col
         className={`grid grid-rows-2 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 ${({ '2': 'md:grid-cols-2', '3': 'md:grid-cols-3', '4': 'md:grid-cols-4' } as Record<string, string>)[config?.columns || '4'] || 'md:grid-cols-4'} md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible`}
         style={{ scrollbarWidth: 'none' }}
       >
-        {products.map((p) => {
-          const isNew = p.created_at && (Date.now() - new Date(p.created_at).getTime()) < 14 * 24 * 60 * 60 * 1000
-          const badge = p.is_featured ? 'HOT' : isNew ? 'NEW' : undefined
+        {products.map((p: any) => {
+          const createdAt = p.createdAt || p.created_at
+          const isNew = createdAt && (Date.now() - new Date(createdAt).getTime()) < 14 * 24 * 60 * 60 * 1000
+          const isFeatured = p.isFeatured ?? p.is_featured
+          const badge = isFeatured ? 'HOT' : isNew ? 'NEW' : undefined
           return (
-            <div key={p.id}>
-              <ProductCard
-                product={{
-                  id: p.id,
-                  name: p.name,
-                  slug: p.slug,
-                  description: p.description || '',
-                  price: Number(p.price),
-                  rating: Number(p.average_rating) || 0,
-                  reviewCount: Number(p.review_count) || 0,
-                  category: p.category_name || '',
-                  icon: 'box',
-                  iconColor: 'primary',
-                  tags: [],
-                  images: p.images || undefined,
-                  badge,
-                }}
-              />
-            </div>
+            <ProductCard
+              key={p.id}
+              product={{
+                id: p.id,
+                name: p.name,
+                slug: p.slug,
+                description: p.description || '',
+                price: Number(p.price),
+                rating: Number(p.avgRating ?? p.average_rating) || 0,
+                reviewCount: Number(p._count?.reviews ?? p.review_count) || 0,
+                category: p.category?.name ?? p.category_name ?? '',
+                icon: 'box',
+                iconColor: 'primary',
+                tags: [],
+                images: p.images || undefined,
+                badge,
+              }}
+            />
           )
         })}
       </div>

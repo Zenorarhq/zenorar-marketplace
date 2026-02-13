@@ -7,6 +7,7 @@ import Icon from '@/components/ui/Icon'
 import { useWishlist } from '@/hooks/use-wishlist'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { apiFetch } from '@/lib/api/client'
 
 interface WishlistProduct {
   id: string
@@ -37,12 +38,10 @@ export default function WishlistPage() {
       return
     }
 
-    fetch('/api/products/by-ids', {
+    apiFetch('/products/public/by-ids', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: productIds }),
     })
-      .then(res => res.json())
       .then(data => {
         if (data.success && Array.isArray(data.data)) {
           setProducts(data.data)

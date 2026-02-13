@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { localApiFetch } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
 
 const WISHLIST_STORAGE_KEY = 'zenorar_wishlist'
 
@@ -59,7 +59,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       if (isAuthenticated) {
         // Logged in: fetch from database via API
         try {
-          const result = await localApiFetch<WishlistItem[]>('/wishlist')
+          const result = await apiFetch<WishlistItem[]>('/wishlist')
           if (!cancelled && result.success && Array.isArray(result.data)) {
             setItems(result.data)
           }
@@ -105,7 +105,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     })
 
     if (isAuthenticated) {
-      const result = await localApiFetch<WishlistItem>('/wishlist', {
+      const result = await apiFetch<WishlistItem>('/wishlist', {
         method: 'POST',
         body: JSON.stringify({ productId }),
       })
@@ -125,7 +125,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     setItems(current => current.filter(item => item.productId !== productId))
 
     if (isAuthenticated) {
-      const result = await localApiFetch(`/wishlist/${productId}`, { method: 'DELETE' })
+      const result = await apiFetch(`/wishlist/${productId}`, { method: 'DELETE' })
       if (!result.success) {
         // Revert on failure
         setItems(previousItems)
@@ -147,13 +147,13 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const clearWishlist = useCallback(async () => {
     setItems([])
     if (isAuthenticated) {
-      await localApiFetch('/wishlist', { method: 'DELETE' })
+      await apiFetch('/wishlist', { method: 'DELETE' })
     }
   }, [isAuthenticated])
 
   const refreshWishlist = useCallback(async () => {
     if (isAuthenticated) {
-      const result = await localApiFetch<WishlistItem[]>('/wishlist')
+      const result = await apiFetch<WishlistItem[]>('/wishlist')
       if (result.success && Array.isArray(result.data)) {
         setItems(result.data)
       }

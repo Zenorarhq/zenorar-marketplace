@@ -105,7 +105,7 @@ export default function Footer() {
                 <ul className="space-y-3 sm:space-y-4 text-xs sm:text-sm text-slate-500">
                   {col.links.map((link, li) => (
                     <li key={li}>
-                      <Link href={link.url} className="hover:text-primary transition-colors">
+                      <Link href={link.url || '#'} className="hover:text-primary transition-colors">
                         {link.label}
                       </Link>
                     </li>
@@ -185,7 +185,7 @@ export default function Footer() {
         <p>{config?.copyrightText || `\u00A9 ${currentYear} ${siteName}. All rights reserved.`}</p>
         <div className="flex gap-8">
           {bottomLinks.map((link, i) => (
-            <Link key={i} href={link.url} className="hover:text-slate-300 transition-colors">
+            <Link key={i} href={link.url || '#'} className="hover:text-slate-300 transition-colors">
               {link.label}
             </Link>
           ))}

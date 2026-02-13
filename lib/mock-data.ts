@@ -139,6 +139,10 @@ export const scriptProducts: Product[] = [
     icon: 'terminal',
     iconColor: 'orange',
     tags: ['Python'],
+    badge: 'HOT',
+    images: [
+      { url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvwgfYMEvcI_nX3811VEyCy34SMnKHy9dmdnqG3nSMOUjjKLHrwM1Buu7vIN4sHUv_IHj3lxtx8AuvVgtQJrjdBjilef-qD6NbH3AMwpj-xP3Cl3XD4r8kxRx3ZJzJe8Y-Z4MqVrZdrhg60-dWHm_iNTlUzZhPqmEvucOUsNN2Cqq1nlRE-lUiK6PR4GpN2-YM32iXvk86ERNf_KfTr8v3fkU0u395JRo_hw-hlhfenuygiypi5Pyn0V13zGizBFBqXGrkP8TTlHSx', isPrimary: true },
+    ],
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvwgfYMEvcI_nX3811VEyCy34SMnKHy9dmdnqG3nSMOUjjKLHrwM1Buu7vIN4sHUv_IHj3lxtx8AuvVgtQJrjdBjilef-qD6NbH3AMwpj-xP3Cl3XD4r8kxRx3ZJzJe8Y-Z4MqVrZdrhg60-dWHm_iNTlUzZhPqmEvucOUsNN2Cqq1nlRE-lUiK6PR4GpN2-YM32iXvk86ERNf_KfTr8v3fkU0u395JRo_hw-hlhfenuygiypi5Pyn0V13zGizBFBqXGrkP8TTlHSx',
     seller: {
       id: 's1',
@@ -177,6 +181,10 @@ export const scriptProducts: Product[] = [
     icon: 'database',
     iconColor: 'blue',
     tags: ['JavaScript', 'Node.js'],
+    badge: 'NEW',
+    images: [
+      { url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCvO_4p2ZHk3KJpXIKRaPxhahZ8fC5c6Ep1ii4Ag9NPHSF4u8B6OJBKlF0EMkQW3Il7TPAKtOrqdr0OlIVWLuq5SuDvgsoVcsfWCJymRcNoBb8oUE9000jHw7R-B3x4w0SNKIw13OTBsqdGlmczJdoxZG_UEcPQpD3LrcXm18n_8OeNvRRLso7wqgvc9ALsjpM_MKRWmbsgLQZZtV38rJHQ1o5PF5WkGoxK71hhBJwZEEViuOP3LTPKt6BjJrwTTY2GFme74AvcnfYK', isPrimary: true },
+    ],
   },
   {
     id: '11',
@@ -190,6 +198,10 @@ export const scriptProducts: Product[] = [
     icon: 'rocket',
     iconColor: 'primary',
     tags: ['PHP', 'SaaS'],
+    badge: 'HOT',
+    images: [
+      { url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCgnvTGP1cP71-2K42X4efzz9kituVYklUs7w-ZhyKCbYnU3eighsa2i88vw0J7yhNf1NBWRnCxYAN90-C-c8cJEmxGhqsgcp57fQ5syfMgHb7lyPKHQBHcMmSsmd1TKWX1n2Q4FFZsq5nLcd1C4qA4xLR_PYCKi-F_F8n0R1wb9Yg0ezrfScE22pNHnQYUUbpg_Xl5S9tV1yjqXM_dANi_UGAWqxVZUvGfD9h0BFZuqPvF2ggFFh4Y4eKicS2t5hQHiPbRAwF1Mc2t', isPrimary: true },
+    ],
   },
   {
     id: '12',
@@ -204,6 +216,9 @@ export const scriptProducts: Product[] = [
     icon: 'dashboard',
     iconColor: 'purple',
     tags: ['React', 'Admin'],
+    images: [
+      { url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBvV-45RyTmbKIQCa36fzlSVMVYb5gGDkCXidCEpOmFudHXYXPTzYiQWc0YZ-OTc1tSbc3fPYE4Gklt7239PKNccWU96xOg79Q5KHk_qjX8aXbW0v7aMmkt19JjuYOapQuJqA6uzIXtnPMJowe4HL5gpMMqL7KfTUvWd4AtZslqJtfLSkq-RWlm1AMS7besbHc7CfPHQIJrXj5twksktnxm3redMcLt0sqCmfI3dIndRI19jQ2BYJ4vOg6wa8hI6xe190LhHxB9YJe3', isPrimary: true },
+    ],
   },
   {
     id: '13',
@@ -217,6 +232,9 @@ export const scriptProducts: Product[] = [
     icon: 'sparkles',
     iconColor: 'pink',
     tags: ['Discord', 'Bot'],
+    images: [
+      { url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAhIwp7z7NlvLUeIxZqu_fjCpAYA5Z6ImAVVvS5uflJUOIgnivho1DhmCU3db76q8OgTtRribki8NKicoJBg_bVLvjBdBgpzGxkKW5RyVGTFn2rFGfSDX8Uuj3Nt2xl7cm5xamD6nbGUFOUAKEtQ-_bc4S32fQjwikQVRo8JxChuq9KU_YyYbNDn33FV-XC7eLr7yLxKDYtzy--deptYSQRHbPFCdjsvkevrroLDqgjMpFWIr1-z8e6HoLtKzXK7obMNCeGAqWoCzfB', isPrimary: true },
+    ],
   },
   {
     id: '14',
@@ -231,6 +249,10 @@ export const scriptProducts: Product[] = [
     icon: 'bitcoin',
     iconColor: 'cyan',
     tags: ['Crypto', 'Trading'],
+    badge: 'HOT',
+    images: [
+      { url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCgnvTGP1cP71-2K42X4efzz9kituVYklUs7w-ZhyKCbYnU3eighsa2i88vw0J7yhNf1NBWRnCxYAN90-C-c8cJEmxGhqsgcp57fQ5syfMgHb7lyPKHQBHcMmSsmd1TKWX1n2Q4FFZsq5nLcd1C4qA4xLR_PYCKi-F_F8n0R1wb9Yg0ezrfScE22pNHnQYUbpg_Xl5S9tV1yjqXM_dANi_UGAWqxVZUvGfD9h0BFZuqPvF2ggFFh4Y4eKicS2t5hQHiPbRAwF1Mc2t', isPrimary: true },
+    ],
   },
 ]
 

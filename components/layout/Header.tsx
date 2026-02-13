@@ -14,6 +14,7 @@ import PreferencesDialog from '@/components/dialogs/PreferencesDialog'
 import SearchDropdown from '@/components/search/SearchDropdown'
 import CartPopupWrapper from '@/components/cart/CartPopupWrapper'
 import CartDropdown from '@/components/cart/CartDropdown'
+import NotificationsDropdown from '@/components/notifications/NotificationsDropdown'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import { navCategories } from '@/lib/mock-data'
 
@@ -25,7 +26,7 @@ function MobileNavItem({ item, pathname, onClose }: { item: { label: string; url
   return (
     <div>
       <div className="flex items-center">
-        <Link href={item.url} onClick={onClose} className={`flex-1 block py-4 text-lg font-medium ${isActive ? 'text-primary' : 'text-white'}`}>
+        <Link href={item.url || '#'} onClick={onClose} className={`flex-1 block py-4 text-lg font-medium ${isActive ? 'text-primary' : 'text-white'}`}>
           {item.label}
         </Link>
         {hasChildren && (
@@ -37,7 +38,7 @@ function MobileNavItem({ item, pathname, onClose }: { item: { label: string; url
       {hasChildren && expanded && (
         <div className="pl-4 pb-2">
           {item.children!.map((child, ci) => (
-            <Link key={ci} href={child.url} onClick={onClose} className={`block py-2 text-base ${pathname === child.url ? 'text-primary' : 'text-slate-400'}`}>
+            <Link key={ci} href={child.url || '#'} onClick={onClose} className={`block py-2 text-base ${pathname === child.url ? 'text-primary' : 'text-slate-400'}`}>
               {child.label}
             </Link>
           ))}
@@ -68,7 +69,7 @@ export default function Header() {
   })()
   const showSearch = headerConfig?.showSearch !== false
   const showCart = headerConfig?.showCart !== false
-  const showSiteName = headerConfig?.showSiteName !== false
+  const showSiteName = headerConfig ? headerConfig.showSiteName !== false : !logoUrl
   const logoMaxHeight = headerConfig?.logoMaxHeight || 'medium'
   const logoHeightClass = ({ small: 'h-7 sm:h-7 md:h-7', medium: 'h-8 sm:h-9 md:h-10', large: 'h-10 sm:h-11 md:h-12' } as Record<string, string>)[logoMaxHeight] || 'h-8 sm:h-9 md:h-10'
   const isSticky = headerConfig?.sticky !== false
@@ -80,10 +81,12 @@ export default function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showMobileUserMenu, setShowMobileUserMenu] = useState(false)
   const [showCartDropdown, setShowCartDropdown] = useState(false)
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const mobileUserMenuRef = useRef<HTMLDivElement>(null)
   const cartDropdownRef = useRef<HTMLDivElement>(null)
+  const notificationsDropdownRef = useRef<HTMLDivElement>(null)
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -183,6 +186,19 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showCartDropdown])
 
+  // Close notifications dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsDropdownRef.current && !notificationsDropdownRef.current.contains(event.target as Node)) {
+        setShowNotificationsDropdown(false)
+      }
+    }
+    if (showNotificationsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showNotificationsDropdown])
+
   return (
     <>
       <header className={`border-b border-border-dark z-50 ${isSticky ? 'sticky top-0' : ''} ${bgStyle === 'blur' ? 'bg-background-dark/80 backdrop-blur-md' : bgStyle === 'transparent' ? 'bg-transparent' : 'bg-background-dark'}`}>
@@ -256,9 +272,9 @@ export default function Header() {
           <div className="flex items-center gap-1 sm:gap-2">
             {/* Mobile/Tablet: Notifications (authenticated only) */}
             {isAuthenticated && (
-              <Link
-                href="/notifications"
-                prefetch={true}
+              <button
+                type="button"
+                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
                 className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors relative"
                 aria-label="Notifications"
               >
@@ -268,7 +284,7 @@ export default function Header() {
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
-              </Link>
+              </button>
             )}
 
             {/* Mobile/Tablet: Language/Currency */}
@@ -388,19 +404,25 @@ export default function Header() {
             <nav className="hidden md:flex items-center gap-3 lg:gap-4 text-sm font-medium text-slate-400 flex-shrink-0">
               {/* Notifications (authenticated only) */}
               {isAuthenticated && (
-                <Link
-                  href="/notifications"
-                  prefetch={true}
-                  className="flex items-center justify-center hover:text-primary transition-colors relative"
-                  aria-label="Notifications"
-                >
-                  <Icon name="bell" size={20} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-[10px] text-white font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </Link>
+                <div className="relative" ref={notificationsDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                    className="flex items-center justify-center hover:text-primary transition-colors relative"
+                    aria-label="Notifications"
+                  >
+                    <Icon name="bell" size={20} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-[10px] text-white font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  <NotificationsDropdown
+                    isOpen={showNotificationsDropdown}
+                    onClose={() => setShowNotificationsDropdown(false)}
+                  />
+                </div>
               )}
 
               {/* Language & Currency */}
@@ -588,6 +610,15 @@ export default function Header() {
             onClose={() => setShowPreferences(false)}
           />
         </div>
+
+        {/* Mobile Notifications Modal */}
+        <div className="md:hidden">
+          <NotificationsDropdown
+            variant="modal"
+            isOpen={showNotificationsDropdown}
+            onClose={() => setShowNotificationsDropdown(false)}
+          />
+        </div>
       </header>
 
       {/* Mobile Menu - Using Portal-like pattern outside header */}
@@ -644,7 +675,7 @@ export default function Header() {
                 <button
                   type="button"
                   onClick={() => {
-                    window.open('/download', '_blank')
+                    alert('App coming soon!')
                     closeMobileMenu()
                   }}
                   className="w-full flex items-center gap-3 py-3 text-white"

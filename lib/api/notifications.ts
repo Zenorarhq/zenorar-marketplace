@@ -81,17 +81,10 @@ export const notificationsApi = {
   },
 
   // Admin methods
-  async sendPromotional(userIds: string[], title: string, message: string, link?: string) {
-    return apiFetch<{ message: string }>('/notifications/promotional', {
+  async sendNotification(type: 'PROMOTIONAL' | 'SYSTEM', title: string, message: string) {
+    return apiFetch<{ message: string }>('/notifications/broadcast', {
       method: 'POST',
-      body: JSON.stringify({ userIds, title, message, link }),
-    })
-  },
-
-  async sendSystem(title: string, message: string, link?: string) {
-    return apiFetch<{ message: string }>('/notifications/system', {
-      method: 'POST',
-      body: JSON.stringify({ title, message, link }),
+      body: JSON.stringify({ type, title, message }),
     })
   },
 }

@@ -1,4 +1,4 @@
-import { apiFetch, localApiFetch, buildQueryString } from './client'
+import { apiFetch, buildQueryString } from './client'
 
 export interface Transaction {
   id: string
@@ -40,7 +40,7 @@ export const financeApi = {
    * Get finance overview/summary (admin only)
    */
   async getOverview() {
-    return localApiFetch<FinanceOverview>('/finance/overview')
+    return apiFetch<FinanceOverview>('/payments/finance/overview')
   },
 
   /**

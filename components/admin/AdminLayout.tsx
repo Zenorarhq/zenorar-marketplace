@@ -20,6 +20,7 @@ const navItems = [
   { href: '/admin/finance', label: 'Finance', icon: 'wallet' },
   { href: '/admin/frontend', label: 'Page Builder', icon: 'layers' },
   { href: '/admin/library', label: 'Upload Library', icon: 'upload' },
+  { href: '/admin/chat', label: 'Live Chat', icon: 'chat' },
   { href: '/admin/tickets', label: 'Tickets', icon: 'ticket' },
   { href: '/admin/reports', label: 'Reports', icon: 'chart' },
   { href: '/admin/settings', label: 'Settings', icon: 'settings' },

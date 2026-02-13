@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, ReactNode, useEffect 
 import { useRouter } from 'next/navigation'
 import { Product, CartItem } from './types'
 import { useAuth } from '@/contexts/AuthContext'
-import { localApiFetch } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
 import type { CartSummary } from '@/lib/api'
 
 interface CartContextType {
@@ -75,7 +75,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       if (isAuthenticated) {
         try {
-          const result = await localApiFetch<any[]>('/cart')
+          const result = await apiFetch<any[]>('/cart')
           if (!cancelled && result.success && Array.isArray(result.data)) {
             // Map API response to CartItem[]
             const cartItems: CartItem[] = result.data.map((item: any) => ({
@@ -118,7 +118,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const refreshCart = useCallback(async () => {
     if (!isAuthenticated) return
     try {
-      const result = await localApiFetch<any[]>('/cart')
+      const result = await apiFetch<any[]>('/cart')
       if (result.success && Array.isArray(result.data)) {
         const cartItems: CartItem[] = result.data.map((item: any) => ({
           product: item.product,
@@ -160,7 +160,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Sync to API if authenticated — send absolute target quantity
     if (isAuthenticated) {
       try {
-        await localApiFetch('/cart/items', {
+        await apiFetch('/cart/items', {
           method: 'POST',
           body: JSON.stringify({ productId: product.id, quantity: newQuantity, license, price }),
         })
@@ -185,7 +185,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Sync to API if authenticated
     if (isAuthenticated) {
       const licenseParam = license || 'standard'
-      const result = await localApiFetch(`/cart/items/${productId}?license=${licenseParam}`, {
+      const result = await apiFetch(`/cart/items/product/${productId}?license=${licenseParam}`, {
         method: 'DELETE',
       })
       if (!result.success) {
@@ -217,7 +217,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // Sync to API if authenticated
     if (isAuthenticated) {
-      const result = await localApiFetch(`/cart/items/${productId}`, {
+      const result = await apiFetch(`/cart/items/product/${productId}`, {
         method: 'PUT',
         body: JSON.stringify({ quantity, license: license || 'standard' }),
       })
@@ -235,7 +235,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     if (isAuthenticated) {
       try {
-        await localApiFetch('/cart', { method: 'DELETE' })
+        await apiFetch('/cart', { method: 'DELETE' })
       } catch (error) {
         console.error('Failed to clear cart via API:', error)
         setItems(previousItems) // Rollback on failure
@@ -265,8 +265,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // Sync to API if authenticated
     if (isAuthenticated) {
-      localApiFetch('/cart', { method: 'DELETE' }).then(() => {
-        localApiFetch('/cart/items', {
+      apiFetch('/cart', { method: 'DELETE' }).then(() => {
+        apiFetch('/cart/items', {
           method: 'POST',
           body: JSON.stringify({ productId: product.id, quantity: 1, license, price }),
         })

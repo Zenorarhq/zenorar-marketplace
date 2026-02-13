@@ -7,6 +7,7 @@ import Icon from '@/components/ui/Icon'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { useWishlist } from '@/hooks/use-wishlist'
 import { useCart } from '@/lib/cart-context'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface ProductCardProps {
   product: Product
@@ -29,6 +30,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { formatPrice } = usePreferences()
   const { isInWishlist, toggleItem } = useWishlist()
   const { addItem, showAddedToCartPopup } = useCart()
+  const { isAuthenticated } = useAuth()
   const colorClass = iconColorClasses[product.iconColor] || iconColorClasses.primary
   const images = product.images && product.images.length > 0 ? product.images : null
   const [imgIndex, setImgIndex] = useState(0)
@@ -49,12 +51,12 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <Link
       href={`/products/${product.slug}`}
-      className="bg-white dark:bg-transparent rounded-xl hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden"
+      className="bg-white dark:bg-[#121212] rounded-xl border border-slate-200 dark:border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden"
     >
       {/* Image carousel or icon */}
       {images ? (
         <div
-          className="relative w-full aspect-[4/3] bg-slate-100 dark:bg-[#1a1a1a]"
+          className="relative w-full aspect-[4/3] bg-slate-100 dark:bg-[#121212]"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
@@ -71,14 +73,16 @@ export default function ProductCard({ product }: ProductCardProps) {
             </span>
           )}
 
-          {/* Wishlist heart */}
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleItem(product.id) }}
-            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 flex items-center justify-center hover:bg-black/60 transition-colors"
-            aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-          >
-            <Icon name="heart" size={16} className={wishlisted ? 'text-red-500 fill-red-500' : 'text-white'} />
-          </button>
+          {/* Wishlist heart - only show for authenticated users */}
+          {isAuthenticated && (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleItem(product.id) }}
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 flex items-center justify-center hover:bg-black/60 transition-colors"
+              aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            >
+              <Icon name="heart" size={16} className={wishlisted ? 'text-red-500 fill-red-500' : 'text-white'} />
+            </button>
+          )}
 
           {images.length > 1 && (
             <>

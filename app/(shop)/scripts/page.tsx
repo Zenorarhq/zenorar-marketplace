@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import FilterSidebar from '@/components/filters/FilterSidebar'
-import ScriptCard from '@/components/cards/ScriptCard'
+import ProductCard from '@/components/cards/ProductCard'
 import { scriptProducts } from '@/lib/mock-data'
 
 type SortOption = 'popular' | 'newest' | 'price-low' | 'price-high'
@@ -56,29 +56,31 @@ export default function ScriptsPage() {
       </div>
 
       {/* Page Header */}
-      <header className="mb-10 flex items-end justify-between">
-        <div>
-          <h1 className="text-4xl font-extrabold text-white mb-2">Premium Scripts</h1>
-          <p className="text-slate-500 max-w-2xl">
-            High-performance automation tools, scrapers, and full-stack kits developed by industry experts.
-          </p>
-        </div>
+      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-3xl p-8 lg:p-12 mb-12">
+        <header className="flex items-end justify-between">
+          <div>
+            <h1 className="text-4xl font-extrabold text-white mb-2">Premium Scripts</h1>
+            <p className="text-slate-500 max-w-2xl">
+              High-performance automation tools, scrapers, and full-stack kits developed by industry experts.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-4 text-sm">
-          <label htmlFor="sort-by" className="text-slate-500">Sort by:</label>
-          <select
-            id="sort-by"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="bg-surface-dark border-border-dark rounded-lg text-slate-300 text-sm focus:ring-primary focus:border-primary px-3 py-2"
-          >
-            <option value="popular">Most Popular</option>
-            <option value="newest">Newest</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-          </select>
-        </div>
-      </header>
+          <div className="flex items-center gap-4 text-sm">
+            <label htmlFor="sort-by" className="text-slate-500">Sort by:</label>
+            <select
+              id="sort-by"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="bg-surface-dark border-border-dark rounded-lg text-slate-300 text-sm focus:ring-primary focus:border-primary px-3 py-2"
+            >
+              <option value="popular">Most Popular</option>
+              <option value="newest">Newest</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+            </select>
+          </div>
+        </header>
+      </div>
 
       {/* Main Content */}
       <div className="flex gap-8">
@@ -89,7 +91,7 @@ export default function ScriptsPage() {
         <div className="flex-grow">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleProducts.map((product) => (
-              <ScriptCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
 

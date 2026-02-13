@@ -51,8 +51,7 @@ function CategoryLinksFallback() {
 
 export default function CategoryNav() {
   const handleGetApp = () => {
-    // TODO: Implement app download modal or redirect to app store
-    window.open('/download', '_blank')
+    alert('App coming soon!')
   }
 
   return (

@@ -1,26 +1,20 @@
-// Chat API
+// Chat API — uses Railway backend via apiFetch
 
-import { apiFetch, buildQueryString } from './client'
+import { apiFetch, buildQueryString, getSessionId } from './client'
 
-export type ChatStatus = 'OPEN' | 'ASSIGNED' | 'WAITING' | 'RESOLVED' | 'CLOSED'
-export type SenderType = 'USER' | 'AGENT' | 'SYSTEM' | 'BOT'
-export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM'
+export type ChatStatus = 'OPEN' | 'ASSIGNED' | 'RESOLVED' | 'CLOSED'
+export type SenderType = 'USER' | 'AGENT' | 'SYSTEM'
 
 export interface ChatMessage {
   id: string
   conversationId: string
   senderId: string | null
-  sender: {
-    id: string
-    name: string
-    avatar: string | null
-  } | null
+  senderName: string | null
+  senderAvatar?: string | null
   senderType: SenderType
   content: string
-  contentType: MessageType
-  attachments: any[] | null
+  attachments: { url: string; name: string; type: string; size: number }[]
   isRead: boolean
-  readAt: string | null
   createdAt: string
 }
 
@@ -35,18 +29,16 @@ export interface ChatConversation {
   } | null
   guestEmail: string | null
   guestName: string | null
+  sessionId: string
   status: ChatStatus
-  subject: string | null
   assignedTo: {
     id: string
     name: string
     avatar: string | null
   } | null
-  orderId: string | null
-  source: string | null
-  lastMessage: ChatMessage | null
-  messageCount: number
-  closedAt: string | null
+  lastMessage: string | null
+  lastMessageAt: string | null
+  unreadCount: number
   createdAt: string
   updatedAt: string
 }
@@ -55,96 +47,112 @@ export interface ChatConversationDetail extends ChatConversation {
   messages: ChatMessage[]
 }
 
-export interface CreateConversationData {
-  subject?: string
-  guestEmail?: string
-  guestName?: string
-  orderId?: string
-  initialMessage?: string
+export interface ChatSettings {
+  isOnline: boolean
+  offlineMessage: string
+}
+
+export interface ChatStats {
+  total: number
+  open: number
+  assigned: number
+  resolved: number
+  closed: number
+  unassigned: number
+  unread: number
 }
 
 export interface ChatFilters {
   status?: ChatStatus
-  userId?: string
-  assignedToId?: string
+  assignedTo?: string
   unassigned?: boolean
   page?: number
   limit?: number
 }
 
 export const chatApi = {
-  // User methods
-  async createConversation(data: CreateConversationData) {
-    return apiFetch<ChatConversation>('/chat', {
+  // Settings
+  async getSettings() {
+    return apiFetch<ChatSettings>('/chat/settings')
+  },
+
+  async updateSettings(data: Partial<ChatSettings>) {
+    return apiFetch<ChatSettings>('/chat/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  // Conversations
+  async createConversation(data: {
+    guestEmail?: string
+    guestName?: string
+    initialMessage: string
+  }) {
+    // sessionId is automatically sent via X-Session-ID header by apiFetch
+    return apiFetch<{ id: string; status: string; isOnline: boolean; createdAt: string }>('/chat', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   },
 
-  async getMyConversations(page = 1, limit = 20) {
-    const query = buildQueryString({ page, limit })
-    return apiFetch<ChatConversation[]>(`/chat/my${query}`)
+  async getConversations(filters: ChatFilters = {}) {
+    const query = buildQueryString(filters)
+    return apiFetch<ChatConversation[]>(`/chat${query}`)
   },
 
   async getConversation(id: string) {
     return apiFetch<ChatConversationDetail>(`/chat/${id}`)
   },
 
-  async getMessages(conversationId: string, page = 1, limit = 50) {
-    const query = buildQueryString({ page, limit })
+  async getActiveConversation() {
+    const sessionId = getSessionId()
+    return apiFetch<{ id: string; status: string; createdAt: string } | null>(
+      `/chat/active?sessionId=${sessionId}`
+    )
+  },
+
+  // Messages
+  async getMessages(conversationId: string, after?: string) {
+    const query = after ? `?after=${encodeURIComponent(after)}` : ''
     return apiFetch<ChatMessage[]>(`/chat/${conversationId}/messages${query}`)
   },
 
-  async sendMessage(conversationId: string, content: string, contentType: MessageType = 'TEXT', attachments?: any[]) {
+  async sendMessage(conversationId: string, content: string, attachments?: any[]) {
     return apiFetch<ChatMessage>(`/chat/${conversationId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ content, contentType, attachments }),
+      body: JSON.stringify({ content, attachments }),
     })
   },
 
-  async markAsRead(conversationId: string) {
-    return apiFetch<{ message: string }>(`/chat/${conversationId}/read`, {
+  // Assignment
+  async assignConversation(id: string, agentId?: string) {
+    return apiFetch<{ assignedTo: string }>(`/chat/${id}/assign`, {
       method: 'POST',
+      body: JSON.stringify(agentId ? { agentId } : {}),
     })
   },
 
-  async getUnreadCount() {
-    return apiFetch<{ count: number }>('/chat/unread')
-  },
-
-  // Admin methods
-  async list(filters: ChatFilters = {}) {
-    const query = buildQueryString(filters)
-    return apiFetch<ChatConversation[]>(`/chat${query}`)
-  },
-
+  // Status
   async updateStatus(id: string, status: ChatStatus) {
-    return apiFetch<ChatConversation>(`/chat/${id}/status`, {
+    return apiFetch<{ status: string }>(`/chat/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     })
   },
 
-  async assign(id: string, agentId: string) {
-    return apiFetch<ChatConversation>(`/chat/${id}/assign`, {
-      method: 'POST',
-      body: JSON.stringify({ agentId }),
-    })
-  },
-
-  async unassign(id: string) {
-    return apiFetch<ChatConversation>(`/chat/${id}/unassign`, {
-      method: 'POST',
-    })
-  },
-
+  // Stats
   async getStats() {
-    return apiFetch<{
-      total: number
-      open: number
-      assigned: number
-      resolved: number
-      unread: number
-    }>('/chat/stats/overview')
+    return apiFetch<ChatStats>('/chat/stats/overview')
+  },
+
+  // Upload
+  async uploadFile(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiFetch<{ url: string; name: string; type: string; size: number }>('/chat/upload', {
+      method: 'POST',
+      body: formData,
+    })
   },
 }

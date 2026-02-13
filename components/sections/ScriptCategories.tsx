@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import CategoryCard from '@/components/cards/CategoryCard'
+import { apiFetch } from '@/lib/api/client'
 
 interface DBCategory {
   id: string
@@ -16,11 +17,10 @@ export default function ScriptCategories({ config }: { config?: { title?: string
   const [categories, setCategories] = useState<DBCategory[]>([])
 
   useEffect(() => {
-    fetch('/api/categories')
-      .then((res) => res.json())
+    apiFetch('/categories/public?includeProducts=true')
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
-          setCategories(data.data.filter((c: DBCategory) => c.productCount > 0))
+          setCategories(data.data.filter((c: any) => c._count?.products > 0))
         }
       })
       .catch(() => {})

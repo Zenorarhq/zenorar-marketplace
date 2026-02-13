@@ -35,7 +35,7 @@ export default function VirtualNumbersPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-3xl p-8 lg:p-12 mb-12">
+      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-3xl p-8 lg:p-12 mb-12">
         <div className="max-w-2xl">
           <h1 className="text-4xl lg:text-5xl font-extrabold text-white mb-4">
             Virtual Phone Numbers

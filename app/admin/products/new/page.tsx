@@ -7,6 +7,7 @@ import Icon from '@/components/ui/Icon'
 import MediaPickerModal from '@/components/admin/MediaPickerModal'
 import { productsApi } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
+import { apiFetch } from '@/lib/api/client'
 
 export default function NewProductPage() {
   const router = useRouter()
@@ -117,9 +118,8 @@ export default function NewProductPage() {
 
         // Set staff pick if checked
         if (formData.isStaffPick) {
-          await fetch(`/api/admin/products/${result.data.id}/staff-pick`, {
+          await apiFetch(`/products/${result.data.id}/staff-pick`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: true }),
           }).catch(() => {})
         }

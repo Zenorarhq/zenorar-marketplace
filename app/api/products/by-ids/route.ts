@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       FROM products p
       LEFT JOIN categories c ON p."categoryId" = c.id
       LEFT JOIN reviews r ON r."productId" = p.id
-      WHERE p.id IN (${placeholders}) AND p.status = 'ACTIVE'
+      WHERE p.id IN (${placeholders})
       GROUP BY p.id, c.name
     `, limitedIds)
 

@@ -119,9 +119,9 @@ export default function CartPage() {
               >
                 {/* Product Image */}
                 <div className="w-24 h-24 bg-charcoal rounded-xl overflow-hidden flex-shrink-0">
-                  {item.product.image ? (
+                  {(item.product.image || item.product.images?.[0]?.url) ? (
                     <Image
-                      src={item.product.image}
+                      src={item.product.image || item.product.images?.[0]?.url || ''}
                       alt={item.product.name}
                       width={96}
                       height={96}

@@ -82,9 +82,9 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
             className="flex gap-3 p-3 bg-surface-dark rounded-xl"
           >
             <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
-              {item.product.image ? (
+              {(item.product.image || item.product.images?.[0]?.url) ? (
                 <Image
-                  src={item.product.image}
+                  src={item.product.image || item.product.images?.[0]?.url}
                   alt={item.product.name}
                   width={48}
                   height={48}

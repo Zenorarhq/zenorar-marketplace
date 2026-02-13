@@ -65,12 +65,10 @@ export const mediaApi = {
     if (data?.alt) formData.append('alt', data.alt)
     if (data?.description) formData.append('description', data.description)
 
-    // Upload via local API route (bypasses Railway backend)
-    const res = await fetch('/api/media/upload', {
+    return apiFetch<MediaFile>('/media/upload', {
       method: 'POST',
       body: formData,
     })
-    return res.json() as Promise<{ success: boolean; data?: MediaFile; error?: string }>
   },
 
   /**

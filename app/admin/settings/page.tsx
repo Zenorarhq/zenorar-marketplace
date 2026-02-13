@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { profileApi } from '@/lib/api/profile'
 import { settingsApi } from '@/lib/api/settings'
 import { mediaApi } from '@/lib/api/media'
-import { getAccessToken } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 
@@ -98,6 +98,18 @@ export default function AdminSettingsPage() {
     slackWebhook: '',
   })
 
+  // Send Notification State
+  const [sendNotif, setSendNotif] = useState({ type: 'SYSTEM' as 'SYSTEM' | 'PROMOTIONAL', title: '', message: '' })
+  const [sendingNotif, setSendingNotif] = useState(false)
+
+  // Sent Notifications State
+  const [sentNotifications, setSentNotifications] = useState<any[]>([])
+  const [loadingSent, setLoadingSent] = useState(false)
+  const [selectedBatch, setSelectedBatch] = useState<any | null>(null)
+  const [recipients, setRecipients] = useState<any[]>([])
+  const [loadingRecipients, setLoadingRecipients] = useState(false)
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false)
+
   // Payment Settings State
   const [paymentSettings, setPaymentSettings] = useState({
     stripeEnabled: true,
@@ -158,6 +170,72 @@ export default function AdminSettingsPage() {
       }
     })
   }, [])
+
+  // Load notification settings from API on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('notifications').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setNotificationSettings((prev) => ({
+          ...prev,
+          emailNewOrder: d.emailNewOrder ?? prev.emailNewOrder,
+          emailNewUser: d.emailNewUser ?? prev.emailNewUser,
+          emailLowStock: d.emailLowStock ?? prev.emailLowStock,
+          emailTicket: d.emailTicket ?? prev.emailTicket,
+          pushEnabled: d.pushEnabled ?? prev.pushEnabled,
+          slackWebhook: d.slackWebhook ?? prev.slackWebhook,
+        }))
+      }
+    })
+    // Load sent notifications
+    fetchSentNotifications()
+  }, [])
+
+  // Fetch sent notifications
+  const fetchSentNotifications = async () => {
+    setLoadingSent(true)
+    try {
+      const data = await apiFetch('/notifications/sent?limit=20')
+      if (data.success) {
+        setSentNotifications(data.data || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch sent notifications:', error)
+    }
+    setLoadingSent(false)
+  }
+
+  // Fetch recipients for a batch
+  const fetchRecipients = async (batchId: string) => {
+    setLoadingRecipients(true)
+    try {
+      const data = await apiFetch(`/notifications/sent/${batchId}/recipients`)
+      if (data.success) {
+        setRecipients(data.data || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch recipients:', error)
+    }
+    setLoadingRecipients(false)
+  }
+
+  // Delete a notification batch
+  const deleteBatch = async (batchId: string) => {
+    if (!confirm('Are you sure? This will delete this notification from all users.')) return
+    try {
+      const data = await apiFetch(`/notifications/sent/${batchId}`, {
+        method: 'DELETE',
+      })
+      if (data.success) {
+        setMessage({ type: 'success', text: `Deleted ${data.data?.count || 0} notifications` })
+        fetchSentNotifications() // Refresh list
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to delete' })
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to delete notification batch' })
+    }
+  }
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -269,9 +347,8 @@ export default function AdminSettingsPage() {
 
     if (result.success) {
       // Update password_changed_at timestamp for expiry tracking
-      fetch('/api/auth/password-changed', {
+      apiFetch('/auth/password-changed', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${getAccessToken()}` },
       }).catch(() => {}) // Non-critical
       setMessage({ type: 'success', text: 'Password updated successfully!' })
       setProfileSettings({
@@ -359,6 +436,13 @@ export default function AdminSettingsPage() {
       { key: 'loginAttempts', value: securitySettings.loginAttempts, group: 'security', isPublic: false },
       { key: 'passwordExpiry', value: securitySettings.passwordExpiry, group: 'security', isPublic: false },
       { key: 'ipWhitelist', value: securitySettings.ipWhitelist, group: 'security', isPublic: false },
+      // Notification settings
+      { key: 'emailNewOrder', value: notificationSettings.emailNewOrder, group: 'notifications', isPublic: false },
+      { key: 'emailNewUser', value: notificationSettings.emailNewUser, group: 'notifications', isPublic: false },
+      { key: 'emailLowStock', value: notificationSettings.emailLowStock, group: 'notifications', isPublic: false },
+      { key: 'emailTicket', value: notificationSettings.emailTicket, group: 'notifications', isPublic: false },
+      { key: 'pushEnabled', value: notificationSettings.pushEnabled, group: 'notifications', isPublic: false },
+      { key: 'slackWebhook', value: notificationSettings.slackWebhook, group: 'notifications', isPublic: false },
     ]
 
     const result = await settingsApi.updateSettings(settingsToSave)
@@ -889,6 +973,214 @@ export default function AdminSettingsPage() {
                   <p className="text-slate-500 text-xs">Send notifications to a Slack channel</p>
                 </div>
               </div>
+
+              {/* Send Notification */}
+              <div className="pt-4 border-t border-[#2a2a2a]">
+                <h3 className="text-white font-medium mb-4">Send Notification</h3>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Type</label>
+                    <select
+                      value={sendNotif.type}
+                      onChange={(e) => setSendNotif({ ...sendNotif, type: e.target.value as 'SYSTEM' | 'PROMOTIONAL' })}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                    >
+                      <option value="SYSTEM">System</option>
+                      <option value="PROMOTIONAL">Promotional</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Title</label>
+                    <input
+                      type="text"
+                      value={sendNotif.title}
+                      onChange={(e) => setSendNotif({ ...sendNotif, title: e.target.value })}
+                      placeholder="Notification title..."
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Message</label>
+                    <textarea
+                      value={sendNotif.message}
+                      onChange={(e) => setSendNotif({ ...sendNotif, message: e.target.value })}
+                      placeholder="Notification message..."
+                      rows={3}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 resize-none"
+                    />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!sendNotif.title || !sendNotif.message) {
+                        setMessage({ type: 'error', text: 'Title and message are required' })
+                        return
+                      }
+                      setSendingNotif(true)
+                      setMessage(null)
+                      try {
+                        const data = await apiFetch('/notifications/broadcast', {
+                          method: 'POST',
+                          body: JSON.stringify(sendNotif),
+                        })
+                        if (data.success) {
+                          setMessage({ type: 'success', text: data.data?.message || 'Notification sent!' })
+                          setSendNotif({ type: 'SYSTEM', title: '', message: '' })
+                          fetchSentNotifications() // Refresh sent notifications list
+                        } else {
+                          setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
+                        }
+                      } catch {
+                        setMessage({ type: 'error', text: 'Failed to send notification' })
+                      }
+                      setSendingNotif(false)
+                    }}
+                    disabled={sendingNotif}
+                    className="w-full bg-primary hover:bg-primary/90 text-black font-medium py-3 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {sendingNotif ? 'Sending...' : 'Send to All Users'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Sent Notifications History */}
+              <div className="pt-6 border-t border-[#2a2a2a]">
+                <div className="flex items-center justify-between mb-4">
+                  <button
+                    onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+                    className="flex items-center gap-2 text-white font-medium hover:text-primary transition-colors"
+                  >
+                    <Icon name={isHistoryExpanded ? 'chevron-up' : 'chevron-down'} size={18} />
+                    <span>Sent Notifications History</span>
+                  </button>
+                  <button
+                    onClick={fetchSentNotifications}
+                    disabled={loadingSent}
+                    className="text-sm text-primary hover:text-primary/80 disabled:opacity-50"
+                  >
+                    {loadingSent ? 'Loading...' : 'Refresh'}
+                  </button>
+                </div>
+
+                {isHistoryExpanded && (
+                  <>
+                    {loadingSent ? (
+                      <div className="text-center py-8 text-slate-500">Loading sent notifications...</div>
+                    ) : sentNotifications.length === 0 ? (
+                      <div className="text-center py-8 text-slate-500">No notifications sent yet</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {sentNotifications.map((batch) => (
+                          <div key={batch.batchId} className="p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded ${
+                                      batch.type === 'PROMOTIONAL' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
+                                    }`}
+                                  >
+                                    {batch.type}
+                                  </span>
+                                  <span className="text-sm text-white font-medium truncate">{batch.title}</span>
+                                </div>
+                                <p className="text-sm text-slate-400 line-clamp-1">{batch.message}</p>
+                                <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                                  <span>{batch.stats.total} recipients</span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded ${
+                                      batch.stats.unread > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+                                    }`}
+                                  >
+                                    {batch.stats.unread} unread / {batch.stats.total} total
+                                  </span>
+                                  <span>{new Date(batch.sentAt).toLocaleString()}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedBatch(batch)
+                                    fetchRecipients(batch.batchId)
+                                  }}
+                                  className="text-sm px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded transition-colors"
+                                >
+                                  View Recipients
+                                </button>
+                                <button
+                                  onClick={() => deleteBatch(batch.batchId)}
+                                  className="text-sm px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Recipients Modal */}
+              {selectedBatch && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedBatch(null)}>
+                  <div className="bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] max-w-3xl w-full max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-6 border-b border-[#2a2a2a]">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded ${
+                                selectedBatch.type === 'PROMOTIONAL' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
+                              }`}
+                            >
+                              {selectedBatch.type}
+                            </span>
+                            <h3 className="text-lg font-medium text-white">{selectedBatch.title}</h3>
+                          </div>
+                          <p className="text-slate-400 text-sm mb-2">{selectedBatch.message}</p>
+                          <p className="text-xs text-slate-500">Sent: {new Date(selectedBatch.sentAt).toLocaleString()}</p>
+                        </div>
+                        <button onClick={() => setSelectedBatch(null)} className="text-slate-400 hover:text-white">
+                          <Icon name="x" size={20} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-6 overflow-y-auto max-h-[60vh]">
+                      {loadingRecipients ? (
+                        <div className="text-center py-8 text-slate-500">Loading recipients...</div>
+                      ) : recipients.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500">No recipients found</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {recipients.map((recipient) => (
+                            <div key={recipient.id} className="flex items-center justify-between p-3 bg-[#141414] rounded-lg">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-white font-medium">{recipient.name || 'Unknown'}</span>
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded ${
+                                      recipient.isRead ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                                    }`}
+                                  >
+                                    {recipient.isRead ? 'Read' : 'Unread'}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500">{recipient.email}</p>
+                                {recipient.readAt && (
+                                  <p className="text-xs text-slate-600 mt-0.5">Read: {new Date(recipient.readAt).toLocaleString()}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

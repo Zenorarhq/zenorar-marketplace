@@ -8,6 +8,7 @@ import Icon from '@/components/ui/Icon'
 import { productsApi, Product } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
+import { apiFetch } from '@/lib/api/client'
 
 export default function ProductsPage() {
   const queryClient = useQueryClient()
@@ -41,12 +42,11 @@ export default function ProductsPage() {
     },
   })
 
-  // Fetch staff pick IDs from local DB
+  // Fetch staff pick IDs from Railway
   const { data: staffPickIds = [] } = useQuery({
     queryKey: ['admin-staff-picks'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/products/staff-picks')
-      const data = await res.json()
+      const data = await apiFetch('/products/admin/staff-picks')
       return data.success ? data.data : []
     },
   })
@@ -68,8 +68,7 @@ export default function ProductsPage() {
 
   async function handleToggleStaffPick(productId: string) {
     try {
-      const res = await fetch(`/api/admin/products/${productId}/staff-pick`, { method: 'PATCH' })
-      const data = await res.json()
+      const data = await apiFetch(`/products/${productId}/staff-pick`, { method: 'PATCH' })
       if (data.success) {
         queryClient.invalidateQueries({ queryKey: ['admin-staff-picks'] })
       }

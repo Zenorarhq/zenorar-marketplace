@@ -6,6 +6,7 @@ import Link from 'next/link'
 import RecommendedCard from '@/components/cards/RecommendedCard'
 import Icon from '@/components/ui/Icon'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
+import { apiFetch } from '@/lib/api/client'
 // Recommended product shape from our local API
 interface RecommendedProduct {
   id: string
@@ -105,8 +106,7 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
 
   // Fetch recommended products from local API (no auth required)
   useEffect(() => {
-    fetch('/api/products/recommended')
-      .then((res) => res.json())
+    apiFetch('/products/public/recommended')
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           setRecommended(data.data)
@@ -232,7 +232,7 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
         <h3 className="font-bold text-lg mb-6">Recommended for you</h3>
 
         <div className="space-y-6">
-          {recommended.map((product) => (
+          {recommended.map((product: any) => (
             <RecommendedCard
               key={product.id}
               product={{
@@ -241,13 +241,13 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
                 slug: product.slug,
                 description: product.description || '',
                 price: product.price,
-                rating: Number(product.average_rating) || 0,
-                reviewCount: Number(product.review_count) || 0,
-                category: product.category_name || '',
+                rating: Number(product.avgRating ?? product.average_rating) || 0,
+                reviewCount: Number(product._count?.reviews ?? product.review_count) || 0,
+                category: product.category?.name ?? product.category_name ?? '',
                 icon: 'box',
                 iconColor: 'primary',
                 tags: [],
-                image: product.images?.find((img) => img.isPrimary)?.url || product.images?.[0]?.url,
+                image: product.images?.find((img: any) => img.isPrimary)?.url || product.images?.[0]?.url,
               }}
             />
           ))}
