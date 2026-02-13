@@ -43,10 +43,10 @@ export default function ProductsPage() {
   })
 
   // Fetch staff pick IDs from Railway
-  const { data: staffPickIds = [] } = useQuery({
+  const { data: staffPickIds = [] } = useQuery<string[]>({
     queryKey: ['admin-staff-picks'],
     queryFn: async () => {
-      const data = await apiFetch('/products/admin/staff-picks')
+      const data = await apiFetch<string[]>('/products/admin/staff-picks')
       return data.success ? data.data : []
     },
   })
