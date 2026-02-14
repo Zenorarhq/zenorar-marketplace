@@ -33,14 +33,22 @@ export default function LiveChat() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showRating, setShowRating] = useState(false)
+  const [ratingValue, setRatingValue] = useState(0)
+  const [ratingComment, setRatingComment] = useState('')
+  const [ratingSubmitted, setRatingSubmitted] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const chatWindowRef = useRef<HTMLDivElement>(null)
   const lastMessageTimeRef = useRef<string>('')
 
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const tz = useTimezone()
-  const { joinConversation, leaveConversation, onNewMessage, onConversationStatus } = useChatSocket()
+  const [assignedAgent, setAssignedAgent] = useState<{ name: string; avatar: string | null } | null>(null)
+
+  const { joinConversation, leaveConversation, onNewMessage, onConversationStatus, onConversationAssigned, onReconnect } = useChatSocket()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -49,6 +57,18 @@ export default function LiveChat() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Close chat when clicking outside
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: MouseEvent) => {
+      if (chatWindowRef.current && !chatWindowRef.current.contains(e.target as Node)) {
+        handleClose()
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [isOpen])
 
   // Load chat settings on mount
   useEffect(() => {
@@ -60,15 +80,48 @@ export default function LiveChat() {
     })
   }, [])
 
-  // Check for active conversation on mount
+  // Check for active conversation once auth is resolved
   useEffect(() => {
+    if (authLoading) return // Wait until auth is resolved
+
+    // For signed-in users, restore from localStorage
+    const storedId = user ? localStorage.getItem('chat_conversation_id') : null
+    if (storedId) {
+      setConversationId(storedId)
+      loadMessages(storedId)
+      chatApi.getConversation(storedId).then(convRes => {
+        if (convRes.success && convRes.data?.assignedTo) {
+          setAssignedAgent({
+            name: convRes.data.assignedTo.name,
+            avatar: convRes.data.assignedTo.avatar || null,
+          })
+        }
+        // If conversation no longer exists or is closed, clear storage
+        if (!convRes.success || (convRes.data && (convRes.data.status === 'CLOSED' || convRes.data.status === 'RESOLVED'))) {
+          localStorage.removeItem('chat_conversation_id')
+          setConversationId(null)
+          setMessages([])
+        }
+      })
+      return
+    }
+
+    // For guests, use session-based lookup
     chatApi.getActiveConversation().then(res => {
       if (res.success && res.data) {
         setConversationId(res.data.id)
         loadMessages(res.data.id)
+        chatApi.getConversation(res.data.id).then(convRes => {
+          if (convRes.success && convRes.data?.assignedTo) {
+            setAssignedAgent({
+              name: convRes.data.assignedTo.name,
+              avatar: convRes.data.assignedTo.avatar || null,
+            })
+          }
+        })
       }
     })
-  }, [])
+  }, [authLoading])
 
   const loadMessages = async (convId: string) => {
     const res = await chatApi.getMessages(convId)
@@ -76,7 +129,7 @@ export default function LiveChat() {
       const msgs: DisplayMessage[] = res.data.map(m => ({
         id: m.id,
         content: m.content,
-        senderType: m.senderType,
+        senderType: (user?.id && m.senderId === user.id) ? 'USER' : m.senderType,
         senderName: m.senderName,
         attachments: m.attachments,
         createdAt: m.createdAt,
@@ -96,6 +149,8 @@ export default function LiveChat() {
 
     const unsubMessage = onNewMessage((msg: ChatSocketMessage) => {
       if (msg.conversationId !== conversationId) return
+      // Skip own messages — already added locally by handleSendMessage
+      if (user?.id && msg.senderId === user.id) return
 
       setMessages(prev => {
         // Dedup: skip if we already have this message
@@ -104,14 +159,14 @@ export default function LiveChat() {
         const newMsg: DisplayMessage = {
           id: msg.id,
           content: msg.content,
-          senderType: msg.senderType,
+          senderType: (user?.id && msg.senderId === user.id) ? 'USER' : msg.senderType,
           senderName: msg.senderName,
           attachments: msg.attachments,
           createdAt: msg.createdAt,
         }
 
-        // Count agent messages as unread if chat is closed
-        if (msg.senderType === 'AGENT') {
+        // Count messages from others as unread if chat is closed
+        if (!(user?.id && msg.senderId === user.id) && msg.senderType !== 'SYSTEM') {
           setUnreadCount(c => c + 1)
         }
 
@@ -124,21 +179,71 @@ export default function LiveChat() {
     const unsubStatus = onConversationStatus((data) => {
       if (data.conversationId !== conversationId) return
       if (data.status === 'CLOSED' || data.status === 'RESOLVED') {
+        localStorage.removeItem('chat_conversation_id')
         setMessages(prev => [...prev, {
           id: 'system-' + Date.now(),
           content: `Conversation ${data.status.toLowerCase()}`,
           senderType: 'SYSTEM',
           createdAt: new Date().toISOString(),
         }])
+        if (!ratingSubmitted) setShowRating(true)
       }
+    })
+
+    const unsubAssigned = onConversationAssigned((data) => {
+      if (data.conversationId !== conversationId) return
+      if (data.agentName) {
+        setAssignedAgent({ name: data.agentName, avatar: data.agentAvatar || null })
+      }
+    })
+
+    // Re-join room after Socket.IO reconnects (room membership is lost server-side)
+    const unsubReconnect = onReconnect(() => {
+      joinConversation(conversationId)
     })
 
     return () => {
       leaveConversation(conversationId)
       unsubMessage()
       unsubStatus()
+      unsubAssigned()
+      unsubReconnect()
     }
-  }, [conversationId, joinConversation, leaveConversation, onNewMessage, onConversationStatus])
+  }, [conversationId, joinConversation, leaveConversation, onNewMessage, onConversationStatus, onConversationAssigned, onReconnect])
+
+  // Polling fallback — fetches new messages every 5s in case Socket.IO fails
+  useEffect(() => {
+    if (!conversationId) return
+
+    const poll = async () => {
+      if (!lastMessageTimeRef.current) return
+      const res = await chatApi.getMessages(conversationId, lastMessageTimeRef.current)
+      if (res.success && res.data && res.data.length > 0) {
+        setMessages(prev => {
+          const newMsgs = res.data!.filter(m => !prev.some(p => p.id === m.id))
+          if (newMsgs.length === 0) return prev
+          const mapped: DisplayMessage[] = newMsgs.map(m => ({
+            id: m.id,
+            content: m.content,
+            senderType: (user?.id && m.senderId === user.id) ? 'USER' : m.senderType,
+            senderName: m.senderName,
+            attachments: m.attachments,
+            createdAt: m.createdAt,
+          }))
+          // Count new messages from others as unread if chat is closed
+          const otherCount = newMsgs.filter(m => !(user?.id && m.senderId === user.id) && m.senderType !== 'SYSTEM').length
+          if (otherCount > 0) {
+            setUnreadCount(c => c + otherCount)
+          }
+          return [...prev, ...mapped]
+        })
+        lastMessageTimeRef.current = res.data![res.data!.length - 1].createdAt
+      }
+    }
+
+    const interval = setInterval(poll, 5000)
+    return () => clearInterval(interval)
+  }, [conversationId])
 
   const handleOpen = () => {
     setIsOpen(true)
@@ -182,7 +287,9 @@ export default function LiveChat() {
 
       if (res.success && res.data) {
         setInputValue('')
+        if (textareaRef.current) textareaRef.current.style.height = 'auto'
         setConversationId(res.data.id)
+        if (user) localStorage.setItem('chat_conversation_id', res.data.id)
         lastMessageTimeRef.current = ''
         // Load real messages from server (includes our initial message with real IDs)
         await loadMessages(res.data.id)
@@ -194,6 +301,7 @@ export default function LiveChat() {
 
     // Existing conversation — send message
     setInputValue('')
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
     const localId = 'local-' + Date.now()
     const localMsg: DisplayMessage = {
       id: localId,
@@ -259,6 +367,25 @@ export default function LiveChat() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const handleSubmitRating = async () => {
+    if (!conversationId || ratingValue === 0) return
+    const res = await chatApi.rateConversation(conversationId, ratingValue, ratingComment || undefined)
+    if (res.success) {
+      setRatingSubmitted(true)
+      setShowRating(false)
+    }
+  }
+
+  const getDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    if (date.toDateString() === today.toDateString()) return 'Today'
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
   const renderAttachment = (att: { url: string; name: string; type: string; size: number }) => {
     const isImage = att.type?.startsWith('image/')
     if (isImage) {
@@ -280,15 +407,21 @@ export default function LiveChat() {
     <div className="fixed bottom-6 right-6 z-50">
       {/* Chat Window */}
       {isOpen && (
-        <div className="absolute bottom-20 right-0 w-[380px] h-[520px] bg-surface-dark border border-border-dark rounded-2xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
+        <div ref={chatWindowRef} className="absolute bottom-0 right-0 w-[380px] h-[600px] bg-surface-dark border border-border-dark rounded-2xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
           {/* Header */}
           <div className="bg-charcoal px-6 py-4 border-b border-border-dark flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                <Icon name="customer-support" size={24} className="text-primary" />
+              <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                {assignedAgent?.avatar ? (
+                  <img src={assignedAgent.avatar} alt={assignedAgent.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                    <Icon name="customer-support" size={24} className="text-primary" />
+                  </div>
+                )}
               </div>
               <div>
-                <h3 className="font-bold text-white">Live Support</h3>
+                <h3 className="font-bold text-white">{assignedAgent ? assignedAgent.name : 'Live Support'}</h3>
                 <div className="flex items-center gap-1.5">
                   <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-primary animate-pulse' : 'bg-slate-500'}`}></span>
                   <span className="text-xs text-slate-400">{isOnline ? 'Online now' : 'Offline'}</span>
@@ -352,8 +485,16 @@ export default function LiveChat() {
                     Send a message to start the conversation
                   </div>
                 )}
-                {messages.map((message) => (
+                {messages.map((message, idx) => {
+                  const prevMsg = idx > 0 ? messages[idx - 1] : null
+                  const showDate = !prevMsg || new Date(message.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString()
+                  return (
                   <div key={message.id}>
+                    {showDate && (
+                      <div className="text-center my-2">
+                        <span className="text-[10px] text-slate-500 bg-charcoal px-3 py-1 rounded-full">{getDateLabel(message.createdAt)}</span>
+                      </div>
+                    )}
                     {message.senderType === 'SYSTEM' ? (
                       <div className="text-center">
                         <p className="text-xs text-slate-500 bg-charcoal inline-block px-3 py-1.5 rounded-full">{message.content}</p>
@@ -387,7 +528,8 @@ export default function LiveChat() {
                       </div>
                     )}
                   </div>
-                ))}
+                  )
+                })}
                 <div ref={messagesEndRef} />
               </div>
 
@@ -415,6 +557,52 @@ export default function LiveChat() {
                 </div>
               )}
 
+              {/* Rating UI */}
+              {showRating && !ratingSubmitted && (
+                <div className="px-4 py-4 border-t border-border-dark bg-charcoal">
+                  <p className="text-white text-sm font-medium mb-2">How was your experience?</p>
+                  <div className="flex gap-1 mb-3">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setRatingValue(s)}
+                        className={`text-2xl transition-colors ${s <= ratingValue ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400/50'}`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={ratingComment}
+                    onChange={e => setRatingComment(e.target.value)}
+                    placeholder="Any feedback? (optional)"
+                    className="w-full bg-surface-dark border border-border-dark rounded-lg py-2 px-3 text-white text-xs placeholder:text-slate-500 mb-2 focus:ring-1 focus:ring-primary"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSubmitRating}
+                      disabled={ratingValue === 0}
+                      className="flex-1 bg-primary text-black text-xs font-medium py-2 rounded-lg hover:brightness-105 disabled:opacity-50"
+                    >
+                      Submit
+                    </button>
+                    <button
+                      onClick={() => setShowRating(false)}
+                      className="px-3 py-2 text-xs text-slate-400 hover:text-white"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {ratingSubmitted && (
+                <div className="px-4 py-3 border-t border-border-dark bg-charcoal text-center">
+                  <p className="text-primary text-sm font-medium">Thank you for your feedback!</p>
+                </div>
+              )}
+
               {/* Error */}
               {error && (
                 <div className="px-4 py-2 bg-red-500/10 border-t border-red-500/20">
@@ -424,7 +612,7 @@ export default function LiveChat() {
 
               {/* Input */}
               <form onSubmit={handleSendMessage} className="p-4 border-t border-border-dark">
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-end">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -441,13 +629,26 @@ export default function LiveChat() {
                   >
                     <Icon name={uploading ? 'loading' : 'upload'} size={20} className={uploading ? 'animate-spin' : ''} />
                   </button>
-                  <input
-                    type="text"
+                  <textarea
+                    ref={textareaRef}
                     value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    onChange={(e) => {
+                      setInputValue(e.target.value)
+                      // Auto-resize: reset then set to scrollHeight, max 4 lines (~96px)
+                      e.target.style.height = 'auto'
+                      e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px'
+                    }}
+                    onKeyDown={(e) => {
+                      // Enter sends, Shift+Enter adds new line
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        if (inputValue.trim()) handleSendMessage(e as any)
+                      }
+                    }}
                     placeholder="Type your message..."
                     disabled={isLoading}
-                    className="flex-1 bg-charcoal border border-border-dark rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm"
+                    rows={1}
+                    className="flex-1 bg-charcoal border border-border-dark rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm resize-none overflow-hidden"
                   />
                   <button
                     type="submit"
@@ -464,18 +665,16 @@ export default function LiveChat() {
         </div>
       )}
 
-      {/* Toggle Button */}
-      <button
-        onClick={() => isOpen ? handleClose() : handleOpen()}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 ${
-          isOpen
-            ? 'bg-surface-dark border border-border-dark text-white'
-            : 'bg-primary text-black glow-green'
-        }`}
-        aria-label={isOpen ? 'Close chat' : 'Open live chat'}
-      >
-        <Icon name={isOpen ? 'close' : 'chat'} size={24} />
-      </button>
+      {/* Toggle Button — hidden when chat is open (header has its own close button) */}
+      {!isOpen && (
+        <button
+          onClick={handleOpen}
+          className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 bg-primary text-black glow-green"
+          aria-label="Open live chat"
+        >
+          <Icon name="chat" size={24} />
+        </button>
+      )}
 
       {/* Notification Badge */}
       {!isOpen && unreadCount > 0 && (

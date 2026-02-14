@@ -15,6 +15,7 @@ export interface ChatMessage {
   content: string
   attachments: { url: string; name: string; type: string; size: number }[]
   isRead: boolean
+  isInternal?: boolean
   createdAt: string
 }
 
@@ -31,6 +32,9 @@ export interface ChatConversation {
   guestName: string | null
   sessionId: string
   status: ChatStatus
+  tags: string[]
+  rating: number | null
+  ratingComment: string | null
   assignedTo: {
     id: string
     name: string
@@ -50,6 +54,8 @@ export interface ChatConversationDetail extends ChatConversation {
 export interface ChatSettings {
   isOnline: boolean
   offlineMessage: string
+  cannedReplies: string[]
+  autoCloseHours: number
 }
 
 export interface ChatStats {
@@ -68,6 +74,30 @@ export interface ChatFilters {
   unassigned?: boolean
   page?: number
   limit?: number
+}
+
+export interface ChatAnalytics {
+  overview: {
+    totalConversations: number
+    totalMessages: number
+    avgRating: number
+    ratedCount: number
+    resolvedCount: number
+    avgResponseMinutes: number
+  }
+  statusBreakdown: Record<string, number>
+  dailyVolume: { date: string; count: number }[]
+  agentPerformance: { id: string; name: string; conversationCount: number; avgRating: number }[]
+  tagDistribution: { tag: string; count: number }[]
+  ratingDistribution: { rating: number; count: number }[]
+}
+
+export interface ChatAgent {
+  id: string
+  name: string
+  email: string
+  avatar: string | null
+  role: string
 }
 
 export const chatApi = {
@@ -118,10 +148,16 @@ export const chatApi = {
     return apiFetch<ChatMessage[]>(`/chat/${conversationId}/messages${query}`)
   },
 
-  async sendMessage(conversationId: string, content: string, attachments?: any[]) {
+  async sendMessage(conversationId: string, content: string, attachments?: any[], isInternal?: boolean) {
     return apiFetch<ChatMessage>(`/chat/${conversationId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ content, attachments }),
+      body: JSON.stringify({ content, attachments, isInternal }),
+    })
+  },
+
+  async markAsRead(conversationId: string) {
+    return apiFetch<{ message: string }>(`/chat/${conversationId}/read`, {
+      method: 'POST',
     })
   },
 
@@ -133,6 +169,12 @@ export const chatApi = {
     })
   },
 
+  async unassignConversation(id: string) {
+    return apiFetch<{ conversationId: string }>(`/chat/${id}/unassign`, {
+      method: 'POST',
+    })
+  },
+
   // Status
   async updateStatus(id: string, status: ChatStatus) {
     return apiFetch<{ status: string }>(`/chat/${id}/status`, {
@@ -141,9 +183,35 @@ export const chatApi = {
     })
   },
 
+  // Rating
+  async rateConversation(id: string, rating: number, comment?: string) {
+    return apiFetch<{ rating: number; ratingComment: string | null }>(`/chat/${id}/rate`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, comment }),
+    })
+  },
+
+  // Tags
+  async updateTags(id: string, tags: string[]) {
+    return apiFetch<{ tags: string[] }>(`/chat/${id}/tags`, {
+      method: 'PATCH',
+      body: JSON.stringify({ tags }),
+    })
+  },
+
+  // Agents
+  async getAgents() {
+    return apiFetch<ChatAgent[]>('/chat/agents')
+  },
+
   // Stats
   async getStats() {
     return apiFetch<ChatStats>('/chat/stats/overview')
+  },
+
+  // Analytics
+  async getAnalytics() {
+    return apiFetch<ChatAnalytics>('/chat/stats/analytics')
   },
 
   // Upload

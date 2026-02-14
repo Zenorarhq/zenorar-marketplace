@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from 'react'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
-import { chatApi, ChatConversation, ChatConversationDetail, ChatMessage, ChatStatus } from '@/lib/api/chat'
+import { chatApi, ChatConversation, ChatConversationDetail, ChatMessage, ChatStatus, ChatAgent } from '@/lib/api/chat'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatTimeAgo } from '@/lib/date-utils'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatTime } from '@/lib/date-utils'
 import { useChatSocket, ChatSocketMessage } from '@/hooks/use-chat-socket'
+import Link from 'next/link'
 
 type FilterTab = 'all' | 'unassigned' | 'mine' | 'resolved'
 
@@ -29,16 +30,45 @@ export default function AdminChatPage() {
   // Stats
   const [stats, setStats] = useState({ open: 0, unassigned: 0, active: 0, totalUnread: 0 })
 
+  // Search
+  const [searchQuery, setSearchQuery] = useState('')
+
   // Chat
   const [replyInput, setReplyInput] = useState('')
   const [sending, setSending] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  // Canned replies
+  const [showCannedReplies, setShowCannedReplies] = useState(false)
+  const [cannedReplies, setCannedReplies] = useState<string[]>([])
+  const [showCannedEditor, setShowCannedEditor] = useState(false)
+  const [newCannedReply, setNewCannedReply] = useState('')
+  const [savingCanned, setSavingCanned] = useState(false)
+
+  // Customer info sidebar
+  const [showCustomerInfo, setShowCustomerInfo] = useState(false)
+
+  // Internal notes
+  const [isNoteMode, setIsNoteMode] = useState(false)
+
+  // Transfer
+  const [showTransfer, setShowTransfer] = useState(false)
+  const [agents, setAgents] = useState<ChatAgent[]>([])
+
+  // Auto-close
+  const [autoCloseHours, setAutoCloseHours] = useState(0)
+
+  // Typing
+  const [userTyping, setUserTyping] = useState(false)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const emitTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const notifSoundRef = useRef<HTMLAudioElement | null>(null)
 
-  const { joinConversation, leaveConversation, joinAdmin, onNewMessage, onConversationNew, onConversationStatus, onConversationAssigned } = useChatSocket()
+  const { joinConversation, leaveConversation, joinAdmin, emitTyping, onNewMessage, onConversationNew, onConversationStatus, onConversationAssigned, onTyping } = useChatSocket()
 
   // Init notification sound
   useEffect(() => {
@@ -67,6 +97,7 @@ export default function AdminChatPage() {
     loadSettings()
     loadConversations()
     loadStats()
+    loadAgents()
   }, [])
 
   // Reload conversations when filter changes
@@ -78,7 +109,14 @@ export default function AdminChatPage() {
     const res = await chatApi.getSettings()
     if (res.success && res.data) {
       setIsOnline(res.data.isOnline)
+      if (res.data.cannedReplies) setCannedReplies(res.data.cannedReplies)
+      if (res.data.autoCloseHours != null) setAutoCloseHours(res.data.autoCloseHours)
     }
+  }
+
+  const loadAgents = async () => {
+    const res = await chatApi.getAgents()
+    if (res.success && res.data) setAgents(res.data)
   }
 
   const loadStats = async () => {
@@ -125,6 +163,8 @@ export default function AdminChatPage() {
     const res = await chatApi.getConversation(id)
     if (res.success && res.data) {
       setActiveConv(res.data)
+      // Mark messages as read
+      chatApi.markAsRead(id).then(() => loadStats())
     }
   }
 
@@ -199,12 +239,33 @@ export default function AdminChatPage() {
       setActiveConv(prev => prev ? { ...prev, status: data.status as ChatStatus } : prev)
     })
 
+    const unsubAssigned = onConversationAssigned((data) => {
+      if (data.conversationId !== activeId) return
+      setActiveConv(prev => prev ? {
+        ...prev,
+        status: 'ASSIGNED',
+        assignedTo: { id: data.agentId, name: data.agentName || '', avatar: data.agentAvatar || null },
+      } : prev)
+    })
+
+    const unsubTyping = onTyping((data) => {
+      if (data.conversationId !== activeId || data.userId === user?.id) return
+      setUserTyping(data.isTyping)
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      if (data.isTyping) {
+        typingTimeoutRef.current = setTimeout(() => setUserTyping(false), 3000)
+      }
+    })
+
     return () => {
       leaveConversation(activeId)
       unsubMessage()
       unsubStatus()
+      unsubAssigned()
+      unsubTyping()
+      setUserTyping(false)
     }
-  }, [activeId, joinConversation, leaveConversation, onNewMessage, onConversationStatus])
+  }, [activeId, joinConversation, leaveConversation, onNewMessage, onConversationStatus, onConversationAssigned, onTyping])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -217,13 +278,14 @@ export default function AdminChatPage() {
     if (!replyInput.trim() || !activeId) return
 
     setSending(true)
-    const res = await chatApi.sendMessage(activeId, replyInput.trim())
+    const res = await chatApi.sendMessage(activeId, replyInput.trim(), undefined, isNoteMode ? true : undefined)
     setSending(false)
 
     if (res.success && res.data) {
-      // Add locally
+      // Add locally (skip if Socket.IO already added it)
       setActiveConv(prev => {
         if (!prev) return prev
+        if (prev.messages.some(m => m.id === res.data!.id)) return prev
         const msg: ChatMessage = {
           id: res.data!.id,
           conversationId: activeId,
@@ -233,11 +295,16 @@ export default function AdminChatPage() {
           content: res.data!.content,
           attachments: res.data!.attachments || [],
           isRead: true,
+          isInternal: isNoteMode,
           createdAt: res.data!.createdAt,
         }
         return { ...prev, messages: [...prev.messages, msg] }
       })
       setReplyInput('')
+      setIsNoteMode(false)
+      if (textareaRef.current) textareaRef.current.style.height = 'auto'
+      if (activeId) emitTyping(activeId, false)
+      if (emitTypingTimeoutRef.current) clearTimeout(emitTypingTimeoutRef.current)
     }
   }
 
@@ -267,11 +334,30 @@ export default function AdminChatPage() {
     }
   }
 
+  const handleUnassign = async () => {
+    if (!activeId) return
+    const res = await chatApi.unassignConversation(activeId)
+    if (res.success) {
+      selectConversation(activeId)
+      loadConversations()
+    }
+  }
+
   const handleUpdateStatus = async (status: ChatStatus) => {
     if (!activeId) return
     await chatApi.updateStatus(activeId, status)
     selectConversation(activeId)
     loadConversations()
+  }
+
+  const handleTransfer = async (agentId: string) => {
+    if (!activeId) return
+    const res = await chatApi.assignConversation(activeId, agentId)
+    if (res.success) {
+      setShowTransfer(false)
+      selectConversation(activeId)
+      loadConversations()
+    }
   }
 
   const getDisplayName = (conv: ChatConversation) => {
@@ -284,6 +370,35 @@ export default function AdminChatPage() {
     ASSIGNED: 'bg-yellow-500/20 text-yellow-400',
     RESOLVED: 'bg-green-500/20 text-green-400',
     CLOSED: 'bg-slate-500/20 text-slate-400',
+  }
+
+  const PREDEFINED_TAGS = ['Billing', 'Technical', 'Shipping', 'Refund', 'General', 'Urgent']
+  const tagColors: Record<string, string> = {
+    Billing: 'bg-blue-500/20 text-blue-400',
+    Technical: 'bg-purple-500/20 text-purple-400',
+    Shipping: 'bg-cyan-500/20 text-cyan-400',
+    Refund: 'bg-red-500/20 text-red-400',
+    General: 'bg-slate-500/20 text-slate-400',
+    Urgent: 'bg-orange-500/20 text-orange-400',
+  }
+
+  const handleUpdateTags = async (tags: string[]) => {
+    if (!activeId) return
+    const res = await chatApi.updateTags(activeId, tags)
+    if (res.success && res.data) {
+      setActiveConv(prev => prev ? { ...prev, tags: res.data!.tags } : prev)
+      loadConversations()
+    }
+  }
+
+  const getDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    if (date.toDateString() === today.toDateString()) return 'Today'
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
   const renderAttachment = (att: { url: string; name: string; type: string; size: number }) => {
@@ -315,27 +430,73 @@ export default function AdminChatPage() {
               <span className="text-slate-400">Unassigned: <span className="text-yellow-400 font-medium">{stats.unassigned}</span></span>
               <span className="text-slate-400">Unread: <span className="text-red-400 font-medium">{stats.totalUnread}</span></span>
             </div>
+            <Link
+              href="/admin/chat/analytics"
+              className="px-3 py-1.5 bg-[#1a1a1a] text-slate-400 hover:text-white text-xs font-medium rounded-lg transition-colors"
+            >
+              Analytics
+            </Link>
           </div>
 
-          {/* Online/Offline Toggle */}
-          <button
-            onClick={toggleOnline}
-            disabled={togglingOnline}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isOnline
-                ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-primary' : 'bg-red-500'}`} />
-            {isOnline ? 'Online' : 'Offline'}
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Auto-close setting */}
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 text-xs">Auto-close:</span>
+              <select
+                value={autoCloseHours}
+                onChange={async (e) => {
+                  const val = Number(e.target.value)
+                  setAutoCloseHours(val)
+                  await chatApi.updateSettings({ autoCloseHours: val })
+                }}
+                className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg py-1.5 px-2 text-white text-xs focus:ring-1 focus:ring-primary"
+              >
+                <option value={0}>Disabled</option>
+                <option value={6}>6 hours</option>
+                <option value={12}>12 hours</option>
+                <option value={24}>24 hours</option>
+                <option value={48}>48 hours</option>
+              </select>
+            </div>
+
+            {/* Online/Offline Toggle */}
+            <button
+              onClick={toggleOnline}
+              disabled={togglingOnline}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isOnline
+                  ? 'bg-primary/20 text-primary hover:bg-primary/30'
+                  : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-primary' : 'bg-red-500'}`} />
+              {isOnline ? 'Online' : 'Offline'}
+            </button>
+          </div>
         </div>
 
         {/* Main Content */}
         <div className="flex-1 flex gap-4 min-h-0">
           {/* Left Panel — Conversation List */}
           <div className="w-80 flex-shrink-0 bg-[#111111] border border-[#1f1f1f] rounded-xl flex flex-col overflow-hidden">
+            {/* Search */}
+            <div className="px-3 pt-3 pb-2">
+              <div className="relative">
+                <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search conversations..."
+                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg py-2 pl-9 pr-8 text-white placeholder:text-slate-500 text-xs focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                    <Icon name="close" size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
             {/* Filter Tabs */}
             <div className="flex border-b border-[#1f1f1f]">
               {([
@@ -365,10 +526,24 @@ export default function AdminChatPage() {
 
             {/* Conversation List */}
             <div className="flex-1 overflow-y-auto">
-              {conversations.length === 0 && (
-                <div className="text-center text-slate-500 text-sm py-8">No conversations</div>
-              )}
-              {conversations.map(conv => (
+              {(() => {
+                const filtered = searchQuery
+                  ? conversations.filter(conv => {
+                      const q = searchQuery.toLowerCase()
+                      return (
+                        conv.user?.name?.toLowerCase().includes(q) ||
+                        conv.user?.email?.toLowerCase().includes(q) ||
+                        conv.guestName?.toLowerCase().includes(q) ||
+                        conv.guestEmail?.toLowerCase().includes(q) ||
+                        conv.lastMessage?.toLowerCase().includes(q)
+                      )
+                    })
+                  : conversations
+                return filtered.length === 0 ? (
+                  <div className="text-center text-slate-500 text-sm py-8">
+                    {searchQuery ? 'No matching conversations' : 'No conversations'}
+                  </div>
+                ) : filtered.map(conv => (
                 <button
                   key={conv.id}
                   onClick={() => selectConversation(conv.id)}
@@ -388,6 +563,11 @@ export default function AdminChatPage() {
                       {conv.assignedTo ? `${conv.assignedTo.name}` : 'Unassigned'}
                     </span>
                     <div className="flex items-center gap-2">
+                      {conv.rating && (
+                        <span className="text-yellow-400 text-[10px] flex items-center gap-0.5">
+                          ★{conv.rating}
+                        </span>
+                      )}
                       {conv.unreadCount > 0 && (
                         <span className="bg-primary text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                           {conv.unreadCount}
@@ -398,8 +578,18 @@ export default function AdminChatPage() {
                       </span>
                     </div>
                   </div>
+                  {conv.tags && conv.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {conv.tags.map(tag => (
+                        <span key={tag} className={`text-[9px] px-1.5 py-0.5 rounded ${tagColors[tag] || 'bg-slate-500/20 text-slate-400'}`}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </button>
-              ))}
+                ))
+              })()}
             </div>
           </div>
 
@@ -443,6 +633,14 @@ export default function AdminChatPage() {
                         Pick Up
                       </button>
                     )}
+                    {activeConv.assignedTo && (activeConv.status === 'OPEN' || activeConv.status === 'ASSIGNED') && (
+                      <button
+                        onClick={handleUnassign}
+                        className="px-3 py-1.5 bg-orange-500/20 text-orange-400 text-xs font-medium rounded-lg hover:bg-orange-500/30 transition-colors"
+                      >
+                        Unassign
+                      </button>
+                    )}
                     {(activeConv.status === 'OPEN' || activeConv.status === 'ASSIGNED') && (
                       <button
                         onClick={() => handleUpdateStatus('RESOLVED')}
@@ -467,8 +665,48 @@ export default function AdminChatPage() {
                         Reopen
                       </button>
                     )}
+                    {/* Transfer */}
+                    {(activeConv.status === 'OPEN' || activeConv.status === 'ASSIGNED') && (
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowTransfer(!showTransfer)}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                            showTransfer ? 'bg-indigo-500/20 text-indigo-400' : 'bg-[#1a1a1a] text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Transfer
+                        </button>
+                        {showTransfer && (
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg shadow-xl z-10 overflow-hidden">
+                            <p className="px-3 py-2 text-[10px] text-slate-500 uppercase tracking-wider border-b border-[#1f1f1f]">Transfer to</p>
+                            {agents.filter(a => a.id !== user?.id).length === 0 ? (
+                              <p className="px-3 py-3 text-xs text-slate-500 text-center">No other agents</p>
+                            ) : agents.filter(a => a.id !== user?.id).map(agent => (
+                              <button
+                                key={agent.id}
+                                onClick={() => handleTransfer(agent.id)}
+                                className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-[#1a1a1a] hover:text-white transition-colors"
+                              >
+                                {agent.name}
+                                <span className="text-slate-600 ml-1">({agent.role})</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setShowCustomerInfo(!showCustomerInfo)}
+                      className={`p-2 rounded-lg transition-colors ${showCustomerInfo ? 'bg-primary/20 text-primary' : 'text-slate-400 hover:text-white hover:bg-[#1a1a1a]'}`}
+                      title="Customer info"
+                    >
+                      <Icon name="user" size={16} />
+                    </button>
                   </div>
                 </div>
+
+                <div className="flex flex-1 overflow-hidden">
+                <div className="flex-1 flex flex-col overflow-hidden">
 
                 {/* Warning if assigned to another agent */}
                 {activeConv.assignedTo && user && activeConv.assignedTo.id !== user.id && (
@@ -479,22 +717,35 @@ export default function AdminChatPage() {
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {activeConv.messages.map(msg => (
+                  {activeConv.messages.map((msg, idx) => {
+                    const prevMsg = idx > 0 ? activeConv.messages[idx - 1] : null
+                    const showDate = !prevMsg || new Date(msg.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString()
+                    return (
                     <div key={msg.id}>
+                      {showDate && (
+                        <div className="text-center my-2">
+                          <span className="text-[10px] text-slate-500 bg-[#1a1a1a] px-3 py-1 rounded-full">{getDateLabel(msg.createdAt)}</span>
+                        </div>
+                      )}
                       {msg.senderType === 'SYSTEM' ? (
                         <div className="text-center">
                           <p className="text-xs text-slate-500 bg-[#1a1a1a] inline-block px-3 py-1.5 rounded-full">{msg.content}</p>
                         </div>
                       ) : (
-                        <div className={`flex ${msg.senderType === 'AGENT' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
                           <div
                             className={`max-w-[70%] rounded-2xl px-4 py-3 ${
-                              msg.senderType === 'AGENT'
-                                ? 'bg-primary text-black rounded-br-none'
-                                : 'bg-[#1a1a1a] text-white rounded-bl-none'
+                              msg.isInternal
+                                ? 'bg-amber-500/15 border border-amber-500/30 text-amber-100 rounded-br-none'
+                                : msg.senderId === user?.id
+                                  ? 'bg-primary text-black rounded-br-none'
+                                  : 'bg-[#1a1a1a] text-white rounded-bl-none'
                             }`}
                           >
-                            {msg.senderType === 'AGENT' && msg.senderName && (
+                            {msg.isInternal && (
+                              <p className="text-[10px] text-amber-400 mb-1 font-medium">Internal Note</p>
+                            )}
+                            {!msg.isInternal && msg.senderId === user?.id && msg.senderName && (
                               <p className="text-[10px] text-black/60 mb-1 font-medium">{msg.senderName}</p>
                             )}
                             {msg.content && (
@@ -503,21 +754,145 @@ export default function AdminChatPage() {
                             {msg.attachments?.map((att: any, i: number) => (
                               <div key={i}>{renderAttachment(att)}</div>
                             ))}
-                            <p className={`text-[10px] mt-1 ${msg.senderType === 'AGENT' ? 'text-black/60' : 'text-slate-500'}`}>
+                            <p className={`text-[10px] mt-1 ${msg.senderId === user?.id ? 'text-black/60' : 'text-slate-500'}`}>
                               {formatTime(new Date(msg.createdAt), tz)}
                             </p>
                           </div>
                         </div>
                       )}
                     </div>
-                  ))}
+                    )
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
+
+                {/* Typing Indicator */}
+                {userTyping && (
+                  <div className="px-4 py-1.5">
+                    <span className="text-slate-400 text-xs italic flex items-center gap-1">
+                      <span className="flex gap-0.5">
+                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </span>
+                      User is typing...
+                    </span>
+                  </div>
+                )}
+
+                {/* Canned Replies Dropdown */}
+                {showCannedReplies && !showCannedEditor && (
+                  <div className="mx-4 mb-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg overflow-hidden max-h-[240px] overflow-y-auto">
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-[#1f1f1f]">
+                      <span className="text-slate-400 text-[10px] uppercase tracking-wider font-medium">Quick Replies</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCannedEditor(true)}
+                        className="text-primary text-[10px] hover:underline"
+                      >
+                        Manage
+                      </button>
+                    </div>
+                    {cannedReplies.length === 0 ? (
+                      <div className="px-3 py-4 text-center">
+                        <p className="text-slate-500 text-xs">No quick replies configured</p>
+                        <button type="button" onClick={() => setShowCannedEditor(true)} className="text-primary text-xs mt-1 hover:underline">
+                          Add replies
+                        </button>
+                      </div>
+                    ) : cannedReplies.map((text, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => { setReplyInput(text); setShowCannedReplies(false); textareaRef.current?.focus() }}
+                        className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-[#1a1a1a] hover:text-white transition-colors border-b border-[#1f1f1f] last:border-0"
+                      >
+                        {text}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Canned Replies Editor */}
+                {showCannedEditor && (
+                  <div className="mx-4 mb-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg overflow-hidden max-h-[320px] overflow-y-auto">
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-[#1f1f1f]">
+                      <span className="text-white text-xs font-medium">Manage Quick Replies</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCannedEditor(false)}
+                        className="text-slate-400 hover:text-white"
+                      >
+                        <Icon name="close" size={14} />
+                      </button>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      {cannedReplies.map((text, i) => (
+                        <div key={i} className="flex items-start gap-2 group">
+                          <p className="flex-1 text-xs text-slate-300 bg-[#111] rounded px-2 py-1.5">{text}</p>
+                          <button
+                            type="button"
+                            onClick={() => setCannedReplies(prev => prev.filter((_, idx) => idx !== i))}
+                            className="text-slate-600 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Icon name="close" size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-2 border-t border-[#1f1f1f]">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newCannedReply}
+                          onChange={e => setNewCannedReply(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && newCannedReply.trim()) {
+                              e.preventDefault()
+                              setCannedReplies(prev => [...prev, newCannedReply.trim()])
+                              setNewCannedReply('')
+                            }
+                          }}
+                          placeholder="Add a quick reply..."
+                          className="flex-1 bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-white text-xs placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (newCannedReply.trim()) {
+                              setCannedReplies(prev => [...prev, newCannedReply.trim()])
+                              setNewCannedReply('')
+                            }
+                          }}
+                          disabled={!newCannedReply.trim()}
+                          className="text-primary text-xs font-medium px-2 disabled:opacity-50"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                    <div className="px-2 pb-2">
+                      <button
+                        type="button"
+                        disabled={savingCanned}
+                        onClick={async () => {
+                          setSavingCanned(true)
+                          await chatApi.updateSettings({ cannedReplies })
+                          setSavingCanned(false)
+                          setShowCannedEditor(false)
+                        }}
+                        className="w-full bg-primary text-black text-xs font-medium py-2 rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
+                      >
+                        {savingCanned ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Reply Input */}
                 {activeConv.status !== 'CLOSED' && (
                   <form onSubmit={handleSendReply} className="p-4 border-t border-[#1f1f1f]">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-end">
                       <input
                         type="file"
                         ref={fileInputRef}
@@ -527,6 +902,27 @@ export default function AdminChatPage() {
                       />
                       <button
                         type="button"
+                        onClick={() => setIsNoteMode(!isNoteMode)}
+                        className={`text-xs font-medium px-2 py-1 rounded-lg transition-colors ${
+                          isNoteMode
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'text-slate-400 hover:text-white hover:bg-[#1a1a1a]'
+                        }`}
+                        title={isNoteMode ? 'Switch to reply' : 'Switch to internal note'}
+                      >
+                        {isNoteMode ? 'Note' : 'Reply'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowCannedReplies(!showCannedReplies)}
+                        className={`text-slate-400 hover:text-primary transition-colors p-2 ${showCannedReplies ? 'text-primary' : ''}`}
+                        aria-label="Quick replies"
+                        title="Quick replies"
+                      >
+                        <Icon name="bolt" size={20} />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
                         className="text-slate-400 hover:text-primary transition-colors p-2 disabled:opacity-50"
@@ -534,13 +930,33 @@ export default function AdminChatPage() {
                       >
                         <Icon name={uploading ? 'loading' : 'upload'} size={20} className={uploading ? 'animate-spin' : ''} />
                       </button>
-                      <input
-                        type="text"
+                      <textarea
+                        ref={textareaRef}
                         value={replyInput}
-                        onChange={e => setReplyInput(e.target.value)}
-                        placeholder="Type your reply..."
+                        onChange={e => {
+                          setReplyInput(e.target.value)
+                          e.target.style.height = 'auto'
+                          e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+                          if (activeId) {
+                            emitTyping(activeId, true)
+                            if (emitTypingTimeoutRef.current) clearTimeout(emitTypingTimeoutRef.current)
+                            emitTypingTimeoutRef.current = setTimeout(() => { if (activeId) emitTyping(activeId, false) }, 2000)
+                          }
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault()
+                            if (replyInput.trim()) handleSendReply(e as any)
+                          }
+                        }}
+                        placeholder={isNoteMode ? 'Write an internal note...' : 'Type your reply...'}
                         disabled={sending}
-                        className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm"
+                        rows={1}
+                        className={`flex-1 bg-[#0a0a0a] border rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 transition-all text-sm resize-none overflow-hidden ${
+                          isNoteMode
+                            ? 'border-amber-500/30 focus:ring-amber-500/50 focus:border-amber-500/50'
+                            : 'border-[#2a2a2a] focus:ring-primary focus:border-primary'
+                        }`}
                       />
                       <button
                         type="submit"
@@ -553,6 +969,105 @@ export default function AdminChatPage() {
                     </div>
                   </form>
                 )}
+
+                </div>{/* end chat column */}
+
+                {/* Customer Info Sidebar */}
+                {showCustomerInfo && (
+                  <div className="w-[280px] border-l border-[#1f1f1f] bg-[#0d0d0d] overflow-y-auto flex-shrink-0">
+                    <div className="p-4 space-y-4">
+                      <h4 className="text-white font-semibold text-sm">Customer Info</h4>
+
+                      {/* Avatar & Name */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+                          {(activeConv.user?.name || activeConv.guestName || '?')[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-white text-sm font-medium">
+                            {activeConv.user?.name || activeConv.guestName || 'Guest'}
+                          </p>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${activeConv.user ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                            {activeConv.user ? 'Registered' : 'Guest'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Email</p>
+                          <p className="text-slate-300 text-xs">{activeConv.user?.email || activeConv.guestEmail || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Status</p>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[activeConv.status]}`}>
+                            {activeConv.status}
+                          </span>
+                        </div>
+                        {activeConv.assignedTo && (
+                          <div>
+                            <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Assigned To</p>
+                            <p className="text-slate-300 text-xs">{activeConv.assignedTo.name}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Started</p>
+                          <p className="text-slate-300 text-xs">{formatTime(new Date(activeConv.createdAt), tz)}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Messages</p>
+                          <p className="text-slate-300 text-xs">{activeConv.messages.length}</p>
+                        </div>
+
+                        {/* Rating */}
+                        {activeConv.rating && (
+                          <div>
+                            <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Rating</p>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map(s => (
+                                <span key={s} className={`text-sm ${s <= activeConv.rating! ? 'text-yellow-400' : 'text-slate-600'}`}>★</span>
+                              ))}
+                            </div>
+                            {activeConv.ratingComment && (
+                              <p className="text-slate-400 text-xs mt-1 italic">"{activeConv.ratingComment}"</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Tags */}
+                        <div>
+                          <p className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Tags</p>
+                          <div className="flex flex-wrap gap-1">
+                            {(activeConv.tags || []).map(tag => (
+                              <span
+                                key={tag}
+                                className={`text-[10px] px-1.5 py-0.5 rounded cursor-pointer hover:opacity-70 ${tagColors[tag] || 'bg-slate-500/20 text-slate-400'}`}
+                                onClick={() => handleUpdateTags((activeConv.tags || []).filter(t => t !== tag))}
+                                title="Click to remove"
+                              >
+                                {tag} ×
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {PREDEFINED_TAGS.filter(t => !(activeConv.tags || []).includes(t)).map(tag => (
+                              <button
+                                key={tag}
+                                onClick={() => handleUpdateTags([...(activeConv.tags || []), tag])}
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-slate-500 hover:text-white transition-colors"
+                              >
+                                + {tag}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                </div>{/* end flex row */}
               </>
             )}
           </div>

@@ -99,7 +99,7 @@ export function useChatSocket() {
     }
   }, [])
 
-  const onConversationAssigned = useCallback((callback: (data: { conversationId: string; agentId: string; agentName?: string }) => void) => {
+  const onConversationAssigned = useCallback((callback: (data: { conversationId: string; agentId: string; agentName?: string; agentAvatar?: string | null }) => void) => {
     const handler = (data: any) => callback(data)
     socketRef.current?.on('conversation:assigned', handler)
     return () => {
@@ -115,6 +115,14 @@ export function useChatSocket() {
     }
   }, [])
 
+  const onReconnect = useCallback((callback: () => void) => {
+    const handler = () => callback()
+    socketRef.current?.io.on('reconnect', handler)
+    return () => {
+      socketRef.current?.io.off('reconnect', handler)
+    }
+  }, [])
+
   return {
     socket: socketRef,
     joinConversation,
@@ -126,5 +134,6 @@ export function useChatSocket() {
     onConversationStatus,
     onConversationAssigned,
     onTyping,
+    onReconnect,
   }
 }
