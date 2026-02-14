@@ -69,7 +69,6 @@ function UsersTab() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedRole, setSelectedRole] = useState('all')
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [showOrdersModal, setShowOrdersModal] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
@@ -77,15 +76,15 @@ function UsersTab() {
   const limit = 20
 
   const { data, isLoading } = useQuery<UsersListResponse>({
-    queryKey: ['admin-users', currentPage, searchQuery, selectedRole],
+    queryKey: ['admin-users', currentPage, searchQuery],
     queryFn: async () => {
       const filters: any = {
         page: currentPage,
         limit,
         search: searchQuery || undefined,
         isStaff: false, // Only show customers, not staff
+        role: 'VIEWER', // Only show VIEWER role (true customers)
       }
-      if (selectedRole !== 'all') filters.role = selectedRole
       const result = await usersApi.list(filters)
       if (result.success && result.data) return result.data
       throw new Error(result.error || 'Failed to load users')
@@ -197,25 +196,15 @@ function UsersTab() {
       )}
 
       <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative md:col-span-2">
-            <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-            />
-          </div>
-          <select
-            value={selectedRole}
-            onChange={(e) => { setSelectedRole(e.target.value); setCurrentPage(1) }}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-primary/50"
-          >
-            <option value="all">All Customers</option>
-            <option value="VIEWER">Viewer</option>
-          </select>
+        <div className="relative">
+          <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search customers..."
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+          />
         </div>
       </div>
 
@@ -442,6 +431,8 @@ function StaffTab() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedStaff, setSelectedStaff] = useState<any>(null)
   const [newStaff, setNewStaff] = useState({ name: '', email: '', password: '', roleId: '' })
   const limit = 20
 
@@ -487,6 +478,60 @@ function StaffTab() {
     const result = await staffApi.delete(id)
     if (result.success) queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
     else alert(result.error || 'Failed to delete')
+  }
+
+  function handleEdit(member: any) {
+    setSelectedStaff(member)
+    setShowEditModal(true)
+  }
+
+  async function handleAssignRole(roleId: string | null) {
+    if (!selectedStaff) return
+    const result = await staffApi.assignRole(selectedStaff.id, roleId)
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-staff-stats'] })
+      setShowEditModal(false)
+      alert('Staff role updated successfully')
+    } else {
+      alert(result.error || 'Failed to assign role')
+    }
+  }
+
+  async function handleBlockStaff() {
+    if (!selectedStaff) return
+    const reason = prompt('Reason for blocking (optional):')
+    const result = await usersApi.block(selectedStaff.id, reason || undefined)
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
+      setShowEditModal(false)
+      alert(`${selectedStaff.name} has been blocked from login`)
+    } else {
+      alert(result.error || 'Failed to block user')
+    }
+  }
+
+  async function handleUnblockStaff() {
+    if (!selectedStaff) return
+    const result = await usersApi.unblock(selectedStaff.id)
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
+      setShowEditModal(false)
+      alert(`${selectedStaff.name} has been unblocked`)
+    } else {
+      alert(result.error || 'Failed to unblock user')
+    }
+  }
+
+  async function handlePasswordReset() {
+    if (!selectedStaff) return
+    if (!confirm(`Send password reset email to ${selectedStaff.email}?`)) return
+    const result = await usersApi.sendPasswordReset(selectedStaff.id)
+    if (result.success) {
+      alert(`Password reset email sent to ${selectedStaff.email}`)
+    } else {
+      alert(result.error || 'Failed to send password reset email')
+    }
   }
 
   const staff = data?.staff || []
@@ -568,9 +613,14 @@ function StaffTab() {
                     <td className="px-4 py-3">{member.staffRole ? <span className="px-2 py-1 rounded text-xs bg-purple-500/10 text-purple-400">{member.staffRole.name}</span> : <span className="text-slate-500 text-sm">No role</span>}</td>
                     <td className="px-4 py-3 text-slate-400 text-sm">{new Date(member.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => handleDelete(member.id, member.name)} className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete">
-                        <Icon name="delete" size={16} />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => handleEdit(member)} className="p-1.5 rounded hover:bg-primary/10 text-slate-400 hover:text-primary" title="Edit">
+                          <Icon name="edit" size={16} />
+                        </button>
+                        <button onClick={() => handleDelete(member.id, member.name)} className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete">
+                          <Icon name="delete" size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -601,6 +651,59 @@ function StaffTab() {
               <div className="flex gap-3 pt-4">
                 <button onClick={handleCreate} className="flex-1 px-4 py-2 bg-primary text-black rounded-lg font-medium hover:bg-primary/90">Create</button>
                 <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && selectedStaff && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEditModal(false)}>
+          <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-white mb-4">Edit Staff: {selectedStaff.name}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Staff Role</label>
+                <select
+                  defaultValue={selectedStaff.staffRole?.id || ''}
+                  onChange={(e) => handleAssignRole(e.target.value || null)}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50"
+                >
+                  <option value="">No custom role</option>
+                  {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">Assign a custom staff role with specific permissions</p>
+              </div>
+
+              <div className="border-t border-[#2a2a2a] pt-4">
+                <label className="block text-sm text-slate-400 mb-3">Password Reset</label>
+                <button onClick={handlePasswordReset} className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded-lg font-medium hover:bg-[#2a2a2a] flex items-center justify-center gap-2">
+                  <Icon name="mail" size={16} />
+                  Send Password Reset Email
+                </button>
+                <p className="text-xs text-slate-500 mt-1">User will receive an email to set a new password</p>
+              </div>
+
+              <div className="border-t border-[#2a2a2a] pt-4">
+                <label className="block text-sm text-slate-400 mb-3">Access Control</label>
+                {selectedStaff.isBlocked ? (
+                  <button onClick={handleUnblockStaff} className="w-full px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-lg font-medium hover:bg-green-500/20 flex items-center justify-center gap-2">
+                    <Icon name="check" size={16} />
+                    Unblock User
+                  </button>
+                ) : (
+                  <button onClick={handleBlockStaff} className="w-full px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg font-medium hover:bg-red-500/20 flex items-center justify-center gap-2">
+                    <Icon name="ban" size={16} />
+                    Block from Login
+                  </button>
+                )}
+                <p className="text-xs text-slate-500 mt-1">
+                  {selectedStaff.isBlocked ? 'This user is currently blocked from logging in' : 'Prevent this user from accessing the system'}
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-[#2a2a2a]">
+                <button onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-2 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">Close</button>
               </div>
             </div>
           </div>
