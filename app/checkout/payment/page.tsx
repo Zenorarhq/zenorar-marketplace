@@ -12,7 +12,7 @@ import Icon from '@/components/ui/Icon'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, getSessionId } from '@/lib/api/client'
 
 // Receiving wallet address - should be set via environment variable in production
 const RECEIVING_WALLET = process.env.NEXT_PUBLIC_RECEIVING_WALLET || '0x742d35Cc6634C0532925a3b844Bc9e7595f5bE21'
@@ -77,14 +77,6 @@ export default function PaymentPage() {
       setDiscountAmount(parseFloat(amount))
     }
   }, [])
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      sessionStorage.setItem('redirectAfterLogin', '/checkout/payment')
-      router.push('/login')
-    }
-  }, [isAuthenticated, authLoading, router])
 
   // Calculate crypto amount based on USD total (after discount)
   const finalTotal = total - discountAmount
@@ -163,6 +155,7 @@ export default function PaymentPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Session-ID': getSessionId(),
           ...(localStorage.getItem('accessToken') && {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           }),

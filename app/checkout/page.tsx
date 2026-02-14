@@ -56,14 +56,6 @@ export default function CheckoutPage() {
     deliveryMethod: 'standard',
   })
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      sessionStorage.setItem('redirectAfterLogin', '/checkout')
-      router.push('/login')
-    }
-  }, [isAuthenticated, authLoading, router])
-
   // Redirect to cart if cart is empty
   useEffect(() => {
     if (!authLoading && items.length === 0) {
