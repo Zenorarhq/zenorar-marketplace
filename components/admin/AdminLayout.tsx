@@ -23,10 +23,8 @@ const navItems = [
   { href: '/admin/chat', label: 'Live Chat', icon: 'chat', permission: 'view_chat' },
   { href: '/admin/tickets', label: 'Tickets', icon: 'ticket', permission: 'view_tickets' },
   { href: '/admin/reports', label: 'Reports', icon: 'chart', permission: 'view_analytics' },
+  { href: '/admin/user-management', label: 'User Management', icon: 'people', permissions: ['view_users', 'view_staff', 'manage_roles'] },
   { href: '/admin/settings', label: 'Settings', icon: 'settings', permission: 'manage_settings' },
-  { href: '/admin/users', label: 'Users', icon: 'user', permission: 'view_users' },
-  { href: '/admin/staff', label: 'Staff', icon: 'people', permission: 'view_staff' },
-  { href: '/admin/roles', label: 'Roles', icon: 'shield', permission: 'manage_roles' },
 ]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -36,11 +34,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [desktopCollapsed, setDesktopCollapsed] = useState(false)
 
   // Filter nav items based on permissions
-  const visibleNavItems = navItems.filter((item) => {
+  const visibleNavItems = navItems.filter((item: any) => {
     // If no permission required, show to all staff
-    if (!item.permission) return isStaff
-    // Otherwise, check if user has the required permission
-    return hasPermission(item.permission)
+    if (!item.permission && !item.permissions) return isStaff
+    // Check single permission
+    if (item.permission) return hasPermission(item.permission)
+    // Check multiple permissions (show if user has ANY of them)
+    if (item.permissions) return item.permissions.some((p: string) => hasPermission(p))
+    return false
   })
 
   useEffect(() => {
