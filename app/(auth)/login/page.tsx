@@ -23,6 +23,12 @@ export default function LoginPage() {
   const [isGoogleFailed, setIsGoogleFailed] = useState(false)
   const [isWalletLoading, setIsWalletLoading] = useState(false)
 
+  // 2FA state
+  const [twoFaRequired, setTwoFaRequired] = useState(false)
+  const [twoFaTempToken, setTwoFaTempToken] = useState('')
+  const [twoFaMethod, setTwoFaMethod] = useState('')
+  const [twoFaCode, setTwoFaCode] = useState('')
+
   const currentYear = new Date().getFullYear()
 
   // Helper function to get redirect URL
@@ -91,11 +97,36 @@ export default function LoginPage() {
       const result = await login(email, password)
       if (result.success) {
         router.push(getRedirectUrl())
+      } else if (result.requiresTwoFactor) {
+        setTwoFaRequired(true)
+        setTwoFaTempToken(result.tempToken || '')
+        setTwoFaMethod(result.method || 'TOTP')
+        setTwoFaCode('')
       } else {
         setError(result.error || 'Invalid email or password. Please try again.')
       }
     } catch {
       setError('Invalid email or password. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handle2faVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setIsLoading(true)
+
+    try {
+      const result = await authApi.verify2fa(twoFaTempToken, twoFaCode)
+      if (result.success && result.data) {
+        refreshUser()
+        router.push(getRedirectUrl())
+      } else {
+        setError(result.error || 'Invalid verification code')
+      }
+    } catch {
+      setError('Verification failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -339,18 +370,64 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          {/* Welcome Text */}
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-white mb-3">Welcome back</h2>
-            <p className="text-slate-400">Enter your details to access your account</p>
-          </div>
-
           {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
               {error}
             </div>
           )}
+
+          {/* 2FA Verification Step */}
+          {twoFaRequired ? (
+            <>
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-4">
+                  <Icon name="lock" size={28} className="text-primary" />
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-3">Verification Required</h2>
+                <p className="text-slate-400">
+                  {twoFaMethod === 'SMS'
+                    ? 'Enter the 6-digit code sent to your phone.'
+                    : 'Enter the 6-digit code from your authenticator app.'}
+                </p>
+              </div>
+
+              <form onSubmit={handle2faVerify} className="space-y-5">
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={twoFaCode}
+                  onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  autoFocus
+                  className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-4 px-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-center text-3xl tracking-[0.5em] font-mono placeholder:text-slate-600 placeholder:tracking-[0.5em]"
+                />
+                <p className="text-slate-500 text-xs text-center">You can also use a backup code</p>
+
+                <button
+                  type="submit"
+                  disabled={twoFaCode.length < 6 || isLoading}
+                  className="w-full bg-primary hover:bg-[#3bc26d] text-black font-bold text-lg py-4 rounded-2xl shadow-glow-green hover:shadow-glow-green-lg transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  {isLoading ? 'Verifying...' : 'Verify'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setTwoFaRequired(false); setTwoFaCode(''); setError('') }}
+                  className="w-full text-slate-400 hover:text-white text-sm font-medium py-2 transition-colors"
+                >
+                  Back to login
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              {/* Welcome Text */}
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-white mb-3">Welcome back</h2>
+                <p className="text-slate-400">Enter your details to access your account</p>
+              </div>
 
           {/* Social Login */}
           <div className="grid grid-cols-2 gap-4 mb-8">
@@ -485,6 +562,8 @@ export default function LoginPage() {
               Sign Up
             </Link>
           </p>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -201,7 +201,7 @@ export default function HelpPage() {
                     />
                   </button>
                   {openFaq === index && (
-                    <div className="px-6 pb-6 text-slate-400 text-sm leading-relaxed border-t border-border-dark/50 pt-4">
+                    <div className="px-6 pb-6 text-slate-400 text-sm leading-relaxed border-t border-border-dark pt-4">
                       {faq.answer}
                     </div>
                   )}

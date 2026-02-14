@@ -169,7 +169,7 @@ export default function ReferralsPage() {
                 <th className="px-6 py-4 font-bold text-right">Reward</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-dark/50 bg-black/20">
+            <tbody className="divide-y divide-border-dark bg-black/20">
               {referralHistory.map((referral, index) => (
                 <tr key={index} className="hover:bg-black/40 transition-colors">
                   <td className="px-6 py-4 text-white font-medium">@{referral.user}</td>

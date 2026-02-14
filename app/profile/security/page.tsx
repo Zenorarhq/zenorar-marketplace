@@ -1,35 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
+import { profileApi, LoginHistoryEntry } from '@/lib/api/profile'
+import { authApi } from '@/lib/api/auth'
 
-const loginHistory = [
-  {
-    device: 'MacBook Pro',
-    icon: 'laptop_mac',
-    location: 'San Francisco, US',
-    date: 'Today, 10:23 AM',
-    status: 'active',
-  },
-  {
-    device: 'iPhone 13',
-    icon: 'smartphone',
-    location: 'San Francisco, US',
-    date: 'Yesterday, 8:45 PM',
-    status: 'signed_out',
-  },
-  {
-    device: 'Windows PC',
-    icon: 'desktop_windows',
-    location: 'New York, US',
-    date: 'Oct 24, 2023',
-    status: 'signed_out',
-  },
-]
+type TwoFaStep = 'idle' | 'totp-qr' | 'totp-verify' | 'sms-phone' | 'sms-verify' | 'backup-codes' | 'disable'
 
 export default function SecurityPage() {
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -40,20 +19,63 @@ export default function SecurityPage() {
     new: false,
     confirm: false,
   })
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([])
+  const [historyLoading, setHistoryLoading] = useState(true)
+
+  // 2FA State
+  const [twoFaStatus, setTwoFaStatus] = useState<{ enabled: boolean; method: string | null; phone: string | null }>({ enabled: false, method: null, phone: null })
+  const [twoFaStep, setTwoFaStep] = useState<TwoFaStep>('idle')
+  const [twoFaError, setTwoFaError] = useState<string | null>(null)
+  const [twoFaLoading, setTwoFaLoading] = useState(false)
+  const [totpSecret, setTotpSecret] = useState('')
+  const [totpQrUrl, setTotpQrUrl] = useState('')
+  const [verifyCode, setVerifyCode] = useState('')
+  const [smsPhone, setSmsPhone] = useState('')
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
+  const [disablePassword, setDisablePassword] = useState('')
+
+  useEffect(() => {
+    profileApi.getLoginHistory().then(res => {
+      if (res.success && res.data) {
+        setLoginHistory(res.data)
+      }
+      setHistoryLoading(false)
+    }).catch(() => setHistoryLoading(false))
+
+    authApi.get2faStatus().then(res => {
+      if (res.success && res.data) {
+        setTwoFaStatus(res.data)
+      }
+    })
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setPasswordError(null)
+    if (!currentPassword.trim()) {
+      setPasswordError('Current password is required')
+      return
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters')
+      return
+    }
     if (newPassword !== confirmPassword) {
-      alert('Passwords do not match')
+      setPasswordError('Passwords do not match')
       return
     }
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const res = await profileApi.updatePassword({ currentPassword, newPassword })
     setIsLoading(false)
-    setSaved(true)
-    setCurrentPassword('')
-    setNewPassword('')
-    setConfirmPassword('')
+    if (res.success) {
+      setSaved(true)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } else {
+      setPasswordError(res.error || 'Failed to update password')
+    }
   }
 
   return (
@@ -75,62 +97,320 @@ export default function SecurityPage() {
               Two-Factor Authentication (2FA)
             </h3>
             <p className="text-slate-400 text-sm mt-1">
-              Add an extra layer of security to your account.
+              {twoFaStatus.enabled
+                ? `Enabled via ${twoFaStatus.method === 'TOTP' ? 'Authenticator App' : 'SMS'}${twoFaStatus.phone ? ` (${twoFaStatus.phone})` : ''}`
+                : 'Add an extra layer of security to your account.'}
             </p>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={twoFactorEnabled}
-              onChange={(e) => setTwoFactorEnabled(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-14 h-8 bg-black peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary border border-border-dark peer-checked:border-primary"></div>
-          </label>
+          {twoFaStatus.enabled && (
+            <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">Active</span>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-black border border-border-dark rounded-2xl p-6 flex flex-col justify-between group hover:border-primary/50 transition-colors">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-surface-dark flex items-center justify-center text-primary">
-                  <Icon name="qr-code" size={20} />
+        {twoFaError && (
+          <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <p className="text-red-400 text-sm">{twoFaError}</p>
+          </div>
+        )}
+
+        {/* Idle state — show setup or disable options */}
+        {twoFaStep === 'idle' && !twoFaStatus.enabled && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-black border border-border-dark rounded-2xl p-6 flex flex-col justify-between group hover:border-primary/50 transition-colors">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-surface-dark flex items-center justify-center text-primary">
+                    <Icon name="qr-code" size={20} />
+                  </div>
+                  <h4 className="font-bold text-white">Authenticator App</h4>
                 </div>
-                <h4 className="font-bold text-white">Authenticator App</h4>
+                <p className="text-slate-500 text-sm mb-4">
+                  Use an app like Google Authenticator or Authy to generate verification codes.{' '}
+                  <span className="text-primary text-xs ml-1">(Recommended)</span>
+                </p>
               </div>
-              <p className="text-slate-500 text-sm mb-4">
-                Use an app like Google Authenticator or Authy to generate verification codes.{' '}
-                <span className="text-primary text-xs ml-1">(Recommended)</span>
-              </p>
+              <button
+                type="button"
+                disabled={twoFaLoading}
+                onClick={async () => {
+                  setTwoFaLoading(true)
+                  setTwoFaError(null)
+                  const res = await authApi.setupTotp()
+                  setTwoFaLoading(false)
+                  if (res.success && res.data) {
+                    setTotpSecret(res.data.secret)
+                    setTotpQrUrl(res.data.qrCodeUrl)
+                    setTwoFaStep('totp-qr')
+                  } else {
+                    setTwoFaError(res.error || 'Failed to start setup')
+                  }
+                }}
+                className="w-full py-3 rounded-xl border border-border-dark text-slate-300 font-medium hover:bg-surface-dark hover:text-white hover:border-slate-600 transition-colors disabled:opacity-50"
+              >
+                {twoFaLoading ? 'Loading...' : 'Setup'}
+              </button>
+            </div>
+
+            <div className="bg-black border border-border-dark rounded-2xl p-6 flex flex-col justify-between group hover:border-primary/50 transition-colors">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-surface-dark flex items-center justify-center text-primary">
+                    <Icon name="message" size={20} />
+                  </div>
+                  <h4 className="font-bold text-white">SMS Verification</h4>
+                </div>
+                <p className="text-slate-500 text-sm mb-4">
+                  Receive verification codes via SMS to your phone number.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setTwoFaStep('sms-phone'); setTwoFaError(null) }}
+                className="w-full py-3 rounded-xl border border-border-dark text-slate-300 font-medium hover:bg-surface-dark hover:text-white hover:border-slate-600 transition-colors"
+              >
+                Setup
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Already enabled — show disable option */}
+        {twoFaStep === 'idle' && twoFaStatus.enabled && (
+          <button
+            type="button"
+            onClick={() => { setTwoFaStep('disable'); setTwoFaError(null); setDisablePassword('') }}
+            className="px-6 py-3 rounded-xl border border-red-500/30 text-red-400 font-medium hover:bg-red-500/10 transition-colors"
+          >
+            Disable Two-Factor Authentication
+          </button>
+        )}
+
+        {/* TOTP: Show QR Code */}
+        {twoFaStep === 'totp-qr' && (
+          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+            <h4 className="font-bold text-white mb-3">Scan QR Code</h4>
+            <p className="text-slate-500 text-sm mb-4">Open your authenticator app and scan this QR code.</p>
+            <div className="bg-white rounded-xl p-4 mb-4 flex justify-center">
+              <img src={totpQrUrl} alt="QR Code" className="w-48 h-48" />
+            </div>
+            <p className="text-slate-500 text-xs mb-4">
+              Or enter this code manually: <code className="text-primary bg-primary/10 px-2 py-0.5 rounded text-xs">{totpSecret}</code>
+            </p>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-slate-300">Enter the 6-digit code from your app</label>
+              <input
+                type="text"
+                maxLength={6}
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="w-full bg-[#1a1a1a] border border-border-dark rounded-xl px-4 py-3 text-white text-center text-2xl tracking-widest placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setTwoFaStep('idle'); setVerifyCode('') }}
+                  className="flex-1 py-3 rounded-xl border border-border-dark text-slate-400 font-medium hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={verifyCode.length !== 6 || twoFaLoading}
+                  onClick={async () => {
+                    setTwoFaLoading(true)
+                    setTwoFaError(null)
+                    const res = await authApi.enableTotp(totpSecret, verifyCode)
+                    setTwoFaLoading(false)
+                    if (res.success && res.data) {
+                      setBackupCodes(res.data.backupCodes)
+                      setTwoFaStep('backup-codes')
+                      setTwoFaStatus({ enabled: true, method: 'TOTP', phone: null })
+                    } else {
+                      setTwoFaError(res.error || 'Invalid code')
+                    }
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-primary text-black font-bold hover:bg-green-400 transition-colors disabled:opacity-50"
+                >
+                  {twoFaLoading ? 'Verifying...' : 'Verify & Enable'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SMS: Enter phone number */}
+        {twoFaStep === 'sms-phone' && (
+          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+            <h4 className="font-bold text-white mb-3">SMS Verification Setup</h4>
+            <p className="text-slate-500 text-sm mb-4">Enter your phone number to receive verification codes.</p>
+            <div className="space-y-3">
+              <input
+                type="tel"
+                value={smsPhone}
+                onChange={(e) => setSmsPhone(e.target.value)}
+                placeholder="+1 234 567 8900"
+                className="w-full bg-[#1a1a1a] border border-border-dark rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setTwoFaStep('idle'); setSmsPhone('') }}
+                  className="flex-1 py-3 rounded-xl border border-border-dark text-slate-400 font-medium hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!smsPhone.trim() || twoFaLoading}
+                  onClick={async () => {
+                    setTwoFaLoading(true)
+                    setTwoFaError(null)
+                    const res = await authApi.setupSms(smsPhone)
+                    setTwoFaLoading(false)
+                    if (res.success) {
+                      setTwoFaStep('sms-verify')
+                    } else {
+                      setTwoFaError(res.error || 'Failed to send SMS')
+                    }
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-primary text-black font-bold hover:bg-green-400 transition-colors disabled:opacity-50"
+                >
+                  {twoFaLoading ? 'Sending...' : 'Send Code'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SMS: Verify code */}
+        {twoFaStep === 'sms-verify' && (
+          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+            <h4 className="font-bold text-white mb-3">Enter Verification Code</h4>
+            <p className="text-slate-500 text-sm mb-4">We sent a 6-digit code to {smsPhone}</p>
+            <div className="space-y-3">
+              <input
+                type="text"
+                maxLength={6}
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="w-full bg-[#1a1a1a] border border-border-dark rounded-xl px-4 py-3 text-white text-center text-2xl tracking-widest placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setTwoFaStep('idle'); setVerifyCode('') }}
+                  className="flex-1 py-3 rounded-xl border border-border-dark text-slate-400 font-medium hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={verifyCode.length !== 6 || twoFaLoading}
+                  onClick={async () => {
+                    setTwoFaLoading(true)
+                    setTwoFaError(null)
+                    const res = await authApi.enableSms(smsPhone, verifyCode)
+                    setTwoFaLoading(false)
+                    if (res.success && res.data) {
+                      setBackupCodes(res.data.backupCodes)
+                      setTwoFaStep('backup-codes')
+                      setTwoFaStatus({ enabled: true, method: 'SMS', phone: `****${smsPhone.slice(-4)}` })
+                    } else {
+                      setTwoFaError(res.error || 'Invalid code')
+                    }
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-primary text-black font-bold hover:bg-green-400 transition-colors disabled:opacity-50"
+                >
+                  {twoFaLoading ? 'Verifying...' : 'Verify & Enable'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Show backup codes */}
+        {twoFaStep === 'backup-codes' && (
+          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+            <h4 className="font-bold text-white mb-3 flex items-center gap-2">
+              <Icon name="check-circle" size={20} className="text-primary" />
+              2FA Enabled Successfully
+            </h4>
+            <p className="text-slate-500 text-sm mb-4">
+              Save these backup codes in a safe place. You can use them to access your account if you lose your device.
+            </p>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {backupCodes.map((code, i) => (
+                <code key={i} className="bg-[#1a1a1a] border border-border-dark rounded-lg px-3 py-2 text-center text-slate-300 text-sm font-mono">
+                  {code}
+                </code>
+              ))}
             </div>
             <button
               type="button"
-              className="w-full py-3 rounded-xl border border-border-dark text-slate-300 font-medium hover:bg-surface-dark hover:text-white hover:border-slate-600 transition-colors"
+              onClick={() => {
+                navigator.clipboard.writeText(backupCodes.join('\n'))
+              }}
+              className="w-full py-2 rounded-xl border border-border-dark text-slate-400 font-medium hover:text-white transition-colors text-sm mb-3"
             >
-              Setup
+              Copy All Codes
             </button>
-          </div>
-
-          <div className="bg-black border border-border-dark rounded-2xl p-6 flex flex-col justify-between group hover:border-primary/50 transition-colors">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-surface-dark flex items-center justify-center text-primary">
-                  <Icon name="message" size={20} />
-                </div>
-                <h4 className="font-bold text-white">SMS Recovery</h4>
-              </div>
-              <p className="text-slate-500 text-sm mb-4">
-                Receive verification codes via SMS as a backup method.
-              </p>
-            </div>
             <button
               type="button"
-              className="w-full py-3 rounded-xl border border-border-dark text-slate-300 font-medium hover:bg-surface-dark hover:text-white hover:border-slate-600 transition-colors"
+              onClick={() => { setTwoFaStep('idle'); setVerifyCode(''); setBackupCodes([]) }}
+              className="w-full py-3 rounded-xl bg-primary text-black font-bold hover:bg-green-400 transition-colors"
             >
-              Setup
+              Done
             </button>
           </div>
-        </div>
+        )}
+
+        {/* Disable 2FA */}
+        {twoFaStep === 'disable' && (
+          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+            <h4 className="font-bold text-white mb-3">Disable Two-Factor Authentication</h4>
+            <p className="text-slate-500 text-sm mb-4">Enter your password to confirm.</p>
+            <div className="space-y-3">
+              <input
+                type="password"
+                value={disablePassword}
+                onChange={(e) => setDisablePassword(e.target.value)}
+                placeholder="Your password"
+                className="w-full bg-[#1a1a1a] border border-border-dark rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setTwoFaStep('idle'); setDisablePassword('') }}
+                  className="flex-1 py-3 rounded-xl border border-border-dark text-slate-400 font-medium hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!disablePassword.trim() || twoFaLoading}
+                  onClick={async () => {
+                    setTwoFaLoading(true)
+                    setTwoFaError(null)
+                    const res = await authApi.disable2fa(disablePassword)
+                    setTwoFaLoading(false)
+                    if (res.success) {
+                      setTwoFaStatus({ enabled: false, method: null, phone: null })
+                      setTwoFaStep('idle')
+                      setDisablePassword('')
+                    } else {
+                      setTwoFaError(res.error || 'Failed to disable 2FA')
+                    }
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors disabled:opacity-50"
+                >
+                  {twoFaLoading ? 'Disabling...' : 'Disable'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Change Password Section */}
@@ -153,6 +433,7 @@ export default function SecurityPage() {
                 onChange={(e) => {
                   setCurrentPassword(e.target.value)
                   setSaved(false)
+                  setPasswordError(null)
                 }}
                 placeholder="Enter current password"
                 className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 pr-12 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
@@ -180,6 +461,7 @@ export default function SecurityPage() {
                 onChange={(e) => {
                   setNewPassword(e.target.value)
                   setSaved(false)
+                  setPasswordError(null)
                 }}
                 placeholder="Enter new password"
                 className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 pr-12 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
@@ -205,6 +487,7 @@ export default function SecurityPage() {
                 onChange={(e) => {
                   setConfirmPassword(e.target.value)
                   setSaved(false)
+                  setPasswordError(null)
                 }}
                 placeholder="Confirm new password"
                 className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 pr-12 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
@@ -221,6 +504,12 @@ export default function SecurityPage() {
             </div>
           </div>
         </div>
+
+        {passwordError && (
+          <div className="mt-4 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <p className="text-red-400 text-sm">{passwordError}</p>
+          </div>
+        )}
       </form>
 
       {/* Login History */}
@@ -235,31 +524,51 @@ export default function SecurityPage() {
             <thead className="text-xs uppercase bg-black text-slate-200">
               <tr>
                 <th className="px-6 py-4 font-bold">Device</th>
-                <th className="px-6 py-4 font-bold">Location</th>
+                <th className="px-6 py-4 font-bold">IP Address</th>
                 <th className="px-6 py-4 font-bold">Date</th>
                 <th className="px-6 py-4 font-bold text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-dark/50 bg-black/20">
-              {loginHistory.map((session, index) => (
-                <tr key={index} className="hover:bg-black/40 transition-colors">
-                  <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
-                    <Icon name={session.icon === 'laptop_mac' ? 'laptop' : session.icon === 'smartphone' ? 'smartphone' : 'computer'} size={18} />
-                    {session.device}
-                  </td>
-                  <td className="px-6 py-4">{session.location}</td>
-                  <td className="px-6 py-4">{session.date}</td>
-                  <td className="px-6 py-4 text-right">
-                    {session.status === 'active' ? (
-                      <span className="text-primary bg-primary/10 px-2 py-1 rounded text-xs font-bold border border-primary/20">
-                        Active Now
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">Signed out</span>
-                    )}
-                  </td>
+            <tbody className="divide-y divide-border-dark bg-black/20">
+              {historyLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-slate-500">Loading...</td>
                 </tr>
-              ))}
+              ) : loginHistory.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-slate-500">No login history yet</td>
+                </tr>
+              ) : (
+                loginHistory.map((entry) => (
+                  <tr key={entry.id} className="hover:bg-black/40 transition-colors">
+                    <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
+                      <Icon name={entry.deviceType === 'Mobile' ? 'smartphone' : entry.deviceType === 'Tablet' ? 'tablet' : 'computer'} size={18} />
+                      {entry.browserName || 'Unknown'} on {entry.deviceType || 'Unknown'}
+                    </td>
+                    <td className="px-6 py-4">{entry.ipAddress}</td>
+                    <td className="px-6 py-4">
+                      {new Date(entry.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {entry.success ? (
+                        <span className="text-primary bg-primary/10 px-2 py-1 rounded text-xs font-bold border border-primary/20">
+                          Success
+                        </span>
+                      ) : (
+                        <span className="text-red-400 bg-red-400/10 px-2 py-1 rounded text-xs font-bold border border-red-400/20">
+                          Failed
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

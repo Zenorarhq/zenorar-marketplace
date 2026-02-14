@@ -112,13 +112,20 @@ export default function AdminSettingsPage() {
 
   // Payment Settings State
   const [paymentSettings, setPaymentSettings] = useState({
-    stripeEnabled: true,
-    stripePublicKey: 'pk_live_xxxxxxxxxxxxx',
-    cryptoEnabled: true,
+    stripeEnabled: false,
+    stripeMode: 'test' as 'test' | 'live',
+    stripeTestPublicKey: '',
+    stripeTestSecretKey: '',
+    stripeTestWebhookSecret: '',
+    stripeLivePublicKey: '',
+    stripeLiveSecretKey: '',
+    stripeLiveWebhookSecret: '',
+    cryptoEnabled: false,
     paypalEnabled: false,
     autoWithdraw: false,
     withdrawThreshold: '100',
   })
+  const [showStripeSecrets, setShowStripeSecrets] = useState<Record<string, boolean>>({})
 
   // API Settings State
   const [apiSettings, setApiSettings] = useState({
@@ -130,6 +137,14 @@ export default function AdminSettingsPage() {
       { id: '2', name: 'Development Key', key: 'sk_test_xxxx...xxxx', created: '2024-02-01', lastUsed: '5 days ago' },
     ],
   })
+
+  // Twilio Settings State
+  const [twilioSettings, setTwilioSettings] = useState({
+    twilio_account_sid: '',
+    twilio_auth_token: '',
+    twilio_phone_number: '',
+  })
+  const [twilioSaving, setTwilioSaving] = useState(false)
 
   // Load general settings from API on mount
   useEffect(() => {
@@ -189,6 +204,38 @@ export default function AdminSettingsPage() {
     })
     // Load sent notifications
     fetchSentNotifications()
+    // Load payment settings
+    settingsApi.getSettingsByGroup('payments').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setPaymentSettings((prev) => ({
+          ...prev,
+          stripeEnabled: d.stripeEnabled ?? prev.stripeEnabled,
+          stripeMode: d.stripeMode ?? prev.stripeMode,
+          stripeTestPublicKey: d.stripeTestPublicKey ?? prev.stripeTestPublicKey,
+          stripeTestSecretKey: d.stripeTestSecretKey ?? prev.stripeTestSecretKey,
+          stripeTestWebhookSecret: d.stripeTestWebhookSecret ?? prev.stripeTestWebhookSecret,
+          stripeLivePublicKey: d.stripeLivePublicKey ?? prev.stripeLivePublicKey,
+          stripeLiveSecretKey: d.stripeLiveSecretKey ?? prev.stripeLiveSecretKey,
+          stripeLiveWebhookSecret: d.stripeLiveWebhookSecret ?? prev.stripeLiveWebhookSecret,
+          cryptoEnabled: d.cryptoEnabled ?? prev.cryptoEnabled,
+          paypalEnabled: d.paypalEnabled ?? prev.paypalEnabled,
+          autoWithdraw: d.autoWithdraw ?? prev.autoWithdraw,
+          withdrawThreshold: d.withdrawThreshold ?? prev.withdrawThreshold,
+        }))
+      }
+    })
+    // Load Twilio settings
+    settingsApi.getSettingsByGroup('api').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setTwilioSettings((prev) => ({
+          twilio_account_sid: d.twilio_account_sid ?? prev.twilio_account_sid,
+          twilio_auth_token: d.twilio_auth_token ?? prev.twilio_auth_token,
+          twilio_phone_number: d.twilio_phone_number ?? prev.twilio_phone_number,
+        }))
+      }
+    })
   }, [])
 
   // Fetch sent notifications
@@ -443,6 +490,23 @@ export default function AdminSettingsPage() {
       { key: 'emailTicket', value: notificationSettings.emailTicket, group: 'notifications', isPublic: false },
       { key: 'pushEnabled', value: notificationSettings.pushEnabled, group: 'notifications', isPublic: false },
       { key: 'slackWebhook', value: notificationSettings.slackWebhook, group: 'notifications', isPublic: false },
+      // Twilio API settings
+      { key: 'twilio_account_sid', value: twilioSettings.twilio_account_sid, group: 'api', isPublic: false },
+      { key: 'twilio_auth_token', value: twilioSettings.twilio_auth_token, group: 'api', isPublic: false },
+      { key: 'twilio_phone_number', value: twilioSettings.twilio_phone_number, group: 'api', isPublic: false },
+      // Payment settings
+      { key: 'stripeEnabled', value: paymentSettings.stripeEnabled, group: 'payments', isPublic: false },
+      { key: 'stripeMode', value: paymentSettings.stripeMode, group: 'payments', isPublic: false },
+      { key: 'stripeTestPublicKey', value: paymentSettings.stripeTestPublicKey, group: 'payments', isPublic: false },
+      { key: 'stripeTestSecretKey', value: paymentSettings.stripeTestSecretKey, group: 'payments', isPublic: false },
+      { key: 'stripeTestWebhookSecret', value: paymentSettings.stripeTestWebhookSecret, group: 'payments', isPublic: false },
+      { key: 'stripeLivePublicKey', value: paymentSettings.stripeLivePublicKey, group: 'payments', isPublic: false },
+      { key: 'stripeLiveSecretKey', value: paymentSettings.stripeLiveSecretKey, group: 'payments', isPublic: false },
+      { key: 'stripeLiveWebhookSecret', value: paymentSettings.stripeLiveWebhookSecret, group: 'payments', isPublic: false },
+      { key: 'cryptoEnabled', value: paymentSettings.cryptoEnabled, group: 'payments', isPublic: false },
+      { key: 'paypalEnabled', value: paymentSettings.paypalEnabled, group: 'payments', isPublic: false },
+      { key: 'autoWithdraw', value: paymentSettings.autoWithdraw, group: 'payments', isPublic: false },
+      { key: 'withdrawThreshold', value: paymentSettings.withdrawThreshold, group: 'payments', isPublic: false },
     ]
 
     const result = await settingsApi.updateSettings(settingsToSave)
@@ -1213,14 +1277,80 @@ export default function AdminSettingsPage() {
                   </button>
                 </div>
                 {paymentSettings.stripeEnabled && (
-                  <div className="space-y-2 pt-4 border-t border-[#2a2a2a]">
-                    <label className="text-sm font-medium text-slate-300">Publishable Key</label>
-                    <input
-                      type="text"
-                      value={paymentSettings.stripePublicKey}
-                      onChange={(e) => setPaymentSettings({ ...paymentSettings, stripePublicKey: e.target.value })}
-                      className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-primary/50"
-                    />
+                  <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
+                    {/* Test / Live Toggle */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, stripeMode: 'test' })}
+                          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            paymentSettings.stripeMode === 'test'
+                              ? 'bg-orange-500/20 text-orange-400'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                        >
+                          Test Mode
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, stripeMode: 'live' })}
+                          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            paymentSettings.stripeMode === 'live'
+                              ? 'bg-green-500/20 text-green-400'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                        >
+                          Live Mode
+                        </button>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                        paymentSettings.stripeMode === 'test'
+                          ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                          : 'bg-green-500/10 text-green-400 border-green-500/20'
+                      }`}>
+                        {paymentSettings.stripeMode === 'test' ? 'TEST MODE' : 'LIVE'}
+                      </span>
+                    </div>
+
+                    {/* Key Fields */}
+                    {(() => {
+                      const prefix = paymentSettings.stripeMode === 'test' ? 'stripeTest' : 'stripeLive'
+                      const pkPlaceholder = paymentSettings.stripeMode === 'test' ? 'pk_test_...' : 'pk_live_...'
+                      const skPlaceholder = paymentSettings.stripeMode === 'test' ? 'sk_test_...' : 'sk_live_...'
+                      const fields = [
+                        { key: `${prefix}PublicKey` as keyof typeof paymentSettings, label: 'Publishable Key', placeholder: pkPlaceholder, secret: false },
+                        { key: `${prefix}SecretKey` as keyof typeof paymentSettings, label: 'Secret Key', placeholder: skPlaceholder, secret: true },
+                        { key: `${prefix}WebhookSecret` as keyof typeof paymentSettings, label: 'Webhook Secret', placeholder: 'whsec_...', secret: true },
+                      ]
+                      return (
+                        <div className="space-y-3">
+                          {fields.map((field) => (
+                            <div key={field.key} className="space-y-1.5">
+                              <label className="text-sm font-medium text-slate-300">{field.label}</label>
+                              <div className="relative">
+                                <input
+                                  type={field.secret && !showStripeSecrets[field.key] ? 'password' : 'text'}
+                                  value={paymentSettings[field.key] as string}
+                                  onChange={(e) => setPaymentSettings({ ...paymentSettings, [field.key]: e.target.value })}
+                                  placeholder={field.placeholder}
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                {field.secret && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowStripeSecrets((prev) => ({ ...prev, [field.key]: !prev[field.key] }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showStripeSecrets[field.key] ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
@@ -1363,6 +1493,44 @@ export default function AdminSettingsPage() {
                         placeholder="https://your-server.com/webhook"
                         className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
                       />
+                    </div>
+                  </div>
+
+                  {/* Twilio SMS Configuration */}
+                  <div className="border-t border-[#2a2a2a] pt-6">
+                    <h3 className="text-white font-medium mb-4">Twilio SMS Configuration</h3>
+                    <p className="text-slate-500 text-sm mb-4">Required for SMS-based two-factor authentication. Get your credentials from your Twilio dashboard.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Account SID</label>
+                        <input
+                          type="text"
+                          value={twilioSettings.twilio_account_sid}
+                          onChange={(e) => setTwilioSettings({ ...twilioSettings, twilio_account_sid: e.target.value })}
+                          placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Auth Token</label>
+                        <input
+                          type="password"
+                          value={twilioSettings.twilio_auth_token}
+                          onChange={(e) => setTwilioSettings({ ...twilioSettings, twilio_auth_token: e.target.value })}
+                          placeholder="Your Twilio Auth Token"
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Phone Number</label>
+                        <input
+                          type="text"
+                          value={twilioSettings.twilio_phone_number}
+                          onChange={(e) => setTwilioSettings({ ...twilioSettings, twilio_phone_number: e.target.value })}
+                          placeholder="+1234567890"
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                      </div>
                     </div>
                   </div>
 

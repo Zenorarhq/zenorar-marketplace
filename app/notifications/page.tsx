@@ -289,7 +289,7 @@ export default function NotificationsPage() {
           </div>
 
           {/* Main Content Card */}
-          <div className="mt-4 md:mt-0 bg-surface-dark rounded-2xl lg:rounded-[2rem] p-5 md:p-8 lg:p-10 border border-border-dark/30 shadow-2xl shadow-black/40">
+          <div className="mt-4 md:mt-0 bg-surface-dark rounded-2xl lg:rounded-[2rem] p-5 md:p-8 lg:p-10 border border-border-dark shadow-2xl shadow-black/40">
             {/* Header */}
             <div className="flex items-center justify-between gap-4 mb-6 md:mb-8">
               <div>

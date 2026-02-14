@@ -122,7 +122,7 @@ export default function ProfileLayout({ children }: ProfileLayoutProps) {
           </aside>
 
           {/* Main Content */}
-          <div className="flex-grow bg-surface-dark rounded-2xl lg:rounded-[2rem] p-6 md:p-8 lg:p-12 border border-border-dark/30 shadow-2xl shadow-black/40">
+          <div className="flex-grow bg-surface-dark rounded-2xl lg:rounded-[2rem] p-6 md:p-8 lg:p-12 border border-border-dark shadow-2xl shadow-black/40">
             {children}
           </div>
         </div>

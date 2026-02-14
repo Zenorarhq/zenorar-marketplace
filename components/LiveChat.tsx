@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatTime } from '@/lib/date-utils'
@@ -20,6 +21,7 @@ interface DisplayMessage {
 type ChatView = 'closed' | 'guest-form' | 'chat'
 
 export default function LiveChat() {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState<ChatView>('closed')
   const [messages, setMessages] = useState<DisplayMessage[]>([])
@@ -403,6 +405,9 @@ export default function LiveChat() {
     )
   }
 
+  // Don't render on admin pages — admins use /admin/chat instead
+  if (pathname.startsWith('/admin')) return null
+
   return (
     <div className="fixed bottom-6 right-6 z-50">
       {/* Chat Window */}
@@ -488,6 +493,10 @@ export default function LiveChat() {
                 {messages.map((message, idx) => {
                   const prevMsg = idx > 0 ? messages[idx - 1] : null
                   const showDate = !prevMsg || new Date(message.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString()
+                  const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null
+                  const showTime = !nextMsg
+                    || nextMsg.senderType !== message.senderType
+                    || formatTime(new Date(message.createdAt), tz) !== formatTime(new Date(nextMsg.createdAt), tz)
                   return (
                   <div key={message.id}>
                     {showDate && (
@@ -517,13 +526,15 @@ export default function LiveChat() {
                           {message.attachments?.map((att, i) => (
                             <div key={i}>{renderAttachment(att)}</div>
                           ))}
-                          <p
-                            className={`text-[10px] mt-1 ${
-                              message.senderType === 'USER' ? 'text-black/60' : 'text-slate-500'
-                            }`}
-                          >
-                            {formatTime(new Date(message.createdAt), tz)}
-                          </p>
+                          {showTime && (
+                            <p
+                              className={`text-[10px] mt-1 ${
+                                message.senderType === 'USER' ? 'text-black/60' : 'text-slate-500'
+                              }`}
+                            >
+                              {formatTime(new Date(message.createdAt), tz)}
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}

@@ -35,6 +35,15 @@ export interface UserPreferences {
   showReviewsPublicly: boolean
 }
 
+export interface LoginHistoryEntry {
+  id: string
+  ipAddress: string
+  deviceType: string | null
+  browserName: string | null
+  success: boolean
+  createdAt: string
+}
+
 export interface UserProfile extends User {
   stats: {
     orders: number
@@ -47,6 +56,7 @@ export interface UserProfile extends User {
 export interface UpdateProfileData {
   name?: string
   avatar?: string | null
+  bio?: string
 }
 
 export interface UpdatePasswordData {
@@ -157,6 +167,11 @@ export const profileApi = {
         product: { id: string; name: string; slug: string }
       }>
     }>(`/profile/activity?limit=${limit}`)
+  },
+
+  // Login History
+  async getLoginHistory(limit = 20) {
+    return apiFetch<LoginHistoryEntry[]>(`/profile/login-history?limit=${limit}`)
   },
 
   // Addresses

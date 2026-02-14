@@ -20,6 +20,7 @@ export * from './finance'
 export * from './analytics'
 export * from './media'
 export * from './discounts'
+export * from './payment-methods'
 
 // Re-export API objects for convenience
 export { authApi } from './auth'
@@ -40,3 +41,4 @@ export { financeApi } from './finance'
 export { analyticsApi } from './analytics'
 export { mediaApi } from './media'
 export { discountsApi } from './discounts'
+export { paymentMethodsApi } from './payment-methods'

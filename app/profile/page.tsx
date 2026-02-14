@@ -20,6 +20,12 @@ export default function ProfileSettingsPage() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [avatarError, setAvatarError] = useState('')
 
+  const [emailNotifications, setEmailNotifications] = useState(true)
+  const [savedEmailNotifications, setSavedEmailNotifications] = useState(true)
+  const [publicProfile, setPublicProfile] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
+
   // Initialize form data from user when available
   useEffect(() => {
     if (user) {
@@ -27,16 +33,21 @@ export default function ProfileSettingsPage() {
         fullName: user.name || '',
         displayName: user.name?.toLowerCase().replace(/\s+/g, '_') || '',
         email: user.email || '',
-        bio: '',
+        bio: user.bio || '',
       })
       setAvatarPreview(user.avatar || null)
     }
   }, [user])
 
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [publicProfile, setPublicProfile] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [saved, setSaved] = useState(false)
+  // Load preferences on mount
+  useEffect(() => {
+    profileApi.getPreferences().then((result) => {
+      if (result.success && result.data) {
+        setEmailNotifications(result.data.emailNotifications)
+        setSavedEmailNotifications(result.data.emailNotifications)
+      }
+    }).catch(() => {})
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData((prev) => ({
@@ -124,17 +135,37 @@ export default function ProfileSettingsPage() {
     }
   }
 
+  const handleCancel = () => {
+    if (user) {
+      setFormData({
+        fullName: user.name || '',
+        displayName: user.name?.toLowerCase().replace(/\s+/g, '_') || '',
+        email: user.email || '',
+        bio: user.bio || '',
+      })
+      setEmailNotifications(savedEmailNotifications)
+      setSaved(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      const result = await profileApi.update({
-        name: formData.fullName,
-      })
+      const [profileResult] = await Promise.all([
+        profileApi.update({
+          name: formData.fullName,
+          bio: formData.bio,
+        }),
+        profileApi.updatePreferences({
+          emailNotifications,
+        }),
+      ])
 
-      if (result.success && result.data) {
-        updateUser({ name: result.data.name })
+      if (profileResult.success && profileResult.data) {
+        updateUser({ name: profileResult.data.name, bio: profileResult.data.bio })
+        setSavedEmailNotifications(emailNotifications)
         setSaved(true)
       }
     } catch {
@@ -278,7 +309,7 @@ export default function ProfileSettingsPage() {
             <Icon name="settings" size={20} className="text-primary" />
             Preferences
           </h3>
-          <div className="space-y-6 bg-black/40 rounded-2xl p-6 border border-border-dark/50">
+          <div className="space-y-6 bg-black/40 rounded-2xl p-6 border border-border-dark">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-bold text-white text-sm">Email Notifications</h4>
@@ -333,6 +364,7 @@ export default function ProfileSettingsPage() {
           )}
           <button
             type="button"
+            onClick={handleCancel}
             className="text-slate-400 font-bold px-6 py-3.5 rounded-xl hover:text-white transition-colors"
           >
             Cancel

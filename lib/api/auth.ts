@@ -6,6 +6,9 @@ export interface LoginResponse {
   user: User
   accessToken: string
   refreshToken: string
+  requiresTwoFactor?: boolean
+  tempToken?: string
+  method?: string
 }
 
 export interface RegisterData {
@@ -25,7 +28,7 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
-    if (result.success && result.data) {
+    if (result.success && result.data && !result.data.requiresTwoFactor) {
       setAccessToken(result.data.accessToken)
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(result.data.user))
@@ -142,5 +145,57 @@ export const authApi = {
   isAuthenticated(): boolean {
     if (typeof window === 'undefined') return false
     return !!localStorage.getItem('auth_token')
+  },
+
+  // ==================== TWO-FACTOR AUTH ====================
+
+  async verify2fa(tempToken: string, code: string) {
+    const result = await apiFetch<LoginResponse>('/auth/2fa/verify', {
+      method: 'POST',
+      body: JSON.stringify({ tempToken, code }),
+    })
+    if (result.success && result.data) {
+      setAccessToken(result.data.accessToken)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(result.data.user))
+      }
+    }
+    return result
+  },
+
+  async get2faStatus() {
+    return apiFetch<{ enabled: boolean; method: string | null; phone: string | null }>('/auth/2fa/status')
+  },
+
+  async setupTotp() {
+    return apiFetch<{ secret: string; qrCodeUrl: string }>('/auth/2fa/totp/setup', { method: 'POST' })
+  },
+
+  async enableTotp(secret: string, code: string) {
+    return apiFetch<{ backupCodes: string[] }>('/auth/2fa/totp/enable', {
+      method: 'POST',
+      body: JSON.stringify({ secret, code }),
+    })
+  },
+
+  async setupSms(phone: string) {
+    return apiFetch<{ message: string }>('/auth/2fa/sms/setup', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    })
+  },
+
+  async enableSms(phone: string, code: string) {
+    return apiFetch<{ backupCodes: string[] }>('/auth/2fa/sms/enable', {
+      method: 'POST',
+      body: JSON.stringify({ phone, code }),
+    })
+  },
+
+  async disable2fa(password: string) {
+    return apiFetch<{ message: string }>('/auth/2fa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    })
   },
 }

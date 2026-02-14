@@ -4,11 +4,19 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { User, getAccessToken, clearAccessToken, setAccessToken, apiFetch } from '@/lib/api'
 import { useSessionTimeout } from '@/hooks/use-session-timeout'
 
+interface LoginResult {
+  success: boolean
+  error?: string
+  requiresTwoFactor?: boolean
+  tempToken?: string
+  method?: string
+}
+
 interface AuthContextType {
   user: User | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (email: string, password: string) => Promise<LoginResult>
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   refreshUser: () => Promise<void>
@@ -64,15 +72,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser()
   }, [refreshUser])
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
     try {
       // Login via Railway (security checks handled server-side)
-      const result = await apiFetch<{ accessToken?: string; sessionTimeout?: number; user: User }>('/auth/login', {
+      const result = await apiFetch<{ accessToken?: string; sessionTimeout?: number; user?: User; requiresTwoFactor?: boolean; tempToken?: string; method?: string }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       })
 
       if (result.success && result.data) {
+        // Check if 2FA is required
+        if (result.data.requiresTwoFactor) {
+          return {
+            success: false,
+            requiresTwoFactor: true,
+            tempToken: result.data.tempToken,
+            method: result.data.method,
+          }
+        }
+
         // Store access token
         if (result.data.accessToken) {
           setAccessToken(result.data.accessToken)
@@ -82,9 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('sessionTimeout', result.data.sessionTimeout.toString())
         }
         // Store user
-        setUser(result.data.user)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('user', JSON.stringify(result.data.user))
+        if (result.data.user) {
+          setUser(result.data.user)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('user', JSON.stringify(result.data.user))
+          }
         }
         return { success: true }
       } else {

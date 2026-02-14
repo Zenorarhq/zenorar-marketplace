@@ -20,6 +20,7 @@ export interface User {
   id: string
   email: string
   name: string
+  bio: string | null
   role: 'ADMIN' | 'EDITOR' | 'VIEWER'
   avatar: string | null
   createdAt: string
