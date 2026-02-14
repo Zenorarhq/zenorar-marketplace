@@ -10,12 +10,13 @@ import { usersApi, UsersListResponse } from '@/lib/api/users'
 import { staffApi, StaffListResponse } from '@/lib/api/staff'
 import { rolesApi, Role } from '@/lib/api/roles'
 
-type Tab = 'users' | 'staff' | 'roles'
+type Tab = 'users' | 'staff' | 'roles' | 'guest-purchases'
 
 const tabs = [
   { id: 'users' as Tab, label: 'Users', icon: 'user', permission: 'view_users' },
   { id: 'staff' as Tab, label: 'Staff', icon: 'people', permission: 'view_staff' },
   { id: 'roles' as Tab, label: 'Roles', icon: 'shield', permission: 'manage_roles' },
+  { id: 'guest-purchases' as Tab, label: 'Guest Purchases', icon: 'shopping-cart', permission: 'view_orders' },
 ]
 
 export default function UserManagementPage() {
@@ -56,6 +57,7 @@ export default function UserManagementPage() {
           {activeTab === 'users' && <UsersTab />}
           {activeTab === 'staff' && <StaffTab />}
           {activeTab === 'roles' && <RolesTab />}
+          {activeTab === 'guest-purchases' && <GuestPurchasesTab />}
         </div>
       </AdminLayout>
     </AdminRoute>
@@ -68,6 +70,10 @@ function UsersTab() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedRole, setSelectedRole] = useState('all')
+  const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [showOrdersModal, setShowOrdersModal] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailForm, setEmailForm] = useState({ subject: '', message: '' })
   const limit = 20
 
   const { data, isLoading } = useQuery<UsersListResponse>({
@@ -97,6 +103,63 @@ function UsersTab() {
       queryClient.invalidateQueries({ queryKey: ['admin-user-stats'] })
     } else {
       alert(result.error || 'Failed to delete user')
+    }
+  }
+
+  async function handleBlock(user: any) {
+    const reason = prompt('Reason for blocking (optional):')
+    const result = await usersApi.block(user.id, reason || undefined)
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      alert(`User ${user.name} has been blocked`)
+    } else {
+      alert(result.error || 'Failed to block user')
+    }
+  }
+
+  async function handleUnblock(user: any) {
+    const result = await usersApi.unblock(user.id)
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      alert(`User ${user.name} has been unblocked`)
+    } else {
+      alert(result.error || 'Failed to unblock user')
+    }
+  }
+
+  async function handlePasswordReset(user: any) {
+    if (!confirm(`Send password reset email to ${user.email}?`)) return
+    const result = await usersApi.sendPasswordReset(user.id)
+    if (result.success) {
+      alert(`Password reset email sent to ${user.email}`)
+    } else {
+      alert(result.error || 'Failed to send password reset email')
+    }
+  }
+
+  function handleViewOrders(user: any) {
+    setSelectedUser(user)
+    setShowOrdersModal(true)
+  }
+
+  function handleEmailUser(user: any) {
+    setSelectedUser(user)
+    setShowEmailModal(true)
+    setEmailForm({ subject: '', message: '' })
+  }
+
+  async function handleSendEmail() {
+    if (!selectedUser || !emailForm.subject || !emailForm.message) {
+      alert('Please fill in both subject and message')
+      return
+    }
+    const result = await usersApi.sendEmail(selectedUser.id, emailForm.subject, emailForm.message)
+    if (result.success) {
+      alert(`Email sent to ${selectedUser.email}`)
+      setShowEmailModal(false)
+      setEmailForm({ subject: '', message: '' })
+    } else {
+      alert(result.error || 'Failed to send email')
     }
   }
 
@@ -199,9 +262,29 @@ function UsersTab() {
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-sm">{new Date(user.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-right">
-                        <button onClick={() => handleDelete(user.id, user.name)} className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete">
-                          <Icon name="delete" size={16} />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => handleViewOrders(user)} className="p-1.5 rounded hover:bg-blue-500/10 text-slate-400 hover:text-blue-400" title="View Orders">
+                            <Icon name="shopping-cart" size={16} />
+                          </button>
+                          <button onClick={() => handleEmailUser(user)} className="p-1.5 rounded hover:bg-purple-500/10 text-slate-400 hover:text-purple-400" title="Email User">
+                            <Icon name="mail" size={16} />
+                          </button>
+                          <button onClick={() => handlePasswordReset(user)} className="p-1.5 rounded hover:bg-yellow-500/10 text-slate-400 hover:text-yellow-400" title="Send Password Reset">
+                            <Icon name="lock" size={16} />
+                          </button>
+                          {(user as any).isBlocked ? (
+                            <button onClick={() => handleUnblock(user)} className="p-1.5 rounded hover:bg-green-500/10 text-slate-400 hover:text-green-400" title="Unblock User">
+                              <Icon name="check" size={16} />
+                            </button>
+                          ) : (
+                            <button onClick={() => handleBlock(user)} className="p-1.5 rounded hover:bg-orange-500/10 text-slate-400 hover:text-orange-400" title="Block User">
+                              <Icon name="close" size={16} />
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(user.id, user.name)} className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete">
+                            <Icon name="delete" size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -220,6 +303,138 @@ function UsersTab() {
           </>
         )}
       </div>
+
+      {/* View Orders Modal */}
+      {showOrdersModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowOrdersModal(false)}>
+          <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg max-w-4xl w-full max-h-[80vh] overflow-auto m-4" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-[#1f1f1f] flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white">Orders for {selectedUser.name}</h2>
+              <button onClick={() => setShowOrdersModal(false)} className="text-slate-400 hover:text-white">
+                <Icon name="close" size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <UserOrdersList userId={selectedUser.id} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email User Modal */}
+      {showEmailModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEmailModal(false)}>
+          <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg max-w-2xl w-full m-4" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-[#1f1f1f] flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white">Email {selectedUser.name}</h2>
+              <button onClick={() => setShowEmailModal(false)} className="text-slate-400 hover:text-white">
+                <Icon name="close" size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">To</label>
+                <input
+                  type="text"
+                  value={selectedUser.email}
+                  disabled
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white opacity-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Subject</label>
+                <input
+                  type="text"
+                  value={emailForm.subject}
+                  onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50"
+                  placeholder="Email subject"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Message</label>
+                <textarea
+                  value={emailForm.message}
+                  onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50 min-h-[200px]"
+                  placeholder="Your message"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowEmailModal(false)}
+                  className="px-4 py-2 rounded-lg border border-[#2a2a2a] text-white hover:bg-[#1a1a1a]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendEmail}
+                  className="px-4 py-2 rounded-lg bg-primary text-black font-medium hover:bg-primary/90"
+                >
+                  Send Email
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// User Orders List Component
+function UserOrdersList({ userId }: { userId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['user-orders', userId],
+    queryFn: async () => {
+      const result = await usersApi.getOrders(userId, 1, 10)
+      return result.success && result.data ? result.data : null
+    },
+  })
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Icon name="loading" size={24} className="text-primary animate-spin" />
+      </div>
+    )
+  }
+
+  const orders = data?.orders || []
+
+  if (orders.length === 0) {
+    return <div className="text-center py-8 text-slate-400">No orders found</div>
+  }
+
+  return (
+    <div className="space-y-4">
+      {orders.map((order: any) => (
+        <div key={order.id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <p className="text-white font-medium">Order #{order.orderNumber}</p>
+              <p className="text-slate-400 text-sm">{new Date(order.createdAt).toLocaleDateString()}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-white font-bold">${Number(order.total).toFixed(2)}</p>
+              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                order.status === 'DELIVERED' ? 'bg-green-500/10 text-green-400' :
+                order.status === 'SHIPPED' ? 'bg-blue-500/10 text-blue-400' :
+                order.status === 'CANCELLED' ? 'bg-red-500/10 text-red-400' :
+                'bg-yellow-500/10 text-yellow-400'
+              }`}>{order.status}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {order.orderItems?.map((item: any) => (
+              <div key={item.id} className="flex justify-between text-sm">
+                <span className="text-slate-300">{item.product?.name || item.name} x{item.quantity}</span>
+                <span className="text-slate-400">${Number(item.total).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -461,6 +676,127 @@ function RolesTab() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Guest Purchases Tab Component
+function GuestPurchasesTab() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const limit = 20
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['guest-orders', currentPage, searchQuery],
+    queryFn: async () => {
+      const filters: any = { page: currentPage, limit, search: searchQuery || undefined }
+      const result = await usersApi.getGuestOrders(filters)
+      return result.success && result.data ? result.data : null
+    },
+  })
+
+  const { data: stats } = useQuery({
+    queryKey: ['guest-order-stats'],
+    queryFn: async () => {
+      const result = await usersApi.getGuestOrderStats()
+      return result.success && result.data ? result.data : null
+    },
+  })
+
+  const orders = data?.orders || []
+  const pagination = data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 }
+
+  return (
+    <div className="space-y-6">
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { label: 'Total Guest Orders', value: stats.totalGuestOrders, icon: 'shopping-cart', color: 'blue' },
+            { label: 'Today', value: stats.guestOrdersToday, icon: 'trending-up', color: 'green' },
+            { label: 'Total Revenue', value: `$${Number(stats.totalGuestRevenue).toFixed(2)}`, icon: 'wallet', color: 'primary' },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center`}>
+                  <Icon name={stat.icon} size={20} className={`text-${stat.color}-500`} />
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm">{stat.label}</p>
+                  <p className="text-white text-xl font-bold">{stat.value}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4">
+        <div className="relative">
+          <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search by email or order number..."
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+          />
+        </div>
+      </div>
+
+      <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Icon name="loading" size={24} className="text-primary animate-spin" />
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="text-center py-12 text-slate-400">No guest orders found</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-[#0a0a0a] border-b border-[#1f1f1f]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Order Number</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Guest Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Items</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1f1f1f]">
+                  {orders.map((order: any) => (
+                    <tr key={order.id} className="hover:bg-[#1a1a1a]">
+                      <td className="px-4 py-3 text-white font-medium">#{order.orderNumber}</td>
+                      <td className="px-4 py-3 text-slate-400">{order.email}</td>
+                      <td className="px-4 py-3 text-slate-400 text-sm">{new Date(order.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          order.status === 'DELIVERED' ? 'bg-green-500/10 text-green-400' :
+                          order.status === 'SHIPPED' ? 'bg-blue-500/10 text-blue-400' :
+                          order.status === 'CANCELLED' ? 'bg-red-500/10 text-red-400' :
+                          'bg-yellow-500/10 text-yellow-400'
+                        }`}>{order.status}</span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-400">{order.orderItems?.length || 0} items</td>
+                      <td className="px-4 py-3 text-right text-white font-medium">${Number(order.total).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {pagination.totalPages > 1 && (
+              <div className="px-4 py-3 border-t border-[#1f1f1f] flex justify-between">
+                <p className="text-sm text-slate-400">Page {pagination.page} of {pagination.totalPages}</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={pagination.page === 1} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm hover:bg-[#2a2a2a] disabled:opacity-50">Previous</button>
+                  <button onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))} disabled={pagination.page === pagination.totalPages} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm hover:bg-[#2a2a2a] disabled:opacity-50">Next</button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
