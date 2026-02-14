@@ -200,23 +200,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Permission checking helpers
   const hasPermission = useCallback(
     (permission: string) => {
+      if (user?.role === 'ADMIN') return true
       return permissions.includes(permission)
     },
-    [permissions]
+    [permissions, user?.role]
   )
 
   const hasAnyPermission = useCallback(
     (...perms: string[]) => {
+      if (user?.role === 'ADMIN') return true
       return perms.some((p) => permissions.includes(p))
     },
-    [permissions]
+    [permissions, user?.role]
   )
 
   const hasAllPermissions = useCallback(
     (...perms: string[]) => {
+      if (user?.role === 'ADMIN') return true
       return perms.every((p) => permissions.includes(p))
     },
-    [permissions]
+    [permissions, user?.role]
   )
 
   const updateUser = useCallback((userData: Partial<User>) => {
