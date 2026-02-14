@@ -11,26 +11,37 @@ interface AdminLayoutProps {
 }
 
 const navItems = [
-  { href: '/admin', label: 'Dashboard', icon: 'dashboard' },
-  { href: '/admin/products', label: 'Products', icon: 'box' },
-  { href: '/admin/categories', label: 'Categories', icon: 'grid-view' },
-  { href: '/admin/purchases', label: 'Purchases', icon: 'shopping-cart' },
-  { href: '/admin/analytics', label: 'Analytics', icon: 'analytics' },
-  { href: '/admin/discounts', label: 'Discounts', icon: 'tag' },
-  { href: '/admin/finance', label: 'Finance', icon: 'wallet' },
-  { href: '/admin/frontend', label: 'Page Builder', icon: 'layers' },
-  { href: '/admin/library', label: 'Upload Library', icon: 'upload' },
-  { href: '/admin/chat', label: 'Live Chat', icon: 'chat' },
-  { href: '/admin/tickets', label: 'Tickets', icon: 'ticket' },
-  { href: '/admin/reports', label: 'Reports', icon: 'chart' },
-  { href: '/admin/settings', label: 'Settings', icon: 'settings' },
+  { href: '/admin', label: 'Dashboard', icon: 'dashboard', permission: 'view_analytics' },
+  { href: '/admin/products', label: 'Products', icon: 'box', permission: 'view_products' },
+  { href: '/admin/categories', label: 'Categories', icon: 'grid-view', permission: 'manage_categories' },
+  { href: '/admin/purchases', label: 'Purchases', icon: 'shopping-cart', permission: 'view_orders' },
+  { href: '/admin/analytics', label: 'Analytics', icon: 'analytics', permission: 'view_analytics' },
+  { href: '/admin/discounts', label: 'Discounts', icon: 'tag', permission: 'view_products' },
+  { href: '/admin/finance', label: 'Finance', icon: 'wallet', permission: 'view_order_analytics' },
+  { href: '/admin/frontend', label: 'Page Builder', icon: 'layers', permission: 'manage_content' },
+  { href: '/admin/library', label: 'Upload Library', icon: 'upload', permission: 'manage_content' },
+  { href: '/admin/chat', label: 'Live Chat', icon: 'chat', permission: 'view_chat' },
+  { href: '/admin/tickets', label: 'Tickets', icon: 'ticket', permission: 'view_tickets' },
+  { href: '/admin/reports', label: 'Reports', icon: 'chart', permission: 'view_analytics' },
+  { href: '/admin/settings', label: 'Settings', icon: 'settings', permission: 'manage_settings' },
+  { href: '/admin/users', label: 'Users', icon: 'user', permission: 'view_users' },
+  { href: '/admin/staff', label: 'Staff', icon: 'people', permission: 'view_staff' },
+  { href: '/admin/roles', label: 'Roles', icon: 'shield', permission: 'manage_roles' },
 ]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, isLoading, isAuthenticated, logout } = useAuth()
+  const { user, isLoading, isAuthenticated, isStaff, hasPermission, logout } = useAuth()
   const [desktopCollapsed, setDesktopCollapsed] = useState(false)
+
+  // Filter nav items based on permissions
+  const visibleNavItems = navItems.filter((item) => {
+    // If no permission required, show to all staff
+    if (!item.permission) return isStaff
+    // Otherwise, check if user has the required permission
+    return hasPermission(item.permission)
+  })
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -85,7 +96,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-2 overflow-visible">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <div key={item.href} className="relative group">

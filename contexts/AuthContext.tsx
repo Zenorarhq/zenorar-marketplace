@@ -16,6 +16,11 @@ interface AuthContextType {
   user: User | null
   isLoading: boolean
   isAuthenticated: boolean
+  isStaff: boolean
+  permissions: string[]
+  hasPermission: (permission: string) => boolean
+  hasAnyPermission: (...permissions: string[]) => boolean
+  hasAllPermissions: (...permissions: string[]) => boolean
   login: (email: string, password: string) => Promise<LoginResult>
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
@@ -28,11 +33,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [permissions, setPermissions] = useState<string[]>([])
 
   const refreshUser = useCallback(async () => {
     const token = getAccessToken()
     if (!token) {
       setUser(null)
+      setPermissions([])
       setIsLoading(false)
       return
     }
@@ -40,17 +47,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await apiFetch('/auth/me')
       if (result.success && (result.data as any)?.user) {
-        setUser((result.data as any).user)
+        const userData = (result.data as any).user
+        setUser(userData)
+
+        // Set permissions from user data or fetch them
+        if (userData.permissions) {
+          setPermissions(userData.permissions)
+        } else if (userData.isStaff) {
+          // Fetch permissions for staff users
+          try {
+            const permsResult = await apiFetch('/auth/permissions')
+            if (permsResult.success && (permsResult.data as any)?.permissions) {
+              setPermissions((permsResult.data as any).permissions)
+            }
+          } catch {
+            setPermissions([])
+          }
+        } else {
+          setPermissions([])
+        }
+
         if (typeof window !== 'undefined') {
-          localStorage.setItem('user', JSON.stringify((result.data as any).user))
+          localStorage.setItem('user', JSON.stringify(userData))
         }
       } else {
         clearAccessToken()
         setUser(null)
+        setPermissions([])
       }
     } catch (error) {
       clearAccessToken()
       setUser(null)
+      setPermissions([])
     } finally {
       setIsLoading(false)
     }
@@ -102,6 +130,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Store user
         if (result.data.user) {
           setUser(result.data.user)
+
+          // Set permissions
+          if (result.data.user.permissions) {
+            setPermissions(result.data.user.permissions)
+          } else if (result.data.user.isStaff) {
+            // Fetch permissions for staff users
+            try {
+              const permsResult = await apiFetch('/auth/permissions')
+              if (permsResult.success && (permsResult.data as any)?.permissions) {
+                setPermissions((permsResult.data as any).permissions)
+              }
+            } catch {
+              setPermissions([])
+            }
+          } else {
+            setPermissions([])
+          }
+
           if (typeof window !== 'undefined') {
             localStorage.setItem('user', JSON.stringify(result.data.user))
           }
@@ -142,6 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Clear local state
     clearAccessToken()
     setUser(null)
+    setPermissions([])
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user')
     }
@@ -149,6 +196,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auto-logout on session timeout (based on admin setting)
   useSessionTimeout(logout, !!user)
+
+  // Permission checking helpers
+  const hasPermission = useCallback(
+    (permission: string) => {
+      return permissions.includes(permission)
+    },
+    [permissions]
+  )
+
+  const hasAnyPermission = useCallback(
+    (...perms: string[]) => {
+      return perms.some((p) => permissions.includes(p))
+    },
+    [permissions]
+  )
+
+  const hasAllPermissions = useCallback(
+    (...perms: string[]) => {
+      return perms.every((p) => permissions.includes(p))
+    },
+    [permissions]
+  )
 
   const updateUser = useCallback((userData: Partial<User>) => {
     setUser((prevUser) => {
@@ -167,6 +236,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        isStaff: user?.isStaff || false,
+        permissions,
+        hasPermission,
+        hasAnyPermission,
+        hasAllPermissions,
         login,
         register,
         logout,

@@ -23,6 +23,8 @@ export interface User {
   bio: string | null
   role: 'ADMIN' | 'EDITOR' | 'VIEWER'
   avatar: string | null
+  isStaff: boolean
+  permissions?: string[]
   createdAt: string
 }
 
