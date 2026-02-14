@@ -33,20 +33,20 @@ export default function UserManagementPage() {
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-[#1f1f1f]">
-            <div className="flex gap-6">
+          <div>
+            <div className="flex gap-2 overflow-x-auto max-w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' as const }}>
               {tabs.map((tab) => (
                 <PermissionGate key={tab.id} permission={tab.permission}>
                   <button
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-1 py-3 border-b-2 transition-colors ${
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
                       activeTab === tab.id
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-slate-400 hover:text-white'
+                        ? 'bg-primary text-black'
+                        : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'
                     }`}
                   >
-                    <Icon name={tab.icon} size={20} />
-                    <span className="font-medium">{tab.label}</span>
+                    <Icon name={tab.icon} size={18} />
+                    {tab.label}
                   </button>
                 </PermissionGate>
               ))}
@@ -79,7 +79,12 @@ function UsersTab() {
   const { data, isLoading } = useQuery<UsersListResponse>({
     queryKey: ['admin-users', currentPage, searchQuery, selectedRole],
     queryFn: async () => {
-      const filters: any = { page: currentPage, limit, search: searchQuery || undefined }
+      const filters: any = {
+        page: currentPage,
+        limit,
+        search: searchQuery || undefined,
+        isStaff: false, // Only show customers, not staff
+      }
       if (selectedRole !== 'all') filters.role = selectedRole
       const result = await usersApi.list(filters)
       if (result.success && result.data) return result.data
@@ -171,10 +176,10 @@ function UsersTab() {
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
-            { label: 'Total Users', value: stats.totalUsers, icon: 'user', color: 'blue' },
-            { label: 'New Today', value: stats.newUsersToday, icon: 'trending-up', color: 'green' },
-            { label: 'Staff', value: stats.staffCount, icon: 'people', color: 'purple' },
-            { label: 'Customers', value: stats.customerCount, icon: 'shopping-cart', color: 'primary' },
+            { label: 'Total Customers', value: stats.totalCustomers, icon: 'user', color: 'blue' },
+            { label: 'New Today', value: stats.newCustomersToday, icon: 'trending-up', color: 'green' },
+            { label: 'Total Orders', value: stats.totalOrders, icon: 'shopping-cart', color: 'purple' },
+            { label: 'Active Customers', value: stats.activeCustomers, icon: 'check', color: 'primary' },
           ].map((stat) => (
             <div key={stat.label} className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4">
               <div className="flex items-center gap-3">
@@ -208,10 +213,8 @@ function UsersTab() {
             onChange={(e) => { setSelectedRole(e.target.value); setCurrentPage(1) }}
             className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-primary/50"
           >
-            <option value="all">All Roles</option>
+            <option value="all">All Customers</option>
             <option value="VIEWER">Viewer</option>
-            <option value="EDITOR">Editor</option>
-            <option value="ADMIN">Admin</option>
           </select>
         </div>
       </div>
@@ -232,7 +235,6 @@ function UsersTab() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Email</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Role</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Joined</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                   </tr>
@@ -254,11 +256,6 @@ function UsersTab() {
                           user.role === 'ADMIN' ? 'bg-red-500/10 text-red-400' :
                           user.role === 'EDITOR' ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-500/10 text-slate-400'
                         }`}>{user.role}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          user.isStaff ? 'bg-purple-500/10 text-purple-400' : 'bg-green-500/10 text-green-400'
-                        }`}>{user.isStaff ? 'Staff' : 'Customer'}</span>
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-sm">{new Date(user.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-right">
@@ -465,6 +462,14 @@ function StaffTab() {
     },
   })
 
+  const { data: staffStats } = useQuery({
+    queryKey: ['admin-staff-stats'],
+    queryFn: async () => {
+      const result = await staffApi.getStats()
+      return result.success && result.data ? result.data : null
+    },
+  })
+
   async function handleCreate() {
     if (!newStaff.name || !newStaff.email || !newStaff.password) return alert('Fill required fields')
     const result = await staffApi.create(newStaff)
@@ -489,6 +494,29 @@ function StaffTab() {
 
   return (
     <div className="space-y-6">
+      {staffStats && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[
+            { label: 'Total Staff', value: staffStats.totalStaff, icon: 'people', color: 'blue' },
+            { label: 'Admins', value: staffStats.adminCount, icon: 'shield', color: 'red' },
+            { label: 'Editors', value: staffStats.editorCount, icon: 'edit', color: 'green' },
+            { label: 'With Custom Roles', value: staffStats.staffWithRolesCount, icon: 'key', color: 'purple' },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center`}>
+                  <Icon name={stat.icon} size={20} className={`text-${stat.color}-500`} />
+                </div>
+                <div>
+                  <p className="text-slate-400 text-sm">{stat.label}</p>
+                  <p className="text-white text-xl font-bold">{stat.value}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex justify-between">
         <div></div>
         <button onClick={() => setShowCreateModal(true)} className="px-4 py-2 bg-primary text-black rounded-lg font-medium hover:bg-primary/90 flex items-center gap-2">
@@ -512,7 +540,8 @@ function StaffTab() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Staff</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">User Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Staff Role</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Joined</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                 </tr>
@@ -529,6 +558,13 @@ function StaffTab() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-slate-400">{member.email}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        member.role === 'ADMIN' ? 'bg-red-500/10 text-red-400' :
+                        member.role === 'EDITOR' ? 'bg-blue-500/10 text-blue-400' :
+                        'bg-slate-500/10 text-slate-400'
+                      }`}>{member.role}</span>
+                    </td>
                     <td className="px-4 py-3">{member.staffRole ? <span className="px-2 py-1 rounded text-xs bg-purple-500/10 text-purple-400">{member.staffRole.name}</span> : <span className="text-slate-500 text-sm">No role</span>}</td>
                     <td className="px-4 py-3 text-slate-400 text-sm">{new Date(member.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-right">

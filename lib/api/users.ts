@@ -11,10 +11,10 @@ export interface UserFilters {
 }
 
 export interface UserStats {
-  totalUsers: number
-  newUsersToday: number
-  staffCount: number
-  customerCount: number
+  totalCustomers: number
+  newCustomersToday: number
+  totalOrders: number
+  activeCustomers: number
 }
 
 export interface UsersListResponse {

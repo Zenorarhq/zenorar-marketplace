@@ -104,4 +104,16 @@ export const staffApi = {
       method: 'DELETE',
     })
   },
+
+  /**
+   * Get staff statistics
+   */
+  async getStats(): Promise<ApiResponse<{
+    totalStaff: number
+    adminCount: number
+    editorCount: number
+    staffWithRolesCount: number
+  }>> {
+    return apiFetch<any>('/staff/stats')
+  },
 }
