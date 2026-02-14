@@ -239,7 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
-        isStaff: user?.isStaff || false,
+        isStaff: user?.isStaff || user?.role === 'ADMIN' || false,
         permissions,
         hasPermission,
         hasAnyPermission,
