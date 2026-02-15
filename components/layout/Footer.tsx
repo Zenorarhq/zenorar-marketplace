@@ -105,7 +105,7 @@ export default function Footer() {
                 <ul className="space-y-3 sm:space-y-4 text-xs sm:text-sm text-slate-500">
                   {col.links.map((link, li) => (
                     <li key={li}>
-                      <Link href={link.url || '#'} className="hover:text-primary transition-colors">
+                      <Link href={link.url || '#'} prefetch={false} className="hover:text-primary transition-colors">
                         {link.label}
                       </Link>
                     </li>

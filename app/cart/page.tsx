@@ -130,7 +130,7 @@ export default function CartPage() {
   // Final total
   const finalTotal = subtotal + calculatedShipping + calculatedTax
 
-  if (items.length === 0) {
+  if (!items || items.length === 0) {
     return (
       <div className="min-h-screen bg-background-dark flex flex-col">
         <Header />
@@ -184,7 +184,7 @@ export default function CartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-6">
-            {items.map((item) => (
+            {(items || []).map((item) => (
               <div
                 key={`${item.product.id}-${item.license}`}
                 className="bg-surface-dark border border-border-dark rounded-2xl p-6 flex gap-6"
@@ -341,7 +341,7 @@ export default function CartPage() {
               </div>
 
               {/* Validation Errors */}
-              {validationErrors.length > 0 && (
+              {validationErrors && validationErrors.length > 0 && (
                 <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
                   <p className="text-red-400 font-bold mb-2">Cart Validation Issues:</p>
                   <ul className="text-red-400 text-sm space-y-1">
