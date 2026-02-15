@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BrowserProvider, parseEther, formatEther } from 'ethers'
+import { BrowserProvider, parseEther, formatEther, getAddress } from 'ethers'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
@@ -14,18 +14,21 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { apiFetch, getSessionId } from '@/lib/api/client'
 
-// Receiving wallet address - should be set via environment variable in production
-const RECEIVING_WALLET = process.env.NEXT_PUBLIC_RECEIVING_WALLET || '0x742d35Cc6634C0532925a3b844Bc9e7595f5bE21'
-
 // Crypto conversion rates (in production, fetch from API)
 const CRYPTO_RATES: Record<string, number> = {
-  ETH: 0.00042, // 1 USD = 0.00042 ETH (approx $2380/ETH)
-  BNB: 0.0033,  // 1 USD = 0.0033 BNB (approx $300/BNB)
-  MATIC: 1.25,  // 1 USD = 1.25 MATIC (approx $0.80/MATIC)
+  BTC: 0.000024,      // 1 USD = 0.000024 BTC (approx $42,000/BTC)
+  ETH: 0.00042,       // 1 USD = 0.00042 ETH (approx $2,380/ETH)
+  USDT_ERC20: 1.0,    // 1 USD = 1 USDT (stablecoin)
+  USDT_BEP20: 1.0,    // 1 USD = 1 USDT (stablecoin)
+  USDT_TRC20: 1.0,    // 1 USD = 1 USDT (stablecoin)
+  BNB: 0.0033,        // 1 USD = 0.0033 BNB (approx $300/BNB)
+  USDC: 1.0,          // 1 USD = 1 USDC (stablecoin)
+  SOL: 0.0125,        // 1 USD = 0.0125 SOL (approx $80/SOL)
+  MATIC: 1.25,        // 1 USD = 1.25 MATIC (approx $0.80/MATIC) - Legacy support
 }
 
-type PaymentMethod = 'wallet' | 'crypto-processor' | 'card'
-type CryptoNetwork = 'ETH' | 'BNB' | 'MATIC'
+type PaymentMethod = 'wallet' | 'manual-crypto' | 'stripe' | 'paystack' | 'paypal'
+type CryptoNetwork = 'BTC' | 'ETH' | 'USDT_ERC20' | 'USDT_BEP20' | 'USDT_TRC20' | 'BNB' | 'USDC' | 'SOL' | 'MATIC'
 
 interface CardErrors {
   cardNumber?: string
@@ -55,7 +58,7 @@ export default function PaymentPage() {
     cvv: '',
     cardName: '',
   })
-  const [selectedNetwork, setSelectedNetwork] = useState<CryptoNetwork>('ETH')
+  const [selectedNetwork, setSelectedNetwork] = useState<CryptoNetwork>('BTC')
   const [walletState, setWalletState] = useState<WalletState>({
     address: null,
     balance: null,
@@ -67,6 +70,17 @@ export default function PaymentPage() {
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'connecting' | 'paying' | 'confirming' | 'success' | 'error'>('idle')
   const [discountCode, setDiscountCode] = useState('')
   const [discountAmount, setDiscountAmount] = useState(0)
+  const [cryptoWallets, setCryptoWallets] = useState<Record<string, string>>({})
+  const [loadingWallets, setLoadingWallets] = useState(false)
+  const [copiedAddress, setCopiedAddress] = useState(false)
+  const [receivingWallet, setReceivingWallet] = useState<string>(process.env.NEXT_PUBLIC_RECEIVING_WALLET || '0x742d35Cc6634C0532925a3b844Bc9e7595f5bE21')
+  const [enabledProviders, setEnabledProviders] = useState({
+    wallet: true, // MetaMask is always available
+    manualCrypto: false,
+    stripe: false,
+    paystack: false,
+    paypal: false,
+  })
 
   // Load discount from sessionStorage
   useEffect(() => {
@@ -78,6 +92,72 @@ export default function PaymentPage() {
     }
   }, [])
 
+  // Fetch enabled payment providers on mount
+  useEffect(() => {
+    apiFetch('/settings/public')
+      .then((result) => {
+        if (result.success && result.data) {
+          const data = result.data as any
+          const providers = {
+            wallet: data.walletEnabled === true, // Check if wallet is enabled in settings
+            manualCrypto: data.cryptoEnabled === true,
+            stripe: data.stripeEnabled === true,
+            paystack: data.paystackEnabled === true,
+            paypal: data.paypalEnabled === true,
+          }
+          setEnabledProviders(providers)
+
+          // Set receiving wallet address from settings
+          if (data.receivingWalletAddress) {
+            setReceivingWallet(data.receivingWalletAddress)
+          }
+
+          // Set default payment method to first enabled provider
+          if (providers.wallet) {
+            setPaymentMethod('wallet')
+          } else if (providers.manualCrypto) {
+            setPaymentMethod('manual-crypto')
+          } else if (providers.stripe) {
+            setPaymentMethod('stripe')
+          } else if (providers.paystack) {
+            setPaymentMethod('paystack')
+          } else if (providers.paypal) {
+            setPaymentMethod('paypal')
+          }
+        }
+      })
+      .catch((err) => console.error('❌ Failed to load payment providers:', err))
+  }, [])
+
+  // Fetch crypto wallet addresses when manual-crypto is selected
+  useEffect(() => {
+    if (paymentMethod === 'manual-crypto') {
+      setLoadingWallets(true)
+      // Fetch wallet addresses from backend settings
+      apiFetch('/settings/public')
+        .then((result) => {
+          if (result.success && result.data) {
+            const wallets: Record<string, string> = {}
+            const data = result.data as any
+
+            // Map settings to wallet addresses
+            if (data.btcAddress) wallets['BTC'] = data.btcAddress
+            if (data.ethAddress) wallets['ETH'] = data.ethAddress
+            if (data.usdtEthAddress) wallets['USDT_ERC20'] = data.usdtEthAddress
+            if (data.usdtBscAddress) wallets['USDT_BEP20'] = data.usdtBscAddress
+            if (data.usdtTronAddress) wallets['USDT_TRC20'] = data.usdtTronAddress
+            if (data.bnbAddress) wallets['BNB'] = data.bnbAddress
+            if (data.usdcAddress) wallets['USDC'] = data.usdcAddress
+            if (data.solAddress) wallets['SOL'] = data.solAddress
+
+            setCryptoWallets(wallets)
+          }
+        })
+        .catch((err) => console.error('Failed to load wallet addresses:', err))
+        .finally(() => setLoadingWallets(false))
+    }
+  }, [paymentMethod])
+
   // Calculate crypto amount based on USD total (after discount)
   const finalTotal = total - discountAmount
   const getCryptoAmount = (network: CryptoNetwork): string => {
@@ -85,10 +165,10 @@ export default function PaymentPage() {
     return (finalTotal * rate).toFixed(6)
   }
 
-  // Connect wallet
+  // Connect wallet - Supports MetaMask, WalletConnect, Coinbase Wallet, and other Web3 wallets
   const connectWallet = async () => {
     if (typeof window === 'undefined' || !window.ethereum) {
-      setWalletError('Please install MetaMask or another Web3 wallet')
+      setWalletError('Please install a Web3 wallet (MetaMask, Coinbase Wallet, etc.)')
       return
     }
 
@@ -96,6 +176,7 @@ export default function PaymentPage() {
     setWalletError('')
 
     try {
+      // Request account access - works with any EIP-1193 compatible wallet
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       }) as string[]
@@ -104,7 +185,10 @@ export default function PaymentPage() {
         throw new Error('No wallet account found')
       }
 
+      // Use ethers BrowserProvider which handles RPC internally
       const provider = new BrowserProvider(window.ethereum)
+
+      // Get balance using the wallet's provider (avoids RPC URL issues)
       const balance = await provider.getBalance(accounts[0])
       const network = await provider.getNetwork()
 
@@ -117,7 +201,19 @@ export default function PaymentPage() {
       setPaymentStatus('idle')
     } catch (err) {
       console.error('Wallet connection error:', err)
-      setWalletError(err instanceof Error ? err.message : 'Failed to connect wallet')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet'
+
+      // Provide user-friendly error messages
+      if (errorMessage.includes('User rejected') || errorMessage.includes('User denied')) {
+        setWalletError('Connection request was rejected. Please try again.')
+      } else if (errorMessage.includes('No wallet account')) {
+        setWalletError('No wallet accounts found. Please create an account in your wallet.')
+      } else if (errorMessage.includes('Invalid RPC') || errorMessage.includes('RPC URL')) {
+        setWalletError('Your wallet\'s RPC endpoint is invalid. Please switch to a different network (like Polygon, BSC, or Arbitrum) or update your network RPC settings. For Trust Wallet: Settings → Network → Edit → Change RPC URL to https://eth.llamarpc.com')
+      } else {
+        setWalletError('Failed to connect wallet. Please try again or use a different payment method.')
+      }
+
       setPaymentStatus('error')
     }
   }
@@ -132,6 +228,17 @@ export default function PaymentPage() {
     })
     setPaymentStatus('idle')
     setTxHash('')
+  }
+
+  // Copy wallet address to clipboard
+  const copyAddress = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address)
+      setCopiedAddress(true)
+      setTimeout(() => setCopiedAddress(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy address:', err)
+    }
   }
 
   // Process wallet payment
@@ -161,9 +268,14 @@ export default function PaymentPage() {
           }),
         },
         body: JSON.stringify({
+          fullName: shippingData.fullName || 'Guest',
           email: shippingData.email || '',
-          phone: shippingData.phone,
-          customerNote: shippingData.notes,
+          phone: shippingData.phone || '',
+          address: shippingData.address || 'Digital Delivery',
+          city: shippingData.city || 'N/A',
+          state: shippingData.state || 'N/A',
+          zipCode: shippingData.zipCode || '00000',
+          customerNote: shippingData.notes || '',
           paymentMethod: `crypto_${selectedNetwork.toLowerCase()}`,
           discountCode: discountCode || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
@@ -172,7 +284,8 @@ export default function PaymentPage() {
 
       if (!orderResponse.ok) {
         const errorData = await orderResponse.json()
-        throw new Error(errorData.error || 'Failed to create order')
+        console.error('Order creation failed:', errorData)
+        throw new Error(errorData.error || errorData.message || 'Failed to create order')
       }
 
       const orderResult = await orderResponse.json()
@@ -202,9 +315,12 @@ export default function PaymentPage() {
       const signer = await provider.getSigner()
       const cryptoAmount = getCryptoAmount(selectedNetwork)
 
+      // Normalize wallet address to correct checksum format
+      const normalizedAddress = getAddress(receivingWallet)
+
       // Create transaction
       const tx = await signer.sendTransaction({
-        to: RECEIVING_WALLET,
+        to: normalizedAddress,
         value: parseEther(cryptoAmount),
       })
 
@@ -290,7 +406,7 @@ export default function PaymentPage() {
   }
 
   const validateCardPayment = (): boolean => {
-    if (paymentMethod !== 'card') return true
+    if (paymentMethod !== 'stripe') return true
 
     const newErrors: CardErrors = {}
 
@@ -333,8 +449,10 @@ export default function PaymentPage() {
       // Store payment data for the review step
       sessionStorage.setItem('checkoutPayment', JSON.stringify({
         method: paymentMethod,
-        crypto: paymentMethod === 'crypto-processor' ? selectedNetwork : null,
+        crypto: paymentMethod === 'manual-crypto' ? selectedNetwork : null,
+        network: paymentMethod === 'manual-crypto' ? selectedNetwork : null,
         usdAmount: finalTotal,
+        cardData: paymentMethod === 'stripe' ? cardData : null,
       }))
 
       // Simulate payment processing
@@ -438,79 +556,123 @@ export default function PaymentPage() {
           </nav>
         </div>
 
-        <div className="grid grid-cols-12 gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
           {/* Left Column - Payment Form */}
-          <div className="col-span-12 lg:col-span-7">
+          <div className="col-span-1 lg:col-span-7">
             <div className="max-w-2xl">
-              <h1 className="text-3xl font-extrabold text-white mb-2 tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">
                 Payment Method
               </h1>
-              <p className="text-slate-500 mb-10">
+              <p className="text-sm md:text-base text-slate-500 mb-6 md:mb-10">
                 Choose your preferred payment method to complete your order.
               </p>
 
-              <form onSubmit={handleSubmit} className="space-y-8">
+              <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
                 {/* Payment Method Selection */}
-                <div className="grid grid-cols-3 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('wallet')}
-                    className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
-                      paymentMethod === 'wallet' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
-                    }`}
-                  >
-                    <Icon name="wallet" size={28} className="text-primary mb-2" />
-                    <div className="text-white font-bold text-sm">Pay with Wallet</div>
-                    <div className="text-slate-500 text-[10px] mt-1">ETH, BNB, MATIC</div>
-                    {paymentMethod === 'wallet' && (
-                      <div className="absolute top-2 right-2">
-                        <Icon name="check-circle" size={18} className="text-primary" />
-                      </div>
-                    )}
-                  </button>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
+                  {enabledProviders.wallet && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('wallet')}
+                      className={`relative flex flex-col items-center p-3 md:p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
+                        paymentMethod === 'wallet' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
+                      }`}
+                    >
+                      <Icon name="wallet" size={24} className="text-primary mb-1 md:mb-2" />
+                      <div className="text-white font-bold text-xs md:text-sm">Web3 Wallet</div>
+                      <div className="text-slate-500 text-[9px] md:text-[10px] mt-0.5 md:mt-1">ETH, BNB, MATIC</div>
+                      {paymentMethod === 'wallet' && (
+                        <div className="absolute top-2 right-2">
+                          <Icon name="check-circle" size={18} className="text-primary" />
+                        </div>
+                      )}
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('crypto-processor')}
-                    className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
-                      paymentMethod === 'crypto-processor' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
-                    }`}
-                  >
-                    <Icon name="bitcoin" size={28} className="text-primary mb-2" />
-                    <div className="text-white font-bold text-sm">Crypto Invoice</div>
-                    <div className="text-slate-500 text-[10px] mt-1">BTC, ETH, USDT</div>
-                    {paymentMethod === 'crypto-processor' && (
-                      <div className="absolute top-2 right-2">
-                        <Icon name="check-circle" size={18} className="text-primary" />
-                      </div>
-                    )}
-                  </button>
+                  {enabledProviders.manualCrypto && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('manual-crypto')}
+                      className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
+                        paymentMethod === 'manual-crypto' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
+                      }`}
+                    >
+                      <Icon name="bitcoin" size={28} className="text-primary mb-2" />
+                      <div className="text-white font-bold text-sm">Crypto Transfer</div>
+                      <div className="text-slate-500 text-[10px] mt-1">BTC, USDT, SOL</div>
+                      {paymentMethod === 'manual-crypto' && (
+                        <div className="absolute top-2 right-2">
+                          <Icon name="check-circle" size={18} className="text-primary" />
+                        </div>
+                      )}
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('card')}
-                    className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
-                      paymentMethod === 'card' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
-                    }`}
-                  >
-                    <Icon name="credit-card" size={28} className="text-primary mb-2" />
-                    <div className="text-white font-bold text-sm">Credit Card</div>
-                    <div className="text-slate-500 text-[10px] mt-1">Visa, Mastercard</div>
-                    {paymentMethod === 'card' && (
-                      <div className="absolute top-2 right-2">
-                        <Icon name="check-circle" size={18} className="text-primary" />
-                      </div>
-                    )}
-                  </button>
+                  {enabledProviders.stripe && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('stripe')}
+                      className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
+                        paymentMethod === 'stripe' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
+                      }`}
+                    >
+                      <Icon name="credit-card" size={28} className="text-primary mb-2" />
+                      <div className="text-white font-bold text-sm">Credit Card</div>
+                      <div className="text-slate-500 text-[10px] mt-1">Stripe</div>
+                      {paymentMethod === 'stripe' && (
+                        <div className="absolute top-2 right-2">
+                          <Icon name="check-circle" size={18} className="text-primary" />
+                        </div>
+                      )}
+                    </button>
+                  )}
+
+                  {enabledProviders.paystack && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('paystack')}
+                      className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
+                        paymentMethod === 'paystack' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
+                      }`}
+                    >
+                      <Icon name="credit-card" size={28} className="text-primary mb-2" />
+                      <div className="text-white font-bold text-sm">Debit Card</div>
+                      <div className="text-slate-500 text-[10px] mt-1">Paystack</div>
+                      {paymentMethod === 'paystack' && (
+                        <div className="absolute top-2 right-2">
+                          <Icon name="check-circle" size={18} className="text-primary" />
+                        </div>
+                      )}
+                    </button>
+                  )}
+
+                  {enabledProviders.paypal && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('paypal')}
+                      className={`relative flex flex-col items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
+                        paymentMethod === 'paypal' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
+                      }`}
+                    >
+                      <Icon name="wallet" size={28} className="text-primary mb-2" />
+                      <div className="text-white font-bold text-sm">PayPal</div>
+                      <div className="text-slate-500 text-[10px] mt-1">Express Checkout</div>
+                      {paymentMethod === 'paypal' && (
+                        <div className="absolute top-2 right-2">
+                          <Icon name="check-circle" size={18} className="text-primary" />
+                        </div>
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {/* Wallet Payment */}
                 {paymentMethod === 'wallet' && (
-                  <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
+                  <div className="bg-charcoal border border-border-dark rounded-xl p-4 md:p-6 space-y-4 md:space-y-6">
                     {/* Network Selection */}
                     <div>
-                      <h3 className="text-white font-bold mb-3">Select Network</h3>
-                      <div className="grid grid-cols-3 gap-3">
+                      <h3 className="text-white font-bold text-sm md:text-base mb-2 md:mb-3">Select Network</h3>
+                      <div className="grid grid-cols-3 gap-2 md:gap-3">
                         {[
                           { name: 'Ethereum', symbol: 'ETH', icon: 'diamond' },
                           { name: 'BNB Chain', symbol: 'BNB', icon: 'hexagon' },
@@ -536,26 +698,57 @@ export default function PaymentPage() {
                     {/* Wallet Connection */}
                     {!walletState.isConnected ? (
                       <div className="text-center py-4">
-                        <Icon name="wallet" size={48} className="text-slate-600 mx-auto mb-4" />
-                        <p className="text-slate-400 text-sm mb-4">Connect your wallet to pay with crypto</p>
-                        <button
-                          type="button"
-                          onClick={connectWallet}
-                          disabled={paymentStatus === 'connecting'}
-                          className="bg-primary text-black font-bold px-8 py-3 rounded-xl hover:brightness-105 transition-all disabled:opacity-50"
-                        >
-                          {paymentStatus === 'connecting' ? (
-                            <span className="flex items-center gap-2">
-                              <Icon name="loading" size={18} className="animate-spin" />
-                              Connecting...
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-2">
-                              <Icon name="wallet" size={18} />
-                              Connect Wallet
-                            </span>
-                          )}
-                        </button>
+                        <Icon name="wallet" size={40} className="md:size-48 text-slate-600 mx-auto mb-3 md:mb-4" />
+                        <p className="text-slate-400 text-xs md:text-sm mb-3 md:mb-4 px-2">
+                          {typeof window !== 'undefined' && !window.ethereum
+                            ? 'Please install a Web3 wallet to continue'
+                            : 'Connect your wallet to pay with crypto'
+                          }
+                        </p>
+                        {typeof window !== 'undefined' && !window.ethereum ? (
+                          <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                              <a
+                                href="https://metamask.io/download/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-2.5 text-sm rounded-xl transition-all inline-flex items-center gap-2"
+                              >
+                                <Icon name="wallet" size={16} />
+                                Install MetaMask
+                              </a>
+                              <a
+                                href="https://www.coinbase.com/wallet/downloads"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-2.5 text-sm rounded-xl transition-all inline-flex items-center gap-2"
+                              >
+                                <Icon name="wallet" size={16} />
+                                Install Coinbase Wallet
+                              </a>
+                            </div>
+                            <p className="text-slate-500 text-xs">Or use any other Web3 wallet extension</p>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={connectWallet}
+                            disabled={paymentStatus === 'connecting'}
+                            className="bg-primary text-black font-bold px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base rounded-xl hover:brightness-105 transition-all disabled:opacity-50"
+                          >
+                            {paymentStatus === 'connecting' ? (
+                              <span className="flex items-center gap-2">
+                                <Icon name="loading" size={18} className="animate-spin" />
+                                Connecting...
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-2">
+                                <Icon name="wallet" size={18} />
+                                Connect Wallet
+                              </span>
+                            )}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -647,55 +840,92 @@ export default function PaymentPage() {
                   </div>
                 )}
 
-                {/* Crypto Processor Payment (Invoice-based) */}
-                {paymentMethod === 'crypto-processor' && (
-                  <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
+                {/* Manual Crypto Payment */}
+                {paymentMethod === 'manual-crypto' && (
+                  <div className="bg-charcoal border border-border-dark rounded-xl p-4 md:p-6 space-y-4 md:space-y-6">
                     <div className="text-center">
-                      <h3 className="text-white font-bold mb-2">Pay with Crypto Invoice</h3>
-                      <p className="text-slate-500 text-sm">Send crypto to a unique payment address</p>
+                      <h3 className="text-white font-bold text-base md:text-lg mb-1 md:mb-2">Pay with Cryptocurrency</h3>
+                      <p className="text-slate-500 text-xs md:text-sm">Select your crypto and send to our wallet address</p>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { name: 'Bitcoin', symbol: 'BTC', icon: 'bitcoin' },
-                        { name: 'Ethereum', symbol: 'ETH', icon: 'diamond' },
-                        { name: 'USDT', symbol: 'USDT', icon: 'wallet' },
-                      ].map((crypto) => (
-                        <button
-                          key={crypto.symbol}
-                          type="button"
-                          onClick={() => setSelectedNetwork(crypto.symbol as CryptoNetwork)}
-                          className={`p-3 bg-surface-dark border rounded-xl transition-colors text-center ${
-                            selectedNetwork === crypto.symbol
-                              ? 'border-primary ring-2 ring-primary/20'
-                              : 'border-border-dark hover:border-primary/50'
-                          }`}
-                        >
-                          <Icon name={crypto.icon} size={20} className="text-primary mx-auto mb-1" />
-                          <div className="text-white text-xs font-bold">{crypto.symbol}</div>
-                        </button>
-                      ))}
+                    <div>
+                      <h4 className="text-white font-bold mb-2 md:mb-3 text-xs md:text-sm">Select Cryptocurrency</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
+                        {[
+                          { name: 'Bitcoin', symbol: 'BTC', icon: 'bitcoin', label: 'BTC' },
+                          { name: 'Ethereum', symbol: 'ETH', icon: 'diamond', label: 'ETH' },
+                          { name: 'USDT (ERC20)', symbol: 'USDT_ERC20', icon: 'wallet', label: 'USDT (ETH)' },
+                          { name: 'USDT (BEP20)', symbol: 'USDT_BEP20', icon: 'wallet', label: 'USDT (BSC)' },
+                          { name: 'USDT (TRC20)', symbol: 'USDT_TRC20', icon: 'wallet', label: 'USDT (TRX)' },
+                          { name: 'Binance Coin', symbol: 'BNB', icon: 'hexagon', label: 'BNB' },
+                          { name: 'USD Coin', symbol: 'USDC', icon: 'wallet', label: 'USDC' },
+                          { name: 'Solana', symbol: 'SOL', icon: 'layers', label: 'SOL' },
+                        ].map((crypto) => (
+                          <button
+                            key={crypto.symbol}
+                            type="button"
+                            onClick={() => setSelectedNetwork(crypto.symbol as CryptoNetwork)}
+                            className={`p-3 bg-surface-dark border rounded-xl transition-colors text-center ${
+                              selectedNetwork === crypto.symbol
+                                ? 'border-primary ring-2 ring-primary/20'
+                                : 'border-border-dark hover:border-primary/50'
+                            }`}
+                          >
+                            <Icon name={crypto.icon} size={20} className="text-primary mx-auto mb-1" />
+                            <div className="text-white text-xs font-bold">{crypto.label}</div>
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="bg-surface-dark rounded-xl p-4 text-center">
-                      <p className="text-slate-400 text-sm mb-1">Amount to pay:</p>
-                      <p className="text-2xl font-bold text-white">{formatPrice(finalTotal)}</p>
-                      <p className="text-slate-500 text-xs mt-2">
-                        A payment invoice will be generated on the next step
+                    <div className="bg-surface-dark rounded-xl p-4">
+                      <p className="text-slate-400 text-sm mb-3">Amount to pay:</p>
+                      <p className="text-2xl font-bold text-white mb-2">{formatPrice(finalTotal)}</p>
+                      <p className="text-primary text-sm">
+                        ≈ {getCryptoAmount(selectedNetwork)} {selectedNetwork.replace('_', ' ')}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3 p-3 bg-surface-dark rounded-xl">
-                      <Icon name="info" size={20} className="text-slate-400" />
-                      <p className="text-slate-400 text-xs">
-                        Payments are processed securely. You&apos;ll receive a unique address to send your crypto.
+                    <div className="bg-surface-dark rounded-xl p-4">
+                      <p className="text-slate-400 text-xs mb-2">Send to this address:</p>
+                      {loadingWallets ? (
+                        <div className="bg-charcoal rounded-lg p-3 text-center">
+                          <Icon name="loading" size={20} className="text-primary animate-spin mx-auto" />
+                        </div>
+                      ) : cryptoWallets[selectedNetwork] ? (
+                        <div className="space-y-2">
+                          <div className="bg-charcoal rounded-lg p-3 font-mono text-xs text-white break-all">
+                            {cryptoWallets[selectedNetwork]}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyAddress(cryptoWallets[selectedNetwork])}
+                            className="w-full bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                          >
+                            <Icon name={copiedAddress ? "check" : "copy"} size={16} />
+                            {copiedAddress ? "Copied!" : "Copy Address"}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 text-center">
+                          <p className="text-yellow-400 text-xs">
+                            {selectedNetwork.replace('_', ' ')} wallet address not configured. Please contact support or choose another payment method.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                      <Icon name="info" size={20} className="text-yellow-500" />
+                      <p className="text-slate-300 text-xs">
+                        Please send the exact amount to the wallet address. Your order will be processed after payment confirmation.
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* Card Payment */}
-                {paymentMethod === 'card' && (
+                {/* Stripe Payment */}
+                {paymentMethod === 'stripe' && (
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <label htmlFor="cardNumber" className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
@@ -786,6 +1016,79 @@ export default function PaymentPage() {
                   </div>
                 )}
 
+                {/* Paystack Payment */}
+                {paymentMethod === 'paystack' && (
+                  <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
+                    <div className="text-center">
+                      <h3 className="text-white font-bold mb-2">Pay with Paystack</h3>
+                      <p className="text-slate-500 text-sm">Secure card payments for Nigeria, Ghana, Kenya, and South Africa</p>
+                    </div>
+
+                    <div className="bg-surface-dark rounded-xl p-4 text-center">
+                      <p className="text-slate-400 text-sm mb-3">Amount to pay:</p>
+                      <p className="text-2xl font-bold text-white">{formatPrice(finalTotal)}</p>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-surface-dark rounded-xl">
+                      <Icon name="info" size={20} className="text-slate-400" />
+                      <p className="text-slate-400 text-xs">
+                        You&apos;ll be redirected to Paystack&apos;s secure payment page to complete your purchase. Supports Visa, Mastercard, and mobile money.
+                      </p>
+                    </div>
+
+                    <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
+                      <p className="text-primary text-xs font-bold mb-2">Supported Payment Methods:</p>
+                      <div className="grid grid-cols-2 gap-2 text-slate-300 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Icon name="check" size={14} className="text-primary" />
+                          <span>Visa & Mastercard</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Icon name="check" size={14} className="text-primary" />
+                          <span>Verve Cards</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Icon name="check" size={14} className="text-primary" />
+                          <span>Bank Transfer</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Icon name="check" size={14} className="text-primary" />
+                          <span>Mobile Money</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* PayPal Payment */}
+                {paymentMethod === 'paypal' && (
+                  <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
+                    <div className="text-center">
+                      <h3 className="text-white font-bold mb-2">Pay with PayPal</h3>
+                      <p className="text-slate-500 text-sm">Fast and secure checkout with your PayPal account</p>
+                    </div>
+
+                    <div className="bg-surface-dark rounded-xl p-4 text-center">
+                      <p className="text-slate-400 text-sm mb-3">Amount to pay:</p>
+                      <p className="text-2xl font-bold text-white">{formatPrice(finalTotal)}</p>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-surface-dark rounded-xl">
+                      <Icon name="info" size={20} className="text-slate-400" />
+                      <p className="text-slate-400 text-xs">
+                        You&apos;ll be redirected to PayPal to complete your purchase. You can pay with your PayPal balance, linked bank account, or credit/debit card.
+                      </p>
+                    </div>
+
+                    <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
+                      <p className="text-primary text-sm font-bold mb-2">Buyer Protection Included</p>
+                      <p className="text-slate-300 text-xs">
+                        PayPal protects your purchases. Pay confidently with one of the world&apos;s most trusted payment platforms.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Security Notice */}
                 <div className="flex items-center gap-3 p-4 bg-surface-dark rounded-xl border border-border-dark">
                   <Icon name="shield" size={24} className="text-primary flex-shrink-0" />
@@ -830,9 +1133,9 @@ export default function PaymentPage() {
           </div>
 
           {/* Right Column - Order Summary */}
-          <div className="col-span-12 lg:col-span-5">
-            <div className="bg-charcoal border border-border-dark rounded-2xl p-8 sticky top-24">
-              <h2 className="text-xl font-bold text-white mb-6">Order Summary</h2>
+          <div className="col-span-1 lg:col-span-5 order-first lg:order-last">
+            <div className="bg-charcoal border border-border-dark rounded-2xl p-4 md:p-8 lg:sticky lg:top-24">
+              <h2 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6">Order Summary</h2>
 
               <div className="space-y-4 mb-6">
                 {items.map((item) => (
