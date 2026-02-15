@@ -307,6 +307,12 @@ export default function PaymentPage() {
           paymentMethod: `crypto_${selectedNetwork.toLowerCase()}`,
           discountCode: discountCode || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
+          items: items.map((item: any) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            license: item.license,
+            price: item.price,
+          })),
         }),
       })
 
