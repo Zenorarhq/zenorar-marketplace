@@ -8,8 +8,9 @@ import { mediaApi } from '@/lib/api/media'
 import { apiFetch } from '@/lib/api/client'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
+import EmailConfigSection from '@/components/admin/EmailConfigSection'
 
-type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'api'
+type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'api' | 'email'
 
 const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'profile', label: 'Profile', icon: 'user' },
@@ -18,6 +19,7 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'notifications', label: 'Notifications', icon: 'bell' },
   { id: 'payments', label: 'Payments', icon: 'credit-card' },
   { id: 'api', label: 'API Keys', icon: 'key' },
+  { id: 'email', label: 'Email Service', icon: 'mail' },
 ]
 
 export default function AdminSettingsPage() {
@@ -2183,6 +2185,13 @@ export default function AdminSettingsPage() {
             </div>
           )}
         </div>
+
+          {/* Email Service Settings */}
+          {activeTab === 'email' && (
+            <div className="space-y-6">
+              <EmailConfigSection />
+            </div>
+          )}
 
         {/* Save Button */}
         <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6">
