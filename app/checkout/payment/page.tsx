@@ -1189,6 +1189,12 @@ function StripeCardForm({
       if (stripeError) throw new Error(stripeError.message)
 
       if (paymentIntent?.status === 'succeeded') {
+        // Confirm payment on backend so order status updates to CONFIRMED
+        await fetch('/api/payments/stripe/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, paymentIntentId: paymentIntent.id }),
+        })
         onSuccess(orderId, orderNumber)
       } else {
         throw new Error('Payment was not successful')
