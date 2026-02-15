@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api/client'
 import Icon from '@/components/ui/Icon'
 
 interface AdminLayoutProps {
@@ -32,6 +34,61 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter()
   const { user, isLoading, isAuthenticated, isStaff, hasPermission, logout } = useAuth()
   const [desktopCollapsed, setDesktopCollapsed] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
+
+  // Fetch unread notification count
+  const { data: notifData } = useQuery({
+    queryKey: ['admin-notif-count'],
+    queryFn: async () => {
+      const res = await apiFetch<{ count: number }>('/notifications/unread')
+      return res.success ? res.data : null
+    },
+    refetchInterval: 30000,
+    enabled: isAuthenticated,
+  })
+
+  // Fetch recent notifications for dropdown
+  const { data: notifList } = useQuery({
+    queryKey: ['admin-notif-list'],
+    queryFn: async () => {
+      const res = await apiFetch<any>('/notifications?limit=5')
+      return res.success ? res.data : null
+    },
+    enabled: isAuthenticated && showNotifications,
+  })
+
+  // Fetch unread chat count
+  const { data: chatData } = useQuery({
+    queryKey: ['admin-chat-count'],
+    queryFn: async () => {
+      const res = await apiFetch<{ count: number }>('/chat/unread')
+      return res.success ? res.data : null
+    },
+    refetchInterval: 30000,
+    enabled: isAuthenticated,
+  })
+
+  const queryClient = useQueryClient()
+  const unreadNotifs = notifData?.count || 0
+  const unreadChats = chatData?.count || 0
+
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const markAllRead = async () => {
+    await apiFetch('/notifications/read-all', { method: 'POST' })
+    queryClient.invalidateQueries({ queryKey: ['admin-notif-count'] })
+    queryClient.invalidateQueries({ queryKey: ['admin-notif-list'] })
+  }
 
   // Filter nav items based on permissions
   const visibleNavItems = navItems.filter((item: any) => {
@@ -175,39 +232,74 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       }`}>
         {/* Top Header */}
         <header className="h-16 bg-[#0a0a0a] border-b border-[#1f1f1f] flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
-          {/* Left: Toggle (desktop only) + Search */}
+          {/* Left: Toggle */}
           <div className="flex items-center gap-4 flex-1">
-            {/* Hamburger - only visible on large screens */}
             <button
               onClick={() => setDesktopCollapsed(!desktopCollapsed)}
               className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors hidden lg:flex"
             >
               <Icon name="menu" size={20} />
             </button>
-
-            {/* Search bar - always visible */}
-            <div className="relative flex-1 max-w-md">
-              <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-              />
-            </div>
           </div>
 
           {/* Right: Notifications & Messages */}
           <div className="flex items-center gap-2 ml-4">
-            <button className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
-              <Icon name="bell" size={20} />
-              {/* Notification badge */}
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-            </button>
-            <button className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+            {/* Bell - Notifications */}
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <Icon name="bell" size={20} />
+                {unreadNotifs > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1">
+                    {unreadNotifs > 99 ? '99+' : unreadNotifs}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="flex items-center justify-between p-4 border-b border-[#1f1f1f]">
+                    <h4 className="text-white font-semibold text-sm">Notifications</h4>
+                    {unreadNotifs > 0 && (
+                      <button onClick={markAllRead} className="text-primary text-xs hover:underline">
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {notifList?.notifications?.length > 0 ? (
+                      notifList.notifications.map((n: any) => (
+                        <div key={n.id} className={`p-3 border-b border-[#1f1f1f] hover:bg-white/5 ${!n.isRead ? 'bg-primary/5' : ''}`}>
+                          <p className="text-white text-sm">{n.title}</p>
+                          <p className="text-slate-400 text-xs mt-0.5">{n.message}</p>
+                          <p className="text-slate-500 text-[10px] mt-1">
+                            {new Date(n.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-6 text-center text-slate-500 text-sm">No notifications</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Mail - Chat Messages */}
+            <Link
+              href="/admin/chat"
+              className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+            >
               <Icon name="mail" size={20} />
-              {/* Message badge */}
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-            </button>
+              {unreadChats > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1">
+                  {unreadChats > 99 ? '99+' : unreadChats}
+                </span>
+              )}
+            </Link>
           </div>
         </header>
 

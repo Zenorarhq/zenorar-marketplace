@@ -7,7 +7,21 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { analyticsApi, DashboardStats } from '@/lib/api/analytics'
 import { Product } from '@/lib/api/products'
+import { ordersApi, Order } from '@/lib/api/orders'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
+
+function getTimeAgo(dateStr: string): string {
+  const now = Date.now()
+  const diff = now - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(dateStr).toLocaleDateString()
+}
 
 export default function AdminDashboard() {
   const queryClient = useQueryClient()
@@ -36,12 +50,38 @@ export default function AdminDashboard() {
     },
   })
 
+  // Fetch daily revenue for sales chart
+  const { data: dailyRevenue = [] } = useQuery({
+    queryKey: ['dashboard-daily-revenue'],
+    queryFn: async () => {
+      const result = await analyticsApi.getSalesChart(7)
+      if (result.success && result.data) {
+        return result.data
+      }
+      return []
+    },
+  })
+
+  // Fetch recent orders for activity feed
+  const { data: recentOrders = [] } = useQuery({
+    queryKey: ['dashboard-recent-orders'],
+    queryFn: async () => {
+      const result = await ordersApi.list({ limit: 5, sortBy: 'createdAt', sortOrder: 'desc' })
+      if (result.success && result.data) {
+        return result.data
+      }
+      return []
+    },
+  })
+
   const loading = statsLoading
   const error = statsError ? String(statsError) : ''
 
   function loadDashboardData() {
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard-top-products'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-daily-revenue'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-recent-orders'] })
   }
 
   if (loading) {
@@ -158,22 +198,32 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          {/* Chart Placeholder */}
+          {/* Revenue Chart */}
           <div className="h-48 flex items-end justify-between gap-2 px-4">
-            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day, i) => {
-              const heights = [40, 60, 45, 80, 65, 55, 70]
-              return (
-                <div key={day} className="flex-1 flex flex-col items-center gap-2">
-                  <div
-                    className="w-full bg-gradient-to-t from-primary/20 to-primary/5 rounded-t-lg relative"
-                    style={{ height: `${heights[i]}%` }}
-                  >
-                    <div className="absolute inset-x-0 top-0 h-1 bg-primary rounded-t-lg" />
+            {(() => {
+              const maxRevenue = Math.max(...dailyRevenue.map((d: any) => d.revenue || 0), 1)
+              return dailyRevenue.map((day: any, i: number) => {
+                const height = Math.max((day.revenue / maxRevenue) * 100, 2)
+                const dayLabel = new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                    <div
+                      className="w-full bg-gradient-to-t from-primary/20 to-primary/5 rounded-t-lg relative group"
+                      style={{ height: `${height}%` }}
+                      title={`${formatCurrency(day.revenue)}`}
+                    >
+                      <div className="absolute inset-x-0 top-0 h-1 bg-primary rounded-t-lg" />
+                    </div>
+                    <span className="text-slate-500 text-xs">{dayLabel}</span>
                   </div>
-                  <span className="text-slate-500 text-xs">{day}</span>
-                </div>
-              )
-            })}
+                )
+              })
+            })()}
+            {dailyRevenue.length === 0 && (
+              <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
+                No revenue data yet
+              </div>
+            )}
           </div>
         </div>
 
@@ -238,10 +288,33 @@ export default function AdminDashboard() {
             </Link>
           </div>
 
-          <div className="p-5">
-            <p className="text-slate-400 text-sm text-center py-8">
-              Activity tracking coming soon
-            </p>
+          <div className="divide-y divide-[#1f1f1f]">
+            {recentOrders.length > 0 ? (
+              recentOrders.map((order: any) => {
+                const timeAgo = getTimeAgo(order.createdAt)
+                const statusColor = order.status === 'CONFIRMED' || order.status === 'DELIVERED' ? 'text-green-400' :
+                  order.status === 'CANCELLED' ? 'text-red-400' : 'text-yellow-400'
+                return (
+                  <div key={order.id} className="flex items-center gap-3 p-4 hover:bg-white/5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center flex-shrink-0">
+                      <Icon name="shopping-cart" size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm truncate">
+                        Order <span className="text-primary">#{order.orderNumber}</span> — {formatCurrency(order.total)}
+                      </p>
+                      <p className="text-slate-500 text-xs">
+                        <span className={statusColor}>{order.status}</span> · {timeAgo}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="p-8 text-center">
+                <p className="text-slate-400 text-sm">No recent orders</p>
+              </div>
+            )}
           </div>
         </div>
 

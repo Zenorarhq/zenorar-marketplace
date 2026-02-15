@@ -197,6 +197,17 @@ export async function parseRequestBody<T = any>(request: NextRequest): Promise<T
   }
 }
 
+// Legacy verifyAuth helper used by library API routes
+// Wraps authenticateRequest with the { valid, payload } interface
+export async function verifyAuth(request: Request) {
+  const nextReq = request as unknown as NextRequest
+  const user = await authenticateRequest(nextReq)
+  if (!user) {
+    return { valid: false, payload: null }
+  }
+  return { valid: true, payload: { userId: user.id, email: user.email } }
+}
+
 // Validate required fields in request body
 export function validateRequiredFields(
   body: any,

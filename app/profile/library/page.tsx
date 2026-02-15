@@ -1,83 +1,117 @@
 'use client'
 
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
+import { libraryApi, LibraryItem } from '@/lib/api/library'
 
 type LibraryFilter = 'all' | 'scripts' | 'esims' | 'tools' | 'api'
 
-interface LibraryItem {
-  id: string
-  name: string
-  description: string
-  category: 'scripts' | 'esims' | 'tools' | 'api'
-  icon: string
-  purchaseDate: string
-  version?: string
-  expiresAt?: string
-  downloadCount?: number
-  status: 'active' | 'expired' | 'update-available'
-}
-
-const libraryItems: LibraryItem[] = [
-  {
-    id: '1',
-    name: 'Premium Scripts Bundle',
-    description: 'Ultimate Edition with all automation scripts and lifetime updates',
-    category: 'scripts',
-    icon: 'code',
-    purchaseDate: 'Oct 24, 2023',
-    version: 'v3.2.1',
-    downloadCount: 5,
-    status: 'update-available',
-  },
-  {
-    id: '2',
-    name: 'Global eSIM Data Plan',
-    description: '50GB worldwide coverage with 30-day validity',
-    category: 'esims',
-    icon: 'sim-card',
-    purchaseDate: 'Oct 26, 2023',
-    expiresAt: 'Nov 26, 2023',
-    status: 'active',
-  },
-  {
-    id: '3',
-    name: 'Web Scraping Toolkit',
-    description: 'Advanced web scraping tools with proxy rotation',
-    category: 'tools',
-    icon: 'terminal',
-    purchaseDate: 'Sep 15, 2023',
-    version: 'v2.1.0',
-    downloadCount: 3,
-    status: 'active',
-  },
-  {
-    id: '4',
-    name: 'API Access - Enterprise',
-    description: 'Unlimited API requests with premium support',
-    category: 'api',
-    icon: 'api',
-    purchaseDate: 'Aug 10, 2023',
-    expiresAt: 'Sep 10, 2023',
-    status: 'expired',
-  },
-  {
-    id: '5',
-    name: 'Discord Bot Framework',
-    description: 'Complete Discord bot development framework with examples',
-    category: 'scripts',
-    icon: 'code',
-    purchaseDate: 'Oct 01, 2023',
-    version: 'v1.8.2',
-    downloadCount: 2,
-    status: 'active',
-  },
-]
-
 export default function LibraryPage() {
+  const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<LibraryFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [loadingAction, setLoadingAction] = useState<string | null>(null)
+
+  // Fetch library data from API
+  const {
+    data: libraryItems = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['user-library'],
+    queryFn: async () => {
+      const result = await libraryApi.getLibrary()
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to fetch library')
+      }
+      return result.data
+    },
+  })
+
+  // Handler for Download/Update button
+  const handleDownload = async (productId: string, productName: string) => {
+    try {
+      setLoadingAction(`download-${productId}`)
+      const result = await libraryApi.downloadProduct(productId)
+
+      if (result.success && result.data) {
+        // Open download URL in new tab
+        window.open(result.data.url, '_blank')
+        alert(`${productName} download started!`)
+      } else {
+        alert(result.error || 'Download failed')
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to download product')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  // Handler for View QR button (eSIMs)
+  const handleViewQR = async (productId: string, productName: string) => {
+    try {
+      setLoadingAction(`qr-${productId}`)
+      const result = await libraryApi.getQRCode(productId)
+
+      if (result.success && result.data) {
+        // Show QR code in modal or alert (can be enhanced with a modal component)
+        const qrData = result.data.qrCodeData
+        const activationCode = result.data.activationCode
+        alert(`eSIM Activation\n\nScan this QR code:\n${qrData}\n\nActivation Code:\n${activationCode}\n\nExpires: ${result.data.expiresAt}`)
+        // TODO: Show in a proper modal with actual QR code image
+      } else {
+        alert(result.error || 'Failed to generate QR code')
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to view QR code')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  // Handler for API Key button
+  const handleApiKey = async (productId: string, productName: string) => {
+    try {
+      setLoadingAction(`api-${productId}`)
+      const result = await libraryApi.getApiKey(productId)
+
+      if (result.success && result.data) {
+        // Copy to clipboard and show
+        await navigator.clipboard.writeText(result.data.key)
+        alert(`API Key copied to clipboard!\n\nKey: ${result.data.key}\n\nProduct: ${productName}`)
+        // TODO: Show in a proper modal with copy button
+      } else {
+        alert(result.error || 'Failed to get API key')
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to retrieve API key')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  // Handler for Renew button
+  const handleRenew = async (productId: string, productName: string) => {
+    try {
+      setLoadingAction(`renew-${productId}`)
+      const result = await libraryApi.renewSubscription(productId)
+
+      if (result.success && result.data) {
+        alert(`${productName} added to cart for renewal!`)
+        router.push('/cart')
+      } else {
+        alert(result.error || 'Failed to renew product')
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to renew subscription')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
 
   const filteredItems = libraryItems.filter((item) => {
     const matchesFilter = activeFilter === 'all' || item.category === activeFilter
@@ -170,10 +204,25 @@ export default function LibraryPage() {
 
       {/* Library Items */}
       <div className="space-y-4">
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-slate-400">Loading your library...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-16">
+            <Icon name="alert-circle" size={64} className="text-red-500 mx-auto mb-4" />
+            <p className="text-slate-400 mb-2">Failed to load library</p>
+            <p className="text-slate-500 text-sm">{(error as Error).message}</p>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="text-center py-16">
             <Icon name="library" size={64} className="text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400">No items found in your library.</p>
+            <p className="text-slate-400">
+              {libraryItems.length === 0
+                ? 'No purchased products yet. Visit the marketplace to get started!'
+                : 'No items found in your library.'}
+            </p>
           </div>
         ) : (
           filteredItems.map((item) => (
@@ -225,28 +274,80 @@ export default function LibraryPage() {
                 {/* Actions */}
                 <div className="flex gap-3 flex-shrink-0">
                   {item.status === 'expired' ? (
-                    <button className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all">
-                      <Icon name="refresh" size={18} />
-                      Renew
+                    <button
+                      onClick={() => handleRenew(item.id, item.name)}
+                      disabled={loadingAction === `renew-${item.id}`}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loadingAction === `renew-${item.id}` ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="refresh" size={18} />
+                          Renew
+                        </>
+                      )}
                     </button>
                   ) : (
                     <>
                       {(item.category === 'scripts' || item.category === 'tools') && (
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all">
-                          <Icon name="download" size={18} />
-                          {item.status === 'update-available' ? 'Update' : 'Download'}
+                        <button
+                          onClick={() => handleDownload(item.id, item.name)}
+                          disabled={loadingAction === `download-${item.id}`}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {loadingAction === `download-${item.id}` ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <Icon name="download" size={18} />
+                              {item.status === 'update-available' ? 'Update' : 'Download'}
+                            </>
+                          )}
                         </button>
                       )}
                       {item.category === 'esims' && (
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all">
-                          <Icon name="qr" size={18} />
-                          View QR
+                        <button
+                          onClick={() => handleViewQR(item.id, item.name)}
+                          disabled={loadingAction === `qr-${item.id}`}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {loadingAction === `qr-${item.id}` ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <Icon name="qr" size={18} />
+                              View QR
+                            </>
+                          )}
                         </button>
                       )}
                       {item.category === 'api' && (
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all">
-                          <Icon name="key" size={18} />
-                          API Key
+                        <button
+                          onClick={() => handleApiKey(item.id, item.name)}
+                          disabled={loadingAction === `api-${item.id}`}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {loadingAction === `api-${item.id}` ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <Icon name="key" size={18} />
+                              API Key
+                            </>
+                          )}
                         </button>
                       )}
                       <button className="flex items-center gap-2 px-4 py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors">

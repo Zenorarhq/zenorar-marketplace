@@ -430,10 +430,12 @@ export default function OrdersPage() {
                         </button>
                       )}
                       <button
-                        onClick={() => router.push(`/profile/orders/${order.id}`)}
+                        onClick={() => {
+                          window.location.href = `/api/orders/${order.id}/invoice`
+                        }}
                         className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white text-sm font-medium transition-colors"
                       >
-                        <Icon name="file" size={18} /> Invoice
+                        <Icon name="download" size={18} /> Download Invoice
                       </button>
                       <button
                         onClick={() => router.push(`/profile/orders/${order.id}`)}

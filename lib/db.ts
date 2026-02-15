@@ -16,3 +16,13 @@ const pool = new Pool({
 });
 
 export default pool;
+
+// Helper for direct SQL queries (used by library API routes)
+export async function query(text: string, params: any[] = []) {
+  const client = await pool.connect();
+  try {
+    return await client.query(text, params);
+  } finally {
+    client.release();
+  }
+}
