@@ -56,7 +56,7 @@ const DEFAULT_FOOTER: FooterConfig = {
   columns: [
     { title: 'Products', links: [{ label: 'Premium Scripts', url: '/products?category=scripts' }, { label: 'Global eSIMs', url: '/products?category=esims' }] },
     { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }] },
-    { title: 'Community', links: [{ label: 'Developer Forum', url: '/forum' }, { label: 'Discord Server', url: '/discord' }] },
+    { title: 'Community', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }] },
   ],
   showNewsletter: true, newsletterTitle: 'Newsletter', socialLinks: [], copyrightText: '',
   backgroundColor: '', textColor: '', padding: 'default', columnGap: 'default', bottomLinks: [],

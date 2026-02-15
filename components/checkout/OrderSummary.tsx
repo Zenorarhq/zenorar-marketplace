@@ -16,7 +16,7 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
   const { formatPrice } = usePreferences()
 
   // Use only actual cart items
-  const displayItems = cartItems.map((item) => ({
+  const displayItems = (cartItems || []).map((item) => ({
     id: item.product.id,
     name: item.product.name,
     icon: item.product.icon || 'code',

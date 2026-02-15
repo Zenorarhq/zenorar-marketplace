@@ -58,7 +58,7 @@ export default function CheckoutPage() {
 
   // Redirect to cart if cart is empty
   useEffect(() => {
-    if (!authLoading && items.length === 0) {
+    if (!authLoading && (!items || items.length === 0)) {
       router.push('/cart')
     }
   }, [items, authLoading, router])
@@ -192,7 +192,7 @@ export default function CheckoutPage() {
   }
 
   // Show empty cart message
-  if (items.length === 0) {
+  if (!items || items.length === 0) {
     return (
       <div className="min-h-screen bg-background-dark flex flex-col">
         <Header />

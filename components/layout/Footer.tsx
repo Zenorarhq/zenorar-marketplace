@@ -98,7 +98,7 @@ export default function Footer() {
             {(config?.columns && config.columns.length > 0 ? config.columns : [
               { title: 'Products', links: [{ label: 'Premium Scripts', url: '/products?category=scripts' }, { label: 'Global eSIMs', url: '/products?category=esims' }, { label: 'Virtual Numbers', url: '/products?category=virtual-numbers' }, { label: 'API Services', url: '/products?category=api' }] },
               { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }, { label: 'My Account', url: '/profile' }, { label: 'Terms of Service', url: '/terms' }, { label: 'Privacy Policy', url: '/privacy' }] },
-              { title: 'Community', links: [{ label: 'Developer Forum', url: '/forum' }, { label: 'Discord Server', url: '/discord' }, { label: 'Partner Program', url: '/partners' }] },
+              { title: 'Community', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }] },
             ]).map((col, i) => (
               <div key={i} className={i === 2 ? 'col-span-2 sm:col-span-1' : ''}>
                 <h4 className="font-bold mb-4 sm:mb-6 text-white text-sm sm:text-base">{col.title}</h4>
