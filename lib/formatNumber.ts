@@ -8,16 +8,18 @@
  * 1000000000 → 1B
  */
 export function formatNumber(num: number, decimals: number = 1): string {
-  if (num >= 1000000000) {
-    return (num / 1000000000).toFixed(decimals).replace(/\.0$/, '') + 'B'
+  if (num == null || (typeof num !== 'number' && isNaN(Number(num)))) return '0'
+  const n = typeof num === 'number' ? num : Number(num)
+  if (n >= 1000000000) {
+    return (n / 1000000000).toFixed(decimals).replace(/\.0$/, '') + 'B'
   }
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(decimals).replace(/\.0$/, '') + 'M'
+  if (n >= 1000000) {
+    return (n / 1000000).toFixed(decimals).replace(/\.0$/, '') + 'M'
   }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(decimals).replace(/\.0$/, '') + 'K'
+  if (n >= 1000) {
+    return (n / 1000).toFixed(decimals).replace(/\.0$/, '') + 'K'
   }
-  return num.toString()
+  return n.toString()
 }
 
 /**

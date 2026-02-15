@@ -318,9 +318,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // For authenticated users, call backend validation
     try {
-      const result = await apiFetch<{ valid: boolean; issues: Array<{ productId: string; issue: string }> }>('/cart/validate')
+      const result = await apiFetch<any>('/cart/validate')
       if (result.success && result.data) {
-        return result.data
+        const data = result.data
+        return {
+          valid: data.valid ?? data.isValid ?? false,
+          issues: data.issues ?? (data.errors || []).map((e: string) => ({ productId: '', issue: e }))
+        }
       }
       return { valid: false, issues: [{ productId: '', issue: 'Failed to validate cart' }] }
     } catch (error) {

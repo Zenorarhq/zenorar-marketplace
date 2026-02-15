@@ -167,7 +167,7 @@ function SuccessPageContent() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Total:</span>
-                  <span className="text-white font-bold">${orderData.total.toFixed(2)}</span>
+                  <span className="text-white font-bold">${Number(orderData.total).toFixed(2)}</span>
                 </div>
                 {orderData.items && orderData.items.length > 0 && (
                   <div className="pt-3 border-t border-border-dark">
@@ -178,7 +178,7 @@ function SuccessPageContent() {
                           <span className="text-white">
                             {item.product.name} <span className="text-slate-500">x{item.quantity}</span>
                           </span>
-                          <span className="text-slate-400">${(item.price * item.quantity).toFixed(2)}</span>
+                          <span className="text-slate-400">${(Number(item.price) * item.quantity).toFixed(2)}</span>
                         </li>
                       ))}
                     </ul>

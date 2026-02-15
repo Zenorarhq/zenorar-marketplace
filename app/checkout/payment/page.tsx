@@ -698,7 +698,7 @@ export default function PaymentPage() {
                     {/* Wallet Connection */}
                     {!walletState.isConnected ? (
                       <div className="text-center py-4">
-                        <Icon name="wallet" size={40} className="md:size-48 text-slate-600 mx-auto mb-3 md:mb-4" />
+                        <Icon name="wallet" size={40} className="md:w-48 md:h-48 text-slate-600 mx-auto mb-3 md:mb-4" />
                         <p className="text-slate-400 text-xs md:text-sm mb-3 md:mb-4 px-2">
                           {typeof window !== 'undefined' && !window.ethereum
                             ? 'Please install a Web3 wallet to continue'

@@ -149,7 +149,7 @@ export default function ReviewPage() {
                   {items.map((item) => (
                     <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-surface-dark rounded-xl">
                       <div className="w-12 h-12 md:w-16 md:h-16 bg-charcoal rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Icon name={item.product.icon || 'code'} size={20} className="md:size-24 text-slate-500" />
+                        <Icon name={item.product.icon || 'code'} size={20} className="md:w-24 md:h-24 text-slate-500" />
                       </div>
                       <div className="flex-grow min-w-0">
                         <p className="text-white font-bold text-sm md:text-base truncate">{item.product.name}</p>
@@ -226,7 +226,7 @@ export default function ReviewPage() {
                     href="/checkout/payment"
                     className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-3 md:py-4 text-sm md:text-base rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2"
                   >
-                    <Icon name="arrow-left" size={16} className="md:size-18" />
+                    <Icon name="arrow-left" size={16} className="md:w-[18px] md:h-[18px]" />
                     Back
                   </Link>
                   <button
