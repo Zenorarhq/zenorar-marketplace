@@ -1349,25 +1349,25 @@ function PaystackCardForm({
         amount: Math.round(amount * 100),
         currency: 'USD',
         ref: `ORDER_${orderNumber}_${Date.now()}`,
-        callback: async (response: any) => {
-          try {
-            // 3. Verify payment
-            const verifyResponse = await fetch(`${apiUrl}/payments/paystack/verify`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ reference: response.reference }),
+        callback: (response: any) => {
+          // Wrap async verification in a non-async callback (Paystack requires a plain function)
+          fetch(`${apiUrl}/payments/paystack/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reference: response.reference }),
+          })
+            .then(verifyResponse => {
+              if (verifyResponse.ok) {
+                onSuccess(orderId, orderNumber)
+              } else {
+                setError('Payment verification failed. Please contact support.')
+                setProcessing(false)
+              }
             })
-
-            if (verifyResponse.ok) {
-              onSuccess(orderId, orderNumber)
-            } else {
+            .catch(() => {
               setError('Payment verification failed. Please contact support.')
               setProcessing(false)
-            }
-          } catch {
-            setError('Payment verification failed. Please contact support.')
-            setProcessing(false)
-          }
+            })
         },
         onClose: () => {
           setProcessing(false)
