@@ -138,27 +138,17 @@ export default function CheckoutPage() {
       newErrors.email = 'Please enter a valid email address'
     }
 
-    if (!formData.address.trim()) {
-      newErrors.address = 'Shipping address is required'
-    }
-
-    if (!formData.city.trim()) {
-      newErrors.city = 'City is required'
-    }
-
-    if (!formData.state.trim()) {
-      newErrors.state = 'State/Province is required'
-    }
-
-    if (!formData.zipCode.trim()) {
-      newErrors.zipCode = 'Zip code is required'
-    }
-
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required'
     } else if (!/^[\d\s\-+()]+$/.test(formData.phone)) {
       newErrors.phone = 'Please enter a valid phone number'
     }
+
+    // Auto-fill hidden fields for digital delivery
+    if (!formData.address) formData.address = 'Digital Delivery'
+    if (!formData.city) formData.city = 'N/A'
+    if (!formData.state) formData.state = 'N/A'
+    if (!formData.zipCode) formData.zipCode = '00000'
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -275,21 +265,21 @@ export default function CheckoutPage() {
           </nav>
         </div>
 
-        <div className="grid grid-cols-12 gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
           {/* Left Column - Form */}
-          <div className="col-span-12 lg:col-span-7">
+          <div className="col-span-1 lg:col-span-7">
             <div className="max-w-2xl">
-              <h1 className="text-3xl font-extrabold text-white mb-2 tracking-tight">
-                Shipping Details
+              <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">
+                Contact Information
               </h1>
-              <p className="text-slate-500 mb-10">
-                Please enter your delivery information to proceed with your order.
+              <p className="text-sm md:text-base text-slate-500 mb-6 md:mb-10">
+                Please enter your contact information. Digital products will be delivered to your email instantly.
               </p>
 
-              <form onSubmit={handleSubmit} className="space-y-8">
+              <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
                 {/* Name & Email */}
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-4 md:space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div className="space-y-2">
                       <label htmlFor="fullName" className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
                         Full Name
@@ -332,83 +322,11 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  {/* Address */}
-                  <div className="space-y-2">
-                    <label htmlFor="address" className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
-                      Shipping Address
-                    </label>
-                    <input
-                      id="address"
-                      name="address"
-                      type="text"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      placeholder="Street address, apartment, suite"
-                      autoComplete="street-address"
-                      className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all mb-4 ${
-                        errors.address ? 'border-red-500' : 'border-border-dark'
-                      }`}
-                    />
-                    {errors.address && (
-                      <p className="text-red-400 text-xs mb-2">{errors.address}</p>
-                    )}
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label htmlFor="city" className="sr-only">City</label>
-                        <input
-                          id="city"
-                          name="city"
-                          type="text"
-                          value={formData.city}
-                          onChange={handleInputChange}
-                          placeholder="City"
-                          autoComplete="address-level2"
-                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
-                            errors.city ? 'border-red-500' : 'border-border-dark'
-                          }`}
-                        />
-                        {errors.city && (
-                          <p className="text-red-400 text-xs mt-1">{errors.city}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label htmlFor="state" className="sr-only">State/Province</label>
-                        <input
-                          id="state"
-                          name="state"
-                          type="text"
-                          value={formData.state}
-                          onChange={handleInputChange}
-                          placeholder="State/Province"
-                          autoComplete="address-level1"
-                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
-                            errors.state ? 'border-red-500' : 'border-border-dark'
-                          }`}
-                        />
-                        {errors.state && (
-                          <p className="text-red-400 text-xs mt-1">{errors.state}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label htmlFor="zipCode" className="sr-only">Zip Code</label>
-                        <input
-                          id="zipCode"
-                          name="zipCode"
-                          type="text"
-                          value={formData.zipCode}
-                          onChange={handleInputChange}
-                          placeholder="Zip Code"
-                          autoComplete="postal-code"
-                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
-                            errors.zipCode ? 'border-red-500' : 'border-border-dark'
-                          }`}
-                        />
-                        {errors.zipCode && (
-                          <p className="text-red-400 text-xs mt-1">{errors.zipCode}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  {/* Hidden for digital products - kept for validation compatibility */}
+                  <input type="hidden" name="address" value="Digital Delivery" />
+                  <input type="hidden" name="city" value="N/A" />
+                  <input type="hidden" name="state" value="N/A" />
+                  <input type="hidden" name="zipCode" value="00000" />
 
                   {/* Phone */}
                   <div className="space-y-2">
@@ -438,55 +356,22 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Delivery Method */}
-                <fieldset className="pt-6 border-t border-border-dark">
-                  <legend className="text-white font-bold mb-4">Delivery Method</legend>
-                  <div className="grid grid-cols-2 gap-4">
-                    <label
-                      className={`relative flex items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
-                        formData.deliveryMethod === 'standard' ? 'border-primary' : 'border-border-dark hover:border-slate-700'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="deliveryMethod"
-                        value="standard"
-                        checked={formData.deliveryMethod === 'standard'}
-                        onChange={() => handleDeliveryChange('standard')}
-                        className="text-primary bg-background-dark border-border-dark focus:ring-primary w-5 h-5"
-                      />
-                      <div className="ml-4">
-                        <div className="text-white font-bold text-sm">Standard Shipping</div>
-                        <div className="text-slate-500 text-xs mt-0.5">3-5 business days</div>
-                      </div>
-                      <span className="ml-auto text-white font-bold text-sm">Free</span>
-                    </label>
-
-                    <label
-                      className={`relative flex items-center p-5 bg-charcoal border rounded-xl cursor-pointer transition-colors ${
-                        formData.deliveryMethod === 'express' ? 'border-primary' : 'border-border-dark hover:border-slate-700'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="deliveryMethod"
-                        value="express"
-                        checked={formData.deliveryMethod === 'express'}
-                        onChange={() => handleDeliveryChange('express')}
-                        className="text-primary bg-background-dark border-border-dark focus:ring-primary w-5 h-5"
-                      />
-                      <div className="ml-4">
-                        <div className="text-white font-bold text-sm">Express Delivery</div>
-                        <div className="text-slate-500 text-xs mt-0.5">1-2 business days</div>
-                      </div>
-                      <span className="ml-auto text-white font-bold text-sm">+$15.00</span>
-                    </label>
+                {/* Digital Delivery Info */}
+                <div className="pt-4 md:pt-6 border-t border-border-dark">
+                  <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
+                    <Icon name="flash" size={20} className="text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-white font-bold text-sm mb-1">Instant Digital Delivery</p>
+                      <p className="text-slate-300 text-xs">
+                        Your purchase will be delivered to your email immediately after payment confirmation. No shipping required!
+                      </p>
+                    </div>
                   </div>
-                </fieldset>
+                </div>
 
                 {/* Discount Code */}
-                <div className="pt-6 border-t border-border-dark">
-                  <label htmlFor="discount" className="block text-white font-bold mb-4">
+                <div className="pt-4 md:pt-6 border-t border-border-dark">
+                  <label htmlFor="discount" className="block text-white font-bold text-sm md:text-base mb-3 md:mb-4">
                     Discount Code
                   </label>
                   {discountCode ? (
@@ -545,7 +430,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* Right Column - Order Summary */}
-          <div className="col-span-12 lg:col-span-5 relative">
+          <div className="col-span-1 lg:col-span-5 relative lg:order-last">
             <OrderSummary onSubmit={handleSubmit} isSubmitting={isSubmitting} discountCode={discountCode} discountAmount={discountAmount} />
           </div>
         </div>

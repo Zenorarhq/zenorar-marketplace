@@ -128,46 +128,46 @@ export default function ReviewPage() {
           </nav>
         </div>
 
-        <div className="grid grid-cols-12 gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
           {/* Left Column - Review Details */}
-          <div className="col-span-12 lg:col-span-7">
+          <div className="col-span-1 lg:col-span-7">
             <div className="max-w-2xl">
-              <h1 className="text-3xl font-extrabold text-white mb-2 tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">
                 Review Your Order
               </h1>
-              <p className="text-slate-500 mb-10">
+              <p className="text-sm md:text-base text-slate-500 mb-6 md:mb-10">
                 Please review your order details before completing your purchase.
               </p>
 
               {/* Order Items */}
-              <div className="bg-charcoal border border-border-dark rounded-xl p-6 mb-6">
-                <h2 className="text-white font-bold mb-4 flex items-center gap-2">
+              <div className="bg-charcoal border border-border-dark rounded-xl p-4 md:p-6 mb-4 md:mb-6">
+                <h2 className="text-white font-bold text-sm md:text-base mb-3 md:mb-4 flex items-center gap-2">
                   <Icon name="package" size={20} className="text-primary" />
                   Order Items ({items.length})
                 </h2>
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   {items.map((item) => (
-                    <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-4 p-4 bg-surface-dark rounded-xl">
-                      <div className="w-16 h-16 bg-charcoal rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Icon name={item.product.icon || 'code'} size={24} className="text-slate-500" />
+                    <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-surface-dark rounded-xl">
+                      <div className="w-12 h-12 md:w-16 md:h-16 bg-charcoal rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Icon name={item.product.icon || 'code'} size={20} className="md:size-24 text-slate-500" />
                       </div>
                       <div className="flex-grow min-w-0">
-                        <p className="text-white font-bold truncate">{item.product.name}</p>
-                        <p className="text-primary text-xs uppercase font-bold">
+                        <p className="text-white font-bold text-sm md:text-base truncate">{item.product.name}</p>
+                        <p className="text-primary text-[10px] md:text-xs uppercase font-bold">
                           {item.license === 'extended' ? 'Extended License' : 'Standard License'}
                         </p>
-                        <p className="text-slate-500 text-sm">Quantity: {item.quantity}</p>
+                        <p className="text-slate-500 text-xs md:text-sm">Qty: {item.quantity}</p>
                       </div>
-                      <p className="text-white font-bold text-lg">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-white font-bold text-base md:text-lg">${(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Shipping Details */}
-              <div className="bg-charcoal border border-border-dark rounded-xl p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-white font-bold flex items-center gap-2">
+              <div className="bg-charcoal border border-border-dark rounded-xl p-4 md:p-6 mb-4 md:mb-6">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <h2 className="text-white font-bold text-sm md:text-base flex items-center gap-2">
                     <Icon name="location" size={20} className="text-primary" />
                     Shipping Details
                   </h2>
@@ -183,9 +183,9 @@ export default function ReviewPage() {
               </div>
 
               {/* Payment Method */}
-              <div className="bg-charcoal border border-border-dark rounded-xl p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-white font-bold flex items-center gap-2">
+              <div className="bg-charcoal border border-border-dark rounded-xl p-4 md:p-6 mb-4 md:mb-6">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <h2 className="text-white font-bold text-sm md:text-base flex items-center gap-2">
                     <Icon name="credit-card" size={20} className="text-primary" />
                     Payment Method
                   </h2>
@@ -204,7 +204,7 @@ export default function ReviewPage() {
 
               {/* Terms Agreement */}
               <form onSubmit={handleSubmit}>
-                <label className="flex items-start gap-3 p-4 bg-surface-dark rounded-xl border border-border-dark cursor-pointer mb-6">
+                <label className="flex items-start gap-3 p-3 md:p-4 bg-surface-dark rounded-xl border border-border-dark cursor-pointer mb-4 md:mb-6">
                   <input
                     type="checkbox"
                     checked={agreedToTerms}
@@ -221,18 +221,18 @@ export default function ReviewPage() {
                 </label>
 
                 {/* Navigation Buttons */}
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                   <Link
                     href="/checkout/payment"
-                    className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-4 rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2"
+                    className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-3 md:py-4 text-sm md:text-base rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2"
                   >
-                    <Icon name="arrow-left" size={18} />
+                    <Icon name="arrow-left" size={16} className="md:size-18" />
                     Back
                   </Link>
                   <button
                     type="submit"
                     disabled={isSubmitting || !agreedToTerms}
-                    className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-primary text-black font-bold py-3 md:py-4 text-sm md:text-base rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? (
                       <>
@@ -252,9 +252,9 @@ export default function ReviewPage() {
           </div>
 
           {/* Right Column - Order Summary */}
-          <div className="col-span-12 lg:col-span-5">
-            <div className="bg-charcoal border border-border-dark rounded-2xl p-8 sticky top-24">
-              <h2 className="text-xl font-bold text-white mb-6">Order Total</h2>
+          <div className="col-span-1 lg:col-span-5 order-first lg:order-last">
+            <div className="bg-charcoal border border-border-dark rounded-2xl p-4 md:p-8 lg:sticky lg:top-24">
+              <h2 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6">Order Total</h2>
 
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-slate-400">

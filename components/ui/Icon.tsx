@@ -506,6 +506,9 @@ const iconMap = {
 
   // Open in new
   'open-in-new': LinkSquare02Icon,
+
+  // Shapes (using available icons as alternatives)
+  'hexagon': SparklesIcon, // BNB/crypto icon alternative
 }
 
 type IconName = keyof typeof iconMap

@@ -112,6 +112,10 @@ export default function AdminSettingsPage() {
 
   // Payment Settings State
   const [paymentSettings, setPaymentSettings] = useState({
+    // Web3 Wallet
+    walletEnabled: true,
+
+    // Stripe
     stripeEnabled: false,
     stripeMode: 'test' as 'test' | 'live',
     stripeTestPublicKey: '',
@@ -120,12 +124,48 @@ export default function AdminSettingsPage() {
     stripeLivePublicKey: '',
     stripeLiveSecretKey: '',
     stripeLiveWebhookSecret: '',
+
+    // Paystack
+    paystackEnabled: false,
+    paystackMode: 'test' as 'test' | 'live',
+    paystackTestPublicKey: '',
+    paystackTestSecretKey: '',
+    paystackTestWebhookSecret: '',
+    paystackLivePublicKey: '',
+    paystackLiveSecretKey: '',
+    paystackLiveWebhookSecret: '',
+
+    // Enhanced Crypto
     cryptoEnabled: false,
+    cryptoMethod: 'manual' as 'manual' | 'processor',
+    receivingWalletAddress: '',
+    btcAddress: '',
+    ethAddress: '',
+    usdtEthAddress: '',
+    usdtBscAddress: '',
+    usdtTronAddress: '',
+    bnbAddress: '',
+    usdcAddress: '',
+    solAddress: '',
+    cryptoProcessor: 'coinbase',
+    cryptoApiKey: '',
+    cryptoWebhookSecret: '',
+
+    // PayPal
     paypalEnabled: false,
+    paypalMode: 'test' as 'test' | 'live',
+    paypalPlatform: 'express' as 'express' | 'commerce',
+    paypalTestClientId: '',
+    paypalTestSecretKey: '',
+    paypalLiveClientId: '',
+    paypalLiveSecretKey: '',
+
+    // General
     autoWithdraw: false,
     withdrawThreshold: '100',
   })
   const [showStripeSecrets, setShowStripeSecrets] = useState<Record<string, boolean>>({})
+  const [showPaystackSecrets, setShowPaystackSecrets] = useState<Record<string, boolean>>({})
 
   // API Settings State
   const [apiSettings, setApiSettings] = useState({
@@ -210,6 +250,9 @@ export default function AdminSettingsPage() {
         const d = res.data
         setPaymentSettings((prev) => ({
           ...prev,
+          // Web3 Wallet
+          walletEnabled: d.walletEnabled ?? prev.walletEnabled,
+          // Stripe
           stripeEnabled: d.stripeEnabled ?? prev.stripeEnabled,
           stripeMode: d.stripeMode ?? prev.stripeMode,
           stripeTestPublicKey: d.stripeTestPublicKey ?? prev.stripeTestPublicKey,
@@ -218,8 +261,39 @@ export default function AdminSettingsPage() {
           stripeLivePublicKey: d.stripeLivePublicKey ?? prev.stripeLivePublicKey,
           stripeLiveSecretKey: d.stripeLiveSecretKey ?? prev.stripeLiveSecretKey,
           stripeLiveWebhookSecret: d.stripeLiveWebhookSecret ?? prev.stripeLiveWebhookSecret,
+          // Paystack
+          paystackEnabled: d.paystackEnabled ?? prev.paystackEnabled,
+          paystackMode: d.paystackMode ?? prev.paystackMode,
+          paystackTestPublicKey: d.paystackTestPublicKey ?? prev.paystackTestPublicKey,
+          paystackTestSecretKey: d.paystackTestSecretKey ?? prev.paystackTestSecretKey,
+          paystackTestWebhookSecret: d.paystackTestWebhookSecret ?? prev.paystackTestWebhookSecret,
+          paystackLivePublicKey: d.paystackLivePublicKey ?? prev.paystackLivePublicKey,
+          paystackLiveSecretKey: d.paystackLiveSecretKey ?? prev.paystackLiveSecretKey,
+          paystackLiveWebhookSecret: d.paystackLiveWebhookSecret ?? prev.paystackLiveWebhookSecret,
+          // Enhanced Crypto
           cryptoEnabled: d.cryptoEnabled ?? prev.cryptoEnabled,
+          cryptoMethod: d.cryptoMethod ?? prev.cryptoMethod,
+          receivingWalletAddress: d.receivingWalletAddress ?? prev.receivingWalletAddress,
+          btcAddress: d.btcAddress ?? prev.btcAddress,
+          ethAddress: d.ethAddress ?? prev.ethAddress,
+          usdtEthAddress: d.usdtEthAddress ?? prev.usdtEthAddress,
+          usdtBscAddress: d.usdtBscAddress ?? prev.usdtBscAddress,
+          usdtTronAddress: d.usdtTronAddress ?? prev.usdtTronAddress,
+          bnbAddress: d.bnbAddress ?? prev.bnbAddress,
+          usdcAddress: d.usdcAddress ?? prev.usdcAddress,
+          solAddress: d.solAddress ?? prev.solAddress,
+          cryptoProcessor: d.cryptoProcessor ?? prev.cryptoProcessor,
+          cryptoApiKey: d.cryptoApiKey ?? prev.cryptoApiKey,
+          cryptoWebhookSecret: d.cryptoWebhookSecret ?? prev.cryptoWebhookSecret,
+          // PayPal
           paypalEnabled: d.paypalEnabled ?? prev.paypalEnabled,
+          paypalMode: d.paypalMode ?? prev.paypalMode,
+          paypalPlatform: d.paypalPlatform ?? prev.paypalPlatform,
+          paypalTestClientId: d.paypalTestClientId ?? prev.paypalTestClientId,
+          paypalTestSecretKey: d.paypalTestSecretKey ?? prev.paypalTestSecretKey,
+          paypalLiveClientId: d.paypalLiveClientId ?? prev.paypalLiveClientId,
+          paypalLiveSecretKey: d.paypalLiveSecretKey ?? prev.paypalLiveSecretKey,
+          // General
           autoWithdraw: d.autoWithdraw ?? prev.autoWithdraw,
           withdrawThreshold: d.withdrawThreshold ?? prev.withdrawThreshold,
         }))
@@ -494,8 +568,10 @@ export default function AdminSettingsPage() {
       { key: 'twilio_account_sid', value: twilioSettings.twilio_account_sid, group: 'api', isPublic: false },
       { key: 'twilio_auth_token', value: twilioSettings.twilio_auth_token, group: 'api', isPublic: false },
       { key: 'twilio_phone_number', value: twilioSettings.twilio_phone_number, group: 'api', isPublic: false },
-      // Payment settings
-      { key: 'stripeEnabled', value: paymentSettings.stripeEnabled, group: 'payments', isPublic: false },
+      // Payment settings - Web3 Wallet
+      { key: 'walletEnabled', value: paymentSettings.walletEnabled, group: 'payments', isPublic: true },
+      // Payment settings - Stripe
+      { key: 'stripeEnabled', value: paymentSettings.stripeEnabled, group: 'payments', isPublic: true },
       { key: 'stripeMode', value: paymentSettings.stripeMode, group: 'payments', isPublic: false },
       { key: 'stripeTestPublicKey', value: paymentSettings.stripeTestPublicKey, group: 'payments', isPublic: false },
       { key: 'stripeTestSecretKey', value: paymentSettings.stripeTestSecretKey, group: 'payments', isPublic: false },
@@ -503,8 +579,39 @@ export default function AdminSettingsPage() {
       { key: 'stripeLivePublicKey', value: paymentSettings.stripeLivePublicKey, group: 'payments', isPublic: false },
       { key: 'stripeLiveSecretKey', value: paymentSettings.stripeLiveSecretKey, group: 'payments', isPublic: false },
       { key: 'stripeLiveWebhookSecret', value: paymentSettings.stripeLiveWebhookSecret, group: 'payments', isPublic: false },
-      { key: 'cryptoEnabled', value: paymentSettings.cryptoEnabled, group: 'payments', isPublic: false },
-      { key: 'paypalEnabled', value: paymentSettings.paypalEnabled, group: 'payments', isPublic: false },
+      // Payment settings - Paystack
+      { key: 'paystackEnabled', value: paymentSettings.paystackEnabled, group: 'payments', isPublic: true },
+      { key: 'paystackMode', value: paymentSettings.paystackMode, group: 'payments', isPublic: false },
+      { key: 'paystackTestPublicKey', value: paymentSettings.paystackTestPublicKey, group: 'payments', isPublic: false },
+      { key: 'paystackTestSecretKey', value: paymentSettings.paystackTestSecretKey, group: 'payments', isPublic: false },
+      { key: 'paystackTestWebhookSecret', value: paymentSettings.paystackTestWebhookSecret, group: 'payments', isPublic: false },
+      { key: 'paystackLivePublicKey', value: paymentSettings.paystackLivePublicKey, group: 'payments', isPublic: false },
+      { key: 'paystackLiveSecretKey', value: paymentSettings.paystackLiveSecretKey, group: 'payments', isPublic: false },
+      { key: 'paystackLiveWebhookSecret', value: paymentSettings.paystackLiveWebhookSecret, group: 'payments', isPublic: false },
+      // Payment settings - Enhanced Crypto
+      { key: 'cryptoEnabled', value: paymentSettings.cryptoEnabled, group: 'payments', isPublic: true },
+      { key: 'cryptoMethod', value: paymentSettings.cryptoMethod, group: 'payments', isPublic: true },
+      { key: 'receivingWalletAddress', value: paymentSettings.receivingWalletAddress, group: 'payments', isPublic: true },
+      { key: 'btcAddress', value: paymentSettings.btcAddress, group: 'payments', isPublic: true },
+      { key: 'ethAddress', value: paymentSettings.ethAddress, group: 'payments', isPublic: true },
+      { key: 'usdtEthAddress', value: paymentSettings.usdtEthAddress, group: 'payments', isPublic: true },
+      { key: 'usdtBscAddress', value: paymentSettings.usdtBscAddress, group: 'payments', isPublic: true },
+      { key: 'usdtTronAddress', value: paymentSettings.usdtTronAddress, group: 'payments', isPublic: true },
+      { key: 'bnbAddress', value: paymentSettings.bnbAddress, group: 'payments', isPublic: true },
+      { key: 'usdcAddress', value: paymentSettings.usdcAddress, group: 'payments', isPublic: true },
+      { key: 'solAddress', value: paymentSettings.solAddress, group: 'payments', isPublic: true },
+      { key: 'cryptoProcessor', value: paymentSettings.cryptoProcessor, group: 'payments', isPublic: false },
+      { key: 'cryptoApiKey', value: paymentSettings.cryptoApiKey, group: 'payments', isPublic: false },
+      { key: 'cryptoWebhookSecret', value: paymentSettings.cryptoWebhookSecret, group: 'payments', isPublic: false },
+      // Payment settings - PayPal
+      { key: 'paypalEnabled', value: paymentSettings.paypalEnabled, group: 'payments', isPublic: true },
+      { key: 'paypalMode', value: paymentSettings.paypalMode, group: 'payments', isPublic: false },
+      { key: 'paypalPlatform', value: paymentSettings.paypalPlatform, group: 'payments', isPublic: false },
+      { key: 'paypalTestClientId', value: paymentSettings.paypalTestClientId, group: 'payments', isPublic: false },
+      { key: 'paypalTestSecretKey', value: paymentSettings.paypalTestSecretKey, group: 'payments', isPublic: false },
+      { key: 'paypalLiveClientId', value: paymentSettings.paypalLiveClientId, group: 'payments', isPublic: false },
+      { key: 'paypalLiveSecretKey', value: paymentSettings.paypalLiveSecretKey, group: 'payments', isPublic: false },
+      // Payment settings - General
       { key: 'autoWithdraw', value: paymentSettings.autoWithdraw, group: 'payments', isPublic: false },
       { key: 'withdrawThreshold', value: paymentSettings.withdrawThreshold, group: 'payments', isPublic: false },
     ]
@@ -1251,6 +1358,43 @@ export default function AdminSettingsPage() {
           {/* Payment Settings */}
           {activeTab === 'payments' && (
             <div className="space-y-6">
+              {/* Web3 Wallet */}
+              <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Icon name="wallet" size={20} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Web3 Wallet Payments</p>
+                      <p className="text-slate-500 text-sm">Accept crypto payments via MetaMask, WalletConnect, Coinbase Wallet, etc.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPaymentSettings({ ...paymentSettings, walletEnabled: !paymentSettings.walletEnabled })}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      paymentSettings.walletEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                        paymentSettings.walletEnabled ? 'left-7' : 'left-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                {paymentSettings.walletEnabled && (
+                  <div className="mt-4 pt-4 border-t border-[#2a2a2a]">
+                    <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                      <Icon name="info" size={16} className="text-primary flex-shrink-0" />
+                      <p className="text-slate-300 text-xs">
+                        Users can pay directly with their Web3 wallets (MetaMask, WalletConnect, Coinbase Wallet, etc.) on ETH, BNB, and Polygon networks. Configure receiving wallet address in your environment variables.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Stripe */}
               <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
                 <div className="flex items-center justify-between mb-4">
@@ -1355,16 +1499,132 @@ export default function AdminSettingsPage() {
                 )}
               </div>
 
-              {/* Crypto */}
+              {/* Paystack */}
               <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Icon name="credit-card" size={20} className="text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Paystack</p>
+                      <p className="text-slate-500 text-sm">Accept payments in Africa (Nigeria, Ghana, Kenya, South Africa)</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPaymentSettings({ ...paymentSettings, paystackEnabled: !paymentSettings.paystackEnabled })}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      paymentSettings.paystackEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                        paymentSettings.paystackEnabled ? 'left-7' : 'left-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                {paymentSettings.paystackEnabled && (
+                  <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
+                    {/* Test / Live Toggle */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, paystackMode: 'test' })}
+                          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            paymentSettings.paystackMode === 'test'
+                              ? 'bg-orange-500/20 text-orange-400'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                        >
+                          Test Mode
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, paystackMode: 'live' })}
+                          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            paymentSettings.paystackMode === 'live'
+                              ? 'bg-green-500/20 text-green-400'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                        >
+                          Live Mode
+                        </button>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                        paymentSettings.paystackMode === 'test'
+                          ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                          : 'bg-green-500/10 text-green-400 border-green-500/20'
+                      }`}>
+                        {paymentSettings.paystackMode === 'test' ? 'TEST MODE' : 'LIVE'}
+                      </span>
+                    </div>
+
+                    {/* Key Fields */}
+                    {(() => {
+                      const prefix = paymentSettings.paystackMode === 'test' ? 'paystackTest' : 'paystackLive'
+                      const fields = [
+                        { key: `${prefix}PublicKey` as keyof typeof paymentSettings, label: 'Public Key', placeholder: 'pk_test_...', secret: false },
+                        { key: `${prefix}SecretKey` as keyof typeof paymentSettings, label: 'Secret Key', placeholder: 'sk_test_...', secret: true },
+                        { key: `${prefix}WebhookSecret` as keyof typeof paymentSettings, label: 'Webhook Secret', placeholder: 'whsec_...', secret: true },
+                      ]
+                      return (
+                        <div className="space-y-3">
+                          {fields.map((field) => (
+                            <div key={field.key} className="space-y-1.5">
+                              <label className="text-sm font-medium text-slate-300">{field.label}</label>
+                              <div className="relative">
+                                <input
+                                  type={field.secret && !showPaystackSecrets[field.key] ? 'password' : 'text'}
+                                  value={paymentSettings[field.key] as string}
+                                  onChange={(e) => setPaymentSettings({ ...paymentSettings, [field.key]: e.target.value })}
+                                  placeholder={field.placeholder}
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                {field.secret && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowPaystackSecrets((prev) => ({ ...prev, [field.key]: !prev[field.key] }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showPaystackSecrets[field.key] ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mt-4">
+                      <p className="text-blue-400 text-xs">
+                        <strong>Get your Paystack keys:</strong> Visit{' '}
+                        <a
+                          href="https://dashboard.paystack.com/#/settings/developers"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        >
+                          Paystack Dashboard → Settings → API Keys & Webhooks
+                        </a>
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Enhanced Crypto */}
+              <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
                       <Icon name="bitcoin" size={20} className="text-orange-400" />
                     </div>
                     <div>
-                      <p className="text-white font-medium">Cryptocurrency</p>
-                      <p className="text-slate-500 text-sm">Accept BTC, ETH, USDT payments</p>
+                      <p className="text-white font-medium">Cryptocurrency Payments</p>
+                      <p className="text-slate-500 text-sm">BTC, ETH, USDT, BNB, USDC, SOL/Phantom</p>
                     </div>
                   </div>
                   <button
@@ -1380,18 +1640,238 @@ export default function AdminSettingsPage() {
                     />
                   </button>
                 </div>
+
+                {paymentSettings.cryptoEnabled && (
+                  <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
+                    {/* Payment Method Toggle */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Payment Method</label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, cryptoMethod: 'manual' })}
+                          className={`flex-1 px-4 py-3 rounded-lg border transition-colors ${
+                            paymentSettings.cryptoMethod === 'manual'
+                              ? 'bg-primary/10 border-primary text-primary'
+                              : 'bg-[#141414] border-[#2a2a2a] text-slate-400'
+                          }`}
+                        >
+                          <div className="text-left">
+                            <div className="font-medium text-sm">Manual Wallets</div>
+                            <div className="text-xs opacity-80">Customers send to your wallet addresses</div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, cryptoMethod: 'processor' })}
+                          className={`flex-1 px-4 py-3 rounded-lg border transition-colors ${
+                            paymentSettings.cryptoMethod === 'processor'
+                              ? 'bg-primary/10 border-primary text-primary'
+                              : 'bg-[#141414] border-[#2a2a2a] text-slate-400'
+                          }`}
+                        >
+                          <div className="text-left">
+                            <div className="font-medium text-sm">Third-Party Processor</div>
+                            <div className="text-xs opacity-80">CoinBase Commerce, NOWPayments, etc.</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {paymentSettings.cryptoMethod === 'manual' && (
+                      <div className="space-y-3 p-4 bg-[#0a0a0a] rounded-lg">
+                        <h4 className="text-sm font-medium text-white mb-3">Wallet Addresses</h4>
+
+                        {/* Receiving Wallet (for Web3 payments) */}
+                        <div className="space-y-1.5 pb-3 border-b border-[#2a2a2a]">
+                          <label className="text-sm text-slate-400 flex items-center gap-2">
+                            <Icon name="wallet" size={14} className="text-primary" />
+                            Receiving Wallet Address (Web3 Payments)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.receivingWalletAddress || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, receivingWalletAddress: e.target.value })}
+                            placeholder="0x... (for MetaMask, Trust Wallet, Phantom, etc.)"
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary/50"
+                          />
+                          <p className="text-xs text-slate-500">This wallet receives payments from Web3 wallets (MetaMask, Trust Wallet, Phantom). Supports ETH and EVM-compatible chains.</p>
+                        </div>
+
+                        {/* BTC */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-slate-400 flex items-center gap-2">
+                            <Icon name="bitcoin" size={14} className="text-orange-400" />
+                            Bitcoin (BTC)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.btcAddress || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, btcAddress: e.target.value })}
+                            placeholder="bc1q... (Native SegWit address)"
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+
+                        {/* ETH */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-slate-400 flex items-center gap-2">
+                            <Icon name="circle" size={14} className="text-purple-400" />
+                            Ethereum (ETH)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.ethAddress || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, ethAddress: e.target.value })}
+                            placeholder="0x... (ERC20 compatible)"
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+
+                        {/* USDT (ERC20) */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-slate-400 flex items-center gap-2">
+                            <Icon name="dollar-sign" size={14} className="text-green-400" />
+                            USDT (Ethereum ERC20)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.usdtEthAddress || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, usdtEthAddress: e.target.value })}
+                            placeholder="0x... (ERC20 - Ethereum network)"
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+
+                        {/* USDT (BEP20) */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-slate-400 flex items-center gap-2">
+                            <Icon name="dollar-sign" size={14} className="text-yellow-400" />
+                            USDT (BSC BEP20)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.usdtBscAddress || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, usdtBscAddress: e.target.value })}
+                            placeholder="0x... (BEP20 - Binance Smart Chain)"
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+
+                        {/* USDT (TRC20) */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-slate-400 flex items-center gap-2">
+                            <Icon name="dollar-sign" size={14} className="text-red-400" />
+                            USDT (Tron TRC20)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.usdtTronAddress || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, usdtTronAddress: e.target.value })}
+                            placeholder="T... (TRC20 - Tron network)"
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+
+                        {/* BNB */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-slate-400 flex items-center gap-2">
+                            <Icon name="circle" size={14} className="text-yellow-400" />
+                            BNB (Binance Coin)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.bnbAddress || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, bnbAddress: e.target.value })}
+                            placeholder="0x... (BEP20)"
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+
+                        {/* USDC */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-slate-400 flex items-center gap-2">
+                            <Icon name="dollar-sign" size={14} className="text-blue-400" />
+                            USDC (USD Coin)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.usdcAddress || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, usdcAddress: e.target.value })}
+                            placeholder="0x... (ERC20 or specify chain)"
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+
+                        {/* SOL/Phantom */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-slate-400 flex items-center gap-2">
+                            <Icon name="zap" size={14} className="text-purple-400" />
+                            Solana (SOL / Phantom)
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.solAddress || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, solAddress: e.target.value })}
+                            placeholder="Solana address (base58)"
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentSettings.cryptoMethod === 'processor' && (
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300">Select Processor</label>
+                          <select
+                            value={paymentSettings.cryptoProcessor || 'coinbase'}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, cryptoProcessor: e.target.value })}
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                          >
+                            <option value="coinbase">Coinbase Commerce</option>
+                            <option value="nowpayments">NOWPayments</option>
+                            <option value="coinpayments">CoinPayments</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300">API Key</label>
+                          <input
+                            type="text"
+                            value={paymentSettings.cryptoApiKey || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, cryptoApiKey: e.target.value })}
+                            placeholder="Enter your API key..."
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300">Webhook Secret</label>
+                          <input
+                            type="password"
+                            value={paymentSettings.cryptoWebhookSecret || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, cryptoWebhookSecret: e.target.value })}
+                            placeholder="Webhook secret..."
+                            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* PayPal */}
+              {/* Enhanced PayPal */}
               <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                       <Icon name="wallet" size={20} className="text-blue-400" />
                     </div>
                     <div>
                       <p className="text-white font-medium">PayPal</p>
-                      <p className="text-slate-500 text-sm">Accept PayPal payments</p>
+                      <p className="text-slate-500 text-sm">Accept PayPal and credit cards</p>
                     </div>
                   </div>
                   <button
@@ -1407,6 +1887,124 @@ export default function AdminSettingsPage() {
                     />
                   </button>
                 </div>
+
+                {paymentSettings.paypalEnabled && (
+                  <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
+                    {/* Platform Choice */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">PayPal Platform</label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, paypalPlatform: 'express' })}
+                          className={`flex-1 px-4 py-3 rounded-lg border transition-colors ${
+                            paymentSettings.paypalPlatform === 'express'
+                              ? 'bg-primary/10 border-primary text-primary'
+                              : 'bg-[#141414] border-[#2a2a2a] text-slate-400'
+                          }`}
+                        >
+                          <div className="text-left">
+                            <div className="font-medium text-sm">Express Checkout</div>
+                            <div className="text-xs opacity-80">Simple PayPal button integration</div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, paypalPlatform: 'commerce' })}
+                          className={`flex-1 px-4 py-3 rounded-lg border transition-colors ${
+                            paymentSettings.paypalPlatform === 'commerce'
+                              ? 'bg-primary/10 border-primary text-primary'
+                              : 'bg-[#141414] border-[#2a2a2a] text-slate-400'
+                          }`}
+                        >
+                          <div className="text-left">
+                            <div className="font-medium text-sm">Commerce Platform</div>
+                            <div className="text-xs opacity-80">Advanced features & subscriptions</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Test/Live Mode Toggle */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, paypalMode: 'test' })}
+                          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            paymentSettings.paypalMode === 'test'
+                              ? 'bg-orange-500/20 text-orange-400'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                        >
+                          Sandbox
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentSettings({ ...paymentSettings, paypalMode: 'live' })}
+                          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            paymentSettings.paypalMode === 'live'
+                              ? 'bg-green-500/20 text-green-400'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                        >
+                          Live Mode
+                        </button>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                        paymentSettings.paypalMode === 'test'
+                          ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                          : 'bg-green-500/10 text-green-400 border-green-500/20'
+                      }`}>
+                        {paymentSettings.paypalMode === 'test' ? 'SANDBOX' : 'LIVE'}
+                      </span>
+                    </div>
+
+                    {/* API Credentials */}
+                    {(() => {
+                      const prefix = paymentSettings.paypalMode === 'test' ? 'paypalTest' : 'paypalLive'
+                      return (
+                        <div className="space-y-3">
+                          <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-slate-300">Client ID</label>
+                            <input
+                              type="text"
+                              value={paymentSettings[`${prefix}ClientId` as keyof typeof paymentSettings] as string || ''}
+                              onChange={(e) => setPaymentSettings({ ...paymentSettings, [`${prefix}ClientId`]: e.target.value })}
+                              placeholder={paymentSettings.paypalMode === 'test' ? 'Sandbox Client ID' : 'Live Client ID'}
+                              className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-primary/50"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-sm font-medium text-slate-300">Secret Key</label>
+                            <input
+                              type="password"
+                              value={paymentSettings[`${prefix}SecretKey` as keyof typeof paymentSettings] as string || ''}
+                              onChange={(e) => setPaymentSettings({ ...paymentSettings, [`${prefix}SecretKey`]: e.target.value })}
+                              placeholder={paymentSettings.paypalMode === 'test' ? 'Sandbox Secret' : 'Live Secret'}
+                              className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-primary/50"
+                            />
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mt-4">
+                      <p className="text-blue-400 text-xs">
+                        <strong>Get your PayPal keys:</strong> Visit{' '}
+                        <a
+                          href="https://developer.paypal.com/dashboard/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline"
+                        >
+                          PayPal Developer Dashboard
+                        </a>
+                        {' '}to create a REST API app and get your credentials.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Auto Withdraw */}

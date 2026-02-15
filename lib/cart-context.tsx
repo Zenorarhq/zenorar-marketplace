@@ -73,26 +73,44 @@ export function CartProvider({ children }: { children: ReactNode }) {
     async function loadCart() {
       setIsLoading(true)
 
-      if (isAuthenticated) {
-        try {
-          const result = await apiFetch<any[]>('/cart')
-          if (!cancelled && result.success && Array.isArray(result.data)) {
-            // Map API response to CartItem[]
-            const cartItems: CartItem[] = result.data.map((item: any) => ({
-              product: item.product,
-              quantity: item.quantity,
-              license: item.license || 'standard',
-              price: item.price,
-            }))
-            setItems(cartItems)
-          }
-        } catch (error) {
-          console.error('Failed to load cart from API:', error)
-          // Fallback to localStorage
-          if (!cancelled) setItems(loadFromStorage())
+      try {
+        // Load cart from API for both authenticated and guest users
+        const result = await apiFetch<any[]>('/cart')
+        if (!cancelled && result.success && Array.isArray(result.data)) {
+          // Map API response to CartItem[]
+          const cartItems: CartItem[] = result.data.map((item: any) => ({
+            product: item.product,
+            quantity: item.quantity,
+            license: item.license || 'standard',
+            price: item.price,
+          }))
+          setItems(cartItems)
         }
-      } else {
-        if (!cancelled) setItems(loadFromStorage())
+      } catch (error) {
+        console.error('Failed to load cart from API:', error)
+        // Fallback to localStorage for guests
+        if (!cancelled && !isAuthenticated) {
+          const localItems = loadFromStorage()
+          setItems(localItems)
+          // Sync localStorage items to backend if any exist
+          if (localItems.length > 0) {
+            try {
+              for (const item of localItems) {
+                await apiFetch('/cart/items', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    productId: item.product.id,
+                    quantity: item.quantity,
+                    license: item.license,
+                    price: item.price
+                  }),
+                })
+              }
+            } catch (syncError) {
+              console.warn('Failed to sync localStorage cart to backend:', syncError)
+            }
+          }
+        }
       }
 
       if (!cancelled) {
@@ -116,7 +134,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   const refreshCart = useCallback(async () => {
-    if (!isAuthenticated) return
     try {
       const result = await apiFetch<any[]>('/cart')
       if (result.success && Array.isArray(result.data)) {
@@ -131,7 +148,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to refresh cart:', error)
     }
-  }, [isAuthenticated])
+  }, [])
 
   const addItem = useCallback(async (product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
     const price = customPrice ?? (license === 'extended'
@@ -157,18 +174,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [...currentItems, { product, quantity: 1, license, price }]
     })
 
-    // Sync to API if authenticated — send absolute target quantity
-    if (isAuthenticated) {
-      try {
-        await apiFetch('/cart/items', {
-          method: 'POST',
-          body: JSON.stringify({ productId: product.id, quantity: newQuantity, license, price }),
-        })
-      } catch (error) {
-        console.warn('Failed to sync cart add with API:', error)
-      }
+    // Sync to API for both authenticated and guest users — send absolute target quantity
+    try {
+      await apiFetch('/cart/items', {
+        method: 'POST',
+        body: JSON.stringify({ productId: product.id, quantity: newQuantity, license, price }),
+      })
+    } catch (error) {
+      console.warn('Failed to sync cart add with API:', error)
     }
-  }, [isAuthenticated])
+  }, [])
 
   const removeItem = useCallback(async (productId: string, license?: 'standard' | 'extended') => {
     // Save current state for rollback
@@ -182,18 +197,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return item.product.id !== productId
     }))
 
-    // Sync to API if authenticated
-    if (isAuthenticated) {
-      const licenseParam = license || 'standard'
-      const result = await apiFetch(`/cart/items/product/${productId}?license=${licenseParam}`, {
-        method: 'DELETE',
-      })
-      if (!result.success) {
-        console.warn('Failed to sync cart removal with API:', result.error)
-        setItems(previousItems) // Rollback on failure
-      }
+    // Sync to API for both authenticated and guest users
+    const licenseParam = license || 'standard'
+    const result = await apiFetch(`/cart/items/product/${productId}?license=${licenseParam}`, {
+      method: 'DELETE',
+    })
+    if (!result.success) {
+      console.warn('Failed to sync cart removal with API:', result.error)
+      setItems(previousItems) // Rollback on failure
     }
-  }, [isAuthenticated, items])
+  }, [items])
 
   const updateQuantity = useCallback(async (productId: string, quantity: number, license?: 'standard' | 'extended') => {
     if (quantity <= 0) {
@@ -215,33 +228,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
       })
     )
 
-    // Sync to API if authenticated
-    if (isAuthenticated) {
-      const result = await apiFetch(`/cart/items/product/${productId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ quantity, license: license || 'standard' }),
-      })
-      if (!result.success) {
-        console.warn('Failed to sync quantity update with API:', result.error)
-        setItems(previousItems) // Rollback on failure
-      }
+    // Sync to API for both authenticated and guest users
+    const result = await apiFetch(`/cart/items/product/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ quantity, license: license || 'standard' }),
+    })
+    if (!result.success) {
+      console.warn('Failed to sync quantity update with API:', result.error)
+      setItems(previousItems) // Rollback on failure
     }
-  }, [isAuthenticated, items, removeItem])
+  }, [items, removeItem])
 
   const clearCart = useCallback(async () => {
     const previousItems = items
     setItems([])
     setApiCart(null)
 
-    if (isAuthenticated) {
-      try {
-        await apiFetch('/cart', { method: 'DELETE' })
-      } catch (error) {
-        console.error('Failed to clear cart via API:', error)
-        setItems(previousItems) // Rollback on failure
-      }
+    try {
+      await apiFetch('/cart', { method: 'DELETE' })
+    } catch (error) {
+      console.error('Failed to clear cart via API:', error)
+      setItems(previousItems) // Rollback on failure
     }
-  }, [isAuthenticated, items])
+  }, [items])
 
   const showAddedToCartPopup = useCallback((product: Product, price?: number) => {
     setPopupProduct(product)
@@ -255,7 +264,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setPopupPrice(null)
   }, [])
 
-  const buyNow = useCallback((product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
+  const buyNow = useCallback(async (product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
     const price = customPrice ?? (license === 'extended'
       ? (product.priceRange?.max || product.price)
       : (product.priceRange?.min || product.price))
@@ -263,19 +272,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Clear cart and add only this item
     setItems([{ product, quantity: 1, license, price }])
 
-    // Sync to API if authenticated
-    if (isAuthenticated) {
-      apiFetch('/cart', { method: 'DELETE' }).then(() => {
-        apiFetch('/cart/items', {
-          method: 'POST',
-          body: JSON.stringify({ productId: product.id, quantity: 1, license, price }),
-        })
-      }).catch(console.warn)
+    // Sync to API for both authenticated and guest users
+    try {
+      await apiFetch('/cart', { method: 'DELETE' })
+      await apiFetch('/cart/items', {
+        method: 'POST',
+        body: JSON.stringify({ productId: product.id, quantity: 1, license, price }),
+      })
+    } catch (error) {
+      console.warn('Failed to sync buyNow to API:', error)
     }
 
     // Redirect to checkout
     router.push('/checkout')
-  }, [router, isAuthenticated])
+  }, [router])
 
   return (
     <CartContext.Provider
