@@ -179,3 +179,75 @@ export function formatPrice(amount: number, currency: string = 'USD'): string {
     currency,
   }).format(amount)
 }
+
+// ============================================================================
+// Site Settings (shared Neon DB with Railway API)
+// ============================================================================
+
+// Get a single site setting by key
+export async function getSiteSetting(key: string): Promise<any> {
+  const result = await executeQuery(
+    'SELECT value FROM site_settings WHERE key = $1',
+    [key]
+  )
+  return result.rows[0]?.value ?? null
+}
+
+// Get all settings in a group
+export async function getSiteSettingsByGroup(group: string): Promise<Record<string, any>> {
+  const result = await executeQuery(
+    'SELECT key, value FROM site_settings WHERE "group" = $1',
+    [group]
+  )
+  const settings: Record<string, any> = {}
+  for (const row of result.rows) {
+    settings[row.key] = row.value
+  }
+  return settings
+}
+
+// ============================================================================
+// Email Settings CRUD
+// ============================================================================
+
+export interface EmailProviderConfig {
+  provider: 'smtp' | 'resend' | 'sendgrid'
+  is_active: boolean
+  config: Record<string, any>
+}
+
+// Get all email provider settings
+export async function getEmailSettings(): Promise<EmailProviderConfig[]> {
+  const result = await executeQuery<EmailProviderConfig>(
+    'SELECT provider, is_active, config FROM email_settings ORDER BY provider'
+  )
+  return result.rows
+}
+
+// Get the currently active email provider
+export async function getActiveEmailProvider(): Promise<EmailProviderConfig | null> {
+  const result = await executeQuery<EmailProviderConfig>(
+    'SELECT provider, config FROM email_settings WHERE is_active = true LIMIT 1'
+  )
+  return result.rows[0] || null
+}
+
+// Update email provider configuration
+export async function updateEmailProvider(
+  provider: 'smtp' | 'resend' | 'sendgrid',
+  config: Record<string, any>,
+  isActive: boolean
+): Promise<void> {
+  await executeTransaction(async (client) => {
+    // If setting this provider as active, deactivate all others
+    if (isActive) {
+      await client.query('UPDATE email_settings SET is_active = false')
+    }
+
+    // Update the selected provider
+    await client.query(
+      'UPDATE email_settings SET config = $1, is_active = $2, updated_at = NOW() WHERE provider = $3',
+      [JSON.stringify(config), isActive, provider]
+    )
+  })
+}

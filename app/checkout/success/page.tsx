@@ -7,6 +7,7 @@ import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
+import { apiFetch } from '@/lib/api/client'
 
 interface PaymentInfo {
   method: string
@@ -19,21 +20,80 @@ interface PaymentInfo {
   orderNumber?: string
 }
 
+interface OrderData {
+  id: string
+  orderNumber: string
+  total: number
+  status: string
+  paymentStatus: string
+  email: string
+  items: Array<{
+    id: string
+    productId: string
+    product: {
+      id: string
+      name: string
+      slug: string
+    }
+    quantity: number
+    price: number
+  }>
+  createdAt: string
+}
+
 function SuccessPageContent() {
   const searchParams = useSearchParams()
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null)
+  const [orderData, setOrderData] = useState<OrderData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const txHashParam = searchParams.get('txHash')
   const orderNumberParam = searchParams.get('orderNumber')
 
+  // Fetch order data from backend
   useEffect(() => {
-    const storedPayment = sessionStorage.getItem('checkoutPayment')
-    if (storedPayment) {
-      setPaymentInfo(JSON.parse(storedPayment))
-    }
-  }, [])
+    async function fetchOrder() {
+      if (!orderNumberParam) {
+        // No order number in URL, fall back to session storage
+        const storedPayment = sessionStorage.getItem('checkoutPayment')
+        if (storedPayment) {
+          setPaymentInfo(JSON.parse(storedPayment))
+        }
+        setIsLoading(false)
+        return
+      }
 
-  const orderNumber = orderNumberParam || paymentInfo?.orderNumber || `ZEN-${Date.now().toString(36).toUpperCase()}`
+      try {
+        const result = await apiFetch<OrderData>(`/orders/lookup/${orderNumberParam}`)
+        if (result.success && result.data) {
+          setOrderData(result.data)
+          setError(null)
+        } else {
+          setError('Order not found')
+          // Fall back to session storage
+          const storedPayment = sessionStorage.getItem('checkoutPayment')
+          if (storedPayment) {
+            setPaymentInfo(JSON.parse(storedPayment))
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch order:', err)
+        setError('Failed to load order details')
+        // Fall back to session storage
+        const storedPayment = sessionStorage.getItem('checkoutPayment')
+        if (storedPayment) {
+          setPaymentInfo(JSON.parse(storedPayment))
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchOrder()
+  }, [orderNumberParam])
+
+  const orderNumber = orderNumberParam || orderData?.orderNumber || paymentInfo?.orderNumber || `ZEN-${Date.now().toString(36).toUpperCase()}`
   const txHash = txHashParam || paymentInfo?.txHash
 
   const getExplorerUrl = (network: string, hash: string) => {
@@ -47,6 +107,23 @@ function SuccessPageContent() {
       default:
         return `https://etherscan.io/tx/${hash}`
     }
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background-dark flex flex-col">
+        <Header />
+        <CategoryNav />
+        <main className="flex-grow max-w-container mx-auto px-8 lg:px-12 pb-24 w-full">
+          <div className="max-w-2xl mx-auto py-16 text-center">
+            <Icon name="loading" size={48} className="text-primary animate-spin mx-auto mb-4" />
+            <p className="text-slate-400">Loading order details...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   return (
@@ -74,6 +151,42 @@ function SuccessPageContent() {
             <p className="text-slate-500 text-sm mb-2">Order Number</p>
             <p className="text-2xl font-bold text-white font-mono">{orderNumber}</p>
           </div>
+
+          {/* Order Details from API */}
+          {orderData && (
+            <div className="bg-charcoal border border-border-dark rounded-xl p-6 mb-8 text-left">
+              <h2 className="text-white font-bold mb-4">Order Summary</h2>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Status:</span>
+                  <span className="text-primary font-medium capitalize">{orderData.status}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Payment Status:</span>
+                  <span className="text-green-400 font-medium capitalize">{orderData.paymentStatus}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Total:</span>
+                  <span className="text-white font-bold">${orderData.total.toFixed(2)}</span>
+                </div>
+                {orderData.items && orderData.items.length > 0 && (
+                  <div className="pt-3 border-t border-border-dark">
+                    <p className="text-slate-500 text-xs mb-2">Items ({orderData.items.length}):</p>
+                    <ul className="space-y-2">
+                      {orderData.items.map((item) => (
+                        <li key={item.id} className="flex justify-between items-center text-sm">
+                          <span className="text-white">
+                            {item.product.name} <span className="text-slate-500">x{item.quantity}</span>
+                          </span>
+                          <span className="text-slate-400">${(item.price * item.quantity).toFixed(2)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Crypto Transaction Info */}
           {txHash && paymentInfo?.method === 'wallet' && (

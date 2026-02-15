@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BrowserProvider, parseEther, formatEther, getAddress } from 'ethers'
+import { loadStripe, Stripe } from '@stripe/stripe-js'
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
@@ -30,13 +32,6 @@ const CRYPTO_RATES: Record<string, number> = {
 type PaymentMethod = 'wallet' | 'manual-crypto' | 'stripe' | 'paystack' | 'paypal'
 type CryptoNetwork = 'BTC' | 'ETH' | 'USDT_ERC20' | 'USDT_BEP20' | 'USDT_TRC20' | 'BNB' | 'USDC' | 'SOL' | 'MATIC'
 
-interface CardErrors {
-  cardNumber?: string
-  expiry?: string
-  cvv?: string
-  cardName?: string
-}
-
 interface WalletState {
   address: string | null
   balance: string | null
@@ -51,13 +46,8 @@ export default function PaymentPage() {
   const { formatPrice } = usePreferences()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('wallet')
-  const [errors, setErrors] = useState<CardErrors>({})
-  const [cardData, setCardData] = useState({
-    cardNumber: '',
-    expiry: '',
-    cvv: '',
-    cardName: '',
-  })
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
+  const [paystackPublicKey, setPaystackPublicKey] = useState<string>('')
   const [selectedNetwork, setSelectedNetwork] = useState<CryptoNetwork>('BTC')
   const [walletState, setWalletState] = useState<WalletState>({
     address: null,
@@ -157,6 +147,44 @@ export default function PaymentPage() {
         .finally(() => setLoadingWallets(false))
     }
   }, [paymentMethod])
+
+  // Load Stripe publishable key when Stripe is enabled
+  useEffect(() => {
+    if (enabledProviders.stripe) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      fetch(`${apiUrl}/payments/stripe/config`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.data?.publishableKey) {
+            setStripePromise(loadStripe(data.data.publishableKey))
+          }
+        })
+        .catch(err => console.error('Failed to load Stripe config:', err))
+    }
+  }, [enabledProviders.stripe])
+
+  // Load Paystack public key + script when Paystack is enabled
+  useEffect(() => {
+    if (enabledProviders.paystack) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      fetch(`${apiUrl}/payments/paystack/config`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.data?.publicKey) {
+            setPaystackPublicKey(data.data.publicKey)
+          }
+        })
+        .catch(err => console.error('Failed to load Paystack config:', err))
+
+      // Load Paystack inline script
+      if (!document.querySelector('script[src*="paystack"]')) {
+        const script = document.createElement('script')
+        script.src = 'https://js.paystack.co/v1/inline.js'
+        script.async = true
+        document.head.appendChild(script)
+      }
+    }
+  }, [enabledProviders.paystack])
 
   // Calculate crypto amount based on USD total (after discount)
   const finalTotal = total - discountAmount
@@ -263,8 +291,8 @@ export default function PaymentPage() {
         headers: {
           'Content-Type': 'application/json',
           'X-Session-ID': getSessionId(),
-          ...(localStorage.getItem('accessToken') && {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+          ...(localStorage.getItem('auth_token') && {
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
           }),
         },
         body: JSON.stringify({
@@ -396,52 +424,20 @@ export default function PaymentPage() {
     }
   }
 
-  const handleCardChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setCardData((prev) => ({ ...prev, [name]: value }))
-    // Clear error when user starts typing
-    if (errors[name as keyof CardErrors]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }))
-    }
-  }
-
-  const validateCardPayment = (): boolean => {
-    if (paymentMethod !== 'stripe') return true
-
-    const newErrors: CardErrors = {}
-
-    if (!cardData.cardNumber.trim()) {
-      newErrors.cardNumber = 'Card number is required'
-    } else if (!/^\d{13,19}$/.test(cardData.cardNumber.replace(/\s/g, ''))) {
-      newErrors.cardNumber = 'Please enter a valid card number'
-    }
-
-    if (!cardData.expiry.trim()) {
-      newErrors.expiry = 'Expiry date is required'
-    } else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardData.expiry)) {
-      newErrors.expiry = 'Use format MM/YY'
-    }
-
-    if (!cardData.cvv.trim()) {
-      newErrors.cvv = 'CVV is required'
-    } else if (!/^\d{3,4}$/.test(cardData.cvv)) {
-      newErrors.cvv = 'Invalid CVV'
-    }
-
-    if (!cardData.cardName.trim()) {
-      newErrors.cardName = 'Cardholder name is required'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+  // Handle card payment success (shared by Stripe and Paystack)
+  const handleCardPaymentSuccess = (orderId: string, orderNumber: string) => {
+    sessionStorage.setItem('checkoutPayment', JSON.stringify({
+      method: paymentMethod,
+      orderId,
+      orderNumber,
+      usdAmount: finalTotal,
+    }))
+    clearCart()
+    router.push(`/checkout/success?orderNumber=${orderNumber}`)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!validateCardPayment()) {
-      return
-    }
 
     setIsSubmitting(true)
 
@@ -452,10 +448,8 @@ export default function PaymentPage() {
         crypto: paymentMethod === 'manual-crypto' ? selectedNetwork : null,
         network: paymentMethod === 'manual-crypto' ? selectedNetwork : null,
         usdAmount: finalTotal,
-        cardData: paymentMethod === 'stripe' ? cardData : null,
       }))
 
-      // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 1500))
       router.push('/checkout/review')
     } catch (error) {
@@ -924,140 +918,47 @@ export default function PaymentPage() {
                   </div>
                 )}
 
-                {/* Stripe Payment */}
+                {/* Stripe Payment (Secure Stripe Elements) */}
                 {paymentMethod === 'stripe' && (
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label htmlFor="cardNumber" className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        Card Number
-                      </label>
-                      <div className="relative">
-                        <Icon name="credit-card" size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input
-                          id="cardNumber"
-                          name="cardNumber"
-                          type="text"
-                          value={cardData.cardNumber}
-                          onChange={handleCardChange}
-                          placeholder="1234 5678 9012 3456"
-                          className={`w-full bg-charcoal border rounded-xl py-4 pl-14 pr-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
-                            errors.cardNumber ? 'border-red-500' : 'border-border-dark'
-                          }`}
-                        />
-                      </div>
-                      {errors.cardNumber && (
-                        <p className="text-red-400 text-xs mt-1">{errors.cardNumber}</p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label htmlFor="expiry" className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
-                          Expiry Date
-                        </label>
-                        <input
-                          id="expiry"
-                          name="expiry"
-                          type="text"
-                          value={cardData.expiry}
-                          onChange={handleCardChange}
-                          placeholder="MM/YY"
-                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
-                            errors.expiry ? 'border-red-500' : 'border-border-dark'
-                          }`}
-                        />
-                        {errors.expiry && (
-                          <p className="text-red-400 text-xs mt-1">{errors.expiry}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <label htmlFor="cvv" className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
-                          CVV
-                        </label>
-                        <input
-                          id="cvv"
-                          name="cvv"
-                          type="password"
-                          inputMode="numeric"
-                          maxLength={4}
-                          value={cardData.cvv}
-                          onChange={handleCardChange}
-                          placeholder="•••"
-                          autoComplete="cc-csc"
-                          className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
-                            errors.cvv ? 'border-red-500' : 'border-border-dark'
-                          }`}
-                        />
-                        {errors.cvv && (
-                          <p className="text-red-400 text-xs mt-1">{errors.cvv}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="cardName" className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        Cardholder Name
-                      </label>
-                      <input
-                        id="cardName"
-                        name="cardName"
-                        type="text"
-                        value={cardData.cardName}
-                        onChange={handleCardChange}
-                        placeholder="John Doe"
-                        className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
-                          errors.cardName ? 'border-red-500' : 'border-border-dark'
-                        }`}
+                  stripePromise ? (
+                    <Elements stripe={stripePromise}>
+                      <StripeCardForm
+                        amount={finalTotal}
+                        items={items}
+                        discountCode={discountCode}
+                        discountAmount={discountAmount}
+                        formatPrice={formatPrice}
+                        onSuccess={handleCardPaymentSuccess}
+                        onBack={() => router.push('/checkout')}
                       />
-                      {errors.cardName && (
-                        <p className="text-red-400 text-xs mt-1">{errors.cardName}</p>
-                      )}
+                    </Elements>
+                  ) : (
+                    <div className="bg-charcoal border border-border-dark rounded-xl p-6 text-center">
+                      <Icon name="loading" size={32} className="text-primary animate-spin mx-auto mb-3" />
+                      <p className="text-slate-400 text-sm">Loading Stripe...</p>
                     </div>
-                  </div>
+                  )
                 )}
 
-                {/* Paystack Payment */}
+                {/* Paystack Payment (Secure Popup) */}
                 {paymentMethod === 'paystack' && (
-                  <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
-                    <div className="text-center">
-                      <h3 className="text-white font-bold mb-2">Pay with Paystack</h3>
-                      <p className="text-slate-500 text-sm">Secure card payments for Nigeria, Ghana, Kenya, and South Africa</p>
+                  paystackPublicKey ? (
+                    <PaystackCardForm
+                      amount={finalTotal}
+                      items={items}
+                      discountCode={discountCode}
+                      discountAmount={discountAmount}
+                      formatPrice={formatPrice}
+                      publicKey={paystackPublicKey}
+                      onSuccess={handleCardPaymentSuccess}
+                      onBack={() => router.push('/checkout')}
+                    />
+                  ) : (
+                    <div className="bg-charcoal border border-border-dark rounded-xl p-6 text-center">
+                      <Icon name="loading" size={32} className="text-primary animate-spin mx-auto mb-3" />
+                      <p className="text-slate-400 text-sm">Loading Paystack...</p>
                     </div>
-
-                    <div className="bg-surface-dark rounded-xl p-4 text-center">
-                      <p className="text-slate-400 text-sm mb-3">Amount to pay:</p>
-                      <p className="text-2xl font-bold text-white">{formatPrice(finalTotal)}</p>
-                    </div>
-
-                    <div className="flex items-center gap-3 p-3 bg-surface-dark rounded-xl">
-                      <Icon name="info" size={20} className="text-slate-400" />
-                      <p className="text-slate-400 text-xs">
-                        You&apos;ll be redirected to Paystack&apos;s secure payment page to complete your purchase. Supports Visa, Mastercard, and mobile money.
-                      </p>
-                    </div>
-
-                    <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
-                      <p className="text-primary text-xs font-bold mb-2">Supported Payment Methods:</p>
-                      <div className="grid grid-cols-2 gap-2 text-slate-300 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Icon name="check" size={14} className="text-primary" />
-                          <span>Visa & Mastercard</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Icon name="check" size={14} className="text-primary" />
-                          <span>Verve Cards</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Icon name="check" size={14} className="text-primary" />
-                          <span>Bank Transfer</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Icon name="check" size={14} className="text-primary" />
-                          <span>Mobile Money</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  )
                 )}
 
                 {/* PayPal Payment */}
@@ -1097,8 +998,8 @@ export default function PaymentPage() {
                   </p>
                 </div>
 
-                {/* Navigation Buttons - Only show for non-wallet payments */}
-                {paymentMethod !== 'wallet' && (
+                {/* Navigation Buttons - Only show for manual-crypto and paypal */}
+                {paymentMethod !== 'wallet' && paymentMethod !== 'stripe' && paymentMethod !== 'paystack' && (
                   <div className="flex gap-4">
                     <Link
                       href="/checkout"
@@ -1178,6 +1079,351 @@ export default function PaymentPage() {
       </main>
 
       <Footer />
+    </div>
+  )
+}
+
+// Stripe Card Form Component (must be rendered inside <Elements>)
+function StripeCardForm({
+  amount,
+  items,
+  discountCode,
+  discountAmount,
+  formatPrice: formatPriceFn,
+  onSuccess,
+  onBack,
+}: {
+  amount: number
+  items: any[]
+  discountCode: string
+  discountAmount: number
+  formatPrice: (amount: number) => string
+  onSuccess: (orderId: string, orderNumber: string) => void
+  onBack: () => void
+}) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState('')
+
+  const handlePayment = async () => {
+    if (!stripe || !elements) return
+
+    setProcessing(true)
+    setError('')
+
+    try {
+      const shippingDataStr = sessionStorage.getItem('checkoutShipping')
+      const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
+
+      // 1. Create order via Railway API
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      const orderResponse = await fetch(`${apiUrl}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': getSessionId(),
+          ...(localStorage.getItem('auth_token') && {
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          }),
+        },
+        body: JSON.stringify({
+          fullName: shippingData.fullName || 'Guest',
+          email: shippingData.email || '',
+          phone: shippingData.phone || '',
+          address: shippingData.address || 'Digital Delivery',
+          city: shippingData.city || 'N/A',
+          state: shippingData.state || 'N/A',
+          zipCode: shippingData.zipCode || '00000',
+          customerNote: shippingData.notes || '',
+          paymentMethod: 'card_stripe',
+          discountCode: discountCode || undefined,
+          discountAmount: discountAmount > 0 ? discountAmount : undefined,
+          items: items.map((item: any) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            license: item.license,
+            price: item.price,
+          })),
+        }),
+      })
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json()
+        throw new Error(errorData.error || 'Failed to create order')
+      }
+
+      const orderResult = await orderResponse.json()
+      const orderId = orderResult.data.id
+      const orderNumber = orderResult.data.orderNumber
+
+      // 2. Create PaymentIntent
+      const intentResponse = await fetch('/api/payments/stripe/create-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, orderId }),
+      })
+
+      if (!intentResponse.ok) {
+        const intentError = await intentResponse.json()
+        throw new Error(intentError.error || 'Failed to initialize payment')
+      }
+
+      const intentResult = await intentResponse.json()
+
+      // 3. Confirm card payment with Stripe Elements
+      const cardElement = elements.getElement(CardElement)
+      if (!cardElement) throw new Error('Card element not found')
+
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+        intentResult.data.clientSecret,
+        { payment_method: { card: cardElement } }
+      )
+
+      if (stripeError) throw new Error(stripeError.message)
+
+      if (paymentIntent?.status === 'succeeded') {
+        onSuccess(orderId, orderNumber)
+      } else {
+        throw new Error('Payment was not successful')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Payment failed. Please try again.')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
+        <div>
+          <h3 className="text-white font-bold mb-4">Card Details</h3>
+          <div className="bg-surface-dark border border-border-dark rounded-xl p-4">
+            <CardElement
+              options={{
+                style: {
+                  base: {
+                    fontSize: '16px',
+                    color: '#e2e8f0',
+                    '::placeholder': { color: '#475569' },
+                  },
+                  invalid: { color: '#ef4444' },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="bg-surface-dark rounded-xl p-4 text-center">
+          <p className="text-slate-400 text-sm mb-1">Amount to pay:</p>
+          <p className="text-2xl font-bold text-white">{formatPriceFn(amount)}</p>
+        </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-4 rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2"
+        >
+          <Icon name="arrow-left" size={18} />
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={handlePayment}
+          disabled={processing || !stripe}
+          className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {processing ? (
+            <>
+              <Icon name="loading" size={20} className="animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Icon name="credit-card" size={20} />
+              Pay {formatPriceFn(amount)}
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Paystack Card Form Component (uses Paystack popup)
+function PaystackCardForm({
+  amount,
+  items,
+  discountCode,
+  discountAmount,
+  formatPrice: formatPriceFn,
+  publicKey,
+  onSuccess,
+  onBack,
+}: {
+  amount: number
+  items: any[]
+  discountCode: string
+  discountAmount: number
+  formatPrice: (amount: number) => string
+  publicKey: string
+  onSuccess: (orderId: string, orderNumber: string) => void
+  onBack: () => void
+}) {
+  const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState('')
+
+  const handlePayment = async () => {
+    setProcessing(true)
+    setError('')
+
+    try {
+      const shippingDataStr = sessionStorage.getItem('checkoutShipping')
+      const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
+
+      // 1. Create order via Railway API
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      const orderResponse = await fetch(`${apiUrl}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': getSessionId(),
+          ...(localStorage.getItem('auth_token') && {
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          }),
+        },
+        body: JSON.stringify({
+          fullName: shippingData.fullName || 'Guest',
+          email: shippingData.email || '',
+          phone: shippingData.phone || '',
+          address: shippingData.address || 'Digital Delivery',
+          city: shippingData.city || 'N/A',
+          state: shippingData.state || 'N/A',
+          zipCode: shippingData.zipCode || '00000',
+          customerNote: shippingData.notes || '',
+          paymentMethod: 'card_paystack',
+          discountCode: discountCode || undefined,
+          discountAmount: discountAmount > 0 ? discountAmount : undefined,
+          items: items.map((item: any) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            license: item.license,
+            price: item.price,
+          })),
+        }),
+      })
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json()
+        throw new Error(errorData.error || 'Failed to create order')
+      }
+
+      const orderResult = await orderResponse.json()
+      const orderId = orderResult.data.id
+      const orderNumber = orderResult.data.orderNumber
+
+      // 2. Open Paystack popup
+      const PaystackPop = (window as any).PaystackPop
+      if (!PaystackPop) {
+        throw new Error('Paystack is still loading. Please try again.')
+      }
+
+      const handler = PaystackPop.setup({
+        key: publicKey,
+        email: shippingData.email || 'customer@checkout.com',
+        amount: Math.round(amount * 100),
+        currency: 'USD',
+        ref: `ORDER_${orderNumber}_${Date.now()}`,
+        callback: async (response: any) => {
+          try {
+            // 3. Verify payment
+            const verifyResponse = await fetch(`${apiUrl}/payments/paystack/verify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reference: response.reference }),
+            })
+
+            if (verifyResponse.ok) {
+              onSuccess(orderId, orderNumber)
+            } else {
+              setError('Payment verification failed. Please contact support.')
+              setProcessing(false)
+            }
+          } catch {
+            setError('Payment verification failed. Please contact support.')
+            setProcessing(false)
+          }
+        },
+        onClose: () => {
+          setProcessing(false)
+        },
+      })
+
+      handler.openIframe()
+    } catch (err: any) {
+      setError(err.message || 'Payment failed. Please try again.')
+      setProcessing(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
+        <div className="text-center">
+          <Icon name="credit-card" size={48} className="text-primary mx-auto mb-4" />
+          <h3 className="text-white font-bold mb-2">Pay with Card</h3>
+          <p className="text-slate-500 text-sm">Secure payments via Paystack — supports Visa, Mastercard, Verve, and mobile money</p>
+        </div>
+
+        <div className="bg-surface-dark rounded-xl p-4 text-center">
+          <p className="text-slate-400 text-sm mb-1">Amount to pay:</p>
+          <p className="text-2xl font-bold text-white">{formatPriceFn(amount)}</p>
+        </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-4 rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2"
+        >
+          <Icon name="arrow-left" size={18} />
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={handlePayment}
+          disabled={processing}
+          className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {processing ? (
+            <>
+              <Icon name="loading" size={20} className="animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Icon name="credit-card" size={20} />
+              Pay {formatPriceFn(amount)}
+            </>
+          )}
+        </button>
+      </div>
     </div>
   )
 }

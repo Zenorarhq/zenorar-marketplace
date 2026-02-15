@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
@@ -10,18 +11,53 @@ import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { discountsApi, type ValidateDiscountResponse } from '@/lib/api/discounts'
+import { settingsApi } from '@/lib/api/settings'
 
 export default function CartPage() {
-  const { items, itemCount, total, updateQuantity, removeItem, clearCart } = useCart()
+  const router = useRouter()
+  const { items, itemCount, total, updateQuantity, removeItem, clearCart, validateCart } = useCart()
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState<ValidateDiscountResponse | null>(null)
   const [promoError, setPromoError] = useState('')
   const [isValidating, setIsValidating] = useState(false)
 
-  // Pre-fill promo code from banner
+  // Tax and shipping settings
+  const [taxRate, setTaxRate] = useState(0)
+  const [shippingCost, setShippingCost] = useState(0)
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(0)
+
+  // Cart validation
+  const [validationErrors, setValidationErrors] = useState<Array<{ productId: string; issue: string }>>([])
+  const [isCheckingOut, setIsCheckingOut] = useState(false)
+
+  // Pre-fill promo code and discount from session
   useEffect(() => {
     const savedCode = sessionStorage.getItem('promo_code')
     if (savedCode) setPromoCode(savedCode)
+
+    // Restore full discount object if it exists
+    const savedDiscount = sessionStorage.getItem('applied_discount')
+    if (savedDiscount) {
+      try {
+        const discountData = JSON.parse(savedDiscount)
+        setDiscount(discountData)
+        setPromoCode(discountData.code)
+      } catch (e) {
+        // Invalid JSON, clear it
+        sessionStorage.removeItem('applied_discount')
+      }
+    }
+  }, [])
+
+  // Load tax and shipping settings
+  useEffect(() => {
+    settingsApi.getPublicSettings().then((res) => {
+      if (res.success && res.data) {
+        setTaxRate(parseFloat(res.data.taxRate || '0'))
+        setShippingCost(parseFloat(res.data.shippingCost || '0'))
+        setFreeShippingThreshold(parseFloat(res.data.freeShippingThreshold || '0'))
+      }
+    })
   }, [])
 
   const handleApplyPromo = async () => {
@@ -32,11 +68,14 @@ export default function CartPage() {
       const res = await discountsApi.validate(promoCode.trim(), total)
       if (res.success && res.data) {
         setDiscount(res.data)
+        // Save full discount object for persistence across refreshes
+        sessionStorage.setItem('applied_discount', JSON.stringify(res.data))
         sessionStorage.setItem('discount_code', res.data.code)
         sessionStorage.setItem('discount_amount', String(res.data.discountAmount))
       } else {
         setPromoError(res.error || 'Invalid promo code')
         setDiscount(null)
+        sessionStorage.removeItem('applied_discount')
         sessionStorage.removeItem('discount_code')
         sessionStorage.removeItem('discount_amount')
       }
@@ -53,10 +92,43 @@ export default function CartPage() {
     sessionStorage.removeItem('promo_code')
     sessionStorage.removeItem('discount_code')
     sessionStorage.removeItem('discount_amount')
+    sessionStorage.removeItem('applied_discount')
+  }
+
+  const handleProceedToCheckout = async () => {
+    setIsCheckingOut(true)
+    setValidationErrors([])
+
+    // Validate cart before proceeding
+    const validation = await validateCart()
+
+    if (!validation.valid) {
+      setValidationErrors(validation.issues)
+      setIsCheckingOut(false)
+      return
+    }
+
+    // Save tax and shipping to session for checkout page
+    sessionStorage.setItem('shipping_amount', calculatedShipping.toFixed(2))
+    sessionStorage.setItem('tax_amount', calculatedTax.toFixed(2))
+    sessionStorage.setItem('tax_rate', taxRate.toString())
+
+    // Navigate to checkout
+    router.push('/checkout')
   }
 
   const discountAmount = discount?.discountAmount ?? 0
-  const finalTotal = total - discountAmount
+  const subtotal = total - discountAmount
+
+  // Calculate shipping (free if subtotal exceeds threshold)
+  const calculatedShipping = (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) ? 0 : shippingCost
+
+  // Calculate tax on (subtotal + shipping)
+  const taxableAmount = subtotal + calculatedShipping
+  const calculatedTax = taxableAmount * (taxRate / 100)
+
+  // Final total
+  const finalTotal = subtotal + calculatedShipping + calculatedTax
 
   if (items.length === 0) {
     return (
@@ -206,8 +278,16 @@ export default function CartPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-slate-400">
+                  <span>Shipping</span>
+                  {calculatedShipping === 0 && freeShippingThreshold > 0 ? (
+                    <span className="text-primary font-medium">FREE</span>
+                  ) : (
+                    <span className="text-white font-medium">${calculatedShipping.toFixed(2)}</span>
+                  )}
+                </div>
+                <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
-                  <span className="text-white font-medium">$0.00</span>
+                  <span className="text-white font-medium">${calculatedTax.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -260,13 +340,38 @@ export default function CartPage() {
                 )}
               </div>
 
-              <Link
-                href="/checkout"
-                className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2"
+              {/* Validation Errors */}
+              {validationErrors.length > 0 && (
+                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-red-400 font-bold mb-2">Cart Validation Issues:</p>
+                  <ul className="text-red-400 text-sm space-y-1">
+                    {validationErrors.map((error, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <Icon name="alert" size={16} className="mt-0.5 flex-shrink-0" />
+                        <span>{error.issue}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <button
+                onClick={handleProceedToCheckout}
+                disabled={isCheckingOut}
+                className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Proceed to Checkout
-                <Icon name="arrow-right" size={24} />
-              </Link>
+                {isCheckingOut ? (
+                  <>
+                    Validating...
+                    <Icon name="loading" size={24} className="animate-spin" />
+                  </>
+                ) : (
+                  <>
+                    Proceed to Checkout
+                    <Icon name="arrow-right" size={24} />
+                  </>
+                )}
+              </button>
 
               <Link
                 href="/products"
