@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api/client'
 import Icon from '@/components/ui/Icon'
 
 export default function AdminLoginPage() {
@@ -14,6 +16,18 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+
+  // Fetch branding settings for logo
+  const { data: brandingData } = useQuery({
+    queryKey: ['branding-settings'],
+    queryFn: async () => {
+      const res = await apiFetch<any>('/settings/public')
+      return res.success ? res.data : null
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const siteLogo = brandingData?.logoUrl || null
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && isStaff) {
@@ -59,11 +73,17 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-black font-bold text-xl">Z</span>
-            </div>
-            <span className="text-white text-xl font-bold">Zenorar</span>
+          <Link href="/" className="inline-flex items-center justify-center">
+            {siteLogo ? (
+              <img src={siteLogo} alt="Site Logo" className="h-10 w-auto object-contain" />
+            ) : (
+              <div className="inline-flex items-center gap-2">
+                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                  <span className="text-black font-bold text-xl">Z</span>
+                </div>
+                <span className="text-white text-xl font-bold">Zenorar</span>
+              </div>
+            )}
           </Link>
           <p className="text-slate-500 mt-2">Sign in to Admin Dashboard</p>
         </div>
