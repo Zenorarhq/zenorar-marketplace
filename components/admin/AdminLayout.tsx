@@ -125,11 +125,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     if (!isLoading && !isAuthenticated) {
       router.push('/admin/login')
     } else if (!isLoading && isAuthenticated && !isStaff) {
-      // Customer tried to access admin area - log them out and redirect
-      logout()
+      // Customer tried to access admin area - just redirect, don't logout
       router.push('/admin/login')
     }
-  }, [isLoading, isAuthenticated, isStaff, logout, router])
+  }, [isLoading, isAuthenticated, isStaff, router])
 
   const handleLogout = () => {
     logout()
