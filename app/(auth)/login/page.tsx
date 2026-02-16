@@ -14,7 +14,7 @@ import { authApi } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, logout, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth()
+  const { login, logout, isAuthenticated, isLoading: authLoading, isStaff, refreshUser } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -59,10 +59,16 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      router.push(getRedirectUrl())
+    if (!authLoading) {
+      // Staff users should go to admin (they appear as guests on /login due to route-based auth)
+      if (isStaff) {
+        router.push('/admin')
+      } else if (isAuthenticated) {
+        // Non-staff authenticated users go to saved redirect
+        router.push(getRedirectUrl())
+      }
     }
-  }, [isAuthenticated, authLoading, router])
+  }, [isAuthenticated, authLoading, isStaff, router])
 
   // Check when Google script is ready
   useEffect(() => {
@@ -111,8 +117,8 @@ export default function LoginPage() {
       const result = await login(email, password)
       if (result.success) {
         if (result.user?.isStaff) {
-          logout()
-          setError('Admin accounts must use the admin login page')
+          // Auto-redirect admin users to admin dashboard
+          router.push('/admin')
           return
         }
         router.push(getRedirectUrl())
@@ -140,8 +146,8 @@ export default function LoginPage() {
       const result = await authApi.verify2fa(twoFaTempToken, twoFaCode)
       if (result.success && result.data) {
         if (result.data.user?.isStaff) {
-          authApi.logout()
-          setError('Admin accounts must use the admin login page')
+          // Auto-redirect admin users to admin dashboard
+          router.push('/admin')
           return
         }
         refreshUser()
@@ -168,8 +174,8 @@ export default function LoginPage() {
       const result = await authApi.googleAuth(credentialResponse.credential)
       if (result.success) {
         if (result.data?.user?.isStaff) {
-          authApi.logout()
-          setError('Admin accounts must use the admin login page')
+          // Auto-redirect admin users to admin dashboard
+          router.push('/admin')
           return
         }
         refreshUser()
@@ -269,8 +275,8 @@ export default function LoginPage() {
       const result = await authApi.walletAuth(walletAddress, signature, nonce)
       if (result.success) {
         if (result.data?.user?.isStaff) {
-          authApi.logout()
-          setError('Admin accounts must use the admin login page')
+          // Auto-redirect admin users to admin dashboard
+          router.push('/admin')
           return
         }
         console.log('Wallet authentication successful')

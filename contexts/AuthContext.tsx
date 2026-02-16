@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 import { User, getAccessToken, clearAccessToken, setAccessToken, apiFetch } from '@/lib/api'
 import { useSessionTimeout } from '@/hooks/use-session-timeout'
 
@@ -35,6 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [permissions, setPermissions] = useState<string[]>([])
+
+  // Route-based authentication state
+  const pathname = usePathname()
+  const isAdminRoute = pathname?.startsWith('/admin') ?? false
 
   const refreshUser = useCallback(async () => {
     const token = getAccessToken()
@@ -234,17 +239,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // Store the actual user and auth state
+  const actualUser = user
+  const actualIsAuthenticated = !!user
+  const actualIsStaff = user?.isStaff || user?.role === 'ADMIN' || false
+
+  // Route-based auth state exposure
+  // If user is staff and NOT on admin route → show as guest
+  const shouldShowAsGuest = actualIsStaff && !isAdminRoute
+
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: shouldShowAsGuest ? null : actualUser,
         isLoading,
-        isAuthenticated: !!user,
-        isStaff: user?.isStaff || user?.role === 'ADMIN' || false,
-        permissions,
-        hasPermission,
-        hasAnyPermission,
-        hasAllPermissions,
+        isAuthenticated: shouldShowAsGuest ? false : actualIsAuthenticated,
+        isStaff: actualIsStaff, // Always expose staff status for routing logic
+        permissions: shouldShowAsGuest ? [] : permissions,
+        hasPermission: shouldShowAsGuest ? () => false : hasPermission,
+        hasAnyPermission: shouldShowAsGuest ? () => false : hasAnyPermission,
+        hasAllPermissions: shouldShowAsGuest ? () => false : hasAllPermissions,
         login,
         register,
         logout,

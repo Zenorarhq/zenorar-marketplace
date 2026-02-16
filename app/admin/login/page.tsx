@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
     if (result.success) {
       if (!result.user?.isStaff) {
         logout()
-        setError('You do not have admin access')
+        setError('Invalid credentials. Admin access only')
         setSubmitting(false)
         return
       }
