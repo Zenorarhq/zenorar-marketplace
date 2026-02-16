@@ -69,6 +69,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     enabled: isAuthenticated,
   })
 
+  // Fetch branding settings for logo
+  const { data: brandingData } = useQuery({
+    queryKey: ['branding-settings'],
+    queryFn: async () => {
+      const res = await apiFetch<any>('/settings/public')
+      return res.success ? res.data : null
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  })
+
+  const siteLogo = brandingData?.siteLogo || null
+  const favicon = brandingData?.favicon || null
+
   const queryClient = useQueryClient()
   const unreadNotifs = notifData?.count || 0
   const unreadChats = chatData?.count || 0
@@ -139,15 +152,46 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       }`}>
         {/* Logo */}
         <div className={`h-16 flex items-center justify-center border-b border-[#1f1f1f] ${
-          desktopCollapsed ? '' : 'lg:justify-start lg:px-4'
+          desktopCollapsed ? 'px-2' : 'lg:justify-start lg:px-4 px-2'
         }`}>
           <Link href="/admin" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-              <Icon name="grid-view" size={18} className="text-black" />
-            </div>
-            {/* Site name - hidden on mobile, shown on desktop when not collapsed */}
-            {!desktopCollapsed && (
-              <span className="text-white font-bold text-sm hidden lg:block">Zenorar</span>
+            {/* Mobile: Show favicon, Desktop: Show site logo */}
+            {desktopCollapsed ? (
+              // Collapsed sidebar (mobile or collapsed desktop) - show favicon
+              favicon ? (
+                <img src={favicon} alt="Site" className="w-8 h-8 object-contain flex-shrink-0" />
+              ) : (
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Icon name="grid-view" size={18} className="text-black" />
+                </div>
+              )
+            ) : (
+              // Expanded desktop sidebar - show full site logo
+              <>
+                {/* Mobile: favicon */}
+                <div className="lg:hidden">
+                  {favicon ? (
+                    <img src={favicon} alt="Site" className="w-8 h-8 object-contain flex-shrink-0" />
+                  ) : (
+                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Icon name="grid-view" size={18} className="text-black" />
+                    </div>
+                  )}
+                </div>
+                {/* Desktop: site logo */}
+                <div className="hidden lg:block">
+                  {siteLogo ? (
+                    <img src={siteLogo} alt="Site Logo" className="h-8 w-auto object-contain" />
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Icon name="grid-view" size={18} className="text-black" />
+                      </div>
+                      <span className="text-white font-bold text-sm">Zenorar</span>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </Link>
         </div>
