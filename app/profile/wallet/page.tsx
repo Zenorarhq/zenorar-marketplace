@@ -31,7 +31,7 @@ export default function WalletPage() {
     queryFn: async () => {
       const type = filter === 'all' ? undefined : filter
       const result = await getTransactionHistory(1, 50, type)
-      if (!result.success || !result.data) {
+      if (!result.success || !result.data || !Array.isArray(result.data.transactions)) {
         throw new Error(result.error || 'Failed to load transactions')
       }
       return result.data
@@ -233,7 +233,7 @@ export default function WalletPage() {
               <div key={i} className="h-20 bg-surface-dark animate-pulse rounded-xl" />
             ))}
           </div>
-        ) : transactionsData && transactionsData.transactions.length > 0 ? (
+        ) : transactionsData?.transactions && transactionsData.transactions.length > 0 ? (
           <div className="space-y-3">
             {transactionsData.transactions.map((transaction) => {
               const { icon, color } = getTransactionIcon(transaction.type)

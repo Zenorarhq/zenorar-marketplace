@@ -29,7 +29,7 @@ export default function ReferralsPage() {
     queryFn: async () => {
       const status = filter === 'all' ? undefined : filter.toUpperCase()
       const result = await getReferralHistory(1, 50, status)
-      if (!result.success || !result.data) {
+      if (!result.success || !result.data || !Array.isArray(result.data.referrals)) {
         throw new Error(result.error || 'Failed to load referral history')
       }
       return result.data
@@ -266,7 +266,7 @@ export default function ReferralsPage() {
               <div key={i} className="h-16 bg-surface-dark animate-pulse rounded-xl" />
             ))}
           </div>
-        ) : historyData && historyData.referrals.length > 0 ? (
+        ) : historyData?.referrals && historyData.referrals.length > 0 ? (
           <div className="overflow-x-auto rounded-2xl border border-border-dark">
             <table className="w-full text-left text-sm text-slate-400">
               <thead className="text-xs uppercase bg-black text-slate-200">
