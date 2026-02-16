@@ -6,6 +6,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 import { useAuth } from '@/contexts/AuthContext'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api/client'
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
 import { BrowserProvider } from 'ethers'
 import { authApi } from '@/lib/api'
@@ -30,6 +32,18 @@ export default function LoginPage() {
   const [twoFaCode, setTwoFaCode] = useState('')
 
   const currentYear = new Date().getFullYear()
+
+  // Fetch branding settings for logo
+  const { data: brandingData } = useQuery({
+    queryKey: ['branding-settings'],
+    queryFn: async () => {
+      const res = await apiFetch<any>('/settings/public')
+      return res.success ? res.data : null
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const siteLogo = brandingData?.logoUrl || null
 
   // Helper function to get redirect URL
   const getRedirectUrl = () => {
@@ -319,10 +333,16 @@ export default function LoginPage() {
         <div className="relative z-10 p-12 h-full flex flex-col">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 font-bold text-2xl tracking-tight text-white">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black">
-              <Icon name="grid-view" size={24} />
-            </div>
-            Marketplace
+            {siteLogo ? (
+              <img src={siteLogo} alt="Site Logo" className="h-10 w-auto object-contain" />
+            ) : (
+              <>
+                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black">
+                  <Icon name="grid-view" size={24} />
+                </div>
+                Marketplace
+              </>
+            )}
           </Link>
 
           {/* Hero Content */}
@@ -371,8 +391,14 @@ export default function LoginPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-8">
             <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary">
-              <Icon name="grid-view" size={24} />
-              Marketplace
+              {siteLogo ? (
+                <img src={siteLogo} alt="Site Logo" className="h-8 w-auto object-contain" />
+              ) : (
+                <>
+                  <Icon name="grid-view" size={24} />
+                  Marketplace
+                </>
+              )}
             </Link>
           </div>
 
