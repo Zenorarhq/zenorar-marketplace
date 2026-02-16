@@ -23,7 +23,7 @@ interface AuthContextType {
   hasAnyPermission: (...permissions: string[]) => boolean
   hasAllPermissions: (...permissions: string[]) => boolean
   login: (email: string, password: string) => Promise<LoginResult>
-  register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>
+  register: (email: string, password: string, name: string, referralCode?: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   refreshUser: () => Promise<void>
   updateUser: (userData: Partial<User>) => void
@@ -162,11 +162,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const register = useCallback(async (email: string, password: string, name: string) => {
+  const register = useCallback(async (email: string, password: string, name: string, referralCode?: string) => {
     try {
       const result = await apiFetch<{ user: User }>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password, name })
+        body: JSON.stringify({ email, password, name, referralCode })
       })
 
       if (result.success && result.data) {

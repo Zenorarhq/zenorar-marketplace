@@ -22,6 +22,7 @@ const navItems = [
   { href: '/profile/library', label: 'My Library', shortLabel: 'Library', icon: 'library' },
   { href: '/profile/wishlist', label: 'My Wishlist', shortLabel: 'Wishlist', icon: 'heart' },
   { href: '/profile/referrals', label: 'Referral & Rewards', shortLabel: 'Referrals', icon: 'gift' },
+  { href: '/profile/wallet', label: 'Wallet & Credits', shortLabel: 'Wallet', icon: 'wallet' },
   { href: '/profile/tickets', label: 'Support Tickets', shortLabel: 'Support', icon: 'ticket' },
 ]
 

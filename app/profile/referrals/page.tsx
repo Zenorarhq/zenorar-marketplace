@@ -1,24 +1,88 @@
 'use client'
 
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
-
-const referralHistory = [
-  { user: 'john_doe', date: 'Oct 15, 2023', status: 'completed', reward: '$10.00' },
-  { user: 'jane_smith', date: 'Oct 10, 2023', status: 'pending', reward: '$10.00' },
-  { user: 'mike_wilson', date: 'Sep 28, 2023', status: 'completed', reward: '$10.00' },
-]
+import { getMyReferrals, getReferralHistory } from '@/lib/api/referrals'
+import { formatCurrency } from '@/lib/currency'
 
 export default function ReferralsPage() {
   const [copied, setCopied] = useState(false)
-  const referralCode = 'ALEXM2024'
-  const referralLink = `https://marketplace.com/ref/${referralCode}`
+  const [filter, setFilter] = useState<string>('all')
+
+  // Fetch referral stats
+  const { data: statsData, isLoading: statsLoading } = useQuery({
+    queryKey: ['referrals', 'stats'],
+    queryFn: async () => {
+      const result = await getMyReferrals()
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to load referral stats')
+      }
+      return result.data
+    }
+  })
+
+  // Fetch referral history
+  const { data: historyData, isLoading: historyLoading } = useQuery({
+    queryKey: ['referrals', 'history', filter],
+    queryFn: async () => {
+      const status = filter === 'all' ? undefined : filter.toUpperCase()
+      const result = await getReferralHistory(1, 50, status)
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to load referral history')
+      }
+      return result.data
+    }
+  })
+
+  const referralCode = statsData?.referralCode || ''
+  const referralLink = typeof window !== 'undefined'
+    ? `${window.location.origin}/ref/${referralCode}`
+    : ''
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+      case 'REWARDED':
+        return (
+          <span className="text-primary bg-primary/10 px-2 py-1 rounded text-xs font-bold border border-primary/20">
+            Completed
+          </span>
+        )
+      case 'PENDING':
+        return (
+          <span className="text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded text-xs font-bold border border-yellow-500/20">
+            Pending
+          </span>
+        )
+      case 'CANCELLED':
+        return (
+          <span className="text-red-500 bg-red-500/10 px-2 py-1 rounded text-xs font-bold border border-red-500/20">
+            Cancelled
+          </span>
+        )
+      default:
+        return (
+          <span className="text-slate-500 bg-slate-500/10 px-2 py-1 rounded text-xs font-bold border border-slate-500/20">
+            {status}
+          </span>
+        )
+    }
   }
 
   return (
@@ -40,7 +104,11 @@ export default function ReferralsPage() {
             </div>
             <span className="text-slate-400 text-sm">Total Referrals</span>
           </div>
-          <p className="text-3xl font-bold text-white">12</p>
+          {statsLoading ? (
+            <div className="h-9 bg-surface-dark animate-pulse rounded" />
+          ) : (
+            <p className="text-3xl font-bold text-white">{statsData?.totalReferrals || 0}</p>
+          )}
         </div>
 
         <div className="bg-black border border-border-dark rounded-2xl p-6">
@@ -50,7 +118,13 @@ export default function ReferralsPage() {
             </div>
             <span className="text-slate-400 text-sm">Successful</span>
           </div>
-          <p className="text-3xl font-bold text-white">8</p>
+          {statsLoading ? (
+            <div className="h-9 bg-surface-dark animate-pulse rounded" />
+          ) : (
+            <p className="text-3xl font-bold text-white">
+              {(statsData?.completedReferrals || 0) + (statsData?.rewardedReferrals || 0)}
+            </p>
+          )}
         </div>
 
         <div className="bg-black border border-border-dark rounded-2xl p-6">
@@ -60,7 +134,13 @@ export default function ReferralsPage() {
             </div>
             <span className="text-slate-400 text-sm">Total Earned</span>
           </div>
-          <p className="text-3xl font-bold text-primary">$80.00</p>
+          {statsLoading ? (
+            <div className="h-9 bg-surface-dark animate-pulse rounded" />
+          ) : (
+            <p className="text-3xl font-bold text-primary">
+              {formatCurrency(statsData?.totalEarned || 0)}
+            </p>
+          )}
         </div>
       </div>
 
@@ -84,6 +164,7 @@ export default function ReferralsPage() {
               <button
                 onClick={() => copyToClipboard(referralCode)}
                 className="px-6 py-3 bg-surface-dark border border-border-dark rounded-xl text-white font-medium hover:bg-border-dark transition-colors flex items-center gap-2"
+                disabled={!referralCode}
               >
                 <Icon name={copied ? 'check' : 'copy'} size={20} />
                 {copied ? 'Copied!' : 'Copy'}
@@ -103,6 +184,7 @@ export default function ReferralsPage() {
               <button
                 onClick={() => copyToClipboard(referralLink)}
                 className="px-6 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center gap-2"
+                disabled={!referralLink}
               >
                 <Icon name="share" size={20} />
                 Share
@@ -154,43 +236,86 @@ export default function ReferralsPage() {
 
       {/* Referral History */}
       <div>
-        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <Icon name="history" size={20} className="text-primary" />
-          Referral History
-        </h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Icon name="history" size={20} className="text-primary" />
+            Referral History
+          </h3>
 
-        <div className="overflow-x-auto rounded-2xl border border-border-dark">
-          <table className="w-full text-left text-sm text-slate-400">
-            <thead className="text-xs uppercase bg-black text-slate-200">
-              <tr>
-                <th className="px-6 py-4 font-bold">Referred User</th>
-                <th className="px-6 py-4 font-bold">Date</th>
-                <th className="px-6 py-4 font-bold text-center">Status</th>
-                <th className="px-6 py-4 font-bold text-right">Reward</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-dark bg-black/20">
-              {referralHistory.map((referral, index) => (
-                <tr key={index} className="hover:bg-black/40 transition-colors">
-                  <td className="px-6 py-4 text-white font-medium">@{referral.user}</td>
-                  <td className="px-6 py-4">{referral.date}</td>
-                  <td className="px-6 py-4 text-center">
-                    {referral.status === 'completed' ? (
-                      <span className="text-primary bg-primary/10 px-2 py-1 rounded text-xs font-bold border border-primary/20">
-                        Completed
-                      </span>
-                    ) : (
-                      <span className="text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded text-xs font-bold border border-yellow-500/20">
-                        Pending
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right font-mono text-white">{referral.reward}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* Filter */}
+          <div className="flex gap-2">
+            {['all', 'pending', 'completed', 'rewarded'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  filter === status
+                    ? 'bg-primary text-black'
+                    : 'bg-surface-dark text-slate-400 hover:bg-border-dark'
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {historyLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-surface-dark animate-pulse rounded-xl" />
+            ))}
+          </div>
+        ) : historyData && historyData.referrals.length > 0 ? (
+          <div className="overflow-x-auto rounded-2xl border border-border-dark">
+            <table className="w-full text-left text-sm text-slate-400">
+              <thead className="text-xs uppercase bg-black text-slate-200">
+                <tr>
+                  <th className="px-6 py-4 font-bold">Referred User</th>
+                  <th className="px-6 py-4 font-bold">Date</th>
+                  <th className="px-6 py-4 font-bold text-center">Status</th>
+                  <th className="px-6 py-4 font-bold text-right">Purchase</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-dark bg-black/20">
+                {historyData.referrals.map((referral) => (
+                  <tr key={referral.id} className="hover:bg-black/40 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-white font-medium">{referral.referee.name}</div>
+                        <div className="text-xs text-slate-500">{referral.referee.email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">{formatDate(referral.createdAt)}</td>
+                    <td className="px-6 py-4 text-center">
+                      {getStatusBadge(referral.status)}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {referral.firstOrder ? (
+                        <div>
+                          <div className="text-white font-mono">{formatCurrency(Number(referral.firstOrder.total))}</div>
+                          <div className="text-xs text-slate-500">#{referral.firstOrder.orderNumber}</div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500 text-sm">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-surface-dark flex items-center justify-center mx-auto mb-4">
+              <Icon name="user-group" size={32} className="text-slate-600" />
+            </div>
+            <h4 className="text-lg font-bold text-white mb-2">No referrals yet</h4>
+            <p className="text-slate-500">
+              Share your referral link to start earning rewards!
+            </p>
+          </div>
+        )}
       </div>
     </ProfileLayout>
   )

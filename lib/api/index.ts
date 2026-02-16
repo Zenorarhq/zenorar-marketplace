@@ -21,6 +21,8 @@ export * from './analytics'
 export * from './media'
 export * from './discounts'
 export * from './payment-methods'
+export * from './referrals'
+export * from './wallet'
 
 // Re-export API objects for convenience
 export { authApi } from './auth'

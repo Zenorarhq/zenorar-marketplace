@@ -65,6 +65,16 @@ export function getExchangeRate(currencyCode: string): number {
   return exchangeRates[currencyCode] || 1
 }
 
+// Format amount as USD currency (simple formatter for wallet, referrals, etc.)
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
+
 // List of all supported currencies (for reference)
 export const supportedCurrencies: Currency[] = [
   { code: 'USD', name: 'US Dollar', symbol: '$' },

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { BrowserProvider, parseEther, formatEther, getAddress } from 'ethers'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { useQuery } from '@tanstack/react-query'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
@@ -15,6 +16,8 @@ import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { apiFetch, getSessionId } from '@/lib/api/client'
+import { getBalance } from '@/lib/api/wallet'
+import { formatCurrency } from '@/lib/currency'
 
 // Crypto conversion rates (in production, fetch from API)
 const CRYPTO_RATES: Record<string, number> = {
@@ -71,6 +74,22 @@ export default function PaymentPage() {
     paystack: false,
     paypal: false,
   })
+  const [useWalletBalance, setUseWalletBalance] = useState(true)
+
+  // Fetch wallet balance for authenticated users
+  const { data: walletData, isLoading: walletLoading } = useQuery({
+    queryKey: ['wallet', 'balance'],
+    queryFn: async () => {
+      const result = await getBalance()
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to load wallet balance')
+      }
+      return result.data
+    },
+    enabled: isAuthenticated && !authLoading,
+  })
+
+  const walletBalance = walletData?.balance || 0
 
   // Load discount from sessionStorage
   useEffect(() => {
@@ -186,8 +205,13 @@ export default function PaymentPage() {
     }
   }, [enabledProviders.paystack])
 
-  // Calculate crypto amount based on USD total (after discount)
-  const finalTotal = total - discountAmount
+  // Calculate totals (subtract discount and wallet balance if applicable)
+  const subtotalAfterDiscount = total - discountAmount
+  const walletAmountToApply = useWalletBalance && walletBalance > 0
+    ? Math.min(walletBalance, subtotalAfterDiscount)
+    : 0
+  const finalTotal = subtotalAfterDiscount - walletAmountToApply
+
   const getCryptoAmount = (network: CryptoNetwork): string => {
     const rate = CRYPTO_RATES[network] || 0.00042
     return (finalTotal * rate).toFixed(6)
@@ -307,6 +331,7 @@ export default function PaymentPage() {
           paymentMethod: `crypto_${selectedNetwork.toLowerCase()}`,
           discountCode: discountCode || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
+          useWalletBalance: useWalletBalance,
           items: items.map((item: any) => ({
             productId: item.product.id,
             quantity: item.quantity,
@@ -568,6 +593,71 @@ export default function PaymentPage() {
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
+                {/* Wallet Balance Section (Only for authenticated users with balance) */}
+                {isAuthenticated && (
+                  <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Icon name="wallet" size={24} className="text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-bold text-base">Account Credits</h3>
+                          <p className="text-slate-400 text-sm">
+                            {walletLoading ? (
+                              'Loading...'
+                            ) : (
+                              <>Available: <span className="text-primary font-bold">{formatCurrency(walletBalance)}</span></>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      {walletBalance > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setUseWalletBalance(!useWalletBalance)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            useWalletBalance ? 'bg-primary' : 'bg-surface-dark border border-border-dark'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              useWalletBalance ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      )}
+                    </div>
+
+                    {walletBalance > 0 && useWalletBalance && (
+                      <div className="bg-primary/10 border border-primary/30 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-slate-300 text-sm">Credits Applied:</span>
+                          <span className="text-primary font-bold text-lg">-{formatCurrency(walletAmountToApply)}</span>
+                        </div>
+                        <p className="text-slate-400 text-xs">
+                          {walletAmountToApply >= subtotalAfterDiscount
+                            ? 'Your wallet balance will cover the full amount!'
+                            : 'Remaining balance will be charged via your selected payment method.'}
+                        </p>
+                      </div>
+                    )}
+
+                    {walletBalance === 0 && (
+                      <div className="bg-surface-dark border border-border-dark rounded-xl p-4 text-center">
+                        <p className="text-slate-400 text-sm mb-2">No credits available</p>
+                        <Link
+                          href="/profile/referrals"
+                          className="text-primary text-sm font-medium hover:underline inline-flex items-center gap-1"
+                        >
+                          Earn credits by referring friends
+                          <Icon name="arrow-right" size={14} />
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Payment Method Selection */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
                   {enabledProviders.wallet && (
@@ -933,6 +1023,7 @@ export default function PaymentPage() {
                         items={items}
                         discountCode={discountCode}
                         discountAmount={discountAmount}
+                        useWalletBalance={useWalletBalance}
                         formatPrice={formatPrice}
                         onSuccess={handleCardPaymentSuccess}
                         onBack={() => router.push('/checkout')}
@@ -954,6 +1045,7 @@ export default function PaymentPage() {
                       items={items}
                       discountCode={discountCode}
                       discountAmount={discountAmount}
+                      useWalletBalance={useWalletBalance}
                       formatPrice={formatPrice}
                       publicKey={paystackPublicKey}
                       onSuccess={handleCardPaymentSuccess}
@@ -1070,13 +1162,22 @@ export default function PaymentPage() {
                     <span className="text-primary">-${discountAmount.toFixed(2)}</span>
                   </div>
                 )}
+                {walletAmountToApply > 0 && (
+                  <div className="flex justify-between text-slate-400">
+                    <span className="flex items-center gap-1">
+                      Wallet Credits
+                      <Icon name="wallet" size={14} className="text-primary" />
+                    </span>
+                    <span className="text-primary">-${walletAmountToApply.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
                   <span className="text-white">$0.00</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-3 border-t border-border-dark">
                   <span className="text-white">Total</span>
-                  <span className="text-white">${(total - discountAmount).toFixed(2)}</span>
+                  <span className="text-white">${finalTotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -1095,6 +1196,7 @@ function StripeCardForm({
   items,
   discountCode,
   discountAmount,
+  useWalletBalance,
   formatPrice: formatPriceFn,
   onSuccess,
   onBack,
@@ -1103,6 +1205,7 @@ function StripeCardForm({
   items: any[]
   discountCode: string
   discountAmount: number
+  useWalletBalance: boolean
   formatPrice: (amount: number) => string
   onSuccess: (orderId: string, orderNumber: string) => void
   onBack: () => void
@@ -1145,6 +1248,7 @@ function StripeCardForm({
           paymentMethod: 'card_stripe',
           discountCode: discountCode || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
+          useWalletBalance: useWalletBalance,
           items: items.map((item: any) => ({
             productId: item.product.id,
             quantity: item.quantity,
@@ -1277,6 +1381,7 @@ function PaystackCardForm({
   items,
   discountCode,
   discountAmount,
+  useWalletBalance,
   formatPrice: formatPriceFn,
   publicKey,
   onSuccess,
@@ -1286,6 +1391,7 @@ function PaystackCardForm({
   items: any[]
   discountCode: string
   discountAmount: number
+  useWalletBalance: boolean
   formatPrice: (amount: number) => string
   publicKey: string
   onSuccess: (orderId: string, orderNumber: string) => void
@@ -1325,6 +1431,7 @@ function PaystackCardForm({
           paymentMethod: 'card_paystack',
           discountCode: discountCode || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
+          useWalletBalance: useWalletBalance,
           items: items.map((item: any) => ({
             productId: item.product.id,
             quantity: item.quantity,

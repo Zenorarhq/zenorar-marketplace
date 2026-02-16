@@ -10,7 +10,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import EmailConfigSection from '@/components/admin/EmailConfigSection'
 
-type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'api' | 'email'
+type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'email'
 
 const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'profile', label: 'Profile', icon: 'user' },
@@ -18,6 +18,7 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'security', label: 'Security', icon: 'shield' },
   { id: 'notifications', label: 'Notifications', icon: 'bell' },
   { id: 'payments', label: 'Payments', icon: 'credit-card' },
+  { id: 'referral', label: 'Referral Program', icon: 'gift' },
   { id: 'api', label: 'API Keys', icon: 'key' },
   { id: 'email', label: 'Email Service', icon: 'mail' },
 ]
@@ -188,6 +189,14 @@ export default function AdminSettingsPage() {
   })
   const [twilioSaving, setTwilioSaving] = useState(false)
 
+  // Referral Program Settings State
+  const [referralSettings, setReferralSettings] = useState({
+    referralProgramEnabled: true,
+    referrerRewardAmount: '10.00',
+    refereeRewardAmount: '10.00',
+    minFirstPurchase: '0.00',
+  })
+
   // Load general settings from API on mount
   useEffect(() => {
     settingsApi.getSettingsByGroup('general').then((res) => {
@@ -309,6 +318,18 @@ export default function AdminSettingsPage() {
           twilio_account_sid: d.twilio_account_sid ?? prev.twilio_account_sid,
           twilio_auth_token: d.twilio_auth_token ?? prev.twilio_auth_token,
           twilio_phone_number: d.twilio_phone_number ?? prev.twilio_phone_number,
+        }))
+      }
+    })
+    // Load referral settings
+    settingsApi.getSettingsByGroup('referral').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setReferralSettings((prev) => ({
+          referralProgramEnabled: d.referralProgramEnabled ?? prev.referralProgramEnabled,
+          referrerRewardAmount: d.referrerRewardAmount ?? prev.referrerRewardAmount,
+          refereeRewardAmount: d.refereeRewardAmount ?? prev.refereeRewardAmount,
+          minFirstPurchase: d.minFirstPurchase ?? prev.minFirstPurchase,
         }))
       }
     })
@@ -616,6 +637,11 @@ export default function AdminSettingsPage() {
       // Payment settings - General
       { key: 'autoWithdraw', value: paymentSettings.autoWithdraw, group: 'payments', isPublic: false },
       { key: 'withdrawThreshold', value: paymentSettings.withdrawThreshold, group: 'payments', isPublic: false },
+      // Referral Program settings
+      { key: 'referralProgramEnabled', value: referralSettings.referralProgramEnabled, group: 'referral', isPublic: true },
+      { key: 'referrerRewardAmount', value: referralSettings.referrerRewardAmount, group: 'referral', isPublic: false },
+      { key: 'refereeRewardAmount', value: referralSettings.refereeRewardAmount, group: 'referral', isPublic: false },
+      { key: 'minFirstPurchase', value: referralSettings.minFirstPurchase, group: 'referral', isPublic: false },
     ]
 
     const result = await settingsApi.updateSettings(settingsToSave)
@@ -2185,6 +2211,129 @@ export default function AdminSettingsPage() {
             </div>
           )}
         </div>
+
+          {/* Referral Program Settings */}
+          {activeTab === 'referral' && (
+            <div className="space-y-6">
+              <div className="bg-charcoal border border-border-dark rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Icon name="gift" size={24} className="text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Referral Program Settings</h2>
+                    <p className="text-slate-500 text-sm">Configure rewards and program rules</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Enable/Disable Program */}
+                  <div className="flex items-center justify-between p-4 bg-surface-dark rounded-xl">
+                    <div className="flex-1">
+                      <label className="text-white font-semibold mb-1 block">Enable Referral Program</label>
+                      <p className="text-slate-400 text-sm">Allow users to refer friends and earn rewards</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReferralSettings({ ...referralSettings, referralProgramEnabled: !referralSettings.referralProgramEnabled })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        referralSettings.referralProgramEnabled ? 'bg-primary' : 'bg-surface-dark border border-border-dark'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          referralSettings.referralProgramEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Referrer Reward */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-300 mb-2">
+                        Referrer Reward (USD)
+                        <span className="text-slate-500 font-normal ml-2">Amount given to referrer</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={referralSettings.referrerRewardAmount}
+                          onChange={(e) => setReferralSettings({ ...referralSettings, referrerRewardAmount: e.target.value })}
+                          className="w-full bg-surface-dark border border-border-dark rounded-xl pl-8 pr-4 py-3 text-white placeholder-slate-500 focus:border-primary/50 focus:outline-none"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Credited when referee makes first purchase
+                      </p>
+                    </div>
+
+                    {/* Referee Reward */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-300 mb-2">
+                        Referee Welcome Bonus (USD)
+                        <span className="text-slate-500 font-normal ml-2">Amount given to new user</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={referralSettings.refereeRewardAmount}
+                          onChange={(e) => setReferralSettings({ ...referralSettings, refereeRewardAmount: e.target.value })}
+                          className="w-full bg-surface-dark border border-border-dark rounded-xl pl-8 pr-4 py-3 text-white placeholder-slate-500 focus:border-primary/50 focus:outline-none"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Credited when they make first purchase
+                      </p>
+                    </div>
+
+                    {/* Minimum Purchase */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-300 mb-2">
+                        Minimum First Purchase (USD)
+                        <span className="text-slate-500 font-normal ml-2">Optional minimum to trigger rewards</span>
+                      </label>
+                      <div className="relative max-w-md">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={referralSettings.minFirstPurchase}
+                          onChange={(e) => setReferralSettings({ ...referralSettings, minFirstPurchase: e.target.value })}
+                          className="w-full bg-surface-dark border border-border-dark rounded-xl pl-8 pr-4 py-3 text-white placeholder-slate-500 focus:border-primary/50 focus:outline-none"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Set to $0.00 to allow rewards for any purchase amount
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Info Box */}
+                  <div className="flex items-start gap-3 p-4 bg-primary/10 border border-primary/20 rounded-xl">
+                    <Icon name="info" size={20} className="text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-primary text-sm font-semibold mb-1">How Referral Rewards Work</p>
+                      <ul className="text-slate-300 text-xs space-y-1 list-disc list-inside">
+                        <li>Users get a unique referral code when they sign up</li>
+                        <li>New users can use this code during signup</li>
+                        <li>When the referred user makes their first purchase, both receive rewards</li>
+                        <li>Rewards are credited to their wallet balances automatically</li>
+                        <li>Users can use wallet balance at checkout to pay for orders</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Email Service Settings */}
           {activeTab === 'email' && (

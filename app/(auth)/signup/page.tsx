@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
@@ -9,15 +9,18 @@ import { useAuth } from '@/contexts/AuthContext'
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
 import { BrowserProvider } from 'ethers'
 import { authApi } from '@/lib/api'
+import { validateReferralCode } from '@/lib/api/referrals'
 
 export default function SignupPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { register, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth()
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
+    referralCode: '',
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -28,8 +31,24 @@ export default function SignupPage() {
   const [isWalletLoading, setIsWalletLoading] = useState(false)
   const [isGoogleReady, setIsGoogleReady] = useState(false)
   const [isGoogleFailed, setIsGoogleFailed] = useState(false)
+  const [referralCodeValidation, setReferralCodeValidation] = useState<{
+    isValid: boolean
+    referrerName?: string
+    message?: string
+  } | null>(null)
+  const [isValidatingCode, setIsValidatingCode] = useState(false)
 
   const currentYear = new Date().getFullYear()
+
+  // Load referral code from URL parameter
+  useEffect(() => {
+    const refCode = searchParams.get('ref')
+    if (refCode) {
+      setFormData((prev) => ({ ...prev, referralCode: refCode }))
+      // Auto-validate if code is from URL
+      validateCode(refCode)
+    }
+  }, [searchParams])
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -75,6 +94,37 @@ export default function SignupPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+
+    // Reset validation when user types in referral code field
+    if (name === 'referralCode') {
+      setReferralCodeValidation(null)
+    }
+  }
+
+  const validateCode = async (code: string) => {
+    if (!code.trim()) {
+      setReferralCodeValidation(null)
+      return
+    }
+
+    setIsValidatingCode(true)
+    try {
+      const result = await validateReferralCode(code)
+      if (result.success && result.data) {
+        setReferralCodeValidation({
+          isValid: result.data.valid,
+          referrerName: result.data.referrerName,
+          message: result.data.message
+        })
+      }
+    } catch (error) {
+      setReferralCodeValidation({
+        isValid: false,
+        message: 'Failed to validate referral code'
+      })
+    } finally {
+      setIsValidatingCode(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,7 +144,7 @@ export default function SignupPage() {
     setIsLoading(true)
 
     try {
-      const result = await register(formData.email, formData.password, formData.fullName)
+      const result = await register(formData.email, formData.password, formData.fullName, formData.referralCode || undefined)
       if (result.success) {
         router.push('/')
       } else {
@@ -501,6 +551,51 @@ export default function SignupPage() {
               >
                 <Icon name={showConfirmPassword ? 'eye' : 'visibility-off'} size={20} />
               </button>
+            </div>
+
+            <div>
+              <div className="relative group">
+                <label htmlFor="referralCode" className="sr-only">Referral Code (Optional)</label>
+                <Icon name="gift" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" />
+                <input
+                  id="referralCode"
+                  name="referralCode"
+                  type="text"
+                  value={formData.referralCode}
+                  onChange={handleInputChange}
+                  onBlur={() => validateCode(formData.referralCode)}
+                  placeholder="Referral Code (Optional)"
+                  autoComplete="off"
+                  className={`w-full bg-surface-light text-white border rounded-2xl py-4 pl-12 pr-12 outline-none focus:ring-1 transition-all placeholder:text-slate-600 font-medium ${
+                    referralCodeValidation?.isValid
+                      ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
+                      : referralCodeValidation?.isValid === false
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                      : 'border-border-dark focus:border-primary focus:ring-primary'
+                  }`}
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  {isValidatingCode ? (
+                    <Icon name="loading" size={20} className="text-slate-500 animate-spin" />
+                  ) : referralCodeValidation?.isValid === true ? (
+                    <Icon name="check-circle" size={20} className="text-green-500" />
+                  ) : referralCodeValidation?.isValid === false ? (
+                    <Icon name="close-circle" size={20} className="text-red-500" />
+                  ) : null}
+                </div>
+              </div>
+              {referralCodeValidation && (
+                <div className={`mt-2 text-xs ${referralCodeValidation.isValid ? 'text-green-500' : 'text-red-400'}`}>
+                  {referralCodeValidation.isValid ? (
+                    <>
+                      ✓ Valid code! Get ${referralCodeValidation.message || '10'} credit when you make your first purchase. Referred by{' '}
+                      <span className="font-bold">{referralCodeValidation.referrerName}</span>
+                    </>
+                  ) : (
+                    <>✗ {referralCodeValidation.message || 'Invalid referral code'}</>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex items-start gap-3 mt-4">
