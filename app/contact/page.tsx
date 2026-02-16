@@ -6,6 +6,17 @@ import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
+import { ticketsApi, TicketCategory } from '@/lib/api/tickets'
+
+function mapContactCategory(value: string): TicketCategory {
+  switch (value) {
+    case 'support': return 'TECHNICAL'
+    case 'billing': return 'PAYMENT'
+    case 'partnership': return 'OTHER'
+    case 'feedback': return 'OTHER'
+    default: return 'GENERAL'
+  }
+}
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -17,6 +28,8 @@ export default function ContactPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [ticketNumber, setTicketNumber] = useState('')
+  const [submitError, setSubmitError] = useState('')
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -28,13 +41,25 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setSubmitError('')
 
     try {
-      // TODO: Implement actual contact form submission
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setSubmitted(true)
+      const result = await ticketsApi.create({
+        subject: formData.subject,
+        description: formData.message,
+        category: mapContactCategory(formData.category),
+        guestEmail: formData.email,
+        guestName: formData.name,
+      })
+      if (result.success && result.data) {
+        setTicketNumber(result.data.ticketNumber)
+        setSubmitted(true)
+      } else {
+        setSubmitError(result.error || 'Failed to submit. Please try again.')
+      }
     } catch (error) {
       console.error('Error submitting form:', error)
+      setSubmitError('Failed to submit. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -109,13 +134,19 @@ export default function ContactPage() {
                 <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
                   <Icon name="checkmark-circle-02" size={32} />
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-4">Message Sent!</h2>
+                <h2 className="text-2xl font-bold text-white mb-4">Ticket Created!</h2>
+                {ticketNumber && (
+                  <p className="text-primary font-mono text-lg font-bold mb-4">{ticketNumber}</p>
+                )}
                 <p className="text-slate-400 mb-8">
                   Thank you for reaching out. We&apos;ll get back to you within 24 hours.
+                  {ticketNumber && ' Save your ticket number to track your request.'}
                 </p>
                 <button
                   onClick={() => {
                     setSubmitted(false)
+                    setTicketNumber('')
+                    setSubmitError('')
                     setFormData({
                       name: '',
                       email: '',
@@ -220,6 +251,12 @@ export default function ContactPage() {
                     placeholder="Please describe your issue or question in detail..."
                   />
                 </div>
+
+                {submitError && (
+                  <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-red-400 text-sm">
+                    {submitError}
+                  </div>
+                )}
 
                 <button
                   type="submit"

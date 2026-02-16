@@ -11,8 +11,20 @@ export const GET = requireAdmin(async (request: NextRequest) => {
         COUNT(*)::int AS "totalSales",
         COALESCE(SUM(CASE WHEN status = 'REFUNDED' THEN total ELSE 0 END), 0)::float AS "totalRefunds",
         0::float AS "totalFees",
-        COALESCE(SUM(CASE WHEN "paymentStatus" = 'PAID' THEN total ELSE 0 END), 0)::float AS "availableBalance",
-        COALESCE(SUM(CASE WHEN "paymentStatus" = 'PENDING' THEN total ELSE 0 END), 0)::float AS "pendingBalance"
+        COALESCE(SUM(
+          CASE
+            WHEN "paymentStatus" = 'PAID' THEN total
+            WHEN "paymentStatus" IS NULL AND status IN ('CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED') THEN total
+            ELSE 0
+          END
+        ), 0)::float AS "availableBalance",
+        COALESCE(SUM(
+          CASE
+            WHEN "paymentStatus" = 'PENDING' THEN total
+            WHEN "paymentStatus" IS NULL AND status = 'PENDING' THEN total
+            ELSE 0
+          END
+        ), 0)::float AS "pendingBalance"
       FROM orders
     `)
 

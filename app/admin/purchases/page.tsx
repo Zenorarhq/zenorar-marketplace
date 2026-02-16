@@ -90,16 +90,32 @@ export default function PurchasesPage() {
     },
   })
 
-  // Compute stats from loaded orders (avoids mismatch with separate stats API)
-  const stats = useMemo(() => ({
-    totalOrders: orders.length,
-    completedOrders: orders.filter(o => o.status === 'DELIVERED').length,
-    pendingOrders: orders.filter(o => o.status === 'PENDING').length,
-    totalRevenue: orders.filter(o => o.paymentStatus === 'PAID').reduce((sum, o) => sum + Number(o.total), 0),
-  }), [orders])
+  // Fetch accurate stats from backend (counts ALL orders, not just loaded 100)
+  const { data: statsData, isLoading: statsLoading } = useQuery({
+    queryKey: ['admin-orders-stats'],
+    queryFn: async () => {
+      const result = await ordersApi.getStats()
+      if (result.success && result.data) return result.data
+      throw new Error(result.error || 'Failed to load stats')
+    },
+  })
+
+  // Map backend stats to UI format
+  const stats = statsData ? {
+    totalOrders: statsData.totalOrders,
+    completedOrders: statsData.completedOrders,
+    pendingOrders: statsData.pendingOrders,
+    totalRevenue: statsData.totalRevenue,
+  } : {
+    totalOrders: 0,
+    completedOrders: 0,
+    pendingOrders: 0,
+    totalRevenue: 0,
+  }
 
   function refreshData() {
     queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+    queryClient.invalidateQueries({ queryKey: ['admin-orders-stats'] })
   }
 
   // Load detail order
@@ -211,7 +227,7 @@ export default function PurchasesPage() {
     finally { setUpdatingTracking(false) }
   }
 
-  const loading = ordersLoading
+  const loading = ordersLoading || statsLoading
   const error = ordersError ? String(ordersError) : ''
 
   if (loading) {

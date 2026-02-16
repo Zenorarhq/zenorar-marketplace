@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -9,6 +9,81 @@ import { analyticsApi, DashboardStats } from '@/lib/api/analytics'
 import { Product } from '@/lib/api/products'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
+
+type Period = 'today' | 'yesterday' | '7days' | '30days' | 'all'
+
+const PERIOD_LABELS: Record<Period, string> = {
+  today: 'Today',
+  yesterday: 'Yesterday',
+  '7days': 'Last 7 Days',
+  '30days': 'Last 30 Days',
+  all: 'All Time',
+}
+
+function getPeriodDates(period: Period): { startDate?: string; endDate?: string } {
+  const now = new Date()
+  const end = now.toISOString()
+  switch (period) {
+    case 'today': {
+      const start = new Date(now)
+      start.setHours(0, 0, 0, 0)
+      return { startDate: start.toISOString(), endDate: end }
+    }
+    case 'yesterday': {
+      const start = new Date(now)
+      start.setDate(start.getDate() - 1)
+      start.setHours(0, 0, 0, 0)
+      const end2 = new Date(start)
+      end2.setHours(23, 59, 59, 999)
+      return { startDate: start.toISOString(), endDate: end2.toISOString() }
+    }
+    case '7days': {
+      const start = new Date(now)
+      start.setDate(start.getDate() - 7)
+      return { startDate: start.toISOString(), endDate: end }
+    }
+    case '30days': {
+      const start = new Date(now)
+      start.setDate(start.getDate() - 30)
+      return { startDate: start.toISOString(), endDate: end }
+    }
+    case 'all':
+    default:
+      return {}
+  }
+}
+
+function groupByWeek(dailyData: any[]): { date: string; revenue: number; orders: number }[] {
+  const weeks: { date: string; revenue: number; orders: number }[] = []
+  for (let i = 0; i < dailyData.length; i += 7) {
+    const chunk = dailyData.slice(i, i + 7)
+    const total = chunk.reduce((sum: number, d: any) => sum + (d.amount || d.revenue || 0), 0)
+    const label = chunk[0]?.date || ''
+    weeks.push({ date: label, revenue: total, orders: 0 })
+  }
+  return weeks
+}
+
+function getChartLabel(dateStr: string, period: Period): string {
+  if (!dateStr) return ''
+  // Monthly data comes as "YYYY-MM"
+  if (period === 'all') {
+    const [year, month] = dateStr.split('-')
+    const d = new Date(Number(year), Number(month) - 1)
+    return d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+  }
+  // Weekly: show "Feb 3" style
+  if (period === '30days') {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+  // Daily: show weekday
+  const d = new Date(dateStr)
+  if (period === 'today' || period === 'yesterday') {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+  return d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+}
 
 function getTimeAgo(dateStr: string): string {
   const now = Date.now()
@@ -25,20 +100,36 @@ function getTimeAgo(dateStr: string): string {
 
 export default function AdminDashboard() {
   const queryClient = useQueryClient()
+  const [period, setPeriod] = useState<Period>('7days')
+  const [showPeriodMenu, setShowPeriodMenu] = useState(false)
+  const periodRef = useRef<HTMLDivElement>(null)
+  const { startDate, endDate } = getPeriodDates(period)
 
-  // Fetch dashboard stats with React Query (cached for 5 minutes)
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (periodRef.current && !periodRef.current.contains(e.target as Node)) {
+        setShowPeriodMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  // Fetch dashboard stats
   const { data: stats = null, isLoading: statsLoading, error: statsError } = useQuery({
-    queryKey: ['dashboard-stats'],
+    queryKey: ['dashboard-stats', period],
     queryFn: async () => {
-      const result = await analyticsApi.getDashboardStats()
+      const result = await analyticsApi.getDashboardStats(startDate, endDate)
       if (result.success && result.data) {
         return result.data
       }
       throw new Error(result.error || 'Failed to load dashboard stats')
     },
+    refetchInterval: 30000,
   })
 
-  // Fetch top products with React Query (cached)
+  // Fetch top products (not filtered by period)
   const { data: topProducts = [] } = useQuery({
     queryKey: ['dashboard-top-products'],
     queryFn: async () => {
@@ -48,23 +139,40 @@ export default function AdminDashboard() {
       }
       return []
     },
+    refetchInterval: 30000,
   })
 
-  // Fetch daily revenue for sales chart
-  const { data: dailyRevenue = [] } = useQuery({
-    queryKey: ['dashboard-daily-revenue'],
+  // Fetch chart data — granularity depends on period
+  const { data: chartData = [] } = useQuery({
+    queryKey: ['dashboard-chart', period],
+    refetchInterval: 30000,
     queryFn: async () => {
-      const result = await analyticsApi.getSalesChart(7)
+      if (period === 'all') {
+        // Monthly bars for All Time
+        const result = await analyticsApi.getMonthlyRevenue(12)
+
+        if (result.success && result.data) return result.data
+        return []
+      }
+      // Daily data for other periods
+      const days = period === 'today' ? 1 : period === 'yesterday' ? 1 : period === '30days' ? 30 : 7
+      const result = await analyticsApi.getSalesChart(days)
+
       if (result.success && result.data) {
-        return result.data
+        let data = result.data
+        // For 30 days, group into weekly buckets
+        if (period === '30days') {
+          data = groupByWeek(data)
+        }
+        return data
       }
       return []
     },
   })
 
-  // Fetch recent orders for activity feed
+  // Fetch recent orders
   const { data: recentOrders = [] } = useQuery({
-    queryKey: ['dashboard-recent-orders'],
+    queryKey: ['dashboard-recent-orders', period],
     queryFn: async () => {
       const result = await ordersApi.list({ limit: 5, sortBy: 'createdAt', sortOrder: 'desc' })
       if (result.success && result.data) {
@@ -72,6 +180,7 @@ export default function AdminDashboard() {
       }
       return []
     },
+    refetchInterval: 30000,
   })
 
   const loading = statsLoading
@@ -80,7 +189,7 @@ export default function AdminDashboard() {
   function loadDashboardData() {
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard-top-products'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard-daily-revenue'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-chart'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard-recent-orders'] })
   }
 
@@ -115,13 +224,19 @@ export default function AdminDashboard() {
     )
   }
 
+  const changeLabel = period === 'today' ? 'vs yesterday'
+    : period === 'yesterday' ? 'vs day before'
+    : period === '7days' ? 'vs prev 7 days'
+    : period === '30days' ? 'vs prev 30 days'
+    : ''
+
   const statCards = [
     {
       label: 'Total Revenue',
       value: formatCurrency(stats?.totalRevenue || 0),
-      change: stats?.revenueChange ? `${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}%` : '-',
-      changeLabel: 'vs last month',
-      positive: true,
+      change: stats?.revenueChange != null ? `${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}%` : '-',
+      changeLabel: changeLabel || 'all time',
+      positive: !stats?.revenueChange || stats.revenueChange >= 0,
       icon: 'wallet'
     },
     {
@@ -135,10 +250,18 @@ export default function AdminDashboard() {
     {
       label: 'Total Orders',
       value: formatNumber(stats?.totalOrders || 0),
-      change: stats?.ordersChange ? `${stats.ordersChange > 0 ? '+' : ''}${stats.ordersChange}%` : '-',
-      changeLabel: 'this week',
-      positive: true,
+      change: stats?.ordersChange != null ? `${stats.ordersChange > 0 ? '+' : ''}${stats.ordersChange}%` : '-',
+      changeLabel: changeLabel || 'all time',
+      positive: !stats?.ordersChange || stats.ordersChange >= 0,
       icon: 'shopping-cart'
+    },
+    {
+      label: 'Total Customers',
+      value: formatNumber(stats?.totalCustomers || 0),
+      change: '-',
+      changeLabel: 'registered users',
+      positive: true,
+      icon: 'users'
     },
     {
       label: 'Open Tickets',
@@ -152,14 +275,40 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">Dashboard</h1>
-        <p className="text-slate-500 text-xs sm:text-sm">Welcome back! Here&apos;s your marketplace overview</p>
+      {/* Page Header with Period Selector */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">Dashboard</h1>
+          <p className="text-slate-500 text-xs sm:text-sm">Welcome back! Here&apos;s your marketplace overview</p>
+        </div>
+        <div className="relative" ref={periodRef}>
+          <button
+            onClick={() => setShowPeriodMenu(!showPeriodMenu)}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-2 hover:border-primary/50 transition-colors"
+          >
+            {PERIOD_LABELS[period]}
+            <Icon name="chevron-down" size={14} className="text-slate-400" />
+          </button>
+          {showPeriodMenu && (
+            <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl z-50 overflow-hidden min-w-[140px]">
+              {(Object.keys(PERIOD_LABELS) as Period[]).map((key) => (
+                <button
+                  key={key}
+                  onClick={() => { setPeriod(key); setShowPeriodMenu(false) }}
+                  className={`block w-full text-left px-4 py-2 text-xs transition-colors ${
+                    period === key ? 'bg-primary/10 text-primary' : 'text-slate-300 hover:bg-white/5'
+                  }`}
+                >
+                  {PERIOD_LABELS[key]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Grid - 2x2 on mobile, 4 columns on desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mb-6">
         {statCards.map((stat) => (
           <div
             key={stat.label}
@@ -191,40 +340,45 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-white font-semibold">Sales Overview</h3>
-              <p className="text-slate-500 text-sm">Revenue performance over the last 7 days</p>
+              <p className="text-slate-500 text-sm">Revenue performance — {PERIOD_LABELS[period]}</p>
             </div>
-            <button className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs px-3 py-1.5 rounded-lg">
-              Last 7 Days
-            </button>
           </div>
 
           {/* Revenue Chart */}
-          <div className="h-48 flex items-end justify-between gap-2 px-4">
-            {(() => {
-              const maxRevenue = Math.max(...dailyRevenue.map((d: any) => d.revenue || 0), 1)
-              return dailyRevenue.map((day: any, i: number) => {
-                const height = Math.max((day.revenue / maxRevenue) * 100, 2)
-                const dayLabel = new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+          <div className="h-48 flex items-end gap-[2px]">
+            {chartData.length > 0 ? (
+              chartData.map((day: any, i: number) => {
+                const maxRevenue = Math.max(...chartData.map((d: any) => d.amount || d.revenue || 0), 1)
+                const dayAmount = day.amount || day.revenue || 0
+                const height = maxRevenue > 0 ? (dayAmount / maxRevenue) * 100 : 0
+                const barLabel = getChartLabel(day.date || day.month || '', period)
                 return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                  <div
+                    key={i}
+                    className="flex-1 flex flex-col items-center justify-end h-full"
+                    title={`${barLabel}: ${formatCurrency(dayAmount)}`}
+                  >
                     <div
-                      className="w-full bg-gradient-to-t from-primary/20 to-primary/5 rounded-t-lg relative group"
-                      style={{ height: `${height}%` }}
-                      title={`${formatCurrency(day.revenue)}`}
+                      className="w-full bg-gradient-to-t from-green-500/30 to-green-500/10 rounded-t relative min-h-[2px]"
+                      style={{ height: `${Math.max(height, 2)}%` }}
                     >
-                      <div className="absolute inset-x-0 top-0 h-1 bg-primary rounded-t-lg" />
+                      <div className="absolute inset-x-0 top-0 h-[2px] bg-green-400 rounded-t" />
                     </div>
-                    <span className="text-slate-500 text-xs">{dayLabel}</span>
                   </div>
                 )
               })
-            })()}
-            {dailyRevenue.length === 0 && (
+            ) : (
               <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
-                No revenue data yet
+                No revenue data available
               </div>
             )}
           </div>
+          {chartData.length > 0 && (
+            <div className="flex justify-between mt-2">
+              <span className="text-slate-500 text-xs">{getChartLabel(chartData[0]?.date || '', period)}</span>
+              <span className="text-slate-500 text-xs">{getChartLabel(chartData[chartData.length - 1]?.date || '', period)}</span>
+            </div>
+          )}
         </div>
 
         {/* Product Distribution */}

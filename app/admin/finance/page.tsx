@@ -97,16 +97,16 @@ export default function FinancePage() {
 
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
           <div className="flex items-start justify-between mb-3">
-            <p className="text-slate-400 text-xs lg:text-sm">Refunds</p>
+            <p className="text-slate-400 text-xs lg:text-sm">Total Orders</p>
             <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
-              <Icon name="alert" size={16} />
+              <Icon name="shopping-cart" size={16} />
             </div>
           </div>
           <p className="text-white text-lg lg:text-2xl font-bold mb-1">
-            {formatCurrency(overview?.totalRefunds || 0)}
+            {overview?.totalSales || 0}
           </p>
           <p className="text-xs">
-            <span className="text-slate-500">total refunded</span>
+            <span className="text-slate-500">completed orders</span>
           </p>
         </div>
       </div>

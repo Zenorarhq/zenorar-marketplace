@@ -59,6 +59,7 @@ export default function AdminLibraryPage() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [uploadingFiles, setUploadingFiles] = React.useState<File[]>([])
+  const [previewingUpload, setPreviewingUpload] = React.useState<MediaFile | null>(null)
 
   // Fetch media files
   const { data: mediaFiles = [], isLoading } = useQuery({
@@ -174,7 +175,7 @@ export default function AdminLibraryPage() {
     title: file.title || file.name,
     alt: file.alt || '',
     url: file.url,
-    type: getFileType(file.mimeType),
+    type: file.type.toLowerCase() as 'image' | 'video' | 'document',
     size: formatFileSize(file.size),
     uploadedBy: file.uploadedBy?.name || 'Unknown',
     uploadedAt: formatDateShort(file.createdAt, tz),
@@ -335,7 +336,7 @@ export default function AdminLibraryPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-10 gap-4">
                 {filteredUploads.map((upload) => (
                   <div
                     key={upload.id}
@@ -362,6 +363,7 @@ export default function AdminLibraryPage() {
                           <Icon name="edit" size={16} />
                         </button>
                         <button
+                          onClick={() => setPreviewingUpload(upload as any)}
                           className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                           title="View"
                         >
@@ -425,7 +427,7 @@ export default function AdminLibraryPage() {
       {/* Edit Modal */}
       {editingUpload && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl max-w-2xl w-full">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-[#1f1f1f]">
               <h3 className="text-white font-semibold text-lg">Edit Image Details</h3>
@@ -438,7 +440,7 @@ export default function AdminLibraryPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-5 space-y-5">
+            <div className="p-5 space-y-5 overflow-y-auto">
               {/* Preview */}
               <div className="aspect-video bg-[#0a0a0a] rounded-lg flex items-center justify-center overflow-hidden">
                 {editingUpload.mimeType?.startsWith('image/') ? (
@@ -541,6 +543,42 @@ export default function AdminLibraryPage() {
                 <Icon name="check" size={18} />
                 Save Changes
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Lightbox Modal */}
+      {previewingUpload && (
+        <div
+          onClick={() => setPreviewingUpload(null)}
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+        >
+          <div className="relative max-w-7xl w-full max-h-[90vh] flex items-center justify-center">
+            {/* Close Button */}
+            <button
+              onClick={() => setPreviewingUpload(null)}
+              className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-lg hover:bg-black/70 transition-colors z-10"
+            >
+              <Icon name="x" size={24} />
+            </button>
+
+            {/* Image */}
+            <img
+              src={previewingUpload.url}
+              alt={previewingUpload.alt || previewingUpload.name}
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            {/* Image Info */}
+            <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg p-4">
+              <h3 className="text-white font-medium mb-1">
+                {previewingUpload.title || previewingUpload.name}
+              </h3>
+              <p className="text-slate-300 text-sm">
+                {previewingUpload.width} × {previewingUpload.height} • {formatFileSize(previewingUpload.size)}
+              </p>
             </div>
           </div>
         </div>

@@ -10,6 +10,7 @@ interface LoginResult {
   requiresTwoFactor?: boolean
   tempToken?: string
   method?: string
+  user?: User
 }
 
 interface AuthContextType {
@@ -152,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('user', JSON.stringify(result.data.user))
           }
         }
-        return { success: true }
+        return { success: true, user: result.data.user }
       } else {
         return { success: false, error: result.error || 'Login failed' }
       }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import { categoriesApi, CategoryWithChildren } from '@/lib/api/categories'
 import MediaPickerModal from './MediaPickerModal'
@@ -29,12 +30,24 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
   const [showMediaPicker, setShowMediaPicker] = useState(false)
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [iconSearch, setIconSearch] = useState('')
+  const [isMainCategory, setIsMainCategory] = useState(true)
+  const [parentCategoryId, setParentCategoryId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
     description: '',
     image: '',
     icon: 'code',
+  })
+
+  // Fetch main categories for parent dropdown
+  const { data: mainCategories = [] } = useQuery({
+    queryKey: ['main-categories'],
+    queryFn: async () => {
+      const result = await categoriesApi.getMainCategories()
+      return result.success && result.data ? result.data : []
+    },
+    enabled: isOpen,
   })
 
   useEffect(() => {
@@ -46,6 +59,10 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
         image: category.image || '',
         icon: (category as any).icon || 'code',
       })
+      // Set parent category state
+      const hasParent = !!(category as any).parentId
+      setIsMainCategory(!hasParent)
+      setParentCategoryId(hasParent ? (category as any).parentId : null)
     } else {
       setFormData({
         name: '',
@@ -54,6 +71,8 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
         image: '',
         icon: 'code',
       })
+      setIsMainCategory(true)
+      setParentCategoryId(null)
     }
     setError('')
     setShowIconPicker(false)
@@ -102,6 +121,7 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
         description: formData.description && formData.description.trim() ? formData.description.trim() : undefined,
         image: formData.image && formData.image.trim() ? formData.image.trim() : undefined,
         icon: formData.icon || 'code',
+        parentId: isMainCategory ? null : parentCategoryId,
       }
 
       const result = category
@@ -193,6 +213,51 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
               className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Brief description of this category"
             />
+          </div>
+
+          {/* Parent Category Selection */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isMainCategory"
+                checked={isMainCategory}
+                onChange={(e) => {
+                  setIsMainCategory(e.target.checked)
+                  if (e.target.checked) {
+                    setParentCategoryId(null)
+                  }
+                }}
+                className="w-4 h-4 rounded border-[#2a2a2a] bg-[#1a1a1a] text-primary focus:ring-2 focus:ring-primary accent-primary"
+              />
+              <label htmlFor="isMainCategory" className="text-sm font-medium text-slate-300 cursor-pointer">
+                Is this a main category?
+              </label>
+            </div>
+
+            {!isMainCategory && (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Parent Category *
+                </label>
+                <select
+                  value={parentCategoryId || ''}
+                  onChange={(e) => setParentCategoryId(e.target.value || null)}
+                  required={!isMainCategory}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Select a parent category...</option>
+                  {mainCategories.map((cat: any) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">
+                  Select which main category this belongs under
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Icon Picker */}

@@ -38,6 +38,18 @@ export const categoriesApi = {
     return apiFetch<CategoryWithChildren[]>('/categories/tree')
   },
 
+  async getMainCategories() {
+    const result = await apiFetch<CategoryWithChildren[]>('/categories/public')
+    if (result.success && result.data) {
+      // Filter to get only main categories (no parent)
+      return {
+        ...result,
+        data: result.data.filter(cat => !cat.parentId)
+      }
+    }
+    return result
+  },
+
   async getBreadcrumb(id: string) {
     return apiFetch<Category[]>(`/categories/${id}/breadcrumb`)
   },

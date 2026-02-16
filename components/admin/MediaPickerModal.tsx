@@ -217,7 +217,7 @@ export default function MediaPickerModal({
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                   {filteredFiles.map((file) => {
-                    const fileType = getFileType(file.mimeType)
+                    const fileType = file.type.toLowerCase() as 'image' | 'video' | 'document'
                     const isImage = fileType === 'image'
 
                     return (

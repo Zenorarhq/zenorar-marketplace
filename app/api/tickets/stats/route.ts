@@ -16,14 +16,6 @@ export const GET = requireAdmin(async (request: NextRequest) => {
       ORDER BY count DESC
     `)
 
-    // By category
-    const byCategoryResult = await executeQuery(`
-      SELECT category, COUNT(*)::int AS count
-      FROM tickets
-      GROUP BY category
-      ORDER BY count DESC
-    `)
-
     // By priority
     const byPriorityResult = await executeQuery(`
       SELECT priority, COUNT(*)::int AS count
@@ -32,21 +24,37 @@ export const GET = requireAdmin(async (request: NextRequest) => {
       ORDER BY count DESC
     `)
 
-    // Average resolution time (in hours) for resolved tickets
-    const avgTimeResult = await executeQuery(`
-      SELECT COALESCE(
-        AVG(EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 3600), 0
-      )::float AS "avgResolutionTime"
-      FROM tickets
-      WHERE "resolvedAt" IS NOT NULL
-    `)
+    // By category (column may not exist in all DB setups)
+    let byCategoryRows: any[] = []
+    try {
+      const byCategoryResult = await executeQuery(`
+        SELECT category, COUNT(*)::int AS count
+        FROM tickets
+        GROUP BY category
+        ORDER BY count DESC
+      `)
+      byCategoryRows = byCategoryResult.rows
+    } catch { /* column may not exist */ }
+
+    // Average resolution time (column may not exist in all DB setups)
+    let avgResolutionTime = 0
+    try {
+      const avgTimeResult = await executeQuery(`
+        SELECT COALESCE(
+          AVG(EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 3600), 0
+        )::float AS "avgResolutionTime"
+        FROM tickets
+        WHERE "resolvedAt" IS NOT NULL
+      `)
+      avgResolutionTime = Math.round(avgTimeResult.rows[0].avgResolutionTime * 10) / 10
+    } catch { /* column may not exist */ }
 
     return successResponse({
       total: totalResult.rows[0].total,
       byStatus: byStatusResult.rows,
-      byCategory: byCategoryResult.rows,
+      byCategory: byCategoryRows,
       byPriority: byPriorityResult.rows,
-      avgResolutionTime: Math.round(avgTimeResult.rows[0].avgResolutionTime * 10) / 10,
+      avgResolutionTime,
     })
   } catch (error) {
     console.error('Error fetching ticket stats:', error)

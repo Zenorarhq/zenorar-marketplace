@@ -25,6 +25,7 @@ export interface Category {
   slug: string
   description?: string
   image?: string
+  parentId?: string | null
 }
 
 export interface Product {

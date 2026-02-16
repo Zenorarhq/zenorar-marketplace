@@ -8,7 +8,7 @@ import Icon from '@/components/ui/Icon'
 
 export default function AdminLoginPage() {
   const router = useRouter()
-  const { login, isAuthenticated, isLoading } = useAuth()
+  const { login, logout, isAuthenticated, isLoading, isStaff } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -16,10 +16,10 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && isAuthenticated && isStaff) {
       router.push('/admin')
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, isStaff, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -29,6 +29,12 @@ export default function AdminLoginPage() {
     const result = await login(email, password)
 
     if (result.success) {
+      if (!result.user?.isStaff) {
+        logout()
+        setError('You do not have admin access')
+        setSubmitting(false)
+        return
+      }
       router.push('/admin')
     } else {
       setError(result.error || 'Login failed')

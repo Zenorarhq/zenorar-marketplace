@@ -1,15 +1,19 @@
-import { apiFetch } from './client'
+import { apiFetch, localApiFetch } from './client'
 import { ordersApi } from './orders'
 import { productsApi } from './products'
 import { ticketsApi } from './tickets'
 import { financeApi } from './finance'
+import { usersApi } from './users'
 
 export interface DashboardStats {
   totalRevenue: number
   totalOrders: number
   totalProducts: number
+  totalCustomers: number
   totalTickets: number
   openTickets: number
+  completedOrders: number
+  pendingOrders: number
   revenueChange?: number
   ordersChange?: number
 }
@@ -32,20 +36,42 @@ export const analyticsApi = {
    * Get dashboard overview stats
    * Aggregates data from multiple endpoints
    */
-  async getDashboardStats(): Promise<{ success: boolean; data?: DashboardStats; error?: string }> {
+  async getDashboardStats(startDate?: string, endDate?: string): Promise<{ success: boolean; data?: DashboardStats; error?: string }> {
     try {
       // Fetch data from multiple sources in parallel
-      const [ordersResult, financeResult, productsResult, ticketsResult] = await Promise.all([
+      const [ordersResult, financeResult, productsResult, ticketsResult, usersResult] = await Promise.all([
         ordersApi.getStats(),
-        financeApi.getOverview(),
-        productsApi.list({ limit: 1000 }), // Load all products to get accurate count
+        financeApi.getOverview(startDate, endDate),
+        productsApi.list({ limit: 1 }), // only need pagination.total
         ticketsApi.getStats(),
+        usersApi.getStats(),
       ])
 
       if (!ordersResult.success || !financeResult.success || !ticketsResult.success) {
         return {
           success: false,
           error: 'Failed to fetch dashboard stats'
+        }
+      }
+
+      // Calculate % changes by comparing current vs previous period
+      let revenueChange: number | undefined
+      let ordersChange: number | undefined
+
+      if (startDate && endDate) {
+        const duration = new Date(endDate).getTime() - new Date(startDate).getTime()
+        const prevEnd = new Date(new Date(startDate).getTime())
+        const prevStart = new Date(prevEnd.getTime() - duration)
+
+        const prevResult = await financeApi.getOverview(prevStart.toISOString(), prevEnd.toISOString())
+        if (prevResult.success && prevResult.data) {
+          const prevRevenue = prevResult.data.totalRevenue || 0
+          const prevOrders = prevResult.data.totalSales || 0
+          const curRevenue = financeResult.data?.totalRevenue || 0
+          const curOrders = financeResult.data?.totalSales || 0
+
+          if (prevRevenue > 0) revenueChange = Math.round(((curRevenue - prevRevenue) / prevRevenue) * 100)
+          if (prevOrders > 0) ordersChange = Math.round(((curOrders - prevOrders) / prevOrders) * 100)
         }
       }
 
@@ -57,9 +83,14 @@ export const analyticsApi = {
         data: {
           totalRevenue: financeResult.data?.totalRevenue || 0,
           totalOrders: ordersResult.data?.totalOrders || 0,
-          totalProducts: productsResult.data?.length || 0,
+          totalProducts: productsResult.pagination?.total || productsResult.data?.length || 0,
+          totalCustomers: usersResult.data?.totalCustomers || 0,
           totalTickets: ticketsResult.data?.total || 0,
           openTickets: openTicketsCount,
+          completedOrders: ordersResult.data?.completedOrders || 0,
+          pendingOrders: ordersResult.data?.pendingOrders || 0,
+          revenueChange,
+          ordersChange,
         }
       }
     } catch (error) {
@@ -93,5 +124,26 @@ export const analyticsApi = {
    */
   async getMonthlyRevenue(months: number = 12) {
     return financeApi.getMonthlyRevenue(months)
+  },
+
+  /**
+   * Get daily customer signups
+   */
+  async getCustomerGrowth(days: number = 30) {
+    return localApiFetch<{ date: string; signups: number }[]>(`/analytics/customer-growth?days=${days}`)
+  },
+
+  /**
+   * Get revenue breakdown by category
+   */
+  async getRevenueByCategory() {
+    return localApiFetch<{ category: string; revenue: number; orders: number }[]>('/analytics/revenue-by-category')
+  },
+
+  /**
+   * Get recent activity feed (orders, signups, tickets)
+   */
+  async getActivityFeed(limit: number = 10) {
+    return localApiFetch<{ type: string; id: string; label: string; value: any; detail: string | null; timestamp: string }[]>(`/analytics/activity-feed?limit=${limit}`)
   },
 }

@@ -430,8 +430,43 @@ export default function OrdersPage() {
                         </button>
                       )}
                       <button
-                        onClick={() => {
-                          window.location.href = `/api/orders/${order.id}/invoice`
+                        onClick={async () => {
+                          try {
+                            // Get token from localStorage
+                            const token = localStorage.getItem('accessToken') || localStorage.getItem('auth_token')
+
+                            if (!token) {
+                              alert('Please login to download invoice')
+                              return
+                            }
+
+                            // Fetch PDF from Railway backend (via /backend rewrite)
+                            const response = await fetch(`/backend/orders/${order.id}/invoice`, {
+                              headers: {
+                                'Authorization': `Bearer ${token}`
+                              }
+                            })
+
+                            if (!response.ok) {
+                              throw new Error('Failed to download invoice')
+                            }
+
+                            // Get PDF blob
+                            const blob = await response.blob()
+
+                            // Create download link and trigger download
+                            const url = window.URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = `invoice-${order.orderNumber}.pdf`
+                            document.body.appendChild(a)
+                            a.click()
+                            window.URL.revokeObjectURL(url)
+                            document.body.removeChild(a)
+                          } catch (error) {
+                            console.error('Download failed:', error)
+                            alert('Failed to download invoice. Please try again.')
+                          }
                         }}
                         className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white text-sm font-medium transition-colors"
                       >

@@ -39,8 +39,12 @@ export const financeApi = {
   /**
    * Get finance overview/summary (admin only)
    */
-  async getOverview() {
-    return apiFetch<FinanceOverview>('/payments/finance/overview')
+  async getOverview(startDate?: string, endDate?: string) {
+    const params = new URLSearchParams()
+    if (startDate) params.set('startDate', startDate)
+    if (endDate) params.set('endDate', endDate)
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return apiFetch<FinanceOverview>(`/payments/finance/overview${query}`)
   },
 
   /**

@@ -32,19 +32,58 @@ export default function CategoriesPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<CategoryWithChildren | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const itemsPerPage = 12
 
+  // Toggle category expand/collapse
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId)
+      } else {
+        newSet.add(categoryId)
+      }
+      return newSet
+    })
+  }
+
   // Fetch categories with React Query (cached for 5 minutes)
-  const { data: categories = [], isLoading: loading, error: categoryError } = useQuery({
+  const { data: categoriesTree = [], isLoading: loading, error: categoryError } = useQuery({
     queryKey: ['admin-categories'],
     queryFn: async () => {
-      const result = await categoriesApi.list({ includeProducts: true })
+      const result = await categoriesApi.getTree()
       if (result.success && result.data) {
         return result.data
       }
       throw new Error(result.error || 'Failed to load categories')
     },
   })
+
+  // Flatten tree structure for table display
+  const flattenCategories = (cats: CategoryWithChildren[], parentName: string | null = null, parentIdVal: string | null = null): Array<CategoryWithChildren & { level: number; parentName: string | null; childrenCount: number; parentId: string | null }> => {
+    let flattened: Array<CategoryWithChildren & { level: number; parentName: string | null; childrenCount: number; parentId: string | null }> = []
+    cats.forEach(cat => {
+      const childrenCount = cat.children?.length || 0
+      flattened.push({ ...cat, level: 0, parentName, childrenCount, parentId: parentIdVal })
+      if (cat.children && cat.children.length > 0) {
+        const children = cat.children.map(child => ({
+          ...child,
+          level: 1,
+          parentName: cat.name,
+          childrenCount: 0,
+          parentId: cat.id
+        }))
+        flattened.push(...children)
+      }
+    })
+    return flattened
+  }
+
+  const categories = flattenCategories(categoriesTree)
+
+  // Debug: Log categories to check childrenCount
+  console.log('Categories:', categories.map(c => ({ name: c.name, level: c.level, childrenCount: c.childrenCount })))
 
   const error = categoryError ? String(categoryError) : ''
 
@@ -121,7 +160,7 @@ export default function CategoriesPage() {
 
       {/* Categories Grid - Dashboard Style */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
-        {categories.map((category) => {
+        {categoriesTree.filter(cat => !cat.parentId).map((category) => {
           const icon = getCategoryIcon(category.name)
           const color = getCategoryColor(category.name)
           return (
@@ -167,31 +206,73 @@ export default function CategoriesPage() {
               <thead>
                 <tr className="border-b border-[#1f1f1f]">
                   <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Category</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Parent</th>
                   <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Slug</th>
                   <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Products</th>
                   <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedCategories.map((category) => {
+                {paginatedCategories
+                  .filter((item: any) => {
+                    // Always show main categories (level 0)
+                    if (item.level === 0) return true
+                    // Show subcategories only if parent is expanded
+                    return item.parentId && expandedCategories.has(item.parentId)
+                  })
+                  .map((category: any) => {
                   const icon = getCategoryIcon(category.name)
                   const color = getCategoryColor(category.name)
+                  const isSubcategory = category.level === 1
+                  const hasChildren = category.level === 0 && category.childrenCount > 0
+                  const isExpanded = expandedCategories.has(category.id)
                   return (
-                    <tr key={category.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                    <tr
+                      key={category.id}
+                      onClick={() => {
+                        if (hasChildren) {
+                          toggleCategory(category.id)
+                        }
+                      }}
+                      className={`border-b border-[#1f1f1f] last:border-0 hover:bg-white/5 ${
+                        isSubcategory ? 'bg-[#0a0a0a]' : 'bg-[#0f0f0f]'
+                      } ${hasChildren ? 'cursor-pointer' : ''}`}
+                    >
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
+                          {hasChildren && (
+                            <Icon
+                              name={isExpanded ? 'chevron-down' : 'chevron-right'}
+                              size={14}
+                              className="text-slate-400"
+                            />
+                          )}
+                          {isSubcategory && (
+                            <span className="text-slate-600 text-sm ml-4">└─</span>
+                          )}
                           <div className={`w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center ${color}`}>
                             <Icon name={icon} size={16} />
                           </div>
-                          <span className="text-white font-medium">{category.name}</span>
+                          <span className={`${isSubcategory ? 'text-slate-300' : 'text-white font-semibold'}`}>
+                            {category.name}
+                          </span>
                         </div>
+                      </td>
+                      <td className="px-5 py-3 text-slate-400 text-sm">
+                        {category.parentName ? (
+                          <span className="text-slate-500 text-xs px-2 py-1 bg-[#1a1a1a] rounded-md">
+                            {category.parentName}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">-</span>
+                        )}
                       </td>
                       <td className="px-5 py-3 text-slate-400 text-sm">{category.slug}</td>
                       <td className="px-5 py-3 text-slate-400 text-sm">
                         {category._count?.products || 0}
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setEditingCategory(category)}
                             className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"

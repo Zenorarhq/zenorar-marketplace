@@ -16,6 +16,9 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [statusMenuId, setStatusMenuId] = useState<string | null>(null)
   const itemsPerPage = 10
 
   // Fetch products with React Query (cached for 5 minutes)
@@ -64,6 +67,55 @@ export default function ProductsPage() {
     } else {
       alert(result.error || 'Failed to delete product')
     }
+  }
+
+  async function handleStatusChange(productId: string, status: string) {
+    const result = await productsApi.update(productId, { status } as any)
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+    } else {
+      alert(result.error || 'Failed to update status')
+    }
+  }
+
+  async function handleBulkAction(action: 'ACTIVE' | 'DRAFT' | 'ARCHIVED' | 'DELETE') {
+    if (selectedIds.size === 0) return
+    if (action === 'DELETE') {
+      if (!confirm(`Are you sure you want to delete ${selectedIds.size} product(s)?`)) return
+    }
+    setBulkLoading(true)
+    try {
+      const promises = Array.from(selectedIds).map(id =>
+        action === 'DELETE'
+          ? productsApi.delete(id)
+          : productsApi.update(id, { status: action } as any)
+      )
+      await Promise.all(promises)
+      setSelectedIds(new Set())
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+    } catch {
+      alert('Some operations failed')
+    }
+    setBulkLoading(false)
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    const pageIds = paginatedProducts.map(p => p.id)
+    const allSelected = pageIds.every(id => selectedIds.has(id))
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      pageIds.forEach(id => allSelected ? next.delete(id) : next.add(id))
+      return next
+    })
   }
 
   async function handleToggleStaffPick(productId: string) {
@@ -254,12 +306,63 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 mb-4 flex items-center justify-between">
+          <p className="text-primary text-sm font-medium">{selectedIds.size} selected</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleBulkAction('ACTIVE')}
+              disabled={bulkLoading}
+              className="px-3 py-1.5 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              Set Active
+            </button>
+            <button
+              onClick={() => handleBulkAction('DRAFT')}
+              disabled={bulkLoading}
+              className="px-3 py-1.5 bg-slate-500/20 hover:bg-slate-500/30 text-slate-300 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              Set Draft
+            </button>
+            <button
+              onClick={() => handleBulkAction('ARCHIVED')}
+              disabled={bulkLoading}
+              className="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              Archive
+            </button>
+            <button
+              onClick={() => handleBulkAction('DELETE')}
+              disabled={bulkLoading}
+              className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="px-3 py-1.5 hover:bg-white/10 text-slate-400 rounded-lg text-xs transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Products Table */}
       <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#1f1f1f]">
+                <th className="text-left px-5 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedIds.has(p.id))}
+                    onChange={toggleSelectAll}
+                    className="rounded border-[#2a2a2a] bg-[#1a1a1a] text-primary focus:ring-primary"
+                  />
+                </th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Product</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Category</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Price</th>
@@ -271,7 +374,15 @@ export default function ProductsPage() {
             </thead>
             <tbody>
               {paginatedProducts.map((product) => (
-                <tr key={product.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                <tr key={product.id} className={`border-b border-[#1f1f1f] last:border-0 hover:bg-white/5 ${selectedIds.has(product.id) ? 'bg-primary/5' : ''}`}>
+                  <td className="px-5 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(product.id)}
+                      onChange={() => toggleSelect(product.id)}
+                      className="rounded border-[#2a2a2a] bg-[#1a1a1a] text-primary focus:ring-primary"
+                    />
+                  </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       {product.images[0]?.url ? (
@@ -309,15 +420,41 @@ export default function ProductsPage() {
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                      product.status === 'ACTIVE'
-                        ? 'bg-primary/10 text-primary'
-                        : product.status === 'DRAFT'
-                        ? 'bg-slate-500/10 text-slate-400'
-                        : 'bg-red-500/10 text-red-400'
-                    }`}>
-                      {product.status.charAt(0) + product.status.slice(1).toLowerCase()}
-                    </span>
+                    <div className="relative">
+                      <button
+                        onClick={() => setStatusMenuId(statusMenuId === product.id ? null : product.id)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                          product.status === 'ACTIVE'
+                            ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                            : product.status === 'DRAFT'
+                            ? 'bg-slate-500/10 text-slate-400 hover:bg-slate-500/20'
+                            : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                        }`}
+                      >
+                        {product.status.charAt(0) + product.status.slice(1).toLowerCase()}
+                        <Icon name="chevron-down" size={12} />
+                      </button>
+                      {statusMenuId === product.id && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setStatusMenuId(null)} />
+                          <div className="absolute left-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl z-50 overflow-hidden min-w-[120px]">
+                            {(['ACTIVE', 'DRAFT', 'ARCHIVED'] as const).map((s) => (
+                              <button
+                                key={s}
+                                onClick={() => { handleStatusChange(product.id, s); setStatusMenuId(null) }}
+                                className={`block w-full text-left px-3 py-2 text-xs transition-colors ${
+                                  product.status === s
+                                    ? s === 'ACTIVE' ? 'bg-primary/10 text-primary' : s === 'DRAFT' ? 'bg-slate-500/10 text-slate-400' : 'bg-red-500/10 text-red-400'
+                                    : 'text-slate-300 hover:bg-white/5'
+                                }`}
+                              >
+                                {s.charAt(0) + s.slice(1).toLowerCase()}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3">
                     <span className="text-slate-400 text-sm">

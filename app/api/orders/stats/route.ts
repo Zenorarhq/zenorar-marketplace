@@ -10,7 +10,7 @@ export const GET = requireAdmin(async (request: NextRequest) => {
         COUNT(*)::int AS "totalOrders",
         COALESCE(SUM(total), 0)::float AS "totalRevenue",
         COUNT(*) FILTER (WHERE status = 'PENDING')::int AS "pendingOrders",
-        COUNT(*) FILTER (WHERE status = 'DELIVERED')::int AS "completedOrders"
+        COUNT(*) FILTER (WHERE "paymentStatus" = 'PAID')::int AS "completedOrders"
       FROM orders
     `)
 

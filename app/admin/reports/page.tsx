@@ -384,17 +384,393 @@ export default function AdminReportsPage() {
           </>
         )}
 
-        {/* Other tabs show coming soon message */}
-        {reportType !== 'overview' && (
-          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-12 text-center">
-            <Icon name="chart" size={64} className="text-slate-600 mx-auto mb-4" />
-            <h3 className="text-white text-lg font-semibold mb-2">Coming Soon</h3>
-            <p className="text-slate-400 text-sm">
-              {reportType === 'sales' && 'Detailed sales analytics and transaction breakdowns'}
-              {reportType === 'products' && 'Product performance metrics and inventory insights'}
-              {reportType === 'customers' && 'Customer analytics and acquisition data'}
-            </p>
-          </div>
+        {/* ==================== SALES TAB ==================== */}
+        {reportType === 'sales' && (
+          <>
+            {/* Sales Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Total Revenue</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                    <Icon name="wallet" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(totalRevenue)}</p>
+                <p className="text-xs">
+                  <span className="text-slate-500">gross revenue</span>
+                </p>
+              </div>
+
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Net Revenue</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-green-500/10 text-green-400 flex items-center justify-center">
+                    <Icon name="check" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(totalRevenue - (financeOverview?.totalFees || 0))}</p>
+                <p className="text-xs">
+                  <span className="text-slate-500">after fees</span>
+                </p>
+              </div>
+
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Avg Order Value</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                    <Icon name="stats" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(avgOrderValue)}</p>
+                <p className="text-xs">
+                  <span className="text-slate-500">per order</span>
+                </p>
+              </div>
+
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Total Refunds</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center">
+                    <Icon name="refresh" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(financeOverview?.totalRefunds || 0)}</p>
+                <p className="text-xs">
+                  <span className="text-slate-500">refunded amount</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Revenue Chart (reuse from Overview) */}
+            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 lg:p-5 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+                <h3 className="text-white font-semibold">Revenue Trend</h3>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-slate-400">Revenue</span>
+                  </div>
+                </div>
+              </div>
+
+              {dailyRevenue.length > 0 ? (
+                <div className="flex gap-2">
+                  <div className="flex flex-col justify-between text-slate-500 text-xs py-2 pr-2">
+                    <span>${(maxRevenue).toLocaleString()}</span>
+                    <span>${(maxRevenue * 0.75).toLocaleString()}</span>
+                    <span>${(maxRevenue * 0.5).toLocaleString()}</span>
+                    <span>${(maxRevenue * 0.25).toLocaleString()}</span>
+                    <span>$0</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="h-48 lg:h-56 relative">
+                      <div className="absolute inset-0 flex flex-col justify-between">
+                        {[0, 1, 2, 3, 4].map((i) => (
+                          <div key={i} className="border-t border-[#1f1f1f]" />
+                        ))}
+                      </div>
+                      <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                        <polyline
+                          fill="none"
+                          stroke="#43D678"
+                          strokeWidth="2"
+                          points={dailyRevenue.map((d, i) => {
+                            const x = (i / (dailyRevenue.length - 1)) * 100
+                            const y = 100 - (d.revenue / maxRevenue) * 80
+                            return `${x}%,${y}%`
+                          }).join(' ')}
+                        />
+                        {dailyRevenue.map((d, i) => {
+                          const x = (i / (dailyRevenue.length - 1)) * 100
+                          const y = 100 - (d.revenue / maxRevenue) * 80
+                          return (
+                            <circle
+                              key={i}
+                              cx={`${x}%`}
+                              cy={`${y}%`}
+                              r="4"
+                              fill="#43D678"
+                            />
+                          )
+                        })}
+                      </svg>
+                    </div>
+                    <div className="flex justify-between mt-2 text-slate-500 text-xs overflow-hidden">
+                      {dailyRevenue.map((d, i) => (
+                        <span key={i} className="truncate">{new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-slate-400">No revenue data available</p>
+                </div>
+              )}
+            </div>
+
+            {/* Recent Orders Table */}
+            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-[#1f1f1f]">
+                <h3 className="text-white font-semibold">Recent Transactions</h3>
+              </div>
+
+              {recentOrders.length > 0 ? (
+                <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[#1f1f1f]">
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Order</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Amount</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Status</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentOrders.slice(0, 10).map((order) => (
+                        <tr key={order.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                          <td className="px-4 py-3">
+                            <p className="text-white text-sm font-mono truncate max-w-[120px]">{order.orderNumber}</p>
+                          </td>
+                          <td className="px-4 py-3 text-white text-sm">{formatCurrency(order.total)}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              order.status === 'DELIVERED' ? 'bg-primary/10 text-primary' :
+                              order.status === 'SHIPPED' ? 'bg-blue-500/10 text-blue-400' :
+                              order.status === 'PROCESSING' ? 'bg-yellow-500/10 text-yellow-400' :
+                              'bg-slate-500/10 text-slate-400'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 text-sm">
+                            {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-slate-400 text-sm">No transactions found</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ==================== PRODUCTS TAB ==================== */}
+        {reportType === 'products' && (
+          <>
+            {/* Product Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Total Products</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                    <Icon name="package" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{topProducts.length}</p>
+                <p className="text-xs">
+                  <span className="text-slate-500">active listings</span>
+                </p>
+              </div>
+
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Top Seller</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-green-500/10 text-green-400 flex items-center justify-center">
+                    <Icon name="star" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-sm lg:text-base font-bold mb-1 truncate">{topProducts[0]?.name || 'N/A'}</p>
+                <p className="text-xs">
+                  <span className="text-slate-500">best performing</span>
+                </p>
+              </div>
+
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Avg Price</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                    <Icon name="wallet" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">
+                  {topProducts.length > 0 ? formatCurrency(topProducts.reduce((sum, p) => sum + p.price, 0) / topProducts.length) : '$0.00'}
+                </p>
+                <p className="text-xs">
+                  <span className="text-slate-500">across catalog</span>
+                </p>
+              </div>
+
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">In Stock</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-green-500/10 text-green-400 flex items-center justify-center">
+                    <Icon name="check" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">
+                  {topProducts.filter(p => p.stock > 0).length}
+                </p>
+                <p className="text-xs">
+                  <span className="text-slate-500">available products</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Top Products Table */}
+            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden mb-6">
+              <div className="flex items-center justify-between p-4 border-b border-[#1f1f1f]">
+                <h3 className="text-white font-semibold">Top Selling Products</h3>
+              </div>
+
+              {topProducts.length > 0 ? (
+                <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[#1f1f1f]">
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Product</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Price</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Stock</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topProducts.map((product) => (
+                        <tr key={product.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                          <td className="px-4 py-3">
+                            <p className="text-white text-sm font-medium truncate max-w-[200px]">{product.name}</p>
+                          </td>
+                          <td className="px-4 py-3 text-white text-sm">{formatCurrency(product.price)}</td>
+                          <td className="px-4 py-3 text-slate-300 text-sm">{product.stock}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              product.stock > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                            }`}>
+                              {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-slate-400 text-sm">No products found</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ==================== CUSTOMERS TAB ==================== */}
+        {reportType === 'customers' && (
+          <>
+            {/* Customer Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Total Customers</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                    <Icon name="user-group" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{totalOrders}</p>
+                <p className="text-xs">
+                  <span className="text-slate-500">total orders placed</span>
+                </p>
+              </div>
+
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Avg Lifetime Value</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-green-500/10 text-green-400 flex items-center justify-center">
+                    <Icon name="wallet" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(avgOrderValue)}</p>
+                <p className="text-xs">
+                  <span className="text-slate-500">per customer</span>
+                </p>
+              </div>
+
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Recent Orders</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                    <Icon name="cart" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{recentOrders.length}</p>
+                <p className="text-xs">
+                  <span className="text-slate-500">last 10 orders</span>
+                </p>
+              </div>
+
+              <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-slate-400 text-xs lg:text-sm">Completed</p>
+                  <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-green-500/10 text-green-400 flex items-center justify-center">
+                    <Icon name="check" size={16} />
+                  </div>
+                </div>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">
+                  {recentOrders.filter(o => o.status === 'DELIVERED').length}
+                </p>
+                <p className="text-xs">
+                  <span className="text-slate-500">successful deliveries</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Recent Customers Table */}
+            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-[#1f1f1f]">
+                <h3 className="text-white font-semibold">Recent Customer Orders</h3>
+              </div>
+
+              {recentOrders.length > 0 ? (
+                <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[#1f1f1f]">
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Customer</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Order</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Amount</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentOrders.slice(0, 10).map((order) => (
+                        <tr key={order.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                          <td className="px-4 py-3">
+                            <p className="text-white text-sm truncate max-w-[150px]">{order.email || 'Guest'}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-slate-300 text-sm font-mono truncate max-w-[100px]">{order.orderNumber}</p>
+                          </td>
+                          <td className="px-4 py-3 text-white text-sm">{formatCurrency(order.total)}</td>
+                          <td className="px-4 py-3 text-slate-400 text-sm">
+                            {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-slate-400 text-sm">No customer data found</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </AdminLayout>

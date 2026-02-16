@@ -12,7 +12,7 @@ import { authApi } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth()
+  const { login, logout, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -96,6 +96,11 @@ export default function LoginPage() {
     try {
       const result = await login(email, password)
       if (result.success) {
+        if (result.user?.isStaff) {
+          logout()
+          setError('Admin accounts must use the admin login page')
+          return
+        }
         router.push(getRedirectUrl())
       } else if (result.requiresTwoFactor) {
         setTwoFaRequired(true)
@@ -120,6 +125,11 @@ export default function LoginPage() {
     try {
       const result = await authApi.verify2fa(twoFaTempToken, twoFaCode)
       if (result.success && result.data) {
+        if (result.data.user?.isStaff) {
+          authApi.logout()
+          setError('Admin accounts must use the admin login page')
+          return
+        }
         refreshUser()
         router.push(getRedirectUrl())
       } else {
@@ -143,6 +153,11 @@ export default function LoginPage() {
       // Send the ID token (credential) to our backend
       const result = await authApi.googleAuth(credentialResponse.credential)
       if (result.success) {
+        if (result.data?.user?.isStaff) {
+          authApi.logout()
+          setError('Admin accounts must use the admin login page')
+          return
+        }
         refreshUser()
         router.push(getRedirectUrl())
       } else {
@@ -239,6 +254,11 @@ export default function LoginPage() {
       // Authenticate with the server
       const result = await authApi.walletAuth(walletAddress, signature, nonce)
       if (result.success) {
+        if (result.data?.user?.isStaff) {
+          authApi.logout()
+          setError('Admin accounts must use the admin login page')
+          return
+        }
         console.log('Wallet authentication successful')
         refreshUser()
         router.push(getRedirectUrl())
