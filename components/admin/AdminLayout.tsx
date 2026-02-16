@@ -79,8 +79,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })
 
-  const siteLogo = brandingData?.siteLogo || null
-  const favicon = brandingData?.favicon || null
+  const siteLogo = brandingData?.logoUrl || null
+  const favicon = brandingData?.faviconUrl || null
 
   const queryClient = useQueryClient()
   const unreadNotifs = notifData?.count || 0
