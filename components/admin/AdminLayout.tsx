@@ -74,13 +74,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     queryKey: ['branding-settings'],
     queryFn: async () => {
       const res = await apiFetch<any>('/settings/public')
+      console.log('📡 Branding API response:', res)
       return res.success ? res.data : null
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 0, // Always fetch fresh data (changed from 5 minutes for debugging)
+    refetchOnMount: 'always',
   })
 
   const siteLogo = brandingData?.logoUrl || null
   const favicon = brandingData?.faviconUrl || null
+
+  // Debug: Log branding data
+  useEffect(() => {
+    console.log('🎨 Branding data:', { brandingData, siteLogo, favicon })
+  }, [brandingData, siteLogo, favicon])
 
   const queryClient = useQueryClient()
   const unreadNotifs = notifData?.count || 0
