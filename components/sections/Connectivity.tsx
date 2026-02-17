@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import ConnectivityCard from '@/components/cards/ConnectivityCard'
 import { apiFetch } from '@/lib/api/client'
 
@@ -28,7 +27,7 @@ export default function Connectivity({ config }: { config?: { title?: string; co
               name: c.name,
               slug: c.slug,
               icon: c.icon || 'globe',
-              href: `/products?category=${c.parent.slug}&subcategory=${c.slug}`,
+              href: `/${c.parent.slug}`,
             }))
           setOptions(filtered)
         }
@@ -40,14 +39,8 @@ export default function Connectivity({ config }: { config?: { title?: string; co
 
   return (
     <section className="mb-12">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h2 className={`${({ small: 'text-xl', large: 'text-3xl', xl: 'text-4xl' } as Record<string, string>)[config?.style?.headingSize] || 'text-2xl'} ${({ normal: 'font-normal', semibold: 'font-semibold', extrabold: 'font-extrabold' } as Record<string, string>)[config?.style?.headingWeight] || 'font-bold'} text-primary`}>{config?.title || 'Connectivity'}</h2>
-        <Link
-          href="#"
-          className="text-sm text-slate-400 hover:text-primary transition-colors"
-        >
-          See all
-        </Link>
       </div>
 
       <div className={`grid grid-cols-2 ${({ '2': 'md:grid-cols-2', '3': 'md:grid-cols-3', '4': 'md:grid-cols-4' } as Record<string, string>)[config?.columns || '4'] || 'md:grid-cols-4'} gap-4`}>

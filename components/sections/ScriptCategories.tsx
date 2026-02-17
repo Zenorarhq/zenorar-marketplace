@@ -17,10 +17,11 @@ export default function ScriptCategories({ config }: { config?: { title?: string
   const [categories, setCategories] = useState<DBCategory[]>([])
 
   useEffect(() => {
-    apiFetch('/categories/public?includeProducts=true')
+    fetch('/api/categories?type=scripts')
+      .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
-          setCategories(data.data.filter((c: any) => c._count?.products > 0))
+          setCategories(data.data)
         }
       })
       .catch(() => {})

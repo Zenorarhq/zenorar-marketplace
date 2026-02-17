@@ -10,6 +10,7 @@ interface AnnouncementConfig {
   linkUrl?: string
   backgroundColor?: string
   textColor?: string
+  icon?: string
 }
 
 function parseConfig(raw: any): AnnouncementConfig | null {
@@ -24,28 +25,26 @@ function parseConfig(raw: any): AnnouncementConfig | null {
 
 export default function AnnouncementBar() {
   const { rawSettings } = useSiteSettings()
-  const [dismissed, setDismissed] = useState(false)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     setHydrated(true)
-    if (sessionStorage.getItem('announcement_dismissed') === '1') {
-      setDismissed(true)
-    }
   }, [])
 
   const config = parseConfig(rawSettings?.site_announcement)
 
-  if (!hydrated || !config || dismissed) return null
+  if (!hydrated || !config) return null
 
-  const handleDismiss = () => {
-    setDismissed(true)
-    sessionStorage.setItem('announcement_dismissed', '1')
-  }
+  const content = (
+    <>
+      {config.icon && <Icon name={config.icon} size={16} className="mr-2 inline-block" />}
+      {config.text}
+    </>
+  )
 
   return (
     <div
-      className="relative text-center py-2 px-10 text-sm font-medium"
+      className="text-center py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-sm font-medium leading-snug"
       style={{
         backgroundColor: config.backgroundColor || '#43D678',
         color: config.textColor || '#000000',
@@ -53,18 +52,11 @@ export default function AnnouncementBar() {
     >
       {config.linkUrl ? (
         <a href={config.linkUrl} className="hover:underline">
-          {config.text}
+          {content}
         </a>
       ) : (
-        <span>{config.text}</span>
+        <span>{content}</span>
       )}
-      <button
-        onClick={handleDismiss}
-        className="absolute right-3 top-1/2 -translate-y-1/2 opacity-70 hover:opacity-100 transition-opacity"
-        aria-label="Dismiss announcement"
-      >
-        <Icon name="close" size={16} />
-      </button>
     </div>
   )
 }

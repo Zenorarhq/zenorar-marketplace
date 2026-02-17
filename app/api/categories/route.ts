@@ -23,7 +23,28 @@ export async function GET(request: NextRequest) {
         name: row.name,
         slug: row.slug,
         icon: row.icon || 'globe',
-        href: `/products?category=${row.parentSlug}&subcategory=${row.slug}`,
+        href: `/${row.parentSlug}`,
+      }))
+
+      return NextResponse.json({ success: true, data })
+    }
+
+    if (type === 'scripts') {
+      // Return subcategories under the "Scripts" parent category
+      const result = await executeQuery(`
+        SELECT c.id, c.name, c.slug, c.icon
+        FROM categories c
+        JOIN categories p ON c."parentId" = p.id
+        WHERE p.slug = 'scripts'
+          AND c."isActive" = true
+        ORDER BY c."order" ASC
+      `)
+
+      const data = result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        icon: row.icon || 'code',
       }))
 
       return NextResponse.json({ success: true, data })

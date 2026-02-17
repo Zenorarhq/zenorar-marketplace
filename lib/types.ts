@@ -37,6 +37,7 @@ export interface Product {
   rating: number
   reviewCount: number
   category: string
+  categoryId?: string | null
   icon: string
   iconColor: string
   tags: string[]

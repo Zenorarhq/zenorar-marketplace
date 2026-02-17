@@ -257,10 +257,10 @@ export const scriptProducts: Product[] = [
 ]
 
 export const scriptCategories: Category[] = [
-  { id: 'c1', name: 'Web Development', icon: 'code', href: '/products?category=web-development' },
-  { id: 'c2', name: 'Data Science', icon: 'chart', href: '/products?category=data-science' },
-  { id: 'c3', name: 'Machine Learning', icon: 'sparkles', href: '/products?category=machine-learning' },
-  { id: 'c4', name: 'Blockchain', icon: 'bitcoin', href: '/products?category=blockchain' },
+  { id: 'c1', name: 'Web Development', icon: 'code', href: '/scripts' },
+  { id: 'c2', name: 'Data Science', icon: 'chart', href: '/scripts' },
+  { id: 'c3', name: 'Machine Learning', icon: 'sparkles', href: '/scripts' },
+  { id: 'c4', name: 'Blockchain', icon: 'bitcoin', href: '/scripts' },
 ]
 
 

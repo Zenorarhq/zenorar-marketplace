@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Icon from '@/components/ui/Icon'
+import { iconMap } from '@/components/ui/Icon'
 import { settingsApi } from '@/lib/api/settings'
+
+const ALL_ICON_NAMES = Object.keys(iconMap) as string[]
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -17,6 +20,7 @@ interface AnnouncementConfig {
   linkUrl: string
   backgroundColor: string
   textColor: string
+  icon: string
 }
 
 interface HeaderConfig {
@@ -41,10 +45,12 @@ interface FooterConfig {
   padding: 'compact' | 'default' | 'spacious'
   columnGap: 'tight' | 'default' | 'wide'
   bottomLinks: { label: string; url: string }[]
+  logoSize: 'small' | 'medium' | 'large'
+  description: string
 }
 
 const DEFAULT_ANNOUNCEMENT: AnnouncementConfig = {
-  enabled: false, text: '', linkUrl: '', backgroundColor: '#43D678', textColor: '#000000',
+  enabled: false, text: '', linkUrl: '', backgroundColor: '#43D678', textColor: '#000000', icon: '',
 }
 
 const DEFAULT_HEADER: HeaderConfig = {
@@ -54,12 +60,13 @@ const DEFAULT_HEADER: HeaderConfig = {
 
 const DEFAULT_FOOTER: FooterConfig = {
   columns: [
-    { title: 'Products', links: [{ label: 'Premium Scripts', url: '/products?category=scripts' }, { label: 'Global eSIMs', url: '/products?category=esims' }] },
-    { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }] },
+    { title: 'Products', links: [{ label: 'Premium Scripts', url: '/scripts' }, { label: 'Global eSIMs', url: '/esim' }] },
+    { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }, { label: 'My Account', url: '/profile' }] },
     { title: 'Community', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }] },
   ],
   showNewsletter: true, newsletterTitle: 'Newsletter', socialLinks: [], copyrightText: '',
   backgroundColor: '', textColor: '', padding: 'default', columnGap: 'default', bottomLinks: [],
+  logoSize: 'medium', description: '',
 }
 
 const SOCIAL_PLATFORMS = ['Twitter', 'Facebook', 'Instagram', 'YouTube', 'Discord', 'LinkedIn', 'TikTok', 'GitHub']
@@ -90,6 +97,8 @@ export default function HeaderFooterEditor() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
+  const [iconSearch, setIconSearch] = useState('')
 
   useEffect(() => {
     if (!expanded) return
@@ -254,6 +263,7 @@ export default function HeaderFooterEditor() {
                         className="rounded-lg text-center py-2 px-4 text-sm font-medium"
                         style={{ backgroundColor: announcement.backgroundColor, color: announcement.textColor }}
                       >
+                        {announcement.icon && <Icon name={announcement.icon} size={16} className="mr-2 inline-block" />}
                         {announcement.text || 'Your announcement text here...'}
                       </div>
 
@@ -280,6 +290,58 @@ export default function HeaderFooterEditor() {
                             <input type="text" value={announcement.textColor} onChange={e => setAnnouncement(a => ({ ...a, textColor: e.target.value }))} className={smallCls} />
                           </div>
                         </div>
+                      </div>
+
+                      {/* Icon Picker */}
+                      <div>
+                        <p className="text-slate-400 text-xs font-medium mb-1">Icon (optional)</p>
+                        <div className="flex items-center gap-2 mb-2">
+                          <button
+                            onClick={() => setShowIconPicker(!showIconPicker)}
+                            className="flex items-center gap-2 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-sm text-slate-300 hover:border-primary/50 transition-colors"
+                          >
+                            {announcement.icon ? (
+                              <>
+                                <Icon name={announcement.icon} size={16} />
+                                <span>{announcement.icon}</span>
+                              </>
+                            ) : (
+                              <span className="text-slate-500">No icon</span>
+                            )}
+                            <Icon name={showIconPicker ? 'chevron-up' : 'chevron-down'} size={14} className="text-slate-500" />
+                          </button>
+                          {announcement.icon && (
+                            <button
+                              onClick={() => setAnnouncement(a => ({ ...a, icon: '' }))}
+                              className="text-xs text-red-400 hover:text-red-300"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        {showIconPicker && (
+                          <div className="bg-[#0e0e0e] border border-[#1f1f1f] rounded-lg p-3">
+                            <input
+                              type="text"
+                              value={iconSearch}
+                              onChange={e => setIconSearch(e.target.value)}
+                              placeholder="Search icons..."
+                              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-1.5 px-3 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50 mb-2"
+                            />
+                            <div className="grid grid-cols-8 sm:grid-cols-10 gap-1 max-h-48 overflow-y-auto">
+                              {ALL_ICON_NAMES.filter(name => !iconSearch || name.includes(iconSearch.toLowerCase())).map(name => (
+                                <button
+                                  key={name}
+                                  onClick={() => { setAnnouncement(a => ({ ...a, icon: name })); setShowIconPicker(false); setIconSearch('') }}
+                                  className={`w-full aspect-square flex items-center justify-center rounded-lg transition-colors ${announcement.icon === name ? 'bg-primary/20 text-primary' : 'bg-[#1a1a1a] text-slate-400 hover:bg-white/10 hover:text-white'}`}
+                                  title={name}
+                                >
+                                  <Icon name={name} size={18} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
@@ -432,6 +494,25 @@ export default function HeaderFooterEditor() {
                           <option value="wide">Wide</option>
                         </select>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Logo & Branding */}
+                  <div>
+                    <p className="text-slate-400 text-xs font-medium mb-2">Logo & Branding</p>
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 text-xs">Logo Size:</span>
+                        <select value={footer.logoSize || 'medium'} onChange={e => setFooter(f => ({ ...f, logoSize: e.target.value as any }))} className={selectCls + ' text-xs py-1'}>
+                          <option value="small">Small</option>
+                          <option value="medium">Medium</option>
+                          <option value="large">Large</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-[10px] mb-1">Description (text under logo)</p>
+                      <input type="text" value={footer.description || ''} onChange={e => setFooter(f => ({ ...f, description: e.target.value }))} placeholder="Text shown under the logo" className={inputCls} />
                     </div>
                   </div>
 

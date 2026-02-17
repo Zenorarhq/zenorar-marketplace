@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
 import ProfileLayout from '@/components/profile/ProfileLayout'
@@ -32,7 +32,7 @@ const depositStatusConfig: Record<DepositStatus, { label: string; color: string 
   EXPIRED: { label: 'Expired', color: 'text-slate-500 bg-slate-500/10 border-slate-500/20' },
 }
 
-export default function WalletPage() {
+function WalletPageContent() {
   const searchParams = useSearchParams()
   const [filter, setFilter] = useState<TransactionFilter>('all')
   const [showDepositModal, setShowDepositModal] = useState(false)
@@ -425,5 +425,13 @@ export default function WalletPage() {
         </div>
       )}
     </ProfileLayout>
+  )
+}
+
+export default function WalletPage() {
+  return (
+    <Suspense>
+      <WalletPageContent />
+    </Suspense>
   )
 }

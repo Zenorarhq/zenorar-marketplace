@@ -21,7 +21,7 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
     const productResult = await executeQuery(`
       SELECT
         p.id, p.name, p.slug, p.description, p.price, p."isFeatured" as is_featured, p.video_url,
-        c.name as category_name,
+        p."categoryId" as category_id, c.name as category_name,
         COALESCE(AVG(r.rating), 0) as average_rating,
         COUNT(DISTINCT r.id) as review_count,
         (
@@ -74,6 +74,7 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
       rating: Number(row.average_rating) || 0,
       reviewCount: Number(row.review_count) || 0,
       category: row.category_name || '',
+      categoryId: row.category_id || null,
       icon: 'box',
       iconColor: 'primary',
       tags: [],
@@ -86,6 +87,71 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
   } catch (error) {
     console.error('Failed to fetch product by slug:', error)
     return null
+  }
+}
+
+// Fetch related products from the same category (with sibling category fallback)
+async function getRelatedProducts(productId: string, categoryId: string | null) {
+  if (!categoryId) return []
+  try {
+    // Get products from the same category
+    const result = await executeQuery(`
+      SELECT p.id, p.name, p.slug, p.price, c.name as category_name,
+             COALESCE(AVG(r.rating), 0) as average_rating,
+             COUNT(DISTINCT r.id) as review_count,
+             (SELECT pi.url FROM product_images pi WHERE pi."productId" = p.id AND pi."isPrimary" = true LIMIT 1) as image
+      FROM products p
+      LEFT JOIN categories c ON p."categoryId" = c.id
+      LEFT JOIN reviews r ON r."productId" = p.id
+      WHERE p."categoryId" = $1 AND p.id != $2 AND p.status = 'ACTIVE'
+      GROUP BY p.id, c.name
+      ORDER BY RANDOM()
+      LIMIT 5
+    `, [categoryId, productId])
+
+    let products = result.rows
+
+    // If fewer than 5, fill with sibling category products
+    if (products.length < 5) {
+      const remaining = 5 - products.length
+      const excludeIds = [productId, ...products.map((p: any) => p.id)]
+      const placeholders = excludeIds.map((_, i) => `$${i + 2}`).join(', ')
+
+      const siblingResult = await executeQuery(`
+        SELECT p.id, p.name, p.slug, p.price, c.name as category_name,
+               COALESCE(AVG(r.rating), 0) as average_rating,
+               COUNT(DISTINCT r.id) as review_count,
+               (SELECT pi.url FROM product_images pi WHERE pi."productId" = p.id AND pi."isPrimary" = true LIMIT 1) as image
+        FROM products p
+        LEFT JOIN categories c ON p."categoryId" = c.id
+        LEFT JOIN reviews r ON r."productId" = p.id
+        WHERE p."categoryId" IN (
+          SELECT id FROM categories WHERE "parentId" = (SELECT "parentId" FROM categories WHERE id = $1)
+        )
+        AND p.id NOT IN (${placeholders})
+        AND p.status = 'ACTIVE'
+        GROUP BY p.id, c.name
+        ORDER BY RANDOM()
+        LIMIT ${remaining}
+      `, [categoryId, ...excludeIds])
+
+      products = [...products, ...siblingResult.rows]
+    }
+
+    return products.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      price: Number(row.price),
+      rating: Number(row.average_rating) || 0,
+      reviewCount: Number(row.review_count) || 0,
+      category: row.category_name || '',
+      icon: 'box',
+      image: row.image || undefined,
+    }))
+  } catch (error) {
+    console.error('Failed to fetch related products:', error)
+    return []
   }
 }
 
@@ -115,6 +181,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) {
     notFound()
   }
+
+  const relatedProducts = await getRelatedProducts(product.id, product.categoryId || null)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -198,7 +266,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </div>
 
       {/* Related Products */}
-      <RelatedProducts />
+      <RelatedProducts products={relatedProducts} />
     </main>
   )
 }

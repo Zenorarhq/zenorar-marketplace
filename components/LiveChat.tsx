@@ -409,10 +409,10 @@ export default function LiveChat() {
   if (pathname.startsWith('/admin')) return null
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
       {/* Chat Window */}
       {isOpen && (
-        <div ref={chatWindowRef} className="absolute bottom-0 right-0 w-[380px] h-[600px] bg-surface-dark border border-border-dark rounded-2xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
+        <div ref={chatWindowRef} className="absolute bottom-0 right-0 w-[calc(100vw-2rem)] max-w-[380px] h-[70vh] sm:h-[600px] bg-surface-dark border border-border-dark rounded-2xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
           {/* Header */}
           <div className="bg-charcoal px-6 py-4 border-b border-border-dark flex items-center justify-between">
             <div className="flex items-center gap-3">

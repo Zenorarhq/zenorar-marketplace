@@ -3,17 +3,35 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
-import { relatedProducts } from '@/lib/mock-data'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
-export default function RelatedProducts() {
+interface RelatedProduct {
+  id: string
+  name: string
+  slug: string
+  price: number
+  rating: number
+  reviewCount: number
+  category: string
+  icon: string
+  image?: string
+}
+
+interface RelatedProductsProps {
+  products: RelatedProduct[]
+}
+
+export default function RelatedProducts({ products }: RelatedProductsProps) {
   const { formatPrice } = usePreferences()
+
+  if (products.length === 0) return null
+
   return (
     <div className="mt-16 w-full">
       <h2 className="text-2xl font-bold text-white mb-8">Related Products</h2>
 
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-6">
-        {relatedProducts.map((product) => (
+        {products.map((product) => (
           <Link
             key={product.id}
             href={`/products/${product.slug}`}
@@ -39,7 +57,7 @@ export default function RelatedProducts() {
               <h4 className="font-bold text-white text-sm line-clamp-1">{product.name}</h4>
               <div className="flex items-center text-yellow-500 scale-75 origin-right">
                 <Icon name="star" size={16}  />
-                <span className="text-slate-300 text-xs ml-1 font-bold">{product.rating}</span>
+                <span className="text-slate-300 text-xs ml-1 font-bold">{product.rating.toFixed(1)}</span>
               </div>
             </div>
 
