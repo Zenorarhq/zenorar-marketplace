@@ -144,8 +144,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     )
   }
 
-  // Don't render anything if not authenticated (will redirect)
-  if (!isAuthenticated) {
+  // Don't render anything if not authenticated or not staff (will redirect)
+  if (!isAuthenticated || !isStaff) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <Icon name="loading" size={40} className="text-primary animate-spin" />

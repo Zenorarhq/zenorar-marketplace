@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
     )
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated && isStaff) {
     return null
   }
 

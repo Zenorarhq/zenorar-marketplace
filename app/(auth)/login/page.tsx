@@ -57,16 +57,11 @@ export default function LoginPage() {
     return '/'
   }
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (non-staff only)
   useEffect(() => {
-    if (!authLoading) {
-      // Staff users should go to admin (they appear as guests on /login due to route-based auth)
-      if (isStaff) {
-        router.push('/admin')
-      } else if (isAuthenticated) {
-        // Non-staff authenticated users go to saved redirect
-        router.push(getRedirectUrl())
-      }
+    if (!authLoading && isAuthenticated && !isStaff) {
+      // Only redirect non-staff authenticated users
+      router.push(getRedirectUrl())
     }
   }, [isAuthenticated, authLoading, isStaff, router])
 
