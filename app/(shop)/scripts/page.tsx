@@ -107,7 +107,7 @@ export default function ScriptsPage() {
   const hasMore = visibleCount < products.length
 
   return (
-    <main className="max-w-container mx-auto px-8 lg:px-12 pb-24">
+    <main className="max-w-container mx-auto px-4 lg:px-12 pb-24">
       {/* Breadcrumbs */}
       <div className="py-4">
         <Breadcrumbs
@@ -120,16 +120,16 @@ export default function ScriptsPage() {
       </div>
 
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-3xl p-8 lg:p-12 mb-12">
-        <header className="flex items-end justify-between">
+      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-6 lg:p-12 mb-8 lg:mb-12">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-4xl font-extrabold text-white mb-2">Premium Scripts</h1>
-            <p className="text-slate-500 max-w-2xl">
+            <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-2">Premium Scripts</h1>
+            <p className="text-slate-500 text-sm lg:text-base max-w-2xl">
               High-performance automation tools, scrapers, and full-stack kits developed by industry experts.
             </p>
           </div>
 
-          <div className="flex items-center gap-4 text-sm">
+          <div className="hidden lg:flex items-center gap-3 text-sm">
             <label htmlFor="sort-by" className="text-slate-500">Sort by:</label>
             <select
               id="sort-by"
@@ -146,14 +146,28 @@ export default function ScriptsPage() {
         </header>
       </div>
 
-      {/* Main Content */}
-      <div className="flex gap-8">
-        {/* Sidebar */}
+      {/* Mobile Filter Pills */}
+      <div className="lg:hidden mb-6">
         <FilterSidebar
+          variant="inline"
           onFilterChange={setActiveFilters}
           categories={subCategories}
           availableTags={uniqueTags}
+          sortBy={sortBy}
+          onSortChange={(v) => setSortBy(v as SortOption)}
         />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex gap-8">
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:block">
+          <FilterSidebar
+            onFilterChange={setActiveFilters}
+            categories={subCategories}
+            availableTags={uniqueTags}
+          />
+        </div>
 
         {/* Product Grid */}
         <div className="flex-grow">
@@ -171,7 +185,7 @@ export default function ScriptsPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 {visibleProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
