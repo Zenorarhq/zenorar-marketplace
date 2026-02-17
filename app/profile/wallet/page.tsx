@@ -11,7 +11,7 @@ import { getMyDeposits, type Deposit, type DepositStatus, type DepositMethod } f
 import { formatCurrency } from '@/lib/currency'
 import Link from 'next/link'
 
-type TransactionFilter = 'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT' | 'DEPOSIT'
+type TransactionFilter = 'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'
 
 const depositMethodLabels: Record<DepositMethod, string> = {
   CARD: 'Card',
@@ -100,7 +100,6 @@ export default function WalletPage() {
       case 'DEBIT': return { icon: 'arrow-up-circle', color: 'text-red-500' }
       case 'REFUND': return { icon: 'refresh', color: 'text-blue-500' }
       case 'ADJUSTMENT': return { icon: 'adjustments', color: 'text-yellow-500' }
-      case 'DEPOSIT': return { icon: 'plus-circle', color: 'text-primary' }
       default: return { icon: 'currency-dollar', color: 'text-slate-500' }
     }
   }
@@ -111,7 +110,6 @@ export default function WalletPage() {
       DEBIT: { label: 'Debit', color: 'text-red-500 bg-red-500/10 border-red-500/20' },
       REFUND: { label: 'Refund', color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
       ADJUSTMENT: { label: 'Adjustment', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
-      DEPOSIT: { label: 'Deposit', color: 'text-primary bg-primary/10 border-primary/20' },
     }
     const config = configs[type]
     if (!config) return null
@@ -234,7 +232,7 @@ export default function WalletPage() {
 
             {/* Filter */}
             <div className="flex gap-2 flex-wrap">
-              {(['all', 'DEPOSIT', 'CREDIT', 'DEBIT', 'ADJUSTMENT'] as TransactionFilter[]).map((type) => (
+              {(['all', 'CREDIT', 'DEBIT', 'REFUND', 'ADJUSTMENT'] as TransactionFilter[]).map((type) => (
                 <button
                   key={type}
                   onClick={() => setFilter(type)}
@@ -260,7 +258,7 @@ export default function WalletPage() {
             <div className="space-y-3">
               {transactionsData.transactions.map((transaction) => {
                 const { icon, color } = getTransactionIcon(transaction.type)
-                const isCredit = transaction.type === 'CREDIT' || transaction.type === 'REFUND' || transaction.type === 'DEPOSIT'
+                const isCredit = transaction.type === 'CREDIT' || transaction.type === 'REFUND'
 
                 return (
                   <div
