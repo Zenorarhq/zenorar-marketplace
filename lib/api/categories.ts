@@ -31,7 +31,7 @@ export const categoriesApi = {
   },
 
   async getBySlug(slug: string) {
-    return apiFetch<CategoryWithChildren>(`/categories/slug/${slug}`)
+    return apiFetch<CategoryWithChildren>(`/categories/public/${slug}`)
   },
 
   async getTree() {

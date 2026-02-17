@@ -86,7 +86,8 @@ export default function ScriptsPage() {
         filters.categoryIds = activeFilters.categories.join(',')
       }
 
-      const result = await productsApi.getByCategory('scripts', filters)
+      filters.category = 'scripts'
+      const result = await productsApi.listPublic(filters)
       if (result.success && result.data) {
         return result.data.map(mapProduct)
       }

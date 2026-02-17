@@ -79,6 +79,11 @@ export const productsApi = {
     return apiFetch<Product[]>(`/products${query}`)
   },
 
+  async listPublic(filters: ProductFilters = {}) {
+    const query = buildQueryString(filters)
+    return apiFetch<Product[]>(`/products/public${query}`)
+  },
+
   async getById(id: string) {
     return apiFetch<Product>(`/products/${id}`)
   },
