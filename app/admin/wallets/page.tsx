@@ -4,106 +4,162 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
-import { getAllWallets, getUserWallet, addCredit, deductCredit, adjustBalance } from '@/lib/api/wallet'
+import { getAllWallets, addCredit, deductCredit, adjustBalance, freezeWallet, unfreezeWallet } from '@/lib/api/wallet'
+import { getAllDeposits, getDepositStats, approveDeposit, rejectDeposit } from '@/lib/api/deposits'
 import { formatCurrency } from '@/lib/currency'
+import type { DepositStatus, DepositMethod } from '@/lib/api/deposits'
 
-type ActionType = 'add' | 'deduct' | 'adjust'
+type WalletActionType = 'add' | 'deduct' | 'adjust'
+
+const depositStatusConfig: Record<DepositStatus, { label: string; color: string }> = {
+  PENDING: { label: 'Pending', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
+  PROCESSING: { label: 'Processing', color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
+  COMPLETED: { label: 'Completed', color: 'text-green-500 bg-green-500/10 border-green-500/20' },
+  FAILED: { label: 'Failed', color: 'text-red-500 bg-red-500/10 border-red-500/20' },
+  CANCELLED: { label: 'Cancelled', color: 'text-slate-500 bg-slate-500/10 border-slate-500/20' },
+  EXPIRED: { label: 'Expired', color: 'text-slate-500 bg-slate-500/10 border-slate-500/20' },
+}
+
+const methodLabels: Record<DepositMethod, string> = {
+  CARD: 'Card',
+  PAYSTACK: 'Paystack',
+  PAYPAL: 'PayPal',
+  BANK_TRANSFER: 'Bank Transfer',
+  CRYPTO_BTC: 'Bitcoin',
+  CRYPTO_ETH: 'Ethereum',
+  CRYPTO_USDT: 'USDT',
+}
 
 export default function AdminWalletsPage() {
   const queryClient = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [activeTab, setActiveTab] = useState<'wallets' | 'deposits'>('wallets')
+
+  // Wallets state
+  const [walletPage, setWalletPage] = useState(1)
+  const [walletSearch, setWalletSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
-  const [actionType, setActionType] = useState<ActionType>('add')
+  const [actionType, setActionType] = useState<WalletActionType>('add')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [showActionModal, setShowActionModal] = useState(false)
+  const [freezeReason, setFreezeReason] = useState('')
+  const [freezeUserId, setFreezeUserId] = useState<string | null>(null)
+  const [showFreezeModal, setShowFreezeModal] = useState(false)
+
+  // Deposits state
+  const [depositPage, setDepositPage] = useState(1)
+  const [depositStatus, setDepositStatus] = useState<DepositStatus | 'all'>('all')
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectDepositId, setRejectDepositId] = useState<string | null>(null)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+
   const limit = 20
 
-  // Fetch all wallets
-  const { data: walletsData, isLoading: walletsLoading, refetch } = useQuery({
-    queryKey: ['admin', 'wallets', page],
+  // ---- QUERIES ----
+  const { data: walletsData, isLoading: walletsLoading } = useQuery({
+    queryKey: ['admin', 'wallets', walletPage, walletSearch],
     queryFn: async () => {
-      const result = await getAllWallets(page, limit)
-      if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to load wallets')
-      }
-      return result.data
-    }
-  })
-
-  // Fetch selected user's wallet details
-  const { data: userWalletData, isLoading: userWalletLoading } = useQuery({
-    queryKey: ['admin', 'wallet', selectedUserId],
-    queryFn: async () => {
-      if (!selectedUserId) return null
-      const result = await getUserWallet(selectedUserId)
-      if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to load user wallet')
-      }
+      const result = await getAllWallets(walletPage, limit, walletSearch || undefined)
+      if (!result.success || !result.data) throw new Error(result.error || 'Failed to load wallets')
       return result.data
     },
-    enabled: !!selectedUserId
+    enabled: activeTab === 'wallets',
   })
 
-  // Mutations for wallet actions
+  const { data: depositsData, isLoading: depositsLoading } = useQuery({
+    queryKey: ['admin', 'deposits', depositPage, depositStatus],
+    queryFn: async () => {
+      const result = await getAllDeposits(
+        depositPage,
+        limit,
+        depositStatus === 'all' ? undefined : depositStatus
+      )
+      if (!result.success || !result.data) throw new Error(result.error || 'Failed to load deposits')
+      return result.data
+    },
+    enabled: activeTab === 'deposits',
+  })
+
+  const { data: depositStats } = useQuery({
+    queryKey: ['admin', 'deposit-stats'],
+    queryFn: async () => {
+      const result = await getDepositStats()
+      return result.success ? result.data : null
+    },
+    enabled: activeTab === 'deposits',
+  })
+
+  // ---- MUTATIONS ----
   const addCreditMutation = useMutation({
-    mutationFn: async ({ userId, amount, description }: { userId: string; amount: number; description: string }) => {
-      const result = await addCredit(userId, amount, description)
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to add credit')
-      }
-      return result
+    mutationFn: async (data: { userId: string; amount: number; description: string }) => {
+      const result = await addCredit(data.userId, data.amount, data.description)
+      if (!result.success) throw new Error(result.error || 'Failed to add credit')
     },
-    onSuccess: () => {
-      alert('Credit added successfully')
-      queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'wallet', selectedUserId] })
-      resetActionModal()
-    },
-    onError: (error: Error) => {
-      alert(error.message || 'Failed to add credit')
-    }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] }); resetActionModal() },
   })
 
   const deductCreditMutation = useMutation({
-    mutationFn: async ({ userId, amount, description }: { userId: string; amount: number; description: string }) => {
-      const result = await deductCredit(userId, amount, description)
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to deduct credit')
-      }
-      return result
+    mutationFn: async (data: { userId: string; amount: number; description: string }) => {
+      const result = await deductCredit(data.userId, data.amount, data.description)
+      if (!result.success) throw new Error(result.error || 'Failed to deduct credit')
     },
-    onSuccess: () => {
-      alert('Credit deducted successfully')
-      queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'wallet', selectedUserId] })
-      resetActionModal()
-    },
-    onError: (error: Error) => {
-      alert(error.message || 'Failed to deduct credit')
-    }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] }); resetActionModal() },
   })
 
   const adjustBalanceMutation = useMutation({
-    mutationFn: async ({ userId, amount, description }: { userId: string; amount: number; description: string }) => {
-      const result = await adjustBalance(userId, amount, description)
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to adjust balance')
-      }
-      return result
+    mutationFn: async (data: { userId: string; amount: number; description: string }) => {
+      const result = await adjustBalance(data.userId, data.amount, data.description)
+      if (!result.success) throw new Error(result.error || 'Failed to adjust balance')
     },
-    onSuccess: () => {
-      alert('Balance adjusted successfully')
-      queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'wallet', selectedUserId] })
-      resetActionModal()
-    },
-    onError: (error: Error) => {
-      alert(error.message || 'Failed to adjust balance')
-    }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] }); resetActionModal() },
   })
 
+  const freezeMutation = useMutation({
+    mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
+      const result = await freezeWallet(userId, reason)
+      if (!result.success) throw new Error(result.error || 'Failed to freeze wallet')
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] })
+      setShowFreezeModal(false)
+      setFreezeReason('')
+      setFreezeUserId(null)
+    },
+  })
+
+  const unfreezeMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const result = await unfreezeWallet(userId)
+      if (!result.success) throw new Error(result.error || 'Failed to unfreeze wallet')
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] }) },
+  })
+
+  const approveMutation = useMutation({
+    mutationFn: async (depositId: string) => {
+      const result = await approveDeposit(depositId)
+      if (!result.success) throw new Error(result.error || 'Failed to approve deposit')
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'deposits'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'deposit-stats'] })
+    },
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: async ({ depositId, reason }: { depositId: string; reason: string }) => {
+      const result = await rejectDeposit(depositId, reason)
+      if (!result.success) throw new Error(result.error || 'Failed to reject deposit')
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'deposits'] })
+      setShowRejectModal(false)
+      setRejectReason('')
+      setRejectDepositId(null)
+    },
+  })
+
+  // ---- HELPERS ----
   const resetActionModal = () => {
     setShowActionModal(false)
     setAmount('')
@@ -111,183 +167,293 @@ export default function AdminWalletsPage() {
     setSelectedUserId(null)
   }
 
-  const handleAction = () => {
-    if (!selectedUserId || !amount || !description) {
-      alert('Please fill in all fields')
-      return
-    }
-
+  const handleWalletAction = () => {
+    if (!selectedUserId || !amount || !description) return
     const amountNum = parseFloat(amount)
-    if (isNaN(amountNum) || amountNum <= 0) {
-      alert('Please enter a valid amount')
-      return
-    }
-
-    const actionData = {
-      userId: selectedUserId,
-      amount: amountNum,
-      description
-    }
-
-    switch (actionType) {
-      case 'add':
-        addCreditMutation.mutate(actionData)
-        break
-      case 'deduct':
-        deductCreditMutation.mutate(actionData)
-        break
-      case 'adjust':
-        adjustBalanceMutation.mutate(actionData)
-        break
-    }
+    if (isNaN(amountNum) || amountNum <= 0) return
+    const data = { userId: selectedUserId, amount: amountNum, description }
+    if (actionType === 'add') addCreditMutation.mutate(data)
+    else if (actionType === 'deduct') deductCreditMutation.mutate(data)
+    else adjustBalanceMutation.mutate(data)
   }
 
-  const openActionModal = (userId: string, type: ActionType) => {
+  const openActionModal = (userId: string, type: WalletActionType) => {
     setSelectedUserId(userId)
     setActionType(type)
     setShowActionModal(true)
   }
 
-  // Filter wallets by search query
-  const filteredWallets = walletsData?.wallets.filter((wallet: any) => {
-    if (!searchQuery) return true
-    const query = searchQuery.toLowerCase()
-    return (
-      wallet.user.name.toLowerCase().includes(query) ||
-      wallet.user.email.toLowerCase().includes(query)
-    )
-  }) || []
+  const isPending = addCreditMutation.isPending || deductCreditMutation.isPending || adjustBalanceMutation.isPending
+
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  })
 
   return (
     <AdminLayout>
       {/* Header */}
-      <div className="mb-10 pb-6 border-b border-border-dark">
+      <div className="mb-8 pb-6 border-b border-border-dark">
         <h1 className="text-3xl font-bold text-white mb-2">Wallet Management</h1>
-        <p className="text-slate-400">
-          View and manage user wallet balances, add or deduct credits.
-        </p>
+        <p className="text-slate-400">Manage user wallets, approve deposits, and adjust balances.</p>
       </div>
 
-      {/* Search */}
-      <div className="mb-6">
-        <div className="relative">
-          <Icon name="search" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-surface-dark border border-border-dark rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-500 focus:border-primary/50 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Wallets Table */}
-      {walletsLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-20 bg-surface-dark animate-pulse rounded-xl" />
-          ))}
-        </div>
-      ) : filteredWallets.length > 0 ? (
-        <>
-          <div className="overflow-x-auto rounded-2xl border border-border-dark">
-            <table className="w-full text-left text-sm text-slate-400">
-              <thead className="text-xs uppercase bg-black text-slate-200">
-                <tr>
-                  <th className="px-6 py-4 font-bold">User</th>
-                  <th className="px-6 py-4 font-bold text-right">Balance</th>
-                  <th className="px-6 py-4 font-bold text-center">Last Updated</th>
-                  <th className="px-6 py-4 font-bold text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-dark bg-black/20">
-                {filteredWallets.map((wallet: any) => (
-                  <tr key={wallet.id} className="hover:bg-black/40 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-white font-medium">{wallet.user.name}</div>
-                        <div className="text-xs text-slate-500">{wallet.user.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className={`text-lg font-bold ${Number(wallet.balance) > 0 ? 'text-primary' : 'text-slate-500'}`}>
-                        {formatCurrency(Number(wallet.balance))}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center text-xs">
-                      {new Date(wallet.updatedAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2 justify-center">
-                        <button
-                          onClick={() => openActionModal(wallet.userId, 'add')}
-                          className="px-3 py-1 bg-primary/10 border border-primary/30 text-primary rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors"
-                        >
-                          Add Credit
-                        </button>
-                        <button
-                          onClick={() => openActionModal(wallet.userId, 'deduct')}
-                          className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
-                        >
-                          Deduct
-                        </button>
-                        <button
-                          onClick={() => openActionModal(wallet.userId, 'adjust')}
-                          className="px-3 py-1 bg-surface-dark border border-border-dark text-slate-400 rounded-lg text-xs font-medium hover:bg-border-dark transition-colors"
-                        >
-                          Adjust
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {walletsData && walletsData.pagination.totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between">
-              <p className="text-slate-400 text-sm">
-                Showing page {page} of {walletsData.pagination.totalPages}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white font-medium hover:bg-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Icon name="arrow-left" size={16} />
-                </button>
-                <button
-                  onClick={() => setPage(p => Math.min(walletsData.pagination.totalPages, p + 1))}
-                  disabled={page === walletsData.pagination.totalPages}
-                  className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white font-medium hover:bg-border-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Icon name="arrow-right" size={16} />
-                </button>
+      {/* Deposit Stats (shown when deposits tab is active) */}
+      {activeTab === 'deposits' && depositStats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Total Deposited', value: formatCurrency(depositStats.totalAmount || 0), icon: 'arrow-down-circle', color: 'text-primary' },
+            { label: 'Completed', value: depositStats.completedCount || 0, icon: 'check-circle', color: 'text-green-500' },
+            { label: 'Pending Approval', value: depositStats.pendingCount || 0, icon: 'clock', color: 'text-yellow-500' },
+            { label: 'Failed', value: depositStats.failedCount || 0, icon: 'close-circle', color: 'text-red-500' },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-black border border-border-dark rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <Icon name={stat.icon as any} size={20} className={stat.color} />
+                <p className="text-slate-400 text-sm">{stat.label}</p>
               </div>
+              <p className="text-2xl font-bold text-white">{stat.value}</p>
             </div>
-          )}
-        </>
-      ) : (
-        <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-surface-dark flex items-center justify-center mx-auto mb-4">
-            <Icon name="wallet" size={32} className="text-slate-600" />
-          </div>
-          <h4 className="text-lg font-bold text-white mb-2">No wallets found</h4>
-          <p className="text-slate-500">
-            {searchQuery ? 'Try adjusting your search query.' : 'User wallets will appear here.'}
-          </p>
+          ))}
         </div>
       )}
 
-      {/* Action Modal */}
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 bg-surface-dark rounded-xl p-1 max-w-xs">
+        <button
+          onClick={() => setActiveTab('wallets')}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'wallets' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'}`}
+        >
+          User Wallets
+        </button>
+        <button
+          onClick={() => setActiveTab('deposits')}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'deposits' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'}`}
+        >
+          Deposits
+        </button>
+      </div>
+
+      {/* ---- WALLETS TAB ---- */}
+      {activeTab === 'wallets' && (
+        <div>
+          <div className="mb-6">
+            <div className="relative">
+              <Icon name="search" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={walletSearch}
+                onChange={(e) => { setWalletSearch(e.target.value); setWalletPage(1) }}
+                className="w-full bg-surface-dark border border-border-dark rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-500 focus:border-primary/50 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {walletsLoading ? (
+            <div className="space-y-3">{[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-16 bg-surface-dark animate-pulse rounded-xl" />)}</div>
+          ) : walletsData && walletsData.wallets.length > 0 ? (
+            <>
+              <div className="overflow-x-auto rounded-2xl border border-border-dark">
+                <table className="w-full text-left text-sm text-slate-400">
+                  <thead className="text-xs uppercase bg-black text-slate-200">
+                    <tr>
+                      <th className="px-6 py-4 font-bold">User</th>
+                      <th className="px-6 py-4 font-bold text-right">Balance</th>
+                      <th className="px-6 py-4 font-bold text-center">Status</th>
+                      <th className="px-6 py-4 font-bold text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-dark bg-black/20">
+                    {walletsData.wallets.map((wallet: any) => (
+                      <tr key={wallet.id} className="hover:bg-black/40 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="text-white font-medium">{wallet.user.name}</div>
+                          <div className="text-xs text-slate-500">{wallet.user.email}</div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className={`text-lg font-bold ${Number(wallet.balance) > 0 ? 'text-primary' : 'text-slate-500'}`}>
+                            {formatCurrency(Number(wallet.balance))}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {wallet.isFrozen ? (
+                            <span className="px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-500 rounded text-xs font-bold">Frozen</span>
+                          ) : (
+                            <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 text-green-500 rounded text-xs font-bold">Active</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2 justify-center flex-wrap">
+                            <button
+                              onClick={() => openActionModal(wallet.userId, 'add')}
+                              className="px-3 py-1 bg-primary/10 border border-primary/30 text-primary rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors"
+                            >
+                              Add
+                            </button>
+                            <button
+                              onClick={() => openActionModal(wallet.userId, 'deduct')}
+                              className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
+                            >
+                              Deduct
+                            </button>
+                            {wallet.isFrozen ? (
+                              <button
+                                onClick={() => unfreezeMutation.mutate(wallet.userId)}
+                                disabled={unfreezeMutation.isPending}
+                                className="px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                              >
+                                Unfreeze
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => { setFreezeUserId(wallet.userId); setShowFreezeModal(true) }}
+                                className="px-3 py-1 bg-slate-500/10 border border-slate-500/30 text-slate-400 rounded-lg text-xs font-medium hover:bg-slate-500/20 transition-colors"
+                              >
+                                Freeze
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {walletsData.pagination.totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <p className="text-slate-400 text-sm">Page {walletPage} of {walletsData.pagination.totalPages} ({walletsData.pagination.total} wallets)</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setWalletPage(p => Math.max(1, p - 1))} disabled={walletPage === 1} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
+                      <Icon name="arrow-left" size={16} />
+                    </button>
+                    <button onClick={() => setWalletPage(p => Math.min(walletsData.pagination.totalPages, p + 1))} disabled={walletPage === walletsData.pagination.totalPages} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
+                      <Icon name="arrow-right" size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
+              <Icon name="wallet" size={32} className="text-slate-600 mx-auto mb-4" />
+              <h4 className="text-lg font-bold text-white mb-2">No wallets found</h4>
+              <p className="text-slate-500">{walletSearch ? 'Try adjusting your search.' : 'User wallets will appear here.'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---- DEPOSITS TAB ---- */}
+      {activeTab === 'deposits' && (
+        <div>
+          <div className="flex gap-2 mb-6 flex-wrap">
+            {(['all', 'PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => { setDepositStatus(s); setDepositPage(1) }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${depositStatus === s ? 'bg-primary text-black' : 'bg-surface-dark text-slate-400 hover:bg-border-dark'}`}
+              >
+                {s === 'all' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+
+          {depositsLoading ? (
+            <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-surface-dark animate-pulse rounded-xl" />)}</div>
+          ) : depositsData && depositsData.deposits.length > 0 ? (
+            <>
+              <div className="overflow-x-auto rounded-2xl border border-border-dark">
+                <table className="w-full text-left text-sm text-slate-400">
+                  <thead className="text-xs uppercase bg-black text-slate-200">
+                    <tr>
+                      <th className="px-6 py-4 font-bold">User</th>
+                      <th className="px-6 py-4 font-bold">Method</th>
+                      <th className="px-6 py-4 font-bold text-right">Amount</th>
+                      <th className="px-6 py-4 font-bold text-center">Status</th>
+                      <th className="px-6 py-4 font-bold">Date</th>
+                      <th className="px-6 py-4 font-bold text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-dark bg-black/20">
+                    {depositsData.deposits.map((deposit: any) => {
+                      const statusConfig = depositStatusConfig[deposit.status as DepositStatus] || depositStatusConfig.PENDING
+                      const method = methodLabels[deposit.paymentMethod as DepositMethod] || deposit.paymentMethod
+                      const needsApproval = deposit.status === 'PENDING' &&
+                        (deposit.paymentMethod === 'BANK_TRANSFER' || deposit.paymentMethod.startsWith('CRYPTO'))
+
+                      return (
+                        <tr key={deposit.id} className="hover:bg-black/40 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="text-white font-medium">{deposit.user?.name || 'Unknown'}</div>
+                            <div className="text-xs text-slate-500">{deposit.user?.email || ''}</div>
+                          </td>
+                          <td className="px-6 py-4 text-white font-medium">{method}</td>
+                          <td className="px-6 py-4 text-right">
+                            <span className="text-primary font-bold">{formatCurrency(Number(deposit.amount))}</span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={`px-2 py-1 rounded text-xs font-bold border ${statusConfig.color}`}>{statusConfig.label}</span>
+                          </td>
+                          <td className="px-6 py-4 text-xs">{formatDate(deposit.createdAt)}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2 justify-center">
+                              {needsApproval && (
+                                <>
+                                  <button
+                                    onClick={() => approveMutation.mutate(deposit.id)}
+                                    disabled={approveMutation.isPending}
+                                    className="px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => { setRejectDepositId(deposit.id); setShowRejectModal(true) }}
+                                    className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              {deposit.bankProof && (
+                                <a href={deposit.bankProof} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-surface-dark border border-border-dark text-slate-400 rounded-lg text-xs font-medium hover:bg-border-dark transition-colors">
+                                  View Proof
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {depositsData.pagination.totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <p className="text-slate-400 text-sm">Page {depositPage} of {depositsData.pagination.totalPages} ({depositsData.pagination.total} deposits)</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setDepositPage(p => Math.max(1, p - 1))} disabled={depositPage === 1} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
+                      <Icon name="arrow-left" size={16} />
+                    </button>
+                    <button onClick={() => setDepositPage(p => Math.min(depositsData.pagination.totalPages, p + 1))} disabled={depositPage === depositsData.pagination.totalPages} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
+                      <Icon name="arrow-right" size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
+              <Icon name="arrow-down-circle" size={32} className="text-slate-600 mx-auto mb-4" />
+              <h4 className="text-lg font-bold text-white mb-2">No deposits found</h4>
+              <p className="text-slate-500">Deposits will appear here when users add money.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---- WALLET ACTION MODAL ---- */}
       {showActionModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-charcoal border border-border-dark rounded-2xl p-8 max-w-md w-full">
@@ -295,19 +461,12 @@ export default function AdminWalletsPage() {
               <h3 className="text-xl font-bold text-white">
                 {actionType === 'add' ? 'Add Credit' : actionType === 'deduct' ? 'Deduct Credit' : 'Adjust Balance'}
               </h3>
-              <button
-                onClick={resetActionModal}
-                className="text-slate-400 hover:text-white"
-              >
-                <Icon name="close" size={24} />
-              </button>
+              <button onClick={resetActionModal} className="text-slate-400 hover:text-white"><Icon name="close" size={24} /></button>
             </div>
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  Amount (USD)
-                </label>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">Amount (USD)</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
                   <input
@@ -321,54 +480,102 @@ export default function AdminWalletsPage() {
                   />
                 </div>
               </div>
-
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  Description/Reason
-                </label>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">Reason</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Enter a reason for this action..."
+                  placeholder="Enter a reason..."
                   rows={3}
                   className="w-full bg-surface-dark border border-border-dark rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:border-primary/50 focus:outline-none resize-none"
                 />
               </div>
-
-              {actionType === 'adjust' && (
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
-                  <p className="text-yellow-400 text-xs">
-                    <strong>Warning:</strong> Adjust will set the balance to the exact amount specified, not add or subtract from the current balance.
-                  </p>
-                </div>
-              )}
             </div>
 
             <div className="flex gap-3">
+              <button onClick={resetActionModal} className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl hover:bg-border-dark transition-colors">Cancel</button>
               <button
-                onClick={resetActionModal}
-                className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl hover:bg-border-dark transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAction}
-                disabled={addCreditMutation.isPending || deductCreditMutation.isPending || adjustBalanceMutation.isPending}
+                onClick={handleWalletAction}
+                disabled={isPending || !amount || !description}
                 className={`flex-1 font-bold py-3 rounded-xl transition-colors disabled:opacity-50 ${
-                  actionType === 'add'
-                    ? 'bg-primary text-black hover:brightness-105'
-                    : actionType === 'deduct'
-                    ? 'bg-red-500 text-white hover:bg-red-600'
-                    : 'bg-yellow-500 text-black hover:bg-yellow-600'
+                  actionType === 'add' ? 'bg-primary text-black hover:brightness-105'
+                  : actionType === 'deduct' ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'bg-yellow-500 text-black hover:bg-yellow-600'
                 }`}
               >
-                {addCreditMutation.isPending || deductCreditMutation.isPending || adjustBalanceMutation.isPending
-                  ? 'Processing...'
-                  : actionType === 'add'
-                  ? 'Add Credit'
-                  : actionType === 'deduct'
-                  ? 'Deduct Credit'
-                  : 'Adjust Balance'}
+                {isPending ? 'Processing...' : actionType === 'add' ? 'Add Credit' : actionType === 'deduct' ? 'Deduct' : 'Adjust'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- FREEZE WALLET MODAL ---- */}
+      {showFreezeModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-charcoal border border-border-dark rounded-2xl p-8 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Freeze Wallet</h3>
+              <button onClick={() => { setShowFreezeModal(false); setFreezeReason(''); setFreezeUserId(null) }} className="text-slate-400 hover:text-white"><Icon name="close" size={24} /></button>
+            </div>
+
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+              <p className="text-red-400 text-sm">Freezing this wallet will prevent the user from making purchases or receiving credits.</p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-300 mb-2">Reason for freezing</label>
+              <textarea
+                value={freezeReason}
+                onChange={(e) => setFreezeReason(e.target.value)}
+                placeholder="Enter the reason..."
+                rows={3}
+                className="w-full bg-surface-dark border border-border-dark rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:border-red-500/50 focus:outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => { setShowFreezeModal(false); setFreezeReason(''); setFreezeUserId(null) }} className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl hover:bg-border-dark transition-colors">Cancel</button>
+              <button
+                onClick={() => { if (freezeUserId && freezeReason.trim()) freezeMutation.mutate({ userId: freezeUserId, reason: freezeReason }) }}
+                disabled={freezeMutation.isPending || !freezeReason.trim()}
+                className="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {freezeMutation.isPending ? 'Freezing...' : 'Freeze Wallet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- REJECT DEPOSIT MODAL ---- */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-charcoal border border-border-dark rounded-2xl p-8 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Reject Deposit</h3>
+              <button onClick={() => { setShowRejectModal(false); setRejectReason(''); setRejectDepositId(null) }} className="text-slate-400 hover:text-white"><Icon name="close" size={24} /></button>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-300 mb-2">Reason for rejection</label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Enter a reason (shown to the user)..."
+                rows={3}
+                className="w-full bg-surface-dark border border-border-dark rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:border-red-500/50 focus:outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => { setShowRejectModal(false); setRejectReason(''); setRejectDepositId(null) }} className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl hover:bg-border-dark transition-colors">Cancel</button>
+              <button
+                onClick={() => { if (rejectDepositId && rejectReason.trim()) rejectMutation.mutate({ depositId: rejectDepositId, reason: rejectReason }) }}
+                disabled={rejectMutation.isPending || !rejectReason.trim()}
+                className="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {rejectMutation.isPending ? 'Rejecting...' : 'Reject Deposit'}
               </button>
             </div>
           </div>

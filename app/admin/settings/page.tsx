@@ -166,6 +166,16 @@ export default function AdminSettingsPage() {
     // General
     autoWithdraw: false,
     withdrawThreshold: '100',
+
+    // Wallet Deposits
+    walletDepositsEnabled: true,
+    depositMinAmount: '5',
+    depositMaxAmount: '10000',
+    depositCardEnabled: true,
+    depositPaystackEnabled: true,
+    depositPaypalEnabled: true,
+    depositCryptoEnabled: true,
+    depositBankEnabled: true,
   })
   const [showStripeSecrets, setShowStripeSecrets] = useState<Record<string, boolean>>({})
   const [showPaystackSecrets, setShowPaystackSecrets] = useState<Record<string, boolean>>({})
@@ -307,6 +317,15 @@ export default function AdminSettingsPage() {
           // General
           autoWithdraw: d.autoWithdraw ?? prev.autoWithdraw,
           withdrawThreshold: d.withdrawThreshold ?? prev.withdrawThreshold,
+          // Wallet Deposits
+          walletDepositsEnabled: d.walletDepositsEnabled ?? prev.walletDepositsEnabled,
+          depositMinAmount: d.depositMinAmount ?? prev.depositMinAmount,
+          depositMaxAmount: d.depositMaxAmount ?? prev.depositMaxAmount,
+          depositCardEnabled: d.depositCardEnabled ?? prev.depositCardEnabled,
+          depositPaystackEnabled: d.depositPaystackEnabled ?? prev.depositPaystackEnabled,
+          depositPaypalEnabled: d.depositPaypalEnabled ?? prev.depositPaypalEnabled,
+          depositCryptoEnabled: d.depositCryptoEnabled ?? prev.depositCryptoEnabled,
+          depositBankEnabled: d.depositBankEnabled ?? prev.depositBankEnabled,
         }))
       }
     })
@@ -637,6 +656,15 @@ export default function AdminSettingsPage() {
       // Payment settings - General
       { key: 'autoWithdraw', value: paymentSettings.autoWithdraw, group: 'payments', isPublic: false },
       { key: 'withdrawThreshold', value: paymentSettings.withdrawThreshold, group: 'payments', isPublic: false },
+      // Payment settings - Wallet Deposits
+      { key: 'walletDepositsEnabled', value: paymentSettings.walletDepositsEnabled, group: 'payments', isPublic: true },
+      { key: 'depositMinAmount', value: paymentSettings.depositMinAmount, group: 'payments', isPublic: true },
+      { key: 'depositMaxAmount', value: paymentSettings.depositMaxAmount, group: 'payments', isPublic: true },
+      { key: 'depositCardEnabled', value: paymentSettings.depositCardEnabled, group: 'payments', isPublic: true },
+      { key: 'depositPaystackEnabled', value: paymentSettings.depositPaystackEnabled, group: 'payments', isPublic: true },
+      { key: 'depositPaypalEnabled', value: paymentSettings.depositPaypalEnabled, group: 'payments', isPublic: true },
+      { key: 'depositCryptoEnabled', value: paymentSettings.depositCryptoEnabled, group: 'payments', isPublic: true },
+      { key: 'depositBankEnabled', value: paymentSettings.depositBankEnabled, group: 'payments', isPublic: true },
       // Referral Program settings
       { key: 'referralProgramEnabled', value: referralSettings.referralProgramEnabled, group: 'referral', isPublic: true },
       { key: 'referrerRewardAmount', value: referralSettings.referrerRewardAmount, group: 'referral', isPublic: false },
@@ -2068,6 +2096,86 @@ export default function AdminSettingsPage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Wallet Deposits */}
+            <div className="bg-[#111111] border border-[#1e1e1e] rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Icon name="wallet" size={16} className="text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Wallet Deposits</h3>
+                  <p className="text-slate-500 text-xs">Configure which deposit methods customers can use to add funds to their wallet</p>
+                </div>
+              </div>
+
+              {/* Master toggle */}
+              <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
+                <div>
+                  <p className="text-white font-medium">Enable Wallet Deposits</p>
+                  <p className="text-slate-500 text-sm">Allow customers to add money to their wallet balance</p>
+                </div>
+                <button
+                  onClick={() => setPaymentSettings({ ...paymentSettings, walletDepositsEnabled: !paymentSettings.walletDepositsEnabled })}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${paymentSettings.walletDepositsEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${paymentSettings.walletDepositsEnabled ? 'left-7' : 'left-1'}`} />
+                </button>
+              </div>
+
+              {paymentSettings.walletDepositsEnabled && (
+                <div className="space-y-4">
+                  {/* Min/Max deposit amounts */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Minimum Deposit (USD)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={paymentSettings.depositMinAmount}
+                        onChange={(e) => setPaymentSettings({ ...paymentSettings, depositMinAmount: e.target.value })}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Maximum Deposit (USD)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={paymentSettings.depositMaxAmount}
+                        onChange={(e) => setPaymentSettings({ ...paymentSettings, depositMaxAmount: e.target.value })}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Deposit method toggles */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-400 uppercase tracking-wider">Enabled Deposit Methods</label>
+                    {[
+                      { key: 'depositCardEnabled', label: 'Credit / Debit Card (Stripe)', desc: 'Card payments via Stripe — instant deposit' },
+                      { key: 'depositPaystackEnabled', label: 'Paystack (Africa)', desc: 'Card, bank transfer, USSD and mobile money for African markets' },
+                      { key: 'depositPaypalEnabled', label: 'PayPal', desc: 'Redirect-based PayPal checkout' },
+                      { key: 'depositCryptoEnabled', label: 'Cryptocurrency (BTC, ETH, USDT)', desc: 'Manual crypto deposits — admin reviews tx hash' },
+                      { key: 'depositBankEnabled', label: 'Bank Transfer', desc: 'Manual bank transfer — admin approves on proof upload' },
+                    ].map(({ key, label, desc }) => (
+                      <div key={key} className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
+                        <div>
+                          <p className="text-white text-sm font-medium">{label}</p>
+                          <p className="text-slate-500 text-xs">{desc}</p>
+                        </div>
+                        <button
+                          onClick={() => setPaymentSettings({ ...paymentSettings, [key]: !(paymentSettings as any)[key] })}
+                          className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${(paymentSettings as any)[key] ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${(paymentSettings as any)[key] ? 'left-5' : 'left-0.5'}`} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

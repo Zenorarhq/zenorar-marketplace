@@ -1,20 +1,53 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'next/navigation'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
+import DepositModal from '@/components/wallet/DepositModal'
 import { getBalance, getTransactionHistory } from '@/lib/api/wallet'
+import { getMyDeposits, type Deposit, type DepositStatus, type DepositMethod } from '@/lib/api/deposits'
 import { formatCurrency } from '@/lib/currency'
 import Link from 'next/link'
 
-type TransactionFilter = 'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'
+type TransactionFilter = 'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT' | 'DEPOSIT'
+
+const depositMethodLabels: Record<DepositMethod, string> = {
+  CARD: 'Card',
+  PAYSTACK: 'Paystack',
+  PAYPAL: 'PayPal',
+  BANK_TRANSFER: 'Bank Transfer',
+  CRYPTO_BTC: 'Bitcoin',
+  CRYPTO_ETH: 'Ethereum',
+  CRYPTO_USDT: 'USDT',
+}
+
+const depositStatusConfig: Record<DepositStatus, { label: string; color: string }> = {
+  PENDING: { label: 'Pending', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
+  PROCESSING: { label: 'Processing', color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
+  COMPLETED: { label: 'Completed', color: 'text-green-500 bg-green-500/10 border-green-500/20' },
+  FAILED: { label: 'Failed', color: 'text-red-500 bg-red-500/10 border-red-500/20' },
+  CANCELLED: { label: 'Cancelled', color: 'text-slate-500 bg-slate-500/10 border-slate-500/20' },
+  EXPIRED: { label: 'Expired', color: 'text-slate-500 bg-slate-500/10 border-slate-500/20' },
+}
 
 export default function WalletPage() {
+  const searchParams = useSearchParams()
   const [filter, setFilter] = useState<TransactionFilter>('all')
+  const [showDepositModal, setShowDepositModal] = useState(false)
+  const [activeTab, setActiveTab] = useState<'transactions' | 'deposits'>('transactions')
+
+  // Auto-open deposit modal or show success on redirect back from payment gateways
+  useEffect(() => {
+    const deposit = searchParams.get('deposit')
+    if (deposit === 'success') {
+      // Payment completed, show success notification
+    }
+  }, [searchParams])
 
   // Fetch wallet balance
-  const { data: walletData, isLoading: walletLoading } = useQuery({
+  const { data: walletData, isLoading: walletLoading, refetch: refetchBalance } = useQuery({
     queryKey: ['wallet', 'balance'],
     queryFn: async () => {
       const result = await getBalance()
@@ -29,13 +62,26 @@ export default function WalletPage() {
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: ['wallet', 'transactions', filter],
     queryFn: async () => {
-      const type = filter === 'all' ? undefined : filter
+      const type = filter === 'all' ? undefined : filter as any
       const result = await getTransactionHistory(1, 50, type)
       if (!result.success || !result.data || !Array.isArray(result.data.transactions)) {
         throw new Error(result.error || 'Failed to load transactions')
       }
       return result.data
     }
+  })
+
+  // Fetch deposit history
+  const { data: depositsData, isLoading: depositsLoading } = useQuery({
+    queryKey: ['deposits', 'my'],
+    queryFn: async () => {
+      const result = await getMyDeposits(1, 50)
+      if (!result.success || !result.data) {
+        return { deposits: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } }
+      }
+      return result.data
+    },
+    enabled: activeTab === 'deposits',
   })
 
   const formatDate = (dateString: string) => {
@@ -50,58 +96,57 @@ export default function WalletPage() {
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case 'CREDIT':
-        return { icon: 'arrow-down-circle', color: 'text-green-500' }
-      case 'DEBIT':
-        return { icon: 'arrow-up-circle', color: 'text-red-500' }
-      case 'REFUND':
-        return { icon: 'refresh', color: 'text-blue-500' }
-      case 'ADJUSTMENT':
-        return { icon: 'adjustments', color: 'text-yellow-500' }
-      default:
-        return { icon: 'currency-dollar', color: 'text-slate-500' }
+      case 'CREDIT': return { icon: 'arrow-down-circle', color: 'text-green-500' }
+      case 'DEBIT': return { icon: 'arrow-up-circle', color: 'text-red-500' }
+      case 'REFUND': return { icon: 'refresh', color: 'text-blue-500' }
+      case 'ADJUSTMENT': return { icon: 'adjustments', color: 'text-yellow-500' }
+      case 'DEPOSIT': return { icon: 'plus-circle', color: 'text-primary' }
+      default: return { icon: 'currency-dollar', color: 'text-slate-500' }
     }
   }
 
   const getTransactionBadge = (type: string) => {
-    switch (type) {
-      case 'CREDIT':
-        return (
-          <span className="text-green-500 bg-green-500/10 px-2 py-1 rounded text-xs font-bold border border-green-500/20">
-            Credit
-          </span>
-        )
-      case 'DEBIT':
-        return (
-          <span className="text-red-500 bg-red-500/10 px-2 py-1 rounded text-xs font-bold border border-red-500/20">
-            Debit
-          </span>
-        )
-      case 'REFUND':
-        return (
-          <span className="text-blue-500 bg-blue-500/10 px-2 py-1 rounded text-xs font-bold border border-blue-500/20">
-            Refund
-          </span>
-        )
-      case 'ADJUSTMENT':
-        return (
-          <span className="text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded text-xs font-bold border border-yellow-500/20">
-            Adjustment
-          </span>
-        )
-      default:
-        return null
+    const configs: Record<string, { label: string; color: string }> = {
+      CREDIT: { label: 'Credit', color: 'text-green-500 bg-green-500/10 border-green-500/20' },
+      DEBIT: { label: 'Debit', color: 'text-red-500 bg-red-500/10 border-red-500/20' },
+      REFUND: { label: 'Refund', color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
+      ADJUSTMENT: { label: 'Adjustment', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
+      DEPOSIT: { label: 'Deposit', color: 'text-primary bg-primary/10 border-primary/20' },
     }
+    const config = configs[type]
+    if (!config) return null
+    return (
+      <span className={`px-2 py-1 rounded text-xs font-bold border ${config.color}`}>
+        {config.label}
+      </span>
+    )
+  }
+
+  const handleDepositModalClose = () => {
+    setShowDepositModal(false)
+    refetchBalance()
   }
 
   return (
     <ProfileLayout>
+      {/* Deposit modal */}
+      <DepositModal isOpen={showDepositModal} onClose={handleDepositModalClose} />
+
       {/* Header */}
-      <div className="mb-10 pb-6 border-b border-border-dark">
-        <h1 className="text-3xl font-bold text-white mb-2">Wallet</h1>
-        <p className="text-slate-400">
-          Manage your account balance and view transaction history.
-        </p>
+      <div className="mb-10 pb-6 border-b border-border-dark flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Wallet & Credits</h1>
+          <p className="text-slate-400">
+            Manage your balance and track transactions.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowDepositModal(true)}
+          className="flex-shrink-0 px-6 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center gap-2"
+        >
+          <Icon name="plus" size={20} />
+          Add Money
+        </button>
       </div>
 
       {/* Balance Card */}
@@ -114,14 +159,23 @@ export default function WalletPage() {
           </div>
 
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full bg-black/20 flex items-center justify-center">
-                <Icon name="wallet" size={24} className="text-black" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-black/20 flex items-center justify-center">
+                  <Icon name="wallet" size={24} className="text-black" />
+                </div>
+                <div>
+                  <p className="text-black/70 text-sm font-medium">Available Balance</p>
+                  <p className="text-xs text-black/50">Use at checkout</p>
+                </div>
               </div>
-              <div>
-                <p className="text-black/70 text-sm font-medium">Available Balance</p>
-                <p className="text-xs text-black/50">Use at checkout or withdraw</p>
-              </div>
+              <button
+                onClick={() => setShowDepositModal(true)}
+                className="px-5 py-2.5 bg-black text-primary font-bold rounded-xl hover:bg-black/90 transition-all flex items-center gap-2 text-sm"
+              >
+                <Icon name="plus" size={18} />
+                Add Money
+              </button>
             </div>
 
             {walletLoading ? (
@@ -135,181 +189,243 @@ export default function WalletPage() {
             <div className="flex gap-3">
               <Link
                 href="/profile/referrals"
-                className="px-6 py-3 bg-black text-primary font-bold rounded-xl hover:bg-black/90 transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-black/20 text-black font-medium rounded-xl hover:bg-black/30 transition-all flex items-center gap-2"
               >
                 <Icon name="gift" size={20} />
-                Earn More
+                Earn via Referrals
               </Link>
-              <button
-                className="px-6 py-3 bg-black/20 text-black font-medium rounded-xl hover:bg-black/30 transition-all flex items-center gap-2"
-                disabled
-              >
-                <Icon name="arrow-up-tray" size={20} />
-                Withdraw
-              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* How to Earn */}
-      <div className="mb-12">
-        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <Icon name="light-bulb" size={20} className="text-primary" />
-          Ways to Earn Credit
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link
-            href="/profile/referrals"
-            className="bg-black border border-border-dark rounded-2xl p-6 hover:border-primary/50 transition-all group"
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
-              <Icon name="user-group" size={24} />
-            </div>
-            <h4 className="font-bold text-white mb-2">Refer Friends</h4>
-            <p className="text-slate-500 text-sm mb-3">
-              Earn $10 for each friend who makes a purchase.
-            </p>
-            <span className="text-primary text-sm font-medium flex items-center gap-1">
-              Start referring
-              <Icon name="arrow-right" size={16} />
-            </span>
-          </Link>
-
-          <div className="bg-black border border-border-dark rounded-2xl p-6 opacity-50">
-            <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center text-slate-500 mb-4">
-              <Icon name="star" size={24} />
-            </div>
-            <h4 className="font-bold text-slate-400 mb-2">Write Reviews</h4>
-            <p className="text-slate-600 text-sm mb-3">
-              Earn credits by writing helpful product reviews.
-            </p>
-            <span className="text-slate-600 text-sm font-medium">Coming soon</span>
-          </div>
-
-          <div className="bg-black border border-border-dark rounded-2xl p-6 opacity-50">
-            <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center text-slate-500 mb-4">
-              <Icon name="trophy" size={24} />
-            </div>
-            <h4 className="font-bold text-slate-400 mb-2">Contests & Events</h4>
-            <p className="text-slate-600 text-sm mb-3">
-              Participate in special events to win credits.
-            </p>
-            <span className="text-slate-600 text-sm font-medium">Coming soon</span>
-          </div>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-8 bg-surface-dark rounded-xl p-1">
+        <button
+          onClick={() => setActiveTab('transactions')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'transactions'
+              ? 'bg-primary text-black'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Transaction History
+        </button>
+        <button
+          onClick={() => setActiveTab('deposits')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'deposits'
+              ? 'bg-primary text-black'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Deposit History
+        </button>
       </div>
 
       {/* Transaction History */}
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <Icon name="clock" size={20} className="text-primary" />
-            Transaction History
-          </h3>
+      {activeTab === 'transactions' && (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Icon name="clock" size={20} className="text-primary" />
+              Transaction History
+            </h3>
 
-          {/* Filter */}
-          <div className="flex gap-2">
-            {(['all', 'CREDIT', 'DEBIT', 'REFUND', 'ADJUSTMENT'] as TransactionFilter[]).map((type) => (
-              <button
-                key={type}
-                onClick={() => setFilter(type)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  filter === type
-                    ? 'bg-primary text-black'
-                    : 'bg-surface-dark text-slate-400 hover:bg-border-dark'
-                }`}
-              >
-                {type === 'all' ? 'All' : type.charAt(0) + type.slice(1).toLowerCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {transactionsLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-20 bg-surface-dark animate-pulse rounded-xl" />
-            ))}
-          </div>
-        ) : transactionsData?.transactions && transactionsData.transactions.length > 0 ? (
-          <div className="space-y-3">
-            {transactionsData.transactions.map((transaction) => {
-              const { icon, color } = getTransactionIcon(transaction.type)
-              const isCredit = transaction.type === 'CREDIT' || transaction.type === 'REFUND'
-
-              return (
-                <div
-                  key={transaction.id}
-                  className="bg-black border border-border-dark rounded-xl p-6 hover:border-border-dark/50 transition-colors"
+            {/* Filter */}
+            <div className="flex gap-2 flex-wrap">
+              {(['all', 'DEPOSIT', 'CREDIT', 'DEBIT', 'ADJUSTMENT'] as TransactionFilter[]).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setFilter(type)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    filter === type
+                      ? 'bg-primary text-black'
+                      : 'bg-surface-dark text-slate-400 hover:bg-border-dark'
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className={`w-12 h-12 rounded-full bg-surface-dark flex items-center justify-center ${color}`}>
-                        <Icon name={icon as any} size={24} />
-                      </div>
+                  {type === 'all' ? 'All' : type.charAt(0) + type.slice(1).toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
-                          <p className="text-white font-medium">{transaction.description}</p>
-                          {getTransactionBadge(transaction.type)}
+          {transactionsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-20 bg-surface-dark animate-pulse rounded-xl" />
+              ))}
+            </div>
+          ) : transactionsData?.transactions && transactionsData.transactions.length > 0 ? (
+            <div className="space-y-3">
+              {transactionsData.transactions.map((transaction) => {
+                const { icon, color } = getTransactionIcon(transaction.type)
+                const isCredit = transaction.type === 'CREDIT' || transaction.type === 'REFUND' || transaction.type === 'DEPOSIT'
+
+                return (
+                  <div
+                    key={transaction.id}
+                    className="bg-black border border-border-dark rounded-xl p-6 hover:border-border-dark/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className={`w-12 h-12 rounded-full bg-surface-dark flex items-center justify-center ${color}`}>
+                          <Icon name={icon as any} size={24} />
                         </div>
 
-                        <p className="text-slate-500 text-sm mb-2">
-                          {formatDate(transaction.createdAt)}
-                        </p>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-1">
+                            <p className="text-white font-medium">{transaction.description}</p>
+                            {getTransactionBadge(transaction.type)}
+                          </div>
 
-                        {transaction.order && (
-                          <Link
-                            href={`/profile/orders/${transaction.order.id}`}
-                            className="text-primary text-sm hover:underline flex items-center gap-1"
-                          >
-                            Order #{transaction.order.orderNumber}
-                            <Icon name="arrow-right" size={14} />
-                          </Link>
-                        )}
-
-                        {transaction.referral && (
-                          <p className="text-slate-500 text-sm">
-                            Referral: {transaction.referral.referee.name}
+                          <p className="text-slate-500 text-sm mb-2">
+                            {formatDate(transaction.createdAt)}
                           </p>
+
+                          {transaction.order && (
+                            <Link
+                              href={`/profile/orders/${transaction.order.id}`}
+                              className="text-primary text-sm hover:underline flex items-center gap-1"
+                            >
+                              Order #{transaction.order.orderNumber}
+                              <Icon name="arrow-right" size={14} />
+                            </Link>
+                          )}
+
+                          {transaction.referral && (
+                            <p className="text-slate-500 text-sm">
+                              Referral: {transaction.referral.referee.name}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className={`text-2xl font-bold ${isCredit ? 'text-green-500' : 'text-red-500'}`}>
+                          {isCredit ? '+' : '-'}{formatCurrency(Math.abs(Number(transaction.amount)))}
+                        </p>
+                        <p className="text-slate-500 text-sm mt-1">
+                          Balance: {formatCurrency(Number(transaction.balanceAfter))}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-surface-dark flex items-center justify-center mx-auto mb-4">
+                <Icon name="clock" size={32} className="text-slate-600" />
+              </div>
+              <h4 className="text-lg font-bold text-white mb-2">No transactions yet</h4>
+              <p className="text-slate-500 mb-6">
+                Your wallet transactions will appear here.
+              </p>
+              <button
+                onClick={() => setShowDepositModal(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all"
+              >
+                <Icon name="plus" size={20} />
+                Add Money
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Deposit History */}
+      {activeTab === 'deposits' && (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Icon name="arrow-down-circle" size={20} className="text-primary" />
+              Deposit History
+            </h3>
+            <button
+              onClick={() => setShowDepositModal(true)}
+              className="px-4 py-2 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center gap-2 text-sm"
+            >
+              <Icon name="plus" size={16} />
+              New Deposit
+            </button>
+          </div>
+
+          {depositsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 bg-surface-dark animate-pulse rounded-xl" />
+              ))}
+            </div>
+          ) : depositsData?.deposits && depositsData.deposits.length > 0 ? (
+            <div className="space-y-3">
+              {depositsData.deposits.map((deposit: Deposit) => {
+                const statusConfig = depositStatusConfig[deposit.status] || depositStatusConfig.PENDING
+                const methodLabel = depositMethodLabels[deposit.paymentMethod] || deposit.paymentMethod
+
+                return (
+                  <div
+                    key={deposit.id}
+                    className="bg-black border border-border-dark rounded-xl p-5 hover:border-border-dark/50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Icon name="arrow-down-circle" size={20} className="text-primary" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="text-white font-medium">{methodLabel} Deposit</p>
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold border ${statusConfig.color}`}>
+                              {statusConfig.label}
+                            </span>
+                          </div>
+                          <p className="text-slate-500 text-sm">{formatDate(deposit.createdAt)}</p>
+                          {deposit.status === 'PENDING' && (deposit.paymentMethod === 'BANK_TRANSFER' || deposit.paymentMethod.startsWith('CRYPTO')) && (
+                            <p className="text-yellow-500 text-xs mt-1">Awaiting admin verification</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-green-500">
+                          +{formatCurrency(Number(deposit.amount))}
+                        </p>
+                        {deposit.completedAt && (
+                          <p className="text-slate-500 text-xs mt-1">
+                            Completed {formatDate(deposit.completedAt)}
+                          </p>
+                        )}
+                        {deposit.failureReason && (
+                          <p className="text-red-500 text-xs mt-1">{deposit.failureReason}</p>
                         )}
                       </div>
                     </div>
-
-                    <div className="text-right">
-                      <p className={`text-2xl font-bold ${isCredit ? 'text-green-500' : 'text-red-500'}`}>
-                        {isCredit ? '+' : '-'}{formatCurrency(Math.abs(Number(transaction.amount)))}
-                      </p>
-                      <p className="text-slate-500 text-sm mt-1">
-                        Balance: {formatCurrency(Number(transaction.balanceAfter))}
-                      </p>
-                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-surface-dark flex items-center justify-center mx-auto mb-4">
-              <Icon name="clock" size={32} className="text-slate-600" />
+                )
+              })}
             </div>
-            <h4 className="text-lg font-bold text-white mb-2">No transactions yet</h4>
-            <p className="text-slate-500 mb-6">
-              Your wallet transactions will appear here.
-            </p>
-            <Link
-              href="/profile/referrals"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all"
-            >
-              <Icon name="gift" size={20} />
-              Start Earning
-            </Link>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-surface-dark flex items-center justify-center mx-auto mb-4">
+                <Icon name="arrow-down-circle" size={32} className="text-slate-600" />
+              </div>
+              <h4 className="text-lg font-bold text-white mb-2">No deposits yet</h4>
+              <p className="text-slate-500 mb-6">
+                Add money to your wallet using your preferred payment method.
+              </p>
+              <button
+                onClick={() => setShowDepositModal(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all"
+              >
+                <Icon name="plus" size={20} />
+                Add Money
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </ProfileLayout>
   )
 }

@@ -119,7 +119,8 @@ export async function adjustBalance(
  */
 export async function getAllWallets(
   page = 1,
-  limit = 20
+  limit = 20,
+  search?: string
 ): Promise<ApiResponse<{
   wallets: any[]
   pagination: {
@@ -132,6 +133,27 @@ export async function getAllWallets(
   const params = new URLSearchParams()
   params.set('page', page.toString())
   params.set('limit', limit.toString())
+  if (search) params.set('search', search)
 
   return apiFetch(`/wallet/all?${params.toString()}`)
+}
+
+/**
+ * Freeze a user wallet (admin)
+ */
+export async function freezeWallet(userId: string, reason: string): Promise<ApiResponse<any>> {
+  return apiFetch('/wallet/freeze', {
+    method: 'POST',
+    body: JSON.stringify({ userId, reason }),
+  })
+}
+
+/**
+ * Unfreeze a user wallet (admin)
+ */
+export async function unfreezeWallet(userId: string): Promise<ApiResponse<any>> {
+  return apiFetch('/wallet/unfreeze', {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  })
 }
