@@ -430,7 +430,14 @@ function WalletPageContent() {
 
 export default function WalletPage() {
   return (
-    <Suspense>
+    <Suspense fallback={
+      <ProfileLayout>
+        <div className="animate-pulse space-y-6">
+          <div className="h-32 bg-surface-dark rounded-xl" />
+          <div className="h-64 bg-surface-dark rounded-xl" />
+        </div>
+      </ProfileLayout>
+    }>
       <WalletPageContent />
     </Suspense>
   )
