@@ -2096,9 +2096,8 @@ export default function AdminSettingsPage() {
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Wallet Deposits */}
+              {/* Wallet Deposits */}
             <div className="bg-[#111111] border border-[#1e1e1e] rounded-xl p-6 space-y-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -2176,6 +2175,7 @@ export default function AdminSettingsPage() {
                   </div>
                 </div>
               )}
+            </div>
             </div>
           )}
 
