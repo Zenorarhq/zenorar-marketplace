@@ -9,6 +9,7 @@ import { productsApi, Product } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
 import { apiFetch } from '@/lib/api/client'
+import ProductReviewsModal from '@/components/admin/ProductReviewsModal'
 
 export default function ProductsPage() {
   const queryClient = useQueryClient()
@@ -19,6 +20,7 @@ export default function ProductsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkLoading, setBulkLoading] = useState(false)
   const [statusMenuId, setStatusMenuId] = useState<string | null>(null)
+  const [reviewProduct, setReviewProduct] = useState<{ id: string; name: string } | null>(null)
   const itemsPerPage = 10
 
   // Fetch products with React Query (cached for 5 minutes)
@@ -35,7 +37,7 @@ export default function ProductsPage() {
 
   // Fetch categories with React Query (cached)
   const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: ['admin-categories'],
+    queryKey: ['admin-products-categories'],
     queryFn: async () => {
       const result = await categoriesApi.list()
       if (result.success && result.data) {
@@ -470,6 +472,13 @@ export default function ProductsPage() {
                       >
                         <Icon name="star" size={16} className={staffPickIds.includes(product.id) ? 'text-yellow-500 fill-yellow-500' : 'text-slate-600'} />
                       </button>
+                      <button
+                        onClick={() => setReviewProduct({ id: product.id, name: product.name })}
+                        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                        title="Reviews"
+                      >
+                        <Icon name="chat" size={16} className="text-slate-400" />
+                      </button>
                       <Link
                         href={`/admin/products/${product.id}/edit`}
                         className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
@@ -556,6 +565,14 @@ export default function ProductsPage() {
           </div>
         )}
       </div>
+
+      {/* Reviews Modal */}
+      <ProductReviewsModal
+        isOpen={!!reviewProduct}
+        onClose={() => setReviewProduct(null)}
+        productId={reviewProduct?.id || ''}
+        productName={reviewProduct?.name || ''}
+      />
     </AdminLayout>
   )
 }

@@ -52,6 +52,7 @@ export interface Product {
   variants: ProductVariant[]
   reviewCount?: number
   averageRating?: number
+  videoUrl: string | null
   createdAt: string
   updatedAt: string
 }

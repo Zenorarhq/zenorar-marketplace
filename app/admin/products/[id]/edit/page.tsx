@@ -38,6 +38,7 @@ export default function EditProductPage() {
     isDigital: true,
     isFeatured: false,
     isStaffPick: false,
+    videoUrl: '',
     tags: '',
   })
 
@@ -56,11 +57,17 @@ export default function EditProductPage() {
       setCategories(categoriesResult.data)
     }
 
-    // Fetch staff pick status from Railway
+    // Fetch staff pick status and video URL
     let isStaffPick = false
+    let videoUrl = ''
     try {
       const spData = await apiFetch(`/products/${productId}/staff-pick`)
       if (spData.success) isStaffPick = (spData.data as any)?.isStaffPick ?? false
+    } catch {}
+    try {
+      const videoRes = await fetch(`/api/products/${productId}/video`)
+      const videoData = await videoRes.json()
+      if (videoData.success && videoData.data?.videoUrl) videoUrl = videoData.data.videoUrl
     } catch {}
 
     if (productResult.success && productResult.data) {
@@ -81,6 +88,7 @@ export default function EditProductPage() {
         isDigital: p.isDigital,
         isFeatured: p.isFeatured,
         isStaffPick,
+        videoUrl,
         tags: (p as any).tags?.join(', ') || '',
       })
     } else {
@@ -154,6 +162,12 @@ export default function EditProductPage() {
         await apiFetch(`/products/${productId}/staff-pick`, {
           method: 'PATCH',
           body: JSON.stringify({ value: formData.isStaffPick }),
+        }).catch(() => {})
+        // Save video URL
+        await fetch(`/api/products/${productId}/video`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoUrl: formData.videoUrl.trim() || null }),
         }).catch(() => {})
         router.push('/admin/products')
       } else {
@@ -451,6 +465,25 @@ export default function EditProductPage() {
               )}
             </div>
           )}
+
+          {/* Product Video */}
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Product Video</h2>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Video URL
+              </label>
+              <input
+                type="text"
+                name="videoUrl"
+                value={formData.videoUrl}
+                onChange={handleChange}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="https://youtube.com/watch?v=... or direct MP4 URL"
+              />
+              <p className="text-xs text-slate-500 mt-1">YouTube, Vimeo, or direct video URL (MP4). Leave empty if no video.</p>
+            </div>
+          </div>
 
           {/* Settings */}
           <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">

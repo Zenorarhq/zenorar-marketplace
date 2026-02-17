@@ -47,6 +47,51 @@ function SuccessPageContent() {
   const [orderData, setOrderData] = useState<OrderData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [reviewStates, setReviewStates] = useState<Record<string, {
+    rating: number
+    hover: number
+    content: string
+    submitting: boolean
+    submitted: boolean
+    error: string | null
+  }>>({})
+
+  function updateReviewState(productId: string, updates: Partial<typeof reviewStates[string]>) {
+    setReviewStates(prev => {
+      const current = prev[productId] || { rating: 0, hover: 0, content: '', submitting: false, submitted: false, error: null }
+      return { ...prev, [productId]: { ...current, ...updates } }
+    })
+  }
+
+  async function handleGuestReview(productId: string) {
+    if (!orderData) return
+    const state = reviewStates[productId]
+    if (!state?.rating) return
+
+    updateReviewState(productId, { submitting: true, error: null })
+
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId,
+          orderId: orderData.id,
+          email: orderData.email,
+          rating: state.rating,
+          content: state.content || null,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        updateReviewState(productId, { submitted: true, submitting: false })
+      } else {
+        updateReviewState(productId, { error: data.error || 'Failed to submit review', submitting: false })
+      }
+    } catch {
+      updateReviewState(productId, { error: 'Failed to submit review', submitting: false })
+    }
+  }
 
   const txHashParam = searchParams.get('txHash')
   const orderNumberParam = searchParams.get('orderNumber')
@@ -264,6 +309,82 @@ function SuccessPageContent() {
               </div>
             </div>
           </div>
+
+          {/* Review Your Purchase */}
+          {orderData && orderData.items && orderData.items.length > 0 && (
+            <div className="bg-charcoal border border-border-dark rounded-xl p-6 mb-8 text-left">
+              <h2 className="text-white font-bold mb-2 flex items-center gap-2">
+                <Icon name="star" size={20} className="text-primary" />
+                Review Your Purchase
+              </h2>
+              <p className="text-slate-500 text-sm mb-6">
+                Share your experience! You can leave a review for each product you purchased.
+              </p>
+              <div className="space-y-6">
+                {orderData.items.map((item) => {
+                  const state = reviewStates[item.productId] || { rating: 0, hover: 0, content: '', submitting: false, submitted: false, error: null }
+
+                  if (state.submitted) {
+                    return (
+                      <div key={item.productId} className="border-b border-border-dark pb-4 last:border-0 last:pb-0">
+                        <p className="text-white font-medium text-sm">{item.product.name}</p>
+                        <p className="text-green-400 text-sm mt-1">Review submitted! Thank you.</p>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={item.productId} className="border-b border-border-dark pb-4 last:border-0 last:pb-0">
+                      <p className="text-white font-medium text-sm mb-3">{item.product.name}</p>
+
+                      {/* Star Selector */}
+                      <div className="flex gap-1 mb-3">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => updateReviewState(item.productId, { rating: star })}
+                            onMouseEnter={() => updateReviewState(item.productId, { hover: star })}
+                            onMouseLeave={() => updateReviewState(item.productId, { hover: 0 })}
+                            className="p-0.5"
+                          >
+                            <Icon
+                              name="star"
+                              size={22}
+                              className={(state.hover || state.rating) >= star ? 'text-yellow-500' : 'text-slate-600'}
+                            />
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Content */}
+                      <textarea
+                        value={state.content}
+                        onChange={e => updateReviewState(item.productId, { content: e.target.value })}
+                        placeholder="Share your thoughts (optional)..."
+                        rows={2}
+                        className="w-full bg-surface-dark border border-border-dark rounded-lg text-white text-sm px-3 py-2 mb-3 focus:ring-2 focus:ring-primary focus:border-primary placeholder:text-slate-600"
+                      />
+
+                      {/* Error */}
+                      {state.error && (
+                        <p className="text-red-400 text-sm mb-2">{state.error}</p>
+                      )}
+
+                      {/* Submit */}
+                      <button
+                        onClick={() => handleGuestReview(item.productId)}
+                        disabled={!state.rating || state.submitting}
+                        className="bg-primary text-black font-bold py-2 px-4 rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      >
+                        {state.submitting ? 'Submitting...' : 'Submit Review'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

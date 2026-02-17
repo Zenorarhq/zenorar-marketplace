@@ -32,6 +32,7 @@ export default function NewProductPage() {
     isFeatured: false,
     isStaffPick: false,
     imageUrl: '',
+    videoUrl: '',
     tags: '',
   })
 
@@ -116,6 +117,15 @@ export default function NewProductPage() {
             url: formData.imageUrl,
             isPrimary: true,
           })
+        }
+
+        // Save video URL if provided
+        if (formData.videoUrl && formData.videoUrl.trim()) {
+          await fetch(`/api/products/${result.data.id}/video`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoUrl: formData.videoUrl.trim() }),
+          }).catch(() => {})
         }
 
         // Set staff pick if checked
@@ -411,6 +421,25 @@ export default function NewProductPage() {
                 </button>
               )}
               <p className="text-xs text-slate-500 mt-2">Recommended: 800x800px or larger</p>
+            </div>
+          </div>
+
+          {/* Product Video */}
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Product Video</h2>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Video URL
+              </label>
+              <input
+                type="text"
+                name="videoUrl"
+                value={formData.videoUrl}
+                onChange={handleChange}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="https://youtube.com/watch?v=... or direct MP4 URL"
+              />
+              <p className="text-xs text-slate-500 mt-1">YouTube, Vimeo, or direct video URL (MP4). Leave empty if no video.</p>
             </div>
           </div>
 

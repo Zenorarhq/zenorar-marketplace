@@ -457,10 +457,10 @@ export default function AdminDashboard() {
                       <p className="text-white text-sm truncate">
                         Order <span className="text-primary">#{order.orderNumber}</span> — {formatCurrency(order.total)}
                       </p>
-                      <p className="text-slate-500 text-xs">
-                        <span className={statusColor}>{order.status}</span> · {timeAgo}
-                      </p>
                     </div>
+                    <p className="text-slate-500 text-xs flex-shrink-0 text-right">
+                      <span className={statusColor}>{order.status}</span> · {timeAgo}
+                    </p>
                   </div>
                 )
               })

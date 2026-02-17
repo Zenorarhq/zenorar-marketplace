@@ -5,6 +5,8 @@ import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import { Product } from '@/lib/types'
 import StarRating from '@/components/ui/StarRating'
+import { useAuth } from '@/contexts/AuthContext'
+import { getAccessToken } from '@/lib/api/client'
 
 interface ProductTabsProps {
   product: Product
@@ -14,6 +16,40 @@ type TabId = 'overview' | 'specs' | 'reviews'
 
 export default function ProductTabs({ product }: ProductTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
+  const { isAuthenticated } = useAuth()
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewHover, setReviewHover] = useState(0)
+  const [reviewTitle, setReviewTitle] = useState('')
+  const [reviewContent, setReviewContent] = useState('')
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [reviewMessage, setReviewMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  async function handleReviewSubmit() {
+    if (!reviewRating) return
+    setReviewSubmitting(true)
+    setReviewMessage(null)
+    try {
+      const token = getAccessToken()
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ productId: product.id, rating: reviewRating, title: reviewTitle || null, content: reviewContent || null }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setReviewMessage({ type: 'success', text: 'Review submitted successfully!' })
+        setReviewRating(0)
+        setReviewTitle('')
+        setReviewContent('')
+      } else {
+        setReviewMessage({ type: 'error', text: data.error || 'Failed to submit review' })
+      }
+    } catch {
+      setReviewMessage({ type: 'error', text: 'Failed to submit review' })
+    } finally {
+      setReviewSubmitting(false)
+    }
+  }
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'overview', label: 'Overview' },
@@ -24,12 +60,12 @@ export default function ProductTabs({ product }: ProductTabsProps) {
   return (
     <div className="bg-charcoal rounded-2xl border border-border-dark overflow-hidden">
       {/* Tab Navigation */}
-      <div className="flex border-b border-border-dark px-8">
+      <div className="flex border-b border-border-dark px-4 lg:px-8 overflow-x-auto no-scrollbar">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-5 text-sm font-bold cursor-pointer border-b-2 transition-all hover:text-white ${
+            className={`px-4 py-3 lg:px-6 lg:py-5 text-sm font-bold cursor-pointer border-b-2 transition-all hover:text-white flex-shrink-0 whitespace-nowrap ${
               activeTab === tab.id
                 ? 'text-primary border-primary'
                 : 'text-slate-500 border-transparent'
@@ -41,7 +77,7 @@ export default function ProductTabs({ product }: ProductTabsProps) {
       </div>
 
       {/* Tab Content */}
-      <div className="p-8">
+      <div className="p-4 lg:p-8">
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-10">
@@ -62,7 +98,7 @@ export default function ProductTabs({ product }: ProductTabsProps) {
                 {[1, 2, 3, 4].map((i) => (
                   <div
                     key={i}
-                    className="min-w-[400px] h-[240px] rounded-xl border border-border-dark overflow-hidden bg-background-dark shrink-0"
+                    className="min-w-[280px] md:min-w-[400px] h-[240px] rounded-xl border border-border-dark overflow-hidden bg-background-dark shrink-0"
                   >
                     <Image
                       src={product.image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvwgfYMEvcI_nX3811VEyCy34SMnKHy9dmdnqG3nSMOUjjKLHrwM1Buu7vIN4sHUv_IHj3lxtx8AuvVgtQJrjdBjilef-qD6NbH3AMwpj-xP3Cl3XD4r8kxRx3ZJzJe8Y-Z4MqVrZdrhg60-dWHm_iNTlUzZhPqmEvucOUsNN2Cqq1nlRE-lUiK6PR4GpN2-YM32iXvk86ERNf_KfTr8v3fkU0u395JRo_hw-hlhfenuygiypi5Pyn0V13zGizBFBqXGrkP8TTlHSx'}
@@ -139,33 +175,125 @@ export default function ProductTabs({ product }: ProductTabsProps) {
         {/* Reviews Tab */}
         {activeTab === 'reviews' && (
           <div>
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-3">
               <h2 className="text-xl font-bold text-white">User Reviews</h2>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-white">{product.rating}</span>
+                <span className="text-2xl font-bold text-white">{product.rating.toFixed(1)}</span>
                 <StarRating rating={product.rating} size="md" />
                 <span className="text-slate-500 text-sm">({product.reviewCount} reviews)</span>
               </div>
             </div>
 
-            <div className="space-y-6">
-              {(product.reviews || [
-                { id: '1', author: 'Alex R.', rating: 5, content: 'Best automation toolkit I\'ve ever purchased. The documentation is top-notch and saved me weeks of development time.', date: '2024-10-15' },
-                { id: '2', author: 'Sarah L.', rating: 5, content: 'Excellent support team. Had a minor issue with the config and they responded within an hour with a fix.', date: '2024-10-10' },
-              ]).map((review) => (
-                <div key={review.id} className="border-b border-border-dark pb-6">
-                  <div className="flex justify-between mb-2">
-                    <span className="font-bold text-white text-sm">{review.author}</span>
-                    <StarRating rating={review.rating} size="sm" />
+            {/* Reviews List */}
+            {product.reviews && product.reviews.length > 0 ? (
+              <div className="space-y-6 mb-8">
+                {product.reviews.map((review) => (
+                  <div key={review.id} className="border-b border-border-dark pb-6">
+                    <div className="flex justify-between mb-2">
+                      <span className="font-bold text-white text-sm">{review.author}</span>
+                      <StarRating rating={review.rating} size="sm" />
+                    </div>
+                    {review.content && (
+                      <p className="text-slate-400 text-sm leading-relaxed">&quot;{review.content}&quot;</p>
+                    )}
+                    {review.adminReply && (
+                      <div className="mt-3 ml-4 pl-4 border-l-2 border-primary/30 bg-surface-dark/30 rounded-r-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-primary">Store Reply</span>
+                          {review.adminReplyAt && (
+                            <span className="text-xs text-slate-600">{review.adminReplyAt}</span>
+                          )}
+                        </div>
+                        <p className="text-slate-400 text-sm">{review.adminReply}</p>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-slate-400 text-sm leading-relaxed">&quot;{review.content}&quot;</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 mb-8">
+                <Icon name="star" size={32} className="text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-500 text-sm">No reviews yet. Be the first to review!</p>
+              </div>
+            )}
 
-            <button className="w-full mt-6 py-3 border border-border-dark rounded-xl text-slate-400 font-bold hover:text-white hover:border-slate-600 transition-all text-sm">
-              View All Reviews
-            </button>
+            {/* Write a Review Form */}
+            <div className="border-t border-border-dark pt-8">
+              <h3 className="text-lg font-bold text-white mb-4">Write a Review</h3>
+
+              {!isAuthenticated ? (
+                <p className="text-slate-500 text-sm">Please log in to write a review.</p>
+              ) : (
+                <div className="space-y-4">
+                  {/* Star Selector */}
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-2">Rating *</label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewRating(star)}
+                          onMouseEnter={() => setReviewHover(star)}
+                          onMouseLeave={() => setReviewHover(0)}
+                          className="p-0.5"
+                        >
+                          <Icon
+                            name="star"
+                            size={24}
+                            className={
+                              (reviewHover || reviewRating) >= star
+                                ? 'text-yellow-500'
+                                : 'text-slate-600'
+                            }
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-2">Title (optional)</label>
+                    <input
+                      type="text"
+                      value={reviewTitle}
+                      onChange={(e) => setReviewTitle(e.target.value)}
+                      placeholder="Summarize your experience"
+                      className="w-full bg-surface-dark border border-border-dark rounded-lg text-white text-sm px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary placeholder:text-slate-600"
+                    />
+                  </div>
+
+                  {/* Content */}
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-2">Review</label>
+                    <textarea
+                      value={reviewContent}
+                      onChange={(e) => setReviewContent(e.target.value)}
+                      placeholder="Share your thoughts about this product..."
+                      rows={3}
+                      className="w-full bg-surface-dark border border-border-dark rounded-lg text-white text-sm px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary placeholder:text-slate-600"
+                    />
+                  </div>
+
+                  {/* Message */}
+                  {reviewMessage && (
+                    <p className={`text-sm ${reviewMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                      {reviewMessage.text}
+                    </p>
+                  )}
+
+                  {/* Submit */}
+                  <button
+                    onClick={handleReviewSubmit}
+                    disabled={!reviewRating || reviewSubmitting}
+                    className="bg-primary text-black font-bold py-3 px-6 rounded-xl hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

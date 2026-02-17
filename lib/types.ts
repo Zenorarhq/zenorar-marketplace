@@ -23,6 +23,8 @@ export interface Review {
   rating: number
   content: string
   date: string
+  adminReply?: string | null
+  adminReplyAt?: string | null
 }
 
 export interface Product {
@@ -45,6 +47,7 @@ export interface Product {
   specs?: Spec[]
   reviews?: Review[]
   badge?: string
+  videoUrl?: string
 }
 
 export interface CartItem {

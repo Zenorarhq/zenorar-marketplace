@@ -6,6 +6,7 @@ import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import ProductTabs from '@/components/product/ProductTabs'
 import ProductPurchasePanel from '@/components/product/ProductPurchasePanel'
+import ProductVideoModal from '@/components/product/ProductVideoModal'
 import RelatedProducts from '@/components/product/RelatedProducts'
 import { executeQuery } from '@/lib/db-helpers'
 import { Product } from '@/lib/types'
@@ -19,7 +20,7 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
   try {
     const productResult = await executeQuery(`
       SELECT
-        p.id, p.name, p.slug, p.description, p.price, p."isFeatured" as is_featured,
+        p.id, p.name, p.slug, p.description, p.price, p."isFeatured" as is_featured, p.video_url,
         c.name as category_name,
         COALESCE(AVG(r.rating), 0) as average_rating,
         COUNT(DISTINCT r.id) as review_count,
@@ -41,6 +42,7 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
     // Fetch reviews
     const reviewsResult = await executeQuery(`
       SELECT r.id, r.rating, r.content, r."createdAt",
+             r.guest_name, r.admin_reply, r.admin_reply_at,
              u.name as author_name
       FROM reviews r
       LEFT JOIN users u ON r."userId" = u.id
@@ -51,10 +53,12 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
 
     const reviews = reviewsResult.rows.map((r: any) => ({
       id: r.id,
-      author: r.author_name || 'Anonymous',
+      author: r.author_name || r.guest_name || 'Anonymous',
       rating: Number(r.rating),
       content: r.content || '',
       date: r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : '',
+      adminReply: r.admin_reply || null,
+      adminReplyAt: r.admin_reply_at ? new Date(r.admin_reply_at).toISOString().split('T')[0] : null,
     }))
 
     // Get primary image URL
@@ -76,6 +80,7 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
       image: primaryImage,
       images: imagesList,
       badge: row.is_featured ? 'HOT' : undefined,
+      videoUrl: row.video_url || undefined,
       reviews,
     }
   } catch (error) {
@@ -133,7 +138,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   }
 
   return (
-    <main className="max-w-container mx-auto px-8 lg:px-12 pb-24">
+    <main className="max-w-container mx-auto px-4 lg:px-12 pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -151,8 +156,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </div>
 
       {/* Product Title */}
-      <div className="flex items-center gap-3 mb-8">
-        <h1 className="text-4xl font-extrabold text-white">{product.name}</h1>
+      <div className="flex items-center gap-3 mb-6 lg:mb-8 flex-wrap">
+        <h1 className="text-2xl lg:text-4xl font-extrabold text-white">{product.name}</h1>
         <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-primary/20">
           <Icon name="verified" size={14} />
           Verified
@@ -173,23 +178,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
             />
 
             {/* Overlay with actions */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background-dark/80 to-transparent flex items-end p-8">
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  aria-label="Zoom in on image"
-                  className="w-12 h-12 bg-white/10 backdrop-blur rounded-lg flex items-center justify-center border border-white/20 cursor-pointer hover:bg-white/20"
-                >
-                  <Icon name="zoom-in" size={24} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Play product video"
-                  className="w-12 h-12 bg-white/10 backdrop-blur rounded-lg flex items-center justify-center border border-white/20 cursor-pointer hover:bg-white/20"
-                >
-                  <Icon name="play-circle" size={24} />
-                </button>
-              </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-background-dark/80 to-transparent flex items-end p-4 lg:p-8">
+              {product.videoUrl && (
+                <div className="flex gap-4">
+                  <ProductVideoModal videoUrl={product.videoUrl} />
+                </div>
+              )}
             </div>
           </div>
 
