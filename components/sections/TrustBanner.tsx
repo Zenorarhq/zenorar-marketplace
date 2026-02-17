@@ -1,11 +1,11 @@
 export default function TrustBanner({ config }: { config?: { rating?: string; reviewCount?: string; trustStatement?: string; paymentStats?: string; style?: Record<string, any> } } = {}) {
   const sectionStyle = config?.style?.backgroundColor ? { backgroundColor: config.style.backgroundColor } : undefined
   return (
-    <section className="mb-12 bg-charcoal border border-border-dark rounded-2xl py-10 px-8" style={sectionStyle}>
+    <section className="mb-12 bg-charcoal border border-border-dark rounded-2xl py-6 px-4 md:py-10 md:px-8" style={sectionStyle}>
       <div className="flex flex-col md:flex-row items-center justify-center gap-10 md:gap-20">
         {/* Left: Rating */}
         <div className="flex items-center gap-5">
-          <span className="text-5xl font-extrabold text-white">
+          <span className="text-4xl md:text-5xl font-extrabold text-white">
             {config?.rating || '4.8'}<span className="text-2xl text-slate-400 font-bold">/5</span>
           </span>
           <div>

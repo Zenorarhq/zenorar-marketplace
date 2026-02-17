@@ -19,7 +19,7 @@ export default function EsimPage() {
   })
 
   return (
-    <main className="max-w-container mx-auto px-8 lg:px-12 pb-24">
+    <main className="max-w-container mx-auto px-4 lg:px-12 pb-24">
       {/* Breadcrumbs */}
       <div className="py-4">
         <Breadcrumbs
@@ -32,12 +32,12 @@ export default function EsimPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-3xl p-8 lg:p-12 mb-12">
+      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-4 lg:p-12 mb-8 lg:mb-12">
         <div className="max-w-2xl">
-          <h1 className="text-4xl lg:text-5xl font-extrabold text-white mb-4">
+          <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-4">
             Travel eSIM Plans
           </h1>
-          <p className="text-slate-400 text-lg mb-8">
+          <p className="text-slate-400 text-sm lg:text-lg mb-6 lg:mb-8">
             Stay connected anywhere in the world with instant eSIM activation. No physical SIM card needed.
           </p>
 
@@ -147,7 +147,7 @@ export default function EsimPage() {
       </div>
 
       {/* Features Section */}
-      <div className="bg-charcoal border border-border-dark rounded-3xl p-8 lg:p-12">
+      <div className="bg-charcoal border border-border-dark rounded-2xl lg:rounded-3xl p-4 lg:p-12">
         <h2 className="text-2xl font-bold text-white mb-8 text-center">Why Choose Our eSIMs?</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="text-center">

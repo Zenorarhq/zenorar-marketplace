@@ -59,13 +59,13 @@ export default function PromoBanner({ config }: { config?: Record<string, any> }
 
   return (
     <>
-      <div className={`relative rounded-2xl p-10 text-black mb-12 overflow-hidden shadow-2xl shadow-primary/20 ${config?.style?.backgroundColor ? '' : 'bg-gradient-to-r from-primary to-green-600'}`}
+      <div className={`relative rounded-2xl p-5 md:p-10 text-black mb-12 overflow-hidden shadow-2xl shadow-primary/20 ${config?.style?.backgroundColor ? '' : 'bg-gradient-to-r from-primary to-green-600'}`}
         style={config?.style?.backgroundColor ? { backgroundColor: config.style.backgroundColor } : undefined}>
         {/* Decorative Circle */}
         <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/20 rounded-full blur-3xl" />
 
         <div className="relative z-10 text-center">
-          <h2 className="text-3xl font-extrabold mb-2">
+          <h2 className="text-xl md:text-3xl font-extrabold mb-2">
             {hasPromoCode ? `${discountLabel} on All Scripts – Limited Time!` : 'Special Offers on All Scripts!'}
           </h2>
           <p className="font-medium text-black/80 mb-6">

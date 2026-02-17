@@ -76,7 +76,7 @@ export default function Home() {
   }, [rawSettings.home_page_layout])
 
   return (
-    <main className="max-w-container mx-auto px-8 lg:px-12 py-8 w-full">
+    <main className="max-w-container mx-auto px-4 lg:px-12 py-8 w-full">
       {sections.map((section: { id: string; type?: string; visible: boolean; config: Record<string, any> }) => {
         if (!section.visible) return null
         const Component = SECTION_MAP[section.type || section.id]
