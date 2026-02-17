@@ -58,12 +58,15 @@ export interface Product {
 
 export interface ProductFilters {
   category?: string
+  categoryIds?: string
   minPrice?: number
   maxPrice?: number
   inStock?: boolean
   featured?: boolean
   status?: string
   search?: string
+  minRating?: number
+  tags?: string
   page?: number
   limit?: number
   sortBy?: string

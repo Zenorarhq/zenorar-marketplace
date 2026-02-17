@@ -32,6 +32,7 @@ export default function NewProductPage() {
     isFeatured: false,
     isStaffPick: false,
     imageUrl: '',
+    tags: '',
   })
 
   useEffect(() => {
@@ -101,6 +102,7 @@ export default function NewProductPage() {
         status: formData.status,
         isDigital: formData.isDigital,
         isFeatured: formData.isFeatured,
+        tags: formData.tags ? formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
       }
 
       console.log('Creating product with data:', productData)
@@ -224,6 +226,21 @@ export default function NewProductPage() {
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Detailed product description..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  name="tags"
+                  value={formData.tags}
+                  onChange={handleChange}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Python, Automation, Bot (comma-separated)"
+                />
+                <p className="text-xs text-slate-500 mt-1">Comma-separated tags for filtering (e.g. programming languages, tools)</p>
               </div>
             </div>
           </div>

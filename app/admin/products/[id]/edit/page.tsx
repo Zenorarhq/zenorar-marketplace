@@ -38,6 +38,7 @@ export default function EditProductPage() {
     isDigital: true,
     isFeatured: false,
     isStaffPick: false,
+    tags: '',
   })
 
   useEffect(() => {
@@ -80,6 +81,7 @@ export default function EditProductPage() {
         isDigital: p.isDigital,
         isFeatured: p.isFeatured,
         isStaffPick,
+        tags: (p as any).tags?.join(', ') || '',
       })
     } else {
       setError(productResult.error || 'Product not found')
@@ -142,6 +144,7 @@ export default function EditProductPage() {
         status: formData.status,
         isDigital: formData.isDigital,
         isFeatured: formData.isFeatured,
+        tags: formData.tags ? formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
       }
 
       const result = await productsApi.update(productId, productData)
@@ -274,6 +277,21 @@ export default function EditProductPage() {
                   rows={4}
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  name="tags"
+                  value={formData.tags}
+                  onChange={handleChange}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Python, Automation, Bot (comma-separated)"
+                />
+                <p className="text-xs text-slate-500 mt-1">Comma-separated tags for filtering (e.g. programming languages, tools)</p>
               </div>
             </div>
           </div>

@@ -1,46 +1,109 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
-import FilterSidebar from '@/components/filters/FilterSidebar'
+import FilterSidebar, { FilterState } from '@/components/filters/FilterSidebar'
 import ProductCard from '@/components/cards/ProductCard'
-import { scriptProducts } from '@/lib/mock-data'
+import { productsApi } from '@/lib/api/products'
+import { categoriesApi } from '@/lib/api/categories'
+import { Product } from '@/lib/types'
 
 type SortOption = 'popular' | 'newest' | 'price-low' | 'price-high'
+
+function mapProduct(p: any): Product {
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    description: p.description || p.shortDescription || '',
+    price: p.price,
+    rating: p.avgRating || p.averageRating || 0,
+    reviewCount: p._count?.reviews || p.reviewCount || 0,
+    category: p.category?.name || 'Scripts',
+    icon: 'code',
+    iconColor: 'primary',
+    tags: p.tags || [],
+    images: p.images?.map((img: any) => ({ url: img.url, isPrimary: img.isPrimary })) || [],
+  }
+}
+
+function getSortParams(sortBy: SortOption) {
+  switch (sortBy) {
+    case 'newest': return { sortBy: 'createdAt', sortOrder: 'desc' as const }
+    case 'price-low': return { sortBy: 'price', sortOrder: 'asc' as const }
+    case 'price-high': return { sortBy: 'price', sortOrder: 'desc' as const }
+    case 'popular':
+    default: return { sortBy: 'sales', sortOrder: 'desc' as const }
+  }
+}
 
 export default function ScriptsPage() {
   const [sortBy, setSortBy] = useState<SortOption>('popular')
   const [visibleCount, setVisibleCount] = useState(6)
-  const [isLoading, setIsLoading] = useState(false)
+  const [activeFilters, setActiveFilters] = useState<FilterState>({
+    categories: [],
+    tags: [],
+    priceRange: 1000,
+    minRating: 0,
+  })
 
-  const sortedProducts = useMemo(() => {
-    const products = [...scriptProducts]
+  const sortParams = getSortParams(sortBy)
 
-    switch (sortBy) {
-      case 'newest':
-        // In a real app, we'd sort by date
-        return [...products].reverse()
-      case 'price-low':
-        return [...products].sort((a, b) => a.price - b.price)
-      case 'price-high':
-        return [...products].sort((a, b) => b.price - a.price)
-      case 'popular':
-      default:
-        return [...products].sort((a, b) => b.reviewCount - a.reviewCount)
-    }
-  }, [sortBy])
+  // Fetch sub-categories of "Scripts"
+  const { data: subCategories = [] } = useQuery({
+    queryKey: ['scripts-subcategories'],
+    queryFn: async () => {
+      const result = await categoriesApi.getBySlug('scripts')
+      if (result.success && result.data && result.data.children) {
+        return result.data.children.map((c: any) => ({ id: c.id, name: c.name, slug: c.slug }))
+      }
+      return []
+    },
+  })
 
-  const visibleProducts = sortedProducts.slice(0, visibleCount)
-  const hasMore = visibleCount < sortedProducts.length
+  // Fetch products with filters
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['scripts-products', sortParams.sortBy, sortParams.sortOrder, activeFilters],
+    queryFn: async () => {
+      const filters: any = {
+        sortBy: sortParams.sortBy,
+        sortOrder: sortParams.sortOrder,
+        limit: 50,
+      }
 
-  const handleShowMore = async () => {
-    setIsLoading(true)
-    // Simulate loading
-    await new Promise(resolve => setTimeout(resolve, 300))
-    setVisibleCount((prev) => Math.min(prev + 6, sortedProducts.length))
-    setIsLoading(false)
-  }
+      if (activeFilters.priceRange < 1000) {
+        filters.maxPrice = activeFilters.priceRange
+      }
+      if (activeFilters.minRating > 0) {
+        filters.minRating = activeFilters.minRating
+      }
+      if (activeFilters.tags.length > 0) {
+        filters.tags = activeFilters.tags.join(',')
+      }
+      if (activeFilters.categories.length > 0) {
+        filters.categoryIds = activeFilters.categories.join(',')
+      }
+
+      const result = await productsApi.getByCategory('scripts', filters)
+      if (result.success && result.data) {
+        return result.data.map(mapProduct)
+      }
+      return []
+    },
+  })
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(6)
+  }, [activeFilters])
+
+  // Derive unique tags from fetched products
+  const uniqueTags = [...new Set(products.flatMap((p: any) => p.tags || []))]
+
+  const visibleProducts = products.slice(0, visibleCount)
+  const hasMore = visibleCount < products.length
 
   return (
     <main className="max-w-container mx-auto px-8 lg:px-12 pb-24">
@@ -85,37 +148,54 @@ export default function ScriptsPage() {
       {/* Main Content */}
       <div className="flex gap-8">
         {/* Sidebar */}
-        <FilterSidebar />
+        <FilterSidebar
+          onFilterChange={setActiveFilters}
+          categories={subCategories}
+          availableTags={uniqueTags}
+        />
 
         {/* Product Grid */}
         <div className="flex-grow">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visibleProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-
-          {/* Show More Button */}
-          {hasMore && (
-            <div className="mt-16 flex justify-center">
-              <button
-                type="button"
-                onClick={handleShowMore}
-                disabled={isLoading}
-                className="bg-surface-dark border border-border-dark text-white px-8 py-3 rounded-xl font-bold hover:border-primary transition-all flex items-center gap-2 disabled:opacity-50"
-              >
-                {isLoading ? 'Loading...' : 'Show More Results'}
-                {!isLoading && (
-                  <Icon name="chevron-down" size={16} />
-                )}
-              </button>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-slate-400">Loading scripts...</p>
+              </div>
             </div>
-          )}
+          ) : products.length === 0 ? (
+            <div className="text-center py-24">
+              <Icon name="code" size={64} className="text-slate-600 mx-auto mb-4" />
+              <p className="text-slate-400 text-lg">No scripts found</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {visibleProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
 
-          {/* Results count */}
-          <p className="mt-8 text-center text-slate-500 text-sm">
-            Showing {visibleProducts.length} of {sortedProducts.length} products
-          </p>
+              {/* Show More Button */}
+              {hasMore && (
+                <div className="mt-16 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount((prev) => prev + 6)}
+                    className="bg-surface-dark border border-border-dark text-white px-8 py-3 rounded-xl font-bold hover:border-primary transition-all flex items-center gap-2"
+                  >
+                    Show More Results
+                    <Icon name="chevron-down" size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* Results count */}
+              <p className="mt-8 text-center text-slate-500 text-sm">
+                Showing {visibleProducts.length} of {products.length} products
+              </p>
+            </>
+          )}
         </div>
       </div>
     </main>
