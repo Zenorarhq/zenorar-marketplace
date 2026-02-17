@@ -15,15 +15,15 @@ interface ProfileLayoutProps {
 }
 
 const navItems = [
-  { href: '/profile', label: 'Profile Settings', shortLabel: 'Profile', icon: 'user-settings' },
-  { href: '/profile/security', label: 'Security', shortLabel: 'Security', icon: 'shield' },
-  { href: '/profile/billing', label: 'Billing & Payments', shortLabel: 'Billing', icon: 'credit-card' },
   { href: '/profile/orders', label: 'My Orders', shortLabel: 'Orders', icon: 'shopping-bag' },
   { href: '/profile/library', label: 'My Library', shortLabel: 'Library', icon: 'library' },
-  { href: '/profile/wishlist', label: 'My Wishlist', shortLabel: 'Wishlist', icon: 'heart' },
-  { href: '/profile/referrals', label: 'Referral & Rewards', shortLabel: 'Referrals', icon: 'gift' },
   { href: '/profile/wallet', label: 'Wallet & Credits', shortLabel: 'Wallet', icon: 'wallet' },
+  { href: '/profile/billing', label: 'Billing & Payments', shortLabel: 'Billing', icon: 'credit-card' },
+  { href: '/profile/referrals', label: 'Referral & Rewards', shortLabel: 'Referrals', icon: 'gift' },
   { href: '/profile/tickets', label: 'Support Tickets', shortLabel: 'Support', icon: 'ticket' },
+  { href: '/profile/wishlist', label: 'My Wishlist', shortLabel: 'Wishlist', icon: 'heart' },
+  { href: '/profile/security', label: 'Security', shortLabel: 'Security', icon: 'shield' },
+  { href: '/profile', label: 'Profile Settings', shortLabel: 'Profile', icon: 'user-settings' },
 ]
 
 export default function ProfileLayout({ children }: ProfileLayoutProps) {
