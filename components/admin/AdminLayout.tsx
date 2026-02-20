@@ -20,6 +20,7 @@ const navItems = [
   { href: '/admin/analytics', label: 'Analytics', icon: 'analytics', permission: 'view_analytics' },
   { href: '/admin/discounts', label: 'Discounts', icon: 'tag', permission: 'view_products' },
   { href: '/admin/finance', label: 'Finance', icon: 'wallet', permission: 'view_order_analytics' },
+  { href: '/admin/wallets', label: 'Wallets', icon: 'credit-card', permission: 'manage_wallets' },
   { href: '/admin/frontend', label: 'Page Builder', icon: 'layers', permission: 'manage_content' },
   { href: '/admin/library', label: 'Upload Library', icon: 'upload', permission: 'manage_content' },
   { href: '/admin/chat', label: 'Live Chat', icon: 'chat', permission: 'view_chat' },
@@ -74,20 +75,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     queryKey: ['branding-settings'],
     queryFn: async () => {
       const res = await apiFetch<any>('/settings/public')
-      console.log('📡 Branding API response:', res)
       return res.success ? res.data : null
     },
-    staleTime: 0, // Always fetch fresh data (changed from 5 minutes for debugging)
-    refetchOnMount: 'always',
+    staleTime: 5 * 60 * 1000, // 5 minutes
   })
 
   const siteLogo = brandingData?.logoUrl || null
   const favicon = brandingData?.faviconUrl || null
-
-  // Debug: Log branding data
-  useEffect(() => {
-    console.log('🎨 Branding data:', { brandingData, siteLogo, favicon })
-  }, [brandingData, siteLogo, favicon])
 
   const queryClient = useQueryClient()
   const unreadNotifs = notifData?.count || 0

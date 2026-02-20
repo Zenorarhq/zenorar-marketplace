@@ -251,7 +251,7 @@ export default function AdminWalletsPage() {
 
           {walletsLoading ? (
             <div className="space-y-3">{[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-16 bg-surface-dark animate-pulse rounded-xl" />)}</div>
-          ) : walletsData && walletsData.wallets.length > 0 ? (
+          ) : walletsData?.wallets && walletsData.wallets.length > 0 ? (
             <>
               <div className="overflow-x-auto rounded-2xl border border-border-dark">
                 <table className="w-full text-left text-sm text-slate-400">
@@ -361,7 +361,7 @@ export default function AdminWalletsPage() {
 
           {depositsLoading ? (
             <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-surface-dark animate-pulse rounded-xl" />)}</div>
-          ) : depositsData && depositsData.deposits.length > 0 ? (
+          ) : depositsData?.deposits && depositsData.deposits.length > 0 ? (
             <>
               <div className="overflow-x-auto rounded-2xl border border-border-dark">
                 <table className="w-full text-left text-sm text-slate-400">
