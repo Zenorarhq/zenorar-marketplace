@@ -662,7 +662,6 @@ export default function Header() {
                 <button
                   type="button"
                   onClick={() => {
-                    alert('App coming soon!')
                     closeMobileMenu()
                   }}
                   className="w-full flex items-center gap-3 py-3 text-white"

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import ConnectivityCard from '@/components/cards/ConnectivityCard'
-import { apiFetch } from '@/lib/api/client'
 
 interface ConnectivityItem {
   id: string
@@ -16,7 +15,8 @@ export default function Connectivity({ config }: { config?: { title?: string; co
   const [options, setOptions] = useState<ConnectivityItem[]>([])
 
   useEffect(() => {
-    apiFetch('/categories/public?type=connectivity')
+    fetch('/api/categories?type=connectivity')
+      .then(res => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           const connectivityParents = ['esim', 'virtual-numbers']

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ProductCard from '@/components/cards/ProductCard'
 import Icon from '@/components/ui/Icon'
-import { apiFetch } from '@/lib/api/client'
 
 interface PopularProduct {
   id: string
@@ -25,7 +24,8 @@ export default function MostPopular({ config }: { config?: { title?: string; col
   const [products, setProducts] = useState<PopularProduct[]>([])
 
   useEffect(() => {
-    apiFetch('/products/public/popular')
+    fetch('/api/products/popular')
+      .then(res => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           setProducts(data.data)
@@ -44,7 +44,7 @@ export default function MostPopular({ config }: { config?: { title?: string; col
           {config?.title || 'Most Popular'}
         </h2>
         <Link
-          href="#"
+          href="/scripts/popular"
           className="text-sm text-slate-400 hover:text-primary transition-colors"
         >
           See all

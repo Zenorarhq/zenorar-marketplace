@@ -10,6 +10,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
 import { searchApi, SearchResult, categoriesApi } from '@/lib/api'
 import { useCart } from '@/lib/cart-context'
+import { formatPrice } from '@/lib/currency'
 
 type SortOption = 'popular' | 'newest' | 'price-low' | 'price-high'
 
@@ -320,7 +321,7 @@ function SearchContent() {
                     </p>
                     <div className="flex items-center justify-between">
                       <span className="text-xl font-bold text-white">
-                        ${Number(product.price).toFixed(2)}
+                        {formatPrice(Number(product.price))}
                       </span>
                       <button
                         onClick={() => handleAddToCart(product)}

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ProductCard from '@/components/cards/ProductCard'
 import Icon from '@/components/ui/Icon'
-import { apiFetch } from '@/lib/api/client'
 
 interface StaffPickProduct {
   id: string
@@ -25,7 +24,8 @@ export default function StaffPicks({ config }: { config?: { title?: string; colu
   const [products, setProducts] = useState<StaffPickProduct[]>([])
 
   useEffect(() => {
-    apiFetch('/products/public/staff-picks')
+    fetch('/api/products/staff-picks')
+      .then(res => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           setProducts(data.data)

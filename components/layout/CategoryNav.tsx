@@ -51,7 +51,7 @@ function CategoryLinksFallback() {
 
 export default function CategoryNav() {
   const handleGetApp = () => {
-    alert('App coming soon!')
+    // App not yet available
   }
 
   return (

@@ -183,8 +183,7 @@ export default function PaymentPage() {
   // Load Stripe publishable key when Stripe is enabled
   useEffect(() => {
     if (enabledProviders.stripe) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
-      fetch(`${apiUrl}/payments/stripe/config`)
+      fetch('/api/payments/stripe/config')
         .then(res => res.json())
         .then(data => {
           if (data.data?.publishableKey) {
@@ -198,8 +197,7 @@ export default function PaymentPage() {
   // Load Paystack public key + script when Paystack is enabled
   useEffect(() => {
     if (enabledProviders.paystack) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
-      fetch(`${apiUrl}/payments/paystack/config`)
+      fetch('/api/payments/paystack/config')
         .then(res => res.json())
         .then(data => {
           if (data.data?.publicKey) {

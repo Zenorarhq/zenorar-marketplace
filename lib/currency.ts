@@ -38,7 +38,7 @@ export function convertPrice(priceInUSD: number, targetCurrency: string): number
 // Format price with currency symbol
 export function formatPrice(
   priceInUSD: number,
-  currency: Currency,
+  currency: Currency = { code: 'USD', name: 'US Dollar', symbol: '$' },
   options?: { showCode?: boolean }
 ): string {
   const convertedPrice = convertPrice(priceInUSD, currency.code)

@@ -9,6 +9,7 @@ import Footer from '@/components/layout/Footer'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
 import { useCart } from '@/lib/cart-context'
+import { formatPrice } from '@/lib/currency'
 
 export default function ReviewPage() {
   const router = useRouter()
@@ -158,7 +159,7 @@ export default function ReviewPage() {
                         </p>
                         <p className="text-slate-500 text-xs md:text-sm">Qty: {item.quantity}</p>
                       </div>
-                      <p className="text-white font-bold text-base md:text-lg">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-white font-bold text-base md:text-lg">{formatPrice(item.price * item.quantity)}</p>
                     </div>
                   ))}
                 </div>
@@ -259,12 +260,12 @@ export default function ReviewPage() {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-slate-400">
                   <span>Subtotal ({items.length} items)</span>
-                  <span className="text-white">${total.toFixed(2)}</span>
+                  <span className="text-white">{formatPrice(total)}</span>
                 </div>
                 {discountCode && discountAmount > 0 && (
                   <div className="flex justify-between text-slate-400">
                     <span>Discount <span className="text-xs text-primary">({discountCode})</span></span>
-                    <span className="text-primary">-${discountAmount.toFixed(2)}</span>
+                    <span className="text-primary">-{formatPrice(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-slate-400">
@@ -280,7 +281,7 @@ export default function ReviewPage() {
               <div className="border-t border-border-dark pt-4 mb-6">
                 <div className="flex justify-between">
                   <span className="text-lg font-bold text-white">Total</span>
-                  <span className="text-2xl font-extrabold text-white">${(total - discountAmount).toFixed(2)}</span>
+                  <span className="text-2xl font-extrabold text-white">{formatPrice(total - discountAmount)}</span>
                 </div>
               </div>
 

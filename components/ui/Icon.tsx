@@ -427,6 +427,7 @@ const iconMap = {
   'magic-wand': MagicWand01Icon,
   flash: FlashIcon,
   bolt: ZapIcon,
+  zap: ZapIcon,
   fire: FireIcon,
   trophy: ChampionIcon,
   crown: CrownIcon,

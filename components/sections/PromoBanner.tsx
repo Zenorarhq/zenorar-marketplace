@@ -19,7 +19,7 @@ export default function PromoBanner({ config }: { config?: Record<string, any> }
   // Validate the promo code on mount to get real discount info
   useEffect(() => {
     if (!promoBannerCode) return
-    discountsApi.validate(promoBannerCode, 0).then((res) => {
+    discountsApi.validate(promoBannerCode, 999999).then((res) => {
       if (res.success && res.data) {
         setDiscount(res.data)
       }

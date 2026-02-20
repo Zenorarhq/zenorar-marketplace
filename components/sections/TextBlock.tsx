@@ -1,5 +1,7 @@
 'use client'
 
+import DOMPurify from 'dompurify'
+
 export default function TextBlock({ config }: { config?: { title?: string; content?: string; alignment?: string; style?: Record<string, any> } }) {
   const alignClass = ({ left: 'text-left', center: 'text-center', right: 'text-right' } as Record<string, string>)[config?.alignment || 'left'] || 'text-left'
 
@@ -12,7 +14,7 @@ export default function TextBlock({ config }: { config?: { title?: string; conte
           </h2>
         )}
         {config?.content ? (
-          <div className="prose prose-invert max-w-none text-slate-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: config.content }} />
+          <div className="prose prose-invert max-w-none text-slate-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(config.content) }} />
         ) : (
           <p className="text-slate-500 italic">No content yet. Edit this section to add text.</p>
         )}

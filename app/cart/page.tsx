@@ -10,6 +10,7 @@ import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
+import { formatPrice } from '@/lib/currency'
 import { discountsApi, type ValidateDiscountResponse } from '@/lib/api/discounts'
 import { settingsApi } from '@/lib/api/settings'
 
@@ -250,7 +251,7 @@ export default function CartPage() {
 
                     {/* Price */}
                     <div className="text-xl font-bold text-white">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      {formatPrice(item.price * item.quantity)}
                     </div>
                   </div>
                 </div>
@@ -266,7 +267,7 @@ export default function CartPage() {
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-slate-400">
                   <span>Subtotal</span>
-                  <span className="text-white font-medium">${total.toFixed(2)}</span>
+                  <span className="text-white font-medium">{formatPrice(total)}</span>
                 </div>
                 {discount && (
                   <div className="flex justify-between text-slate-400">
@@ -274,7 +275,7 @@ export default function CartPage() {
                       Discount
                       <span className="text-xs text-primary">({discount.code})</span>
                     </span>
-                    <span className="text-primary font-medium">-${discountAmount.toFixed(2)}</span>
+                    <span className="text-primary font-medium">-{formatPrice(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-slate-400">
@@ -282,19 +283,19 @@ export default function CartPage() {
                   {calculatedShipping === 0 && freeShippingThreshold > 0 ? (
                     <span className="text-primary font-medium">FREE</span>
                   ) : (
-                    <span className="text-white font-medium">${calculatedShipping.toFixed(2)}</span>
+                    <span className="text-white font-medium">{formatPrice(calculatedShipping)}</span>
                   )}
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
-                  <span className="text-white font-medium">${calculatedTax.toFixed(2)}</span>
+                  <span className="text-white font-medium">{formatPrice(calculatedTax)}</span>
                 </div>
               </div>
 
               <div className="border-t border-border-dark pt-4 mb-8">
                 <div className="flex justify-between">
                   <span className="text-lg font-bold text-white">Total</span>
-                  <span className="text-2xl font-extrabold text-white">${finalTotal.toFixed(2)}</span>
+                  <span className="text-2xl font-extrabold text-white">{formatPrice(finalTotal)}</span>
                 </div>
               </div>
 

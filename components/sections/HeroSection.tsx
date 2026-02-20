@@ -1,12 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import RecommendedCard from '@/components/cards/RecommendedCard'
 import Icon from '@/components/ui/Icon'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
-import { apiFetch } from '@/lib/api/client'
 // Recommended product shape from our local API
 interface RecommendedProduct {
   id: string
@@ -106,7 +104,8 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
 
   // Fetch recommended products from local API (no auth required)
   useEffect(() => {
-    apiFetch('/products/public/recommended')
+    fetch('/api/products/recommended')
+      .then(res => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           setRecommended(data.data)
@@ -158,12 +157,11 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
               index === currentSlide ? 'opacity-100' : 'opacity-0'
             }`}
           >
-            <Image
+            <img
               src={banner.image}
               alt={`${banner.title} ${banner.titleHighlight}`}
-              fill
-              className="object-cover opacity-40"
-              priority={index === 0}
+              className="absolute inset-0 w-full h-full object-cover opacity-40"
+              loading={index === 0 ? 'eager' : 'lazy'}
             />
           </div>
         ))}

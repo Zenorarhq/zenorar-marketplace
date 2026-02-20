@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import { useCart } from '@/lib/cart-context'
+import { formatPrice } from '@/lib/currency'
 
 interface CartDropdownProps {
   isOpen: boolean
@@ -101,10 +102,10 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
               <p className="text-slate-400 text-xs truncate">{item.product.category}</p>
               <div className="flex items-center justify-between mt-1">
                 <span className="text-slate-500 text-xs">
-                  {item.quantity} × ${item.price.toFixed(2)}
+                  {item.quantity} × {formatPrice(item.price)}
                 </span>
                 <span className="text-white font-bold text-sm">
-                  ${(item.price * item.quantity).toFixed(2)}
+                  {formatPrice(item.price * item.quantity)}
                 </span>
               </div>
             </div>
@@ -122,7 +123,7 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
       {/* Total */}
       <div className="flex items-center justify-between py-3 border-t border-white/10 mb-4">
         <span className="text-slate-400 font-medium">Total</span>
-        <span className="text-white font-bold text-lg">${total.toFixed(2)}</span>
+        <span className="text-white font-bold text-lg">{formatPrice(total)}</span>
       </div>
 
       {/* Actions */}
