@@ -33,6 +33,7 @@
     "next": "14.2.3",
     "nodemailer": "^8.0.1",
     "pg": "^8.18.0",
+    "qrcode.react": "^4.2.0",
     "react": "^18",
     "react-dom": "^18",
     "resend": "^6.9.2",

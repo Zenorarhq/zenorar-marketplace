@@ -7,6 +7,7 @@ import { BrowserProvider, parseEther, formatEther, getAddress } from 'ethers'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { useQuery } from '@tanstack/react-query'
+import { QRCodeSVG } from 'qrcode.react'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
@@ -30,10 +31,14 @@ const CRYPTO_RATES: Record<string, number> = {
   USDC: 1.0,          // 1 USD = 1 USDC (stablecoin)
   SOL: 0.0125,        // 1 USD = 0.0125 SOL (approx $80/SOL)
   MATIC: 1.25,        // 1 USD = 1.25 MATIC (approx $0.80/MATIC) - Legacy support
+  TRON: 0.0083,       // 1 USD = 0.0083 TRX (approx $0.12/TRX)
 }
 
 type PaymentMethod = 'wallet' | 'manual-crypto' | 'stripe' | 'paystack' | 'paypal'
-type CryptoNetwork = 'BTC' | 'ETH' | 'USDT_ERC20' | 'USDT_BEP20' | 'USDT_TRC20' | 'BNB' | 'USDC' | 'SOL' | 'MATIC'
+type CryptoNetwork = 'BTC' | 'ETH' | 'USDT_ERC20' | 'USDT_BEP20' | 'USDT_TRC20' | 'BNB' | 'USDC' | 'SOL' | 'MATIC' | 'TRON'
+
+// Helper to check if a network is EVM-compatible
+const isEVMNetwork = (network: CryptoNetwork) => ['ETH', 'BNB', 'MATIC'].includes(network)
 
 interface WalletState {
   address: string | null
@@ -66,7 +71,9 @@ export default function PaymentPage() {
   const [cryptoWallets, setCryptoWallets] = useState<Record<string, string>>({})
   const [loadingWallets, setLoadingWallets] = useState(false)
   const [copiedAddress, setCopiedAddress] = useState(false)
-  const [receivingWallet, setReceivingWallet] = useState<string>(process.env.NEXT_PUBLIC_RECEIVING_WALLET || '0x742d35cc6634c0532925a3b844bc9e7595f5be21')
+  const [receivingWallet, setReceivingWallet] = useState<string>(process.env.NEXT_PUBLIC_RECEIVING_WALLET || '0xF9a3ebE268492e32c24F43723eA83Ea5Df013064')
+  const [btcReceivingAddress, setBtcReceivingAddress] = useState<string>('')
+  const [tronReceivingAddress, setTronReceivingAddress] = useState<string>('')
   const [enabledProviders, setEnabledProviders] = useState({
     wallet: true, // MetaMask is always available
     manualCrypto: false,
@@ -116,9 +123,15 @@ export default function PaymentPage() {
           }
           setEnabledProviders(providers)
 
-          // Set receiving wallet address from settings
+          // Set receiving wallet addresses from settings
           if (data.receivingWalletAddress) {
             setReceivingWallet(data.receivingWalletAddress)
+          }
+          if (data.btcAddress) {
+            setBtcReceivingAddress(data.btcAddress)
+          }
+          if (data.usdtTronAddress) {
+            setTronReceivingAddress(data.usdtTronAddress) // TRON and USDT TRC20 use same address
           }
 
           // Set default payment method to first enabled provider
@@ -762,10 +775,12 @@ export default function PaymentPage() {
                     {/* Network Selection */}
                     <div>
                       <h3 className="text-white font-bold text-sm md:text-base mb-2 md:mb-3">Select Network</h3>
-                      <div className="grid grid-cols-3 gap-2 md:gap-3">
+                      <div className="grid grid-cols-5 gap-2 md:gap-3">
                         {[
+                          { name: 'Bitcoin', symbol: 'BTC', icon: 'bitcoin' },
                           { name: 'Ethereum', symbol: 'ETH', icon: 'diamond' },
                           { name: 'BNB Chain', symbol: 'BNB', icon: 'hexagon' },
+                          { name: 'Tron', symbol: 'TRON', icon: 'zap' },
                           { name: 'Polygon', symbol: 'MATIC', icon: 'layers' },
                         ].map((network) => (
                           <button
@@ -785,7 +800,61 @@ export default function PaymentPage() {
                       </div>
                     </div>
 
-                    {/* Wallet Connection */}
+                    {/* BTC/TRON: Show address + QR code (non-EVM networks) */}
+                    {(selectedNetwork === 'BTC' || selectedNetwork === 'TRON') ? (
+                      <div className="space-y-4">
+                        <div className="bg-surface-dark rounded-xl p-4 text-center">
+                          <p className="text-slate-400 text-sm mb-4">
+                            Scan or send to this {selectedNetwork === 'BTC' ? 'Bitcoin' : 'Tron'} address:
+                          </p>
+                          {(selectedNetwork === 'BTC' ? btcReceivingAddress : tronReceivingAddress) ? (
+                            <>
+                              <div className="flex justify-center mb-4">
+                                <div className="bg-white p-3 rounded-xl">
+                                  <QRCodeSVG
+                                    value={selectedNetwork === 'BTC' ? btcReceivingAddress : tronReceivingAddress}
+                                    size={160}
+                                    level="H"
+                                  />
+                                </div>
+                              </div>
+                              <div className="bg-charcoal rounded-lg p-3 font-mono text-xs text-white break-all mb-3">
+                                {selectedNetwork === 'BTC' ? btcReceivingAddress : tronReceivingAddress}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => copyAddress(selectedNetwork === 'BTC' ? btcReceivingAddress : tronReceivingAddress)}
+                                className="w-full bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                              >
+                                <Icon name={copiedAddress ? "check" : "copy"} size={16} />
+                                {copiedAddress ? "Copied!" : "Copy Address"}
+                              </button>
+                            </>
+                          ) : (
+                            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                              <p className="text-yellow-400 text-sm">
+                                {selectedNetwork} wallet address not configured. Please contact support or choose another network.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="bg-surface-dark rounded-xl p-4">
+                          <p className="text-slate-400 text-sm mb-2">Amount to pay:</p>
+                          <p className="text-2xl font-bold text-white mb-2">{formatPrice(finalTotal)}</p>
+                          <p className="text-primary text-sm">
+                            ≈ {getCryptoAmount(selectedNetwork)} {selectedNetwork}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                          <Icon name="info" size={20} className="text-yellow-500 flex-shrink-0" />
+                          <p className="text-slate-300 text-xs">
+                            Send the exact amount to the address above. Your order will be processed after payment confirmation.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                    {/* EVM Wallet Connection */}
                     {!walletState.isConnected ? (
                       <div className="text-center py-4">
                         <Icon name="wallet" size={40} className="md:w-48 md:h-48 text-slate-600 mx-auto mb-3 md:mb-4" />
@@ -927,6 +996,8 @@ export default function PaymentPage() {
                         <p className="text-red-400 text-sm">{walletError}</p>
                       </div>
                     )}
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -977,14 +1048,25 @@ export default function PaymentPage() {
                     </div>
 
                     <div className="bg-surface-dark rounded-xl p-4">
-                      <p className="text-slate-400 text-xs mb-2">Send to this address:</p>
+                      <p className="text-slate-400 text-sm mb-4 text-center">Scan or send to this address:</p>
                       {loadingWallets ? (
-                        <div className="bg-charcoal rounded-lg p-3 text-center">
-                          <Icon name="loading" size={20} className="text-primary animate-spin mx-auto" />
+                        <div className="bg-charcoal rounded-lg p-6 text-center">
+                          <Icon name="loading" size={24} className="text-primary animate-spin mx-auto" />
                         </div>
                       ) : cryptoWallets[selectedNetwork] ? (
-                        <div className="space-y-2">
-                          <div className="bg-charcoal rounded-lg p-3 font-mono text-xs text-white break-all">
+                        <div className="space-y-4">
+                          {/* QR Code */}
+                          <div className="flex justify-center">
+                            <div className="bg-white p-3 rounded-xl">
+                              <QRCodeSVG
+                                value={cryptoWallets[selectedNetwork]}
+                                size={160}
+                                level="H"
+                              />
+                            </div>
+                          </div>
+                          {/* Address */}
+                          <div className="bg-charcoal rounded-lg p-3 font-mono text-xs text-white break-all text-center">
                             {cryptoWallets[selectedNetwork]}
                           </div>
                           <button
