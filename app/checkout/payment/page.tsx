@@ -231,13 +231,24 @@ export default function PaymentPage() {
     if (stablecoins.includes(network)) return (finalTotal * 1.0).toFixed(6)
     // MATIC: legacy, not in live rates
     if (network === 'MATIC') return (finalTotal * 1.25).toFixed(6)
-    // BTC, ETH, BNB, SOL: use live exchange rates
+    // BTC, ETH, BNB, SOL, TRON: use live exchange rates
     const rate = getExchangeRate(network)
     return (finalTotal * rate).toFixed(6)
   }
 
-  // Connect wallet - Supports MetaMask, WalletConnect, Coinbase Wallet, and other Web3 wallets
+  // Connect wallet - Routes to appropriate wallet based on selected network
   const connectWallet = async () => {
+    // Route to BTC wallet connection
+    if (selectedNetwork === 'BTC') {
+      return connectBtcWallet()
+    }
+
+    // Route to TRON wallet connection
+    if (selectedNetwork === 'TRON') {
+      return connectTronWallet()
+    }
+
+    // EVM wallet connection (ETH, BNB, MATIC)
     if (typeof window === 'undefined' || !window.ethereum) {
       setWalletError('Please install a Web3 wallet (MetaMask, Coinbase Wallet, etc.)')
       return
@@ -289,6 +300,94 @@ export default function PaymentPage() {
     }
   }
 
+  // Connect BTC wallet via Unisat
+  const connectBtcWallet = async () => {
+    if (typeof window === 'undefined' || !(window as any).unisat) {
+      setWalletError('Please install Unisat wallet extension to pay with Bitcoin')
+      return
+    }
+
+    setPaymentStatus('connecting')
+    setWalletError('')
+
+    try {
+      const unisat = (window as any).unisat
+      const accounts = await unisat.requestAccounts()
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No Bitcoin wallet account found')
+      }
+
+      const balance = await unisat.getBalance()
+
+      setWalletState({
+        address: accounts[0],
+        balance: (balance.total / 100000000).toFixed(8), // satoshis to BTC
+        network: 'Bitcoin',
+        isConnected: true,
+      })
+      setPaymentStatus('idle')
+    } catch (err) {
+      console.error('BTC wallet connection error:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect Bitcoin wallet'
+
+      if (errorMessage.includes('User rejected') || errorMessage.includes('User denied')) {
+        setWalletError('Connection request was rejected. Please try again.')
+      } else {
+        setWalletError('Failed to connect Bitcoin wallet. Please try again.')
+      }
+      setPaymentStatus('error')
+    }
+  }
+
+  // Connect TRON wallet via TronLink
+  const connectTronWallet = async () => {
+    if (typeof window === 'undefined' || !(window as any).tronWeb) {
+      setWalletError('Please install TronLink wallet extension to pay with TRON')
+      return
+    }
+
+    setPaymentStatus('connecting')
+    setWalletError('')
+
+    try {
+      const tronWeb = (window as any).tronWeb
+
+      // Wait for TronLink to be ready
+      if (!tronWeb.ready) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        if (!tronWeb.ready) {
+          throw new Error('TronLink is not ready. Please unlock your wallet.')
+        }
+      }
+
+      const address = tronWeb.defaultAddress.base58
+      if (!address) {
+        throw new Error('No TRON wallet account found')
+      }
+
+      const balanceSun = await tronWeb.trx.getBalance(address)
+
+      setWalletState({
+        address,
+        balance: (balanceSun / 1000000).toFixed(6), // SUN to TRX
+        network: 'Tron',
+        isConnected: true,
+      })
+      setPaymentStatus('idle')
+    } catch (err) {
+      console.error('TRON wallet connection error:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect TRON wallet'
+
+      if (errorMessage.includes('User rejected') || errorMessage.includes('User denied')) {
+        setWalletError('Connection request was rejected. Please try again.')
+      } else {
+        setWalletError(errorMessage || 'Failed to connect TRON wallet. Please try again.')
+      }
+      setPaymentStatus('error')
+    }
+  }
+
   // Disconnect wallet
   const disconnectWallet = () => {
     setWalletState({
@@ -312,8 +411,226 @@ export default function PaymentPage() {
     }
   }
 
-  // Process wallet payment
+  // Helper function to create order (shared by all payment methods)
+  const createOrder = async () => {
+    const shippingDataStr = sessionStorage.getItem('checkoutShipping')
+    const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+    const orderResponse = await fetch(`${apiUrl}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Session-ID': getSessionId(),
+        ...(localStorage.getItem('auth_token') && {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        }),
+      },
+      body: JSON.stringify({
+        fullName: shippingData.fullName || 'Guest',
+        email: shippingData.email || '',
+        phone: shippingData.phone || '',
+        address: shippingData.address || 'Digital Delivery',
+        city: shippingData.city || 'N/A',
+        state: shippingData.state || 'N/A',
+        zipCode: shippingData.zipCode || '00000',
+        customerNote: shippingData.notes || '',
+        paymentMethod: `crypto_${selectedNetwork.toLowerCase()}`,
+        discountCode: discountCode || undefined,
+        discountAmount: discountAmount > 0 ? discountAmount : undefined,
+        useWalletBalance: useWalletBalance,
+        items: items.map((item: any) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          license: item.license,
+          price: item.price,
+        })),
+      }),
+    })
+
+    if (!orderResponse.ok) {
+      const errorData = await orderResponse.json()
+      console.error('Order creation failed:', errorData)
+      throw new Error(errorData.error || errorData.message || 'Failed to create order')
+    }
+
+    const orderResult = await orderResponse.json()
+
+    // Notify user: order placed
+    apiFetch('/notifications/create', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'ORDER_PLACED', title: 'Order Placed', message: `Your order #${orderResult.data.orderNumber} has been placed successfully.`, data: { orderId: orderResult.data.id, orderNumber: orderResult.data.orderNumber } }),
+    }).catch(() => {})
+
+    // Record discount usage if a discount was applied
+    if (discountCode && discountAmount > 0) {
+      apiFetch('/orders/apply-discount', {
+        method: 'POST',
+        body: JSON.stringify({ orderId: orderResult.data.id, discountCode, discountAmount }),
+      }).catch(err => console.error('Failed to save discount to order:', err))
+
+      apiFetch('/discounts/use', {
+        method: 'POST',
+        body: JSON.stringify({ code: discountCode }),
+      }).catch(err => console.error('Failed to increment discount usage:', err))
+    }
+
+    return orderResult.data
+  }
+
+  // Helper function to record payment and complete checkout
+  const completePayment = async (orderId: string, orderNumber: string, txHash: string, cryptoAmount: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+
+    // Record the crypto payment in the backend
+    await fetch(`${apiUrl}/payments/crypto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId,
+        txHash,
+        walletAddress: walletState.address,
+        network: selectedNetwork,
+        cryptoAmount,
+        usdAmount: finalTotal,
+      }),
+    }).catch(err => console.error('Failed to record payment:', err))
+
+    // Store payment info
+    sessionStorage.setItem('checkoutPayment', JSON.stringify({
+      method: 'wallet',
+      crypto: selectedNetwork,
+      txHash,
+      amount: cryptoAmount,
+      usdAmount: finalTotal,
+      walletAddress: walletState.address,
+      orderId,
+      orderNumber,
+    }))
+
+    // Notify user: payment confirmed
+    apiFetch('/notifications/create', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'PAYMENT_RECEIVED', title: 'Payment Confirmed', message: `Payment for order #${orderNumber} confirmed. Tx: ${txHash.slice(0, 10)}...`, data: { orderId, orderNumber, txHash } }),
+    }).catch(() => {})
+
+    setPaymentStatus('success')
+
+    // Redirect to success page after short delay
+    setTimeout(() => {
+      clearCart()
+      router.push(`/checkout/success?txHash=${txHash}&orderNumber=${orderNumber}`)
+    }, 2000)
+  }
+
+  // Process BTC payment via Unisat
+  const processBtcPayment = async () => {
+    if (!walletState.isConnected || !(window as any).unisat) {
+      setWalletError('Please connect your Bitcoin wallet first')
+      return
+    }
+
+    if (!btcReceivingAddress) {
+      setWalletError('Bitcoin receiving address not configured. Please contact support.')
+      return
+    }
+
+    setPaymentStatus('paying')
+    setWalletError('')
+
+    try {
+      const order = await createOrder()
+      const cryptoAmount = getCryptoAmount('BTC')
+      const satoshis = Math.round(parseFloat(cryptoAmount) * 100000000) // BTC to satoshis
+
+      // Send BTC via Unisat
+      const txid = await (window as any).unisat.sendBitcoin(btcReceivingAddress, satoshis)
+
+      setTxHash(txid)
+      setPaymentStatus('confirming')
+
+      // For BTC, we don't wait for confirmation (takes too long), just record the payment
+      await completePayment(order.id, order.orderNumber, txid, cryptoAmount)
+    } catch (err: unknown) {
+      console.error('BTC Payment error:', err)
+      setPaymentStatus('error')
+      if (err instanceof Error) {
+        if (err.message.includes('User rejected') || err.message.includes('user rejected')) {
+          setWalletError('Transaction was cancelled')
+        } else if (err.message.includes('Insufficient')) {
+          setWalletError('Insufficient BTC balance in your wallet')
+        } else {
+          setWalletError(err.message)
+        }
+      } else {
+        setWalletError('Bitcoin payment failed. Please try again.')
+      }
+    }
+  }
+
+  // Process TRON payment via TronLink
+  const processTronPayment = async () => {
+    if (!walletState.isConnected || !(window as any).tronWeb) {
+      setWalletError('Please connect your TRON wallet first')
+      return
+    }
+
+    if (!tronReceivingAddress) {
+      setWalletError('TRON receiving address not configured. Please contact support.')
+      return
+    }
+
+    setPaymentStatus('paying')
+    setWalletError('')
+
+    try {
+      const order = await createOrder()
+      const cryptoAmount = getCryptoAmount('TRON')
+      const sunAmount = Math.round(parseFloat(cryptoAmount) * 1000000) // TRX to SUN
+
+      // Send TRX via TronLink
+      const tronWeb = (window as any).tronWeb
+      const tx = await tronWeb.trx.sendTransaction(tronReceivingAddress, sunAmount)
+
+      if (!tx.result) {
+        throw new Error('Transaction failed')
+      }
+
+      const txid = tx.txid || tx.transaction?.txID
+      setTxHash(txid)
+      setPaymentStatus('confirming')
+
+      await completePayment(order.id, order.orderNumber, txid, cryptoAmount)
+    } catch (err: unknown) {
+      console.error('TRON Payment error:', err)
+      setPaymentStatus('error')
+      if (err instanceof Error) {
+        if (err.message.includes('User rejected') || err.message.includes('Confirmation declined')) {
+          setWalletError('Transaction was cancelled')
+        } else if (err.message.includes('balance')) {
+          setWalletError('Insufficient TRX balance in your wallet')
+        } else {
+          setWalletError(err.message)
+        }
+      } else {
+        setWalletError('TRON payment failed. Please try again.')
+      }
+    }
+  }
+
+  // Process wallet payment - Routes to appropriate handler based on network
   const processWalletPayment = async () => {
+    // Route to BTC payment
+    if (selectedNetwork === 'BTC') {
+      return processBtcPayment()
+    }
+
+    // Route to TRON payment
+    if (selectedNetwork === 'TRON') {
+      return processTronPayment()
+    }
+
+    // EVM payment (ETH, BNB, MATIC)
     if (!walletState.isConnected || !window.ethereum) {
       setWalletError('Please connect your wallet first')
       return
@@ -323,75 +640,11 @@ export default function PaymentPage() {
     setWalletError('')
 
     try {
-      // Get shipping info from session storage
-      const shippingDataStr = sessionStorage.getItem('checkoutShipping')
-      const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
-
-      // First, create the order
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
-      const orderResponse = await fetch(`${apiUrl}/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': getSessionId(),
-          ...(localStorage.getItem('auth_token') && {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-          }),
-        },
-        body: JSON.stringify({
-          fullName: shippingData.fullName || 'Guest',
-          email: shippingData.email || '',
-          phone: shippingData.phone || '',
-          address: shippingData.address || 'Digital Delivery',
-          city: shippingData.city || 'N/A',
-          state: shippingData.state || 'N/A',
-          zipCode: shippingData.zipCode || '00000',
-          customerNote: shippingData.notes || '',
-          paymentMethod: `crypto_${selectedNetwork.toLowerCase()}`,
-          discountCode: discountCode || undefined,
-          discountAmount: discountAmount > 0 ? discountAmount : undefined,
-          useWalletBalance: useWalletBalance,
-          items: items.map((item: any) => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-            license: item.license,
-            price: item.price,
-          })),
-        }),
-      })
-
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.json()
-        console.error('Order creation failed:', errorData)
-        throw new Error(errorData.error || errorData.message || 'Failed to create order')
-      }
-
-      const orderResult = await orderResponse.json()
-      const orderId = orderResult.data.id
-      const orderNumber = orderResult.data.orderNumber
-
-      // Notify user: order placed
-      apiFetch('/notifications/create', {
-        method: 'POST',
-        body: JSON.stringify({ type: 'ORDER_PLACED', title: 'Order Placed', message: `Your order #${orderNumber} has been placed successfully.`, data: { orderId, orderNumber } }),
-      }).catch(() => {})
-
-      // Record discount usage if a discount was applied
-      if (discountCode && discountAmount > 0) {
-        apiFetch('/orders/apply-discount', {
-          method: 'POST',
-          body: JSON.stringify({ orderId, discountCode, discountAmount }),
-        }).catch(err => console.error('Failed to save discount to order:', err))
-
-        apiFetch('/discounts/use', {
-          method: 'POST',
-          body: JSON.stringify({ code: discountCode }),
-        }).catch(err => console.error('Failed to increment discount usage:', err))
-      }
+      const order = await createOrder()
+      const cryptoAmount = getCryptoAmount(selectedNetwork)
 
       const provider = new BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
-      const cryptoAmount = getCryptoAmount(selectedNetwork)
 
       // Normalize wallet address to correct checksum format
       const normalizedAddress = getAddress(receivingWallet)
@@ -409,51 +662,7 @@ export default function PaymentPage() {
       const receipt = await tx.wait()
 
       if (receipt && receipt.status === 1) {
-        // Record the crypto payment in the backend
-        const paymentResponse = await fetch(`${apiUrl}/payments/crypto`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderId,
-            txHash: tx.hash,
-            walletAddress: walletState.address,
-            network: selectedNetwork,
-            cryptoAmount,
-            usdAmount: finalTotal,
-          }),
-        })
-
-        if (!paymentResponse.ok) {
-          console.error('Failed to record payment, but transaction was successful')
-        }
-
-        // Store payment info
-        sessionStorage.setItem('checkoutPayment', JSON.stringify({
-          method: 'wallet',
-          crypto: selectedNetwork,
-          txHash: tx.hash,
-          amount: cryptoAmount,
-          usdAmount: finalTotal,
-          walletAddress: walletState.address,
-          orderId,
-          orderNumber: orderResult.data.orderNumber,
-        }))
-
-        // Notify user: payment confirmed
-        apiFetch('/notifications/create', {
-          method: 'POST',
-          body: JSON.stringify({ type: 'PAYMENT_RECEIVED', title: 'Payment Confirmed', message: `Payment for order #${orderNumber} confirmed. Tx: ${tx.hash.slice(0, 10)}...`, data: { orderId, orderNumber, txHash: tx.hash } }),
-        }).catch(() => {})
-
-        setPaymentStatus('success')
-
-        // Redirect to success page after short delay
-        setTimeout(() => {
-          clearCart()
-          router.push(`/checkout/success?txHash=${tx.hash}&orderNumber=${orderNumber}`)
-        }, 2000)
+        await completePayment(order.id, order.orderNumber, tx.hash, cryptoAmount)
       } else {
         throw new Error('Transaction failed')
       }
@@ -806,71 +1015,49 @@ export default function PaymentPage() {
                       </div>
                     </div>
 
-                    {/* BTC/TRON: Show address + QR code (non-EVM networks) */}
-                    {(selectedNetwork === 'BTC' || selectedNetwork === 'TRON') ? (
-                      <div className="space-y-4">
-                        <div className="bg-surface-dark rounded-xl p-4 text-center">
-                          <p className="text-slate-400 text-sm mb-4">
-                            Scan or send to this {selectedNetwork === 'BTC' ? 'Bitcoin' : 'Tron'} address:
-                          </p>
-                          {(selectedNetwork === 'BTC' ? btcReceivingAddress : tronReceivingAddress) ? (
-                            <>
-                              <div className="flex justify-center mb-4">
-                                <div className="bg-white p-3 rounded-xl">
-                                  <QRCodeSVG
-                                    value={selectedNetwork === 'BTC' ? btcReceivingAddress : tronReceivingAddress}
-                                    size={160}
-                                    level="H"
-                                  />
-                                </div>
-                              </div>
-                              <div className="bg-charcoal rounded-lg p-3 font-mono text-xs text-white break-all mb-3">
-                                {selectedNetwork === 'BTC' ? btcReceivingAddress : tronReceivingAddress}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => copyAddress(selectedNetwork === 'BTC' ? btcReceivingAddress : tronReceivingAddress)}
-                                className="w-full bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium"
-                              >
-                                <Icon name={copiedAddress ? "check" : "copy"} size={16} />
-                                {copiedAddress ? "Copied!" : "Copy Address"}
-                              </button>
-                            </>
-                          ) : (
-                            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-                              <p className="text-yellow-400 text-sm">
-                                {selectedNetwork} wallet address not configured. Please contact support or choose another network.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="bg-surface-dark rounded-xl p-4">
-                          <p className="text-slate-400 text-sm mb-2">Amount to pay:</p>
-                          <p className="text-2xl font-bold text-white mb-2">{formatPrice(finalTotal)}</p>
-                          <p className="text-primary text-sm">
-                            ≈ {getCryptoAmount(selectedNetwork)} {selectedNetwork}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-                          <Icon name="info" size={20} className="text-yellow-500 flex-shrink-0" />
-                          <p className="text-slate-300 text-xs">
-                            Send the exact amount to the address above. Your order will be processed after payment confirmation.
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                    {/* EVM Wallet Connection */}
+                    {/* Wallet Connection - All Networks */}
                     {!walletState.isConnected ? (
                       <div className="text-center py-4">
                         <Icon name="wallet" size={40} className="md:w-48 md:h-48 text-slate-600 mx-auto mb-3 md:mb-4" />
                         <p className="text-slate-400 text-xs md:text-sm mb-3 md:mb-4 px-2">
-                          {typeof window !== 'undefined' && !window.ethereum
-                            ? 'Please install a Web3 wallet to continue'
-                            : 'Connect your wallet to pay with crypto'
+                          {selectedNetwork === 'BTC'
+                            ? (typeof window !== 'undefined' && !(window as any).unisat
+                              ? 'Please install Unisat wallet to pay with Bitcoin'
+                              : 'Connect your Bitcoin wallet to pay')
+                            : selectedNetwork === 'TRON'
+                            ? (typeof window !== 'undefined' && !(window as any).tronWeb
+                              ? 'Please install TronLink wallet to pay with TRON'
+                              : 'Connect your TRON wallet to pay')
+                            : (typeof window !== 'undefined' && !window.ethereum
+                              ? 'Please install a Web3 wallet to continue'
+                              : 'Connect your wallet to pay with crypto')
                           }
                         </p>
-                        {typeof window !== 'undefined' && !window.ethereum ? (
+                        {selectedNetwork === 'BTC' && typeof window !== 'undefined' && !(window as any).unisat ? (
+                          <div className="space-y-3">
+                            <a
+                              href="https://unisat.io/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-2.5 text-sm rounded-xl transition-all inline-flex items-center gap-2"
+                            >
+                              <Icon name="wallet" size={16} />
+                              Install Unisat Wallet
+                            </a>
+                          </div>
+                        ) : selectedNetwork === 'TRON' && typeof window !== 'undefined' && !(window as any).tronWeb ? (
+                          <div className="space-y-3">
+                            <a
+                              href="https://www.tronlink.org/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-2.5 text-sm rounded-xl transition-all inline-flex items-center gap-2"
+                            >
+                              <Icon name="wallet" size={16} />
+                              Install TronLink Wallet
+                            </a>
+                          </div>
+                        ) : typeof window !== 'undefined' && !window.ethereum && isEVMNetwork(selectedNetwork) ? (
                           <div className="space-y-3">
                             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                               <a
@@ -1001,8 +1188,6 @@ export default function PaymentPage() {
                       <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
                         <p className="text-red-400 text-sm">{walletError}</p>
                       </div>
-                    )}
-                      </>
                     )}
                   </div>
                 )}
