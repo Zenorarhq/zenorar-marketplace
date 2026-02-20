@@ -19,17 +19,7 @@ export default function Connectivity({ config }: { config?: { title?: string; co
       .then(res => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
-          const connectivityParents = ['esim', 'virtual-numbers']
-          const filtered = data.data
-            .filter((c: any) => connectivityParents.includes(c.parent?.slug))
-            .map((c: any) => ({
-              id: c.id,
-              name: c.name,
-              slug: c.slug,
-              icon: c.icon || 'globe',
-              href: `/${c.parent.slug}`,
-            }))
-          setOptions(filtered)
+          setOptions(data.data)
         }
       })
       .catch(() => {})

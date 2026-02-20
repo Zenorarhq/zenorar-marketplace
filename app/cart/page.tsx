@@ -10,13 +10,14 @@ import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
-import { formatPrice } from '@/lib/currency'
+import { usePreferences } from '@/contexts/PreferencesContext'
 import { discountsApi, type ValidateDiscountResponse } from '@/lib/api/discounts'
 import { settingsApi } from '@/lib/api/settings'
 
 export default function CartPage() {
   const router = useRouter()
   const { items, itemCount, total, updateQuantity, removeItem, clearCart, validateCart } = useCart()
+  const { formatPrice } = usePreferences()
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState<ValidateDiscountResponse | null>(null)
   const [promoError, setPromoError] = useState('')

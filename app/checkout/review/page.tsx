@@ -9,11 +9,12 @@ import Footer from '@/components/layout/Footer'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
 import { useCart } from '@/lib/cart-context'
-import { formatPrice } from '@/lib/currency'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 export default function ReviewPage() {
   const router = useRouter()
   const { items, total, clearCart } = useCart()
+  const { formatPrice } = usePreferences()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [discountCode, setDiscountCode] = useState('')
@@ -274,7 +275,7 @@ export default function ReviewPage() {
                 </div>
                 <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
-                  <span className="text-white">$0.00</span>
+                  <span className="text-white">{formatPrice(0)}</span>
                 </div>
               </div>
 

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import { useCart } from '@/lib/cart-context'
-import { formatPrice } from '@/lib/currency'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface CartDropdownProps {
   isOpen: boolean
@@ -14,6 +14,7 @@ interface CartDropdownProps {
 
 export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
   const { items, total, itemCount, removeItem } = useCart()
+  const { formatPrice } = usePreferences()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Handle click outside

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import { Product } from '@/lib/types'
-import { formatPrice } from '@/lib/currency'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface AddToCartPopupProps {
   isOpen: boolean
@@ -22,6 +22,7 @@ export default function AddToCartPopup({
   quantity = 1,
   price,
 }: AddToCartPopupProps) {
+  const { formatPrice } = usePreferences()
   const [isHovered, setIsHovered] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const popupRef = useRef<HTMLDivElement>(null)

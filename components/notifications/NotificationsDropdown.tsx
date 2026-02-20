@@ -59,7 +59,7 @@ export default function NotificationsDropdown({ isOpen, onClose, variant = 'drop
   // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (dropdownRef.current && dropdownRef.current.offsetParent !== null && !dropdownRef.current.contains(event.target as Node)) {
         onClose()
       }
     }
