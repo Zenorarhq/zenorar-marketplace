@@ -170,9 +170,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   const addItem = useCallback(async (product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
-    const price = customPrice ?? (license === 'extended'
+    const price = Number(customPrice ?? (license === 'extended'
       ? (product.priceRange?.max || product.price)
-      : (product.priceRange?.min || product.price))
+      : (product.priceRange?.min || product.price)))
 
     // Optimistic update — capture the new quantity for API sync
     let newQuantity = 1
@@ -346,9 +346,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const buyNow = useCallback(async (product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
-    const price = customPrice ?? (license === 'extended'
+    const price = Number(customPrice ?? (license === 'extended'
       ? (product.priceRange?.max || product.price)
-      : (product.priceRange?.min || product.price))
+      : (product.priceRange?.min || product.price)))
 
     // Clear cart and add only this item
     setItems([{ product, quantity: 1, license, price }])

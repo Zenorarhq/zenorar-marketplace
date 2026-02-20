@@ -130,7 +130,7 @@ export default function AddToCartPopup({
             <p className="text-slate-400 text-xs truncate">{product.category}</p>
             <div className="flex items-center justify-between mt-2">
               <span className="text-slate-500 text-xs">Qty: {quantity}</span>
-              <span className="text-white font-bold">${displayPrice.toFixed(2)}</span>
+              <span className="text-white font-bold">${Number(displayPrice).toFixed(2)}</span>
             </div>
           </div>
         </div>
