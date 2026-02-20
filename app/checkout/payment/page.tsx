@@ -66,7 +66,7 @@ export default function PaymentPage() {
   const [cryptoWallets, setCryptoWallets] = useState<Record<string, string>>({})
   const [loadingWallets, setLoadingWallets] = useState(false)
   const [copiedAddress, setCopiedAddress] = useState(false)
-  const [receivingWallet, setReceivingWallet] = useState<string>(process.env.NEXT_PUBLIC_RECEIVING_WALLET || '0x742d35Cc6634C0532925a3b844Bc9e7595f5bE21')
+  const [receivingWallet, setReceivingWallet] = useState<string>(process.env.NEXT_PUBLIC_RECEIVING_WALLET || '0x742d35cc6634c0532925a3b844bc9e7595f5be21')
   const [enabledProviders, setEnabledProviders] = useState({
     wallet: true, // MetaMask is always available
     manualCrypto: false,
