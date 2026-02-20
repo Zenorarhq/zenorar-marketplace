@@ -199,6 +199,12 @@ export default function AdminSettingsPage() {
   })
   const [twilioSaving, setTwilioSaving] = useState(false)
 
+  // Exchange Rate API Keys State
+  const [exchangeRateKeys, setExchangeRateKeys] = useState({
+    exchangerate_api_key: '',
+    coingecko_api_key: '',
+  })
+
   // Referral Program Settings State
   const [referralSettings, setReferralSettings] = useState({
     referralProgramEnabled: true,
@@ -337,6 +343,10 @@ export default function AdminSettingsPage() {
           twilio_account_sid: d.twilio_account_sid ?? prev.twilio_account_sid,
           twilio_auth_token: d.twilio_auth_token ?? prev.twilio_auth_token,
           twilio_phone_number: d.twilio_phone_number ?? prev.twilio_phone_number,
+        }))
+        setExchangeRateKeys((prev) => ({
+          exchangerate_api_key: d.exchangerate_api_key ?? prev.exchangerate_api_key,
+          coingecko_api_key: d.coingecko_api_key ?? prev.coingecko_api_key,
         }))
       }
     })
@@ -610,6 +620,9 @@ export default function AdminSettingsPage() {
       { key: 'twilio_account_sid', value: twilioSettings.twilio_account_sid, group: 'api', isPublic: false },
       { key: 'twilio_auth_token', value: twilioSettings.twilio_auth_token, group: 'api', isPublic: false },
       { key: 'twilio_phone_number', value: twilioSettings.twilio_phone_number, group: 'api', isPublic: false },
+      // Exchange Rate API keys
+      { key: 'exchangerate_api_key', value: exchangeRateKeys.exchangerate_api_key, group: 'api', isPublic: false },
+      { key: 'coingecko_api_key', value: exchangeRateKeys.coingecko_api_key, group: 'api', isPublic: false },
       // Payment settings - Web3 Wallet
       { key: 'walletEnabled', value: paymentSettings.walletEnabled, group: 'payments', isPublic: true },
       // Payment settings - Stripe
@@ -2264,6 +2277,36 @@ export default function AdminSettingsPage() {
                           placeholder="+1234567890"
                           className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
                         />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Exchange Rate API Configuration */}
+                  <div className="border-t border-[#2a2a2a] pt-6">
+                    <h3 className="text-white font-medium mb-4">Exchange Rate APIs</h3>
+                    <p className="text-slate-500 text-sm mb-4">Optional API keys for live currency exchange rates. Free endpoints are used when keys are not provided, but API keys give higher rate limits.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">ExchangeRate-API Key</label>
+                        <input
+                          type="password"
+                          value={exchangeRateKeys.exchangerate_api_key}
+                          onChange={(e) => setExchangeRateKeys({ ...exchangeRateKeys, exchangerate_api_key: e.target.value })}
+                          placeholder="Your ExchangeRate-API key (optional)"
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                        <p className="text-xs text-slate-600">For fiat currency rates (EUR, GBP, NGN, etc.)</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">CoinGecko API Key</label>
+                        <input
+                          type="password"
+                          value={exchangeRateKeys.coingecko_api_key}
+                          onChange={(e) => setExchangeRateKeys({ ...exchangeRateKeys, coingecko_api_key: e.target.value })}
+                          placeholder="Your CoinGecko API key (optional)"
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                        <p className="text-xs text-slate-600">For crypto rates (BTC, ETH, BNB, SOL, USDT)</p>
                       </div>
                     </div>
                   </div>

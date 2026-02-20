@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { apiFetch, getSessionId } from '@/lib/api/client'
 import { getBalance } from '@/lib/api/wallet'
-import { formatCurrency } from '@/lib/currency'
+import { formatCurrency, convertPrice, getStripeCurrency, getExchangeRate } from '@/lib/currency'
 
 // Crypto conversion rates (in production, fetch from API)
 const CRYPTO_RATES: Record<string, number> = {
@@ -51,7 +51,7 @@ export default function PaymentPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const { items, total, clearCart } = useCart()
-  const { formatPrice } = usePreferences()
+  const { formatPrice, preferences } = usePreferences()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('wallet')
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
@@ -226,7 +226,13 @@ export default function PaymentPage() {
   const finalTotal = subtotalAfterDiscount - walletAmountToApply
 
   const getCryptoAmount = (network: CryptoNetwork): string => {
-    const rate = CRYPTO_RATES[network] || 0.00042
+    // Stablecoins are always 1:1 with USD
+    const stablecoins = ['USDT_ERC20', 'USDT_BEP20', 'USDT_TRC20', 'USDC']
+    if (stablecoins.includes(network)) return (finalTotal * 1.0).toFixed(6)
+    // MATIC: legacy, not in live rates
+    if (network === 'MATIC') return (finalTotal * 1.25).toFixed(6)
+    // BTC, ETH, BNB, SOL: use live exchange rates
+    const rate = getExchangeRate(network)
     return (finalTotal * rate).toFixed(6)
   }
 
@@ -1102,6 +1108,7 @@ export default function PaymentPage() {
                     <Elements stripe={stripePromise}>
                       <StripeCardForm
                         amount={finalTotal}
+                        currency={getStripeCurrency(preferences.currency.code)}
                         items={items}
                         discountCode={discountCode}
                         discountAmount={discountAmount}
@@ -1124,6 +1131,7 @@ export default function PaymentPage() {
                   paystackPublicKey ? (
                     <PaystackCardForm
                       amount={finalTotal}
+                      currency={preferences.currency.code}
                       items={items}
                       discountCode={discountCode}
                       discountAmount={discountAmount}
@@ -1228,7 +1236,7 @@ export default function PaymentPage() {
                       <p className="text-white text-sm font-medium truncate">{item.product.name}</p>
                       <p className="text-slate-500 text-xs">Qty: {item.quantity}</p>
                     </div>
-                    <p className="text-white font-bold">${(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="text-white font-bold">{formatPrice(item.price * item.quantity)}</p>
                   </div>
                 ))}
               </div>
@@ -1236,12 +1244,12 @@ export default function PaymentPage() {
               <div className="border-t border-border-dark pt-4 space-y-3">
                 <div className="flex justify-between text-slate-400">
                   <span>Subtotal</span>
-                  <span className="text-white">${total.toFixed(2)}</span>
+                  <span className="text-white">{formatPrice(total)}</span>
                 </div>
                 {discountCode && discountAmount > 0 && (
                   <div className="flex justify-between text-slate-400">
                     <span>Discount <span className="text-xs text-primary">({discountCode})</span></span>
-                    <span className="text-primary">-${discountAmount.toFixed(2)}</span>
+                    <span className="text-primary">-{formatPrice(discountAmount)}</span>
                   </div>
                 )}
                 {walletAmountToApply > 0 && (
@@ -1250,16 +1258,16 @@ export default function PaymentPage() {
                       Wallet Credits
                       <Icon name="wallet" size={14} className="text-primary" />
                     </span>
-                    <span className="text-primary">-${walletAmountToApply.toFixed(2)}</span>
+                    <span className="text-primary">-{formatPrice(walletAmountToApply)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
-                  <span className="text-white">$0.00</span>
+                  <span className="text-white">{formatPrice(0)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-3 border-t border-border-dark">
                   <span className="text-white">Total</span>
-                  <span className="text-white">${finalTotal.toFixed(2)}</span>
+                  <span className="text-white">{formatPrice(finalTotal)}</span>
                 </div>
               </div>
             </div>
@@ -1275,6 +1283,7 @@ export default function PaymentPage() {
 // Stripe Card Form Component (must be rendered inside <Elements>)
 function StripeCardForm({
   amount,
+  currency,
   items,
   discountCode,
   discountAmount,
@@ -1284,6 +1293,7 @@ function StripeCardForm({
   onBack,
 }: {
   amount: number
+  currency: string
   items: any[]
   discountCode: string
   discountAmount: number
@@ -1349,11 +1359,12 @@ function StripeCardForm({
       const orderId = orderResult.data.id
       const orderNumber = orderResult.data.orderNumber
 
-      // 2. Create PaymentIntent
+      // 2. Create PaymentIntent in user's selected currency
+      const chargeAmount = currency === 'usd' ? amount : convertPrice(amount, currency.toUpperCase())
       const intentResponse = await fetch('/api/payments/stripe/create-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, orderId }),
+        body: JSON.stringify({ amount: chargeAmount, currency, orderId }),
       })
 
       if (!intentResponse.ok) {
@@ -1460,6 +1471,7 @@ function StripeCardForm({
 // Paystack Card Form Component (uses Paystack popup)
 function PaystackCardForm({
   amount,
+  currency,
   items,
   discountCode,
   discountAmount,
@@ -1470,6 +1482,7 @@ function PaystackCardForm({
   onBack,
 }: {
   amount: number
+  currency: string
   items: any[]
   discountCode: string
   discountAmount: number
@@ -1481,6 +1494,9 @@ function PaystackCardForm({
 }) {
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState('')
+
+  const PAYSTACK_SUPPORTED = ['NGN', 'GHS', 'ZAR', 'KES']
+  const isCurrencySupported = PAYSTACK_SUPPORTED.includes(currency.toUpperCase())
 
   const handlePayment = async () => {
     setProcessing(true)
@@ -1538,11 +1554,14 @@ function PaystackCardForm({
         throw new Error('Paystack is still loading. Please try again.')
       }
 
+      const paystackCurrency = isCurrencySupported ? currency.toUpperCase() : 'USD'
+      const chargeAmount = isCurrencySupported ? convertPrice(amount, currency.toUpperCase()) : amount
+
       const handler = PaystackPop.setup({
         key: publicKey,
         email: shippingData.email || 'customer@checkout.com',
-        amount: Math.round(amount * 100),
-        currency: 'USD',
+        amount: Math.round(chargeAmount * 100),
+        currency: paystackCurrency,
         ref: `ORDER_${orderNumber}_${Date.now()}`,
         callback: (response: any) => {
           // Wrap async verification in a non-async callback (Paystack requires a plain function)
@@ -1590,6 +1609,17 @@ function PaystackCardForm({
           <p className="text-2xl font-bold text-white">{formatPriceFn(amount)}</p>
         </div>
 
+        {!isCurrencySupported && (
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center">
+            <Icon name="info" size={20} className="text-yellow-500 mx-auto mb-2" />
+            <p className="text-yellow-400 text-sm font-bold mb-1">Currency Not Supported</p>
+            <p className="text-slate-400 text-xs">
+              Paystack does not support {currency.toUpperCase()} payments.
+              Please switch to NGN, GHS, ZAR, or KES in your currency preferences, or use a different payment method.
+            </p>
+          </div>
+        )}
+
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
             <p className="text-red-400 text-sm">{error}</p>
@@ -1609,7 +1639,7 @@ function PaystackCardForm({
         <button
           type="button"
           onClick={handlePayment}
-          disabled={processing}
+          disabled={processing || !isCurrencySupported}
           className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {processing ? (

@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
-import { formatPrice as formatPriceUtil } from '@/lib/currency'
+import { formatPrice as formatPriceUtil, setExchangeRates } from '@/lib/currency'
 
 interface Country {
   code: string
@@ -69,6 +69,18 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       }
       setIsLoaded(true)
     }
+  }, [])
+
+  // Fetch live exchange rates on mount
+  useEffect(() => {
+    fetch('/api/rates/current')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          setExchangeRates(data.data)
+        }
+      })
+      .catch(() => {}) // Fallback rates remain active
   }, [])
 
   // Save to localStorage whenever preferences change (after initial load)

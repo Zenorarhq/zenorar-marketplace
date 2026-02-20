@@ -54,16 +54,13 @@ export default function NotificationsDropdown({ isOpen, onClose, variant = 'drop
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications()
   const tz = useTimezone()
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        // Don't close if clicking on modal
-        if (!selectedNotification) {
-          onClose()
-        }
+        onClose()
       }
     }
 
@@ -74,16 +71,16 @@ export default function NotificationsDropdown({ isOpen, onClose, variant = 'drop
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isOpen, onClose, selectedNotification])
+  }, [isOpen, onClose])
 
   // Handle escape key
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (selectedNotification) {
-          setSelectedNotification(null)  // Close modal first if open
+        if (expandedId) {
+          setExpandedId(null)
         } else {
-          onClose()  // Otherwise close dropdown
+          onClose()
         }
       }
     }
@@ -95,7 +92,7 @@ export default function NotificationsDropdown({ isOpen, onClose, variant = 'drop
     return () => {
       document.removeEventListener('keydown', handleEscape)
     }
-  }, [isOpen, onClose, selectedNotification])
+  }, [isOpen, onClose, expandedId])
 
   if (!isOpen) return null
 
@@ -105,7 +102,7 @@ export default function NotificationsDropdown({ isOpen, onClose, variant = 'drop
     if (!notification.isRead) {
       markAsRead(notification.id)
     }
-    setSelectedNotification(notification)  // Open modal instead of navigating
+    setExpandedId(expandedId === notification.id ? null : notification.id)
   }
 
   const content = (
@@ -156,32 +153,48 @@ export default function NotificationsDropdown({ isOpen, onClose, variant = 'drop
             <p className="text-slate-600 text-xs mt-1">When you get notifications, they'll show up here</p>
           </div>
         ) : (
-          recent.map((notification) => (
-            <button
-              key={notification.id}
-              onClick={() => handleNotificationClick(notification)}
-              className={`w-full flex items-start gap-3 p-4 text-left transition-colors hover:bg-white/5 ${
-                !notification.isRead ? 'bg-white/[0.02] border-l-2 border-primary' : 'border-l-2 border-transparent'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${notificationColors[notification.type]}`}>
-                <Icon name={notificationIcons[notification.type] || 'bell'} size={16} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className={`text-sm font-medium truncate ${notification.isRead ? 'text-slate-300' : 'text-white'}`}>
-                    {notification.title}
-                  </p>
-                  <span className="text-[10px] text-slate-500 flex-shrink-0 mt-0.5">
-                    {formatTimeAgo(notification.createdAt, tz)}
-                  </span>
+          recent.map((notification) => {
+            const isExpanded = expandedId === notification.id
+            return (
+              <button
+                key={notification.id}
+                onClick={() => handleNotificationClick(notification)}
+                className={`w-full flex items-start gap-3 p-4 text-left transition-colors hover:bg-white/5 ${
+                  !notification.isRead ? 'bg-white/[0.02] border-l-2 border-primary' : 'border-l-2 border-transparent'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${notificationColors[notification.type]}`}>
+                  <Icon name={notificationIcons[notification.type] || 'bell'} size={16} />
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
-                  {notification.message}
-                </p>
-              </div>
-            </button>
-          ))
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className={`text-sm font-medium ${isExpanded ? '' : 'truncate'} ${notification.isRead ? 'text-slate-300' : 'text-white'}`}>
+                      {notification.title}
+                    </p>
+                    <span className="text-[10px] text-slate-500 flex-shrink-0 mt-0.5">
+                      {formatTimeAgo(notification.createdAt, tz)}
+                    </span>
+                  </div>
+                  <p className={`text-xs text-slate-500 mt-0.5 ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-1'}`}>
+                    {notification.message}
+                  </p>
+                  {isExpanded && notification.link && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onClose()
+                        router.push(notification.link!)
+                      }}
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:text-green-400 font-medium mt-2 cursor-pointer"
+                    >
+                      View Details
+                      <Icon name="arrow-right" size={12} />
+                    </span>
+                  )}
+                </div>
+              </button>
+            )
+          })
         )}
       </div>
 
@@ -213,67 +226,11 @@ export default function NotificationsDropdown({ isOpen, onClose, variant = 'drop
   }
 
   return (
-    <>
-      {/* Dropdown */}
-      <div
-        ref={dropdownRef}
-        className="absolute right-0 top-full mt-2 w-[380px] bg-[#0D0D0D] rounded-2xl shadow-2xl border border-white/10 z-[70]"
-      >
-        {content}
-      </div>
-
-      {/* Full Message Modal - Outside dropdown for independent z-index */}
-      {selectedNotification && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[80]"
-          onClick={() => setSelectedNotification(null)}
-        >
-          <div
-            className="bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] p-6 max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${notificationColors[selectedNotification.type]}`}>
-                  <Icon name={notificationIcons[selectedNotification.type] || 'bell'} size={16} />
-                </div>
-                <h3 className="text-white font-medium">{selectedNotification.title}</h3>
-              </div>
-              <button onClick={() => setSelectedNotification(null)}>
-                <Icon name="x" size={18} className="text-slate-400 hover:text-white" />
-              </button>
-            </div>
-
-            <p className="text-slate-300 text-sm mb-4 whitespace-pre-wrap">{selectedNotification.message}</p>
-
-            <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
-              <span>{formatTimeAgo(selectedNotification.createdAt, tz)}</span>
-              <span>{selectedNotification.isRead ? 'Read' : 'Unread'}</span>
-            </div>
-
-            <div className="flex gap-2">
-              {selectedNotification.link && (
-                <button
-                  onClick={() => {
-                    setSelectedNotification(null)
-                    onClose()
-                    router.push(selectedNotification.link!)
-                  }}
-                  className="flex-1 bg-primary hover:bg-primary/90 text-black font-medium px-4 py-2 rounded-lg transition-colors"
-                >
-                  View Details
-                </button>
-              )}
-              <button
-                onClick={() => setSelectedNotification(null)}
-                className="flex-1 bg-[#2a2a2a] hover:bg-[#3a3a3a] text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    <div
+      ref={dropdownRef}
+      className="absolute right-0 top-full mt-2 w-[380px] bg-[#0D0D0D] rounded-2xl shadow-2xl border border-white/10 z-[70]"
+    >
+      {content}
+    </div>
   )
 }

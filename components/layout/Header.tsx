@@ -86,7 +86,6 @@ export default function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null)
   const mobileUserMenuRef = useRef<HTMLDivElement>(null)
   const cartDropdownRef = useRef<HTMLDivElement>(null)
-  const notificationsDropdownRef = useRef<HTMLDivElement>(null)
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -186,18 +185,6 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showCartDropdown])
 
-  // Close notifications dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (notificationsDropdownRef.current && !notificationsDropdownRef.current.contains(event.target as Node)) {
-        setShowNotificationsDropdown(false)
-      }
-    }
-    if (showNotificationsDropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showNotificationsDropdown])
 
   return (
     <>
@@ -404,7 +391,7 @@ export default function Header() {
             <nav className="hidden md:flex items-center gap-3 lg:gap-4 text-sm font-medium text-slate-400 flex-shrink-0">
               {/* Notifications (authenticated only) */}
               {isAuthenticated && (
-                <div className="relative" ref={notificationsDropdownRef}>
+                <div className="relative">
                   <button
                     type="button"
                     onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}

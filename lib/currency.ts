@@ -6,9 +6,8 @@ export interface Currency {
   symbol: string
 }
 
-// Exchange rates relative to USD (base currency)
-// In production, these would be fetched from an API
-const exchangeRates: Record<string, number> = {
+// Fallback exchange rates relative to USD (used when live rates unavailable)
+const fallbackRates: Record<string, number> = {
   USD: 1,
   EUR: 0.92,
   GBP: 0.79,
@@ -20,6 +19,14 @@ const exchangeRates: Record<string, number> = {
   BNB: 0.0033,
   SOL: 0.0067,
   USDT: 1,
+}
+
+// Active exchange rates — updated with live data when available
+let exchangeRates: Record<string, number> = { ...fallbackRates }
+
+// Update exchange rates with live data
+export function setExchangeRates(rates: Record<string, number>) {
+  exchangeRates = { ...fallbackRates, ...rates, USD: 1 }
 }
 
 // Convert price from USD to target currency
@@ -73,6 +80,15 @@ export function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)
+}
+
+// Stripe-supported fiat currencies (lowercase, as Stripe expects)
+const STRIPE_SUPPORTED = new Set(['usd', 'eur', 'gbp', 'ngn', 'ghs'])
+
+// Returns Stripe-compatible currency code. Falls back to 'usd' for crypto or unsupported fiat.
+export function getStripeCurrency(preferenceCode: string): string {
+  const lower = preferenceCode.toLowerCase()
+  return STRIPE_SUPPORTED.has(lower) ? lower : 'usd'
 }
 
 // List of all supported currencies (for reference)
