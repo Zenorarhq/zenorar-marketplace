@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
@@ -14,13 +14,11 @@ import Link from 'next/link'
 type TransactionFilter = 'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'
 
 const depositMethodLabels: Record<DepositMethod, string> = {
-  CARD: 'Card',
+  STRIPE: 'Stripe',
   PAYSTACK: 'Paystack',
   PAYPAL: 'PayPal',
   BANK_TRANSFER: 'Bank Transfer',
-  CRYPTO_BTC: 'Bitcoin',
-  CRYPTO_ETH: 'Ethereum',
-  CRYPTO_USDT: 'USDT',
+  CRYPTO: 'Crypto',
 }
 
 const depositStatusConfig: Record<DepositStatus, { label: string; color: string }> = {
@@ -34,17 +32,60 @@ const depositStatusConfig: Record<DepositStatus, { label: string; color: string 
 
 function WalletPageContent() {
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const [filter, setFilter] = useState<TransactionFilter>('all')
   const [showDepositModal, setShowDepositModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'transactions' | 'deposits'>('transactions')
+  const [depositMessage, setDepositMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  // Auto-open deposit modal or show success on redirect back from payment gateways
+  // Handle PayPal and other payment gateway redirects
   useEffect(() => {
     const deposit = searchParams.get('deposit')
-    if (deposit === 'success') {
-      // Payment completed, show success notification
+    const depositId = searchParams.get('depositId')
+
+    const handlePayPalCapture = async () => {
+      if (deposit === 'paypal_success' && depositId) {
+        try {
+          // Get PayPal order ID from URL if present, otherwise get from deposit record
+          const token = searchParams.get('token') // PayPal adds this
+          const response = await fetch('/api/deposits/paypal/capture', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(localStorage.getItem('auth_token') && {
+                Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+              }),
+            },
+            body: JSON.stringify({ depositId, orderId: token }),
+          })
+          const result = await response.json()
+
+          if (result.success) {
+            setDepositMessage({ type: 'success', text: 'PayPal payment successful! Your wallet has been credited.' })
+            // Refresh wallet balance
+            queryClient.invalidateQueries({ queryKey: ['wallet'] })
+            queryClient.invalidateQueries({ queryKey: ['deposits'] })
+          } else {
+            setDepositMessage({ type: 'error', text: result.error || 'Failed to complete PayPal payment' })
+          }
+        } catch (err) {
+          console.error('PayPal capture error:', err)
+          setDepositMessage({ type: 'error', text: 'Failed to complete PayPal payment. Please contact support.' })
+        }
+
+        // Clear URL params after handling
+        window.history.replaceState({}, '', '/profile/wallet')
+      } else if (deposit === 'cancelled') {
+        setDepositMessage({ type: 'error', text: 'Payment was cancelled.' })
+        window.history.replaceState({}, '', '/profile/wallet')
+      } else if (deposit === 'success') {
+        setDepositMessage({ type: 'success', text: 'Payment completed successfully!' })
+        window.history.replaceState({}, '', '/profile/wallet')
+      }
     }
-  }, [searchParams])
+
+    handlePayPalCapture()
+  }, [searchParams, queryClient])
 
   // Fetch wallet balance
   const { data: walletData, isLoading: walletLoading, refetch: refetchBalance } = useQuery({
@@ -131,21 +172,30 @@ function WalletPageContent() {
       <DepositModal isOpen={showDepositModal} onClose={handleDepositModalClose} />
 
       {/* Header */}
-      <div className="mb-10 pb-6 border-b border-border-dark flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Wallet & Credits</h1>
-          <p className="text-slate-400">
-            Manage your balance and track transactions.
-          </p>
-        </div>
-        <button
-          onClick={() => setShowDepositModal(true)}
-          className="flex-shrink-0 px-6 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center gap-2"
-        >
-          <Icon name="plus" size={20} />
-          Add Money
-        </button>
+      <div className="mb-10 pb-6 border-b border-border-dark">
+        <h1 className="text-3xl font-bold text-white mb-2">Wallet & Credits</h1>
+        <p className="text-slate-400">
+          Manage your balance and track transactions.
+        </p>
       </div>
+
+      {/* Deposit Status Message */}
+      {depositMessage && (
+        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+          depositMessage.type === 'success'
+            ? 'bg-green-500/10 border border-green-500/20 text-green-500'
+            : 'bg-red-500/10 border border-red-500/20 text-red-500'
+        }`}>
+          <Icon name={depositMessage.type === 'success' ? 'check-circle' : 'x-circle'} size={20} />
+          <span className="text-sm font-medium">{depositMessage.text}</span>
+          <button
+            onClick={() => setDepositMessage(null)}
+            className="ml-auto text-slate-500 hover:text-white"
+          >
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Balance Card */}
       <div className="mb-12">

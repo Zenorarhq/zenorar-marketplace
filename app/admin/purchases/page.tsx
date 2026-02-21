@@ -6,6 +6,58 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
+import { apiFetch } from '@/lib/api/client'
+
+// Crypto payment data interface
+interface CryptoPayment {
+  id: string
+  orderId: string
+  orderNumber: string
+  network: string
+  receivingAddress: string
+  expectedAmount: string
+  usdAmount: string
+  userTxHash: string | null
+  status: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'FAILED' | 'MANUALLY_CONFIRMED'
+  txHash: string | null
+  confirmedAmount: string | null
+  confirmations: number
+  initiatedAt: string
+  expiresAt: string
+  confirmedAt: string | null
+  lastCheckedAt: string | null
+  adminNote: string | null
+  explorerUrl: string | null
+  userExplorerUrl: string | null
+}
+
+// Blockchain explorer URLs
+const BLOCKCHAIN_EXPLORERS: Record<string, string> = {
+  BTC: 'https://blockstream.info/tx/',
+  ETH: 'https://etherscan.io/tx/',
+  USDT_ERC20: 'https://etherscan.io/tx/',
+  USDC: 'https://etherscan.io/tx/',
+  BNB: 'https://bscscan.com/tx/',
+  USDT_BEP20: 'https://bscscan.com/tx/',
+  TRON: 'https://tronscan.org/#/transaction/',
+  USDT_TRC20: 'https://tronscan.org/#/transaction/',
+  SOL: 'https://solscan.io/tx/',
+}
+
+function getCryptoStatusColor(status: string) {
+  switch (status) {
+    case 'CONFIRMED':
+    case 'MANUALLY_CONFIRMED':
+      return 'bg-green-500/10 text-green-400'
+    case 'PENDING':
+      return 'bg-yellow-500/10 text-yellow-400'
+    case 'EXPIRED':
+    case 'FAILED':
+      return 'bg-red-500/10 text-red-400'
+    default:
+      return 'bg-slate-500/10 text-slate-400'
+  }
+}
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDate } from '@/lib/date-utils'
 
@@ -78,6 +130,11 @@ export default function PurchasesPage() {
   const [updatingTracking, setUpdatingTracking] = useState(false)
   const [trackingInput, setTrackingInput] = useState('')
   const [statusNote, setStatusNote] = useState('')
+  const [cryptoPayment, setCryptoPayment] = useState<CryptoPayment | null>(null)
+  const [cryptoLoading, setCryptoLoading] = useState(false)
+  const [markingPaid, setMarkingPaid] = useState(false)
+  const [adminTxHash, setAdminTxHash] = useState('')
+  const [adminPaymentNote, setAdminPaymentNote] = useState('')
   const itemsPerPage = 10
 
   // Fetch orders
@@ -118,19 +175,40 @@ export default function PurchasesPage() {
     queryClient.invalidateQueries({ queryKey: ['admin-orders-stats'] })
   }
 
-  // Load detail order
+  // Load detail order and crypto payment
   useEffect(() => {
     if (!selectedOrderId) {
       setDetailOrder(null)
+      setCryptoPayment(null)
+      setAdminTxHash('')
+      setAdminPaymentNote('')
       return
     }
     setDetailLoading(true)
+    setCryptoLoading(true)
+
+    // Fetch order details
     ordersApi.getById(selectedOrderId).then((result) => {
       if (result.success && result.data) {
         setDetailOrder(result.data)
         setTrackingInput(result.data.trackingNumber || '')
       }
     }).finally(() => setDetailLoading(false))
+
+    // Fetch crypto payment details
+    apiFetch<CryptoPayment | null>(`/admin/orders/${selectedOrderId}/crypto-payment`)
+      .then((result) => {
+        if (result.success && result.data) {
+          setCryptoPayment(result.data)
+          if (result.data.userTxHash) {
+            setAdminTxHash(result.data.userTxHash)
+          }
+        } else {
+          setCryptoPayment(null)
+        }
+      })
+      .catch(() => setCryptoPayment(null))
+      .finally(() => setCryptoLoading(false))
   }, [selectedOrderId])
 
   // Filtering
@@ -225,6 +303,37 @@ export default function PurchasesPage() {
       }
     } catch { alert('Network error') }
     finally { setUpdatingTracking(false) }
+  }
+
+  async function handleMarkPaid() {
+    if (!detailOrder) return
+    setMarkingPaid(true)
+    try {
+      const result = await apiFetch<{ data: any }>(`/admin/orders/${detailOrder.id}/mark-paid`, {
+        method: 'POST',
+        body: JSON.stringify({
+          txHash: adminTxHash || null,
+          adminNote: adminPaymentNote || null,
+          cryptoPaymentId: cryptoPayment?.id || null
+        })
+      })
+      if (result.success) {
+        // Refresh order details
+        const orderResult = await ordersApi.getById(detailOrder.id)
+        if (orderResult.success && orderResult.data) {
+          setDetailOrder(orderResult.data)
+        }
+        // Update crypto payment status
+        if (cryptoPayment) {
+          setCryptoPayment({ ...cryptoPayment, status: 'MANUALLY_CONFIRMED' })
+        }
+        refreshData()
+        alert('Order marked as paid successfully')
+      } else {
+        alert(result.error || 'Failed to mark as paid')
+      }
+    } catch { alert('Network error') }
+    finally { setMarkingPaid(false) }
   }
 
   const loading = ordersLoading || statsLoading
@@ -612,6 +721,186 @@ export default function PurchasesPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Crypto Payment Section */}
+                {cryptoLoading ? (
+                  <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    </div>
+                  </div>
+                ) : cryptoPayment && (
+                  <div className="bg-[#141414] border border-yellow-500/20 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-white font-semibold text-sm flex items-center gap-2">
+                        <Icon name="wallet" size={16} className="text-yellow-500" />
+                        Crypto Payment
+                      </h4>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getCryptoStatusColor(cryptoPayment.status)}`}>
+                        {cryptoPayment.status.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 text-sm">
+                      {/* Network & Amount */}
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Network</span>
+                        <span className="text-white font-medium">{cryptoPayment.network}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Expected Amount</span>
+                        <span className="text-white">{Number(cryptoPayment.expectedAmount).toFixed(8)} ({cryptoPayment.network})</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">USD Value</span>
+                        <span className="text-white">${Number(cryptoPayment.usdAmount).toFixed(2)}</span>
+                      </div>
+
+                      {/* Receiving Address */}
+                      <div>
+                        <p className="text-slate-400 text-xs mb-1">Receiving Address</p>
+                        <p className="text-white text-xs font-mono bg-[#1a1a1a] px-2 py-1 rounded break-all">
+                          {cryptoPayment.receivingAddress}
+                        </p>
+                      </div>
+
+                      {/* User TX Hash */}
+                      {cryptoPayment.userTxHash && (
+                        <div>
+                          <p className="text-slate-400 text-xs mb-1">User TX Hash</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-white text-xs font-mono bg-[#1a1a1a] px-2 py-1 rounded break-all flex-1">
+                              {cryptoPayment.userTxHash}
+                            </p>
+                            {cryptoPayment.userExplorerUrl && (
+                              <a
+                                href={cryptoPayment.userExplorerUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:text-primary/80 p-1"
+                                title="View on blockchain explorer"
+                              >
+                                <Icon name="external-link" size={14} />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Confirmed TX Hash */}
+                      {cryptoPayment.txHash && (
+                        <div>
+                          <p className="text-slate-400 text-xs mb-1">Confirmed TX Hash</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-green-400 text-xs font-mono bg-green-500/10 px-2 py-1 rounded break-all flex-1">
+                              {cryptoPayment.txHash}
+                            </p>
+                            {cryptoPayment.explorerUrl && (
+                              <a
+                                href={cryptoPayment.explorerUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:text-primary/80 p-1"
+                                title="View on blockchain explorer"
+                              >
+                                <Icon name="external-link" size={14} />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Timing */}
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Initiated</span>
+                        <span className="text-slate-400">{formatDate(cryptoPayment.initiatedAt, tz)}</span>
+                      </div>
+                      {cryptoPayment.status === 'PENDING' && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Expires</span>
+                          <span className="text-yellow-400">{formatDate(cryptoPayment.expiresAt, tz)}</span>
+                        </div>
+                      )}
+                      {cryptoPayment.confirmedAt && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Confirmed</span>
+                          <span className="text-green-400">{formatDate(cryptoPayment.confirmedAt, tz)}</span>
+                        </div>
+                      )}
+
+                      {/* Manual Verification Section */}
+                      {detailOrder.paymentStatus !== 'PAID' && (cryptoPayment.status === 'PENDING' || cryptoPayment.status === 'EXPIRED') && (
+                        <div className="pt-3 border-t border-[#1f1f1f] space-y-3">
+                          <h5 className="text-white font-semibold text-xs">Manual Verification</h5>
+
+                          {/* Blockchain Explorer Link */}
+                          {BLOCKCHAIN_EXPLORERS[cryptoPayment.network] && (
+                            <a
+                              href={`${BLOCKCHAIN_EXPLORERS[cryptoPayment.network]}${cryptoPayment.userTxHash || ''}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-primary text-xs hover:underline"
+                            >
+                              <Icon name="external-link" size={12} />
+                              View on {cryptoPayment.network} Explorer
+                            </a>
+                          )}
+
+                          {/* TX Hash Input */}
+                          <div>
+                            <label className="text-slate-400 text-xs mb-1 block">Transaction Hash</label>
+                            <input
+                              type="text"
+                              value={adminTxHash}
+                              onChange={(e) => setAdminTxHash(e.target.value)}
+                              placeholder="Enter verified TX hash..."
+                              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-3 py-2 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-slate-600"
+                            />
+                          </div>
+
+                          {/* Admin Note */}
+                          <div>
+                            <label className="text-slate-400 text-xs mb-1 block">Admin Note (optional)</label>
+                            <input
+                              type="text"
+                              value={adminPaymentNote}
+                              onChange={(e) => setAdminPaymentNote(e.target.value)}
+                              placeholder="Add verification note..."
+                              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-slate-600"
+                            />
+                          </div>
+
+                          {/* Mark as Paid Button */}
+                          <button
+                            onClick={handleMarkPaid}
+                            disabled={markingPaid}
+                            className="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-2 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {markingPaid ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <Icon name="check" size={16} />
+                                Mark as Paid
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Admin Note Display */}
+                      {cryptoPayment.adminNote && (
+                        <div className="pt-2 border-t border-[#1f1f1f]">
+                          <p className="text-slate-500 text-xs mb-1">Admin Note:</p>
+                          <p className="text-slate-300 text-xs">{cryptoPayment.adminNote}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Items */}
                 <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">

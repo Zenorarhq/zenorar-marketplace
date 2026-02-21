@@ -510,6 +510,18 @@ const iconMap = {
 
   // Shapes (using available icons as alternatives)
   'hexagon': SparklesIcon, // BNB/crypto icon alternative
+
+  // Payment providers - these will be handled as custom SVGs in the component
+  'stripe': null as any,
+  'paystack': null as any,
+  'paypal': null as any,
+
+  // Crypto icons (using bitcoin as fallback for all crypto)
+  'ethereum': Bitcoin01Icon,
+  'usdt': Bitcoin01Icon,
+  'solana': Bitcoin01Icon,
+  'bnb': Bitcoin01Icon,
+  'tron': Bitcoin01Icon,
 }
 
 type IconName = keyof typeof iconMap
@@ -522,6 +534,29 @@ interface IconProps {
   color?: string
 }
 
+// Custom SVG icons for payment providers
+const PayPalIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M19.5 8.5C19.5 5.5 17 3.5 13.5 3.5H7L4 20.5H8L9 14.5H12.5C16.5 14.5 19.5 12 19.5 8.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M21 11C21 14 18.5 16.5 15 16.5H12L11 21H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+)
+
+const StripeIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M12 8C10.5 8 9.5 8.5 9.5 9.5C9.5 11.5 14.5 10.5 14.5 13.5C14.5 14.8 13.2 16 11 16C9.5 16 8 15.5 7 14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 6V8M12 16V18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
+
+const PaystackIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M7 8H17M7 12H14M7 16H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
+
 export default function Icon({
   name,
   size = 24,
@@ -529,6 +564,17 @@ export default function Icon({
   strokeWidth = 1.5,
   color,
 }: IconProps) {
+  // Handle custom payment provider icons
+  if (name === 'paypal') {
+    return <PayPalIcon size={size} className={className} />
+  }
+  if (name === 'stripe') {
+    return <StripeIcon size={size} className={className} />
+  }
+  if (name === 'paystack') {
+    return <PaystackIcon size={size} className={className} />
+  }
+
   const IconComponent = iconMap[name as IconName]
 
   if (!IconComponent) {

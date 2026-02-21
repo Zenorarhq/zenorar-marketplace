@@ -176,6 +176,12 @@ export default function AdminSettingsPage() {
     depositPaypalEnabled: true,
     depositCryptoEnabled: true,
     depositBankEnabled: true,
+    // Bank Transfer Account Details
+    bankAccountName: '',
+    bankAccountNumber: '',
+    bankBankName: '',
+    bankRoutingNumber: '',
+    bankInstructions: '',
   })
   const [showStripeSecrets, setShowStripeSecrets] = useState<Record<string, boolean>>({})
   const [showPaystackSecrets, setShowPaystackSecrets] = useState<Record<string, boolean>>({})
@@ -332,6 +338,12 @@ export default function AdminSettingsPage() {
           depositPaypalEnabled: d.depositPaypalEnabled ?? prev.depositPaypalEnabled,
           depositCryptoEnabled: d.depositCryptoEnabled ?? prev.depositCryptoEnabled,
           depositBankEnabled: d.depositBankEnabled ?? prev.depositBankEnabled,
+          // Bank Transfer Account Details
+          bankAccountName: d.bankAccountName ?? prev.bankAccountName,
+          bankAccountNumber: d.bankAccountNumber ?? prev.bankAccountNumber,
+          bankBankName: d.bankBankName ?? prev.bankBankName,
+          bankRoutingNumber: d.bankRoutingNumber ?? prev.bankRoutingNumber,
+          bankInstructions: d.bankInstructions ?? prev.bankInstructions,
         }))
       }
     })
@@ -678,6 +690,12 @@ export default function AdminSettingsPage() {
       { key: 'depositPaypalEnabled', value: paymentSettings.depositPaypalEnabled, group: 'payments', isPublic: true },
       { key: 'depositCryptoEnabled', value: paymentSettings.depositCryptoEnabled, group: 'payments', isPublic: true },
       { key: 'depositBankEnabled', value: paymentSettings.depositBankEnabled, group: 'payments', isPublic: true },
+      // Bank Transfer Account Details
+      { key: 'bankAccountName', value: paymentSettings.bankAccountName, group: 'payments', isPublic: true },
+      { key: 'bankAccountNumber', value: paymentSettings.bankAccountNumber, group: 'payments', isPublic: true },
+      { key: 'bankBankName', value: paymentSettings.bankBankName, group: 'payments', isPublic: true },
+      { key: 'bankRoutingNumber', value: paymentSettings.bankRoutingNumber, group: 'payments', isPublic: true },
+      { key: 'bankInstructions', value: paymentSettings.bankInstructions, group: 'payments', isPublic: true },
       // Referral Program settings
       { key: 'referralProgramEnabled', value: referralSettings.referralProgramEnabled, group: 'referral', isPublic: true },
       { key: 'referrerRewardAmount', value: referralSettings.referrerRewardAmount, group: 'referral', isPublic: false },
@@ -2186,6 +2204,77 @@ export default function AdminSettingsPage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Bank Transfer Account Details */}
+                  {paymentSettings.depositBankEnabled && (
+                    <div className="mt-6 p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
+                      <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+                        <Icon name="bank" size={18} className="text-primary" />
+                        Bank Transfer Account Details
+                      </h4>
+                      <p className="text-slate-500 text-xs mb-4">
+                        Configure the bank account where customers should send transfers. These details will be shown to users during checkout.
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300">
+                            Account Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="John Doe"
+                            value={paymentSettings.bankAccountName}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, bankAccountName: e.target.value })}
+                            className="w-full bg-black border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300">
+                            Account Number <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="1234567890"
+                            value={paymentSettings.bankAccountNumber}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, bankAccountNumber: e.target.value })}
+                            className="w-full bg-black border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300">
+                            Bank Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Chase Bank"
+                            value={paymentSettings.bankBankName}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, bankBankName: e.target.value })}
+                            className="w-full bg-black border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-300">Routing / Sort Code</label>
+                          <input
+                            type="text"
+                            placeholder="021000021"
+                            value={paymentSettings.bankRoutingNumber}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, bankRoutingNumber: e.target.value })}
+                            className="w-full bg-black border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="text-sm font-medium text-slate-300">Transfer Instructions</label>
+                          <textarea
+                            placeholder="Additional instructions for customers (e.g., reference format, processing time)..."
+                            value={paymentSettings.bankInstructions}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, bankInstructions: e.target.value })}
+                            rows={3}
+                            className="w-full bg-black border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50 resize-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

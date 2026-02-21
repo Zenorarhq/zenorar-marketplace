@@ -56,6 +56,7 @@ export default function PaymentPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('wallet')
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
   const [paystackPublicKey, setPaystackPublicKey] = useState<string>('')
+  const [paystackKeyLoaded, setPaystackKeyLoaded] = useState(false)
   const [selectedNetwork, setSelectedNetwork] = useState<CryptoNetwork>('BTC')
   const [walletState, setWalletState] = useState<WalletState>({
     address: null,
@@ -82,6 +83,16 @@ export default function PaymentPage() {
     paypal: false,
   })
   const [useWalletBalance, setUseWalletBalance] = useState(true)
+
+  // Crypto verification state
+  const [cryptoPaymentInitiated, setCryptoPaymentInitiated] = useState(false)
+  const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null)
+  const [cryptoVerificationStatus, setCryptoVerificationStatus] = useState<'idle' | 'pending' | 'confirmed' | 'expired'>('idle')
+  const [cryptoTimeRemaining, setCryptoTimeRemaining] = useState<number>(45 * 60 * 1000) // 45 minutes in ms
+  const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null)
+  const [userTxHash, setUserTxHash] = useState<string>('')
+  const [confirmedTxHash, setConfirmedTxHash] = useState<string>('')
+  const [explorerUrl, setExplorerUrl] = useState<string>('')
 
   // Fetch wallet balance for authenticated users
   const { data: walletData, isLoading: walletLoading } = useQuery({
@@ -197,14 +208,28 @@ export default function PaymentPage() {
   // Load Paystack public key + script when Paystack is enabled
   useEffect(() => {
     if (enabledProviders.paystack) {
-      fetch('/api/payments/paystack/config')
-        .then(res => res.json())
+      // Try Railway first (fast), fall back to local API (reliable)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      fetch(`${apiUrl}/payments/paystack/config`)
+        .then(res => {
+          if (!res.ok) throw new Error('Railway failed')
+          return res.json()
+        })
+        .catch(() => {
+          // Fallback to local API route
+          console.log('Falling back to local Paystack config')
+          return fetch('/api/payments/paystack/config').then(res => res.json())
+        })
         .then(data => {
           if (data.data?.publicKey) {
             setPaystackPublicKey(data.data.publicKey)
           }
+          setPaystackKeyLoaded(true)
         })
-        .catch(err => console.error('Failed to load Paystack config:', err))
+        .catch(err => {
+          console.error('Failed to load Paystack config:', err)
+          setPaystackKeyLoaded(true) // Mark as loaded even on error to stop infinite loading
+        })
 
       // Load Paystack inline script
       if (!document.querySelector('script[src*="paystack"]')) {
@@ -215,6 +240,71 @@ export default function PaymentPage() {
       }
     }
   }, [enabledProviders.paystack])
+
+  // Polling effect for crypto payment verification
+  useEffect(() => {
+    if (!pendingPaymentId || cryptoVerificationStatus !== 'pending') return
+
+    let pollInterval: NodeJS.Timeout | null = null
+    let countdownInterval: NodeJS.Timeout | null = null
+
+    // Poll every 30 seconds for blockchain verification
+    const checkPayment = async () => {
+      try {
+        const response = await fetch(`/api/payments/crypto/check/${pendingPaymentId}`)
+        const result = await response.json()
+
+        if (result.success) {
+          setLastCheckTime(new Date())
+
+          if (result.data.status === 'CONFIRMED' || result.data.status === 'MANUALLY_CONFIRMED') {
+            setCryptoVerificationStatus('confirmed')
+            setConfirmedTxHash(result.data.txHash || '')
+            setExplorerUrl(result.data.explorerUrl || '')
+            // Clear intervals
+            if (pollInterval) clearInterval(pollInterval)
+            if (countdownInterval) clearInterval(countdownInterval)
+            // Redirect to success after delay
+            setTimeout(() => {
+              clearCart()
+              const orderNumber = sessionStorage.getItem('pending_order_number') || ''
+              router.push(`/checkout/success?txHash=${result.data.txHash || ''}&orderNumber=${orderNumber}`)
+            }, 3000)
+          } else if (result.data.status === 'EXPIRED') {
+            setCryptoVerificationStatus('expired')
+            if (pollInterval) clearInterval(pollInterval)
+            if (countdownInterval) clearInterval(countdownInterval)
+          } else {
+            setCryptoTimeRemaining(result.data.timeRemaining || 0)
+          }
+        }
+      } catch (error) {
+        console.error('Payment check error:', error)
+      }
+    }
+
+    // Initial check
+    checkPayment()
+
+    // Start polling every 30 seconds
+    pollInterval = setInterval(checkPayment, 30000)
+
+    // Countdown timer (update every second)
+    countdownInterval = setInterval(() => {
+      setCryptoTimeRemaining(prev => {
+        if (prev <= 1000) {
+          setCryptoVerificationStatus('expired')
+          return 0
+        }
+        return prev - 1000
+      })
+    }, 1000)
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+      if (countdownInterval) clearInterval(countdownInterval)
+    }
+  }, [pendingPaymentId, cryptoVerificationStatus, clearCart, router])
 
   // Calculate totals (subtract discount and wallet balance if applicable)
   const subtotalAfterDiscount = total - discountAmount
@@ -232,6 +322,99 @@ export default function PaymentPage() {
     // BTC, ETH, BNB, SOL, TRON: use live exchange rates
     const rate = getExchangeRate(network)
     return (finalTotal * rate).toFixed(6)
+  }
+
+  // Format time remaining as MM:SS
+  const formatTimeRemaining = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  // Initiate crypto payment verification (when user clicks "I've Sent Payment")
+  const initiateCryptoVerification = async () => {
+    if (!cryptoWallets[selectedNetwork]) {
+      setWalletError('Wallet address not configured for this network')
+      return
+    }
+
+    setPaymentStatus('paying')
+    setWalletError('')
+
+    try {
+      // Create order first
+      const order = await createOrder()
+      sessionStorage.setItem('pending_order_number', order.orderNumber)
+
+      // Initiate payment verification
+      const response = await fetch('/api/payments/crypto/initiate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': getSessionId(),
+          ...(localStorage.getItem('auth_token') && {
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          }),
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          network: selectedNetwork,
+          receivingAddress: cryptoWallets[selectedNetwork],
+          expectedAmount: getCryptoAmount(selectedNetwork),
+          usdAmount: finalTotal,
+          userTxHash: userTxHash || undefined,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setPendingPaymentId(result.data.paymentId)
+        setCryptoTimeRemaining(new Date(result.data.expiresAt).getTime() - Date.now())
+        setCryptoVerificationStatus('pending')
+        setCryptoPaymentInitiated(true)
+        setPaymentStatus('confirming')
+      } else {
+        throw new Error(result.error || 'Failed to initiate payment verification')
+      }
+    } catch (error: any) {
+      console.error('Payment initiation error:', error)
+      setWalletError(error.message || 'Failed to initiate payment verification')
+      setPaymentStatus('error')
+    }
+  }
+
+  // Update user transaction hash
+  const updateUserTxHash = async () => {
+    if (!pendingPaymentId || !userTxHash) return
+
+    try {
+      const response = await fetch(`/api/payments/crypto/check/${pendingPaymentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userTxHash }),
+      })
+      const result = await response.json()
+      if (result.success) {
+        setExplorerUrl(result.data.explorerUrl || '')
+      }
+    } catch (error) {
+      console.error('Failed to update transaction hash:', error)
+    }
+  }
+
+  // Reset crypto verification state
+  const resetCryptoVerification = () => {
+    setCryptoPaymentInitiated(false)
+    setPendingPaymentId(null)
+    setCryptoVerificationStatus('idle')
+    setCryptoTimeRemaining(45 * 60 * 1000)
+    setUserTxHash('')
+    setConfirmedTxHash('')
+    setExplorerUrl('')
+    setPaymentStatus('idle')
+    setWalletError('')
   }
 
   // Connect wallet - Routes to appropriate wallet based on selected network
@@ -932,7 +1115,7 @@ export default function PaymentPage() {
                         paymentMethod === 'stripe' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
                       }`}
                     >
-                      <Icon name="credit-card" size={28} className="text-primary mb-2" />
+                      <Icon name="stripe" size={28} className="text-primary mb-2" />
                       <div className="text-white font-bold text-sm">Credit Card</div>
                       <div className="text-slate-500 text-[10px] mt-1">Stripe</div>
                       {paymentMethod === 'stripe' && (
@@ -951,7 +1134,7 @@ export default function PaymentPage() {
                         paymentMethod === 'paystack' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
                       }`}
                     >
-                      <Icon name="credit-card" size={28} className="text-primary mb-2" />
+                      <Icon name="paystack" size={28} className="text-primary mb-2" />
                       <div className="text-white font-bold text-sm">Debit Card</div>
                       <div className="text-slate-500 text-[10px] mt-1">Paystack</div>
                       {paymentMethod === 'paystack' && (
@@ -970,7 +1153,7 @@ export default function PaymentPage() {
                         paymentMethod === 'paypal' ? 'border-primary ring-2 ring-primary/20' : 'border-border-dark hover:border-slate-700'
                       }`}
                     >
-                      <Icon name="wallet" size={28} className="text-primary mb-2" />
+                      <Icon name="paypal" size={28} className="text-primary mb-2" />
                       <div className="text-white font-bold text-sm">PayPal</div>
                       <div className="text-slate-500 text-[10px] mt-1">Express Checkout</div>
                       {paymentMethod === 'paypal' && (
@@ -1276,12 +1459,181 @@ export default function PaymentPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-                      <Icon name="info" size={20} className="text-yellow-500" />
-                      <p className="text-slate-300 text-xs">
-                        Please send the exact amount to the wallet address. Your order will be processed after payment confirmation.
-                      </p>
-                    </div>
+                    {/* Show info message when not initiated */}
+                    {!cryptoPaymentInitiated && (
+                      <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                        <Icon name="info" size={20} className="text-yellow-500" />
+                        <p className="text-slate-300 text-xs">
+                          Please send the exact amount to the wallet address, then click "I've Sent the Payment" below.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Payment Verification Flow - Pending State */}
+                    {cryptoPaymentInitiated && cryptoVerificationStatus === 'pending' && (
+                      <div className="bg-gradient-to-br from-yellow-500/10 via-yellow-500/5 to-transparent border border-yellow-500/20 rounded-xl p-6 space-y-4">
+                        <div className="text-center">
+                          <Icon name="loading" size={40} className="text-yellow-500 mx-auto mb-3 animate-spin" />
+                          <h4 className="text-white font-bold text-lg mb-2">Waiting for Payment</h4>
+                          <p className="text-slate-400 text-sm">
+                            We're checking the blockchain for your payment...
+                          </p>
+                        </div>
+
+                        {/* Countdown Timer */}
+                        <div className="bg-surface-dark rounded-xl p-4 text-center">
+                          <p className="text-slate-400 text-xs mb-1">Time Remaining</p>
+                          <p className="text-3xl font-mono font-bold text-yellow-400">
+                            {formatTimeRemaining(cryptoTimeRemaining)}
+                          </p>
+                        </div>
+
+                        {/* Transaction Hash Input */}
+                        <div className="space-y-2">
+                          <label className="text-slate-400 text-xs">[Optional] Enter your transaction hash for faster verification:</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={userTxHash}
+                              onChange={(e) => setUserTxHash(e.target.value)}
+                              placeholder="0x... or transaction ID"
+                              className="flex-1 bg-surface-dark border border-border-dark rounded-lg px-3 py-2 text-white text-sm font-mono placeholder:text-slate-600 focus:border-primary focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={updateUserTxHash}
+                              disabled={!userTxHash}
+                              className="bg-primary/20 text-primary px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/30 transition-colors disabled:opacity-50"
+                            >
+                              Save
+                            </button>
+                          </div>
+                          {explorerUrl && (
+                            <a
+                              href={explorerUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary text-xs hover:underline flex items-center gap-1"
+                            >
+                              <Icon name="external-link" size={12} />
+                              View on blockchain explorer
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Last Check Info */}
+                        {lastCheckTime && (
+                          <p className="text-slate-500 text-xs text-center">
+                            Last checked: {lastCheckTime.toLocaleTimeString()}
+                            <br />
+                            Checking every 30 seconds...
+                          </p>
+                        )}
+
+                        {/* Cancel Button */}
+                        <button
+                          type="button"
+                          onClick={resetCryptoVerification}
+                          className="w-full bg-surface-dark border border-border-dark text-slate-400 py-3 rounded-xl hover:border-red-500/50 hover:text-red-400 transition-colors text-sm"
+                        >
+                          Cancel and Start Over
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Payment Confirmed State */}
+                    {cryptoVerificationStatus === 'confirmed' && (
+                      <div className="bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent border border-green-500/20 rounded-xl p-6 text-center space-y-4">
+                        <Icon name="check-circle" size={48} className="text-green-500 mx-auto" />
+                        <div>
+                          <h4 className="text-green-400 font-bold text-lg mb-2">Payment Confirmed!</h4>
+                          <p className="text-slate-400 text-sm">
+                            Your payment has been verified on the blockchain
+                          </p>
+                        </div>
+                        {confirmedTxHash && (
+                          <div className="bg-surface-dark rounded-lg p-3">
+                            <p className="text-slate-400 text-xs mb-1">Transaction Hash:</p>
+                            <p className="text-white text-xs font-mono break-all">
+                              {confirmedTxHash}
+                            </p>
+                            {explorerUrl && (
+                              <a
+                                href={explorerUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary text-xs hover:underline mt-2 inline-flex items-center gap-1"
+                              >
+                                <Icon name="external-link" size={12} />
+                                View on explorer
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        <p className="text-primary text-sm">Redirecting to order confirmation...</p>
+                      </div>
+                    )}
+
+                    {/* Payment Expired State */}
+                    {cryptoVerificationStatus === 'expired' && (
+                      <div className="bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent border border-red-500/20 rounded-xl p-6 text-center space-y-4">
+                        <Icon name="x-circle" size={48} className="text-red-500 mx-auto" />
+                        <div>
+                          <h4 className="text-red-400 font-bold text-lg mb-2">Payment Window Expired</h4>
+                          <p className="text-slate-400 text-sm">
+                            We couldn't detect your payment within the 45-minute window.
+                          </p>
+                          <p className="text-slate-500 text-xs mt-2">
+                            If you've sent payment, please contact support with your transaction hash.
+                          </p>
+                        </div>
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={resetCryptoVerification}
+                            className="flex-1 bg-primary text-black font-bold py-3 rounded-xl hover:brightness-105 transition-all"
+                          >
+                            Try Again
+                          </button>
+                          <Link
+                            href="/support"
+                            className="flex-1 bg-surface-dark border border-border-dark text-white font-medium py-3 rounded-xl hover:border-primary/50 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Icon name="message-circle" size={18} />
+                            Contact Support
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* "I've Sent Payment" Button - Only show when wallet configured and not initiated */}
+                    {!cryptoPaymentInitiated && cryptoWallets[selectedNetwork] && (
+                      <button
+                        type="button"
+                        onClick={initiateCryptoVerification}
+                        disabled={paymentStatus === 'paying'}
+                        className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {paymentStatus === 'paying' ? (
+                          <>
+                            <Icon name="loading" size={20} className="animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <Icon name="check" size={20} />
+                            I've Sent the Payment
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Error Message */}
+                    {walletError && (
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+                        <p className="text-red-400 text-sm">{walletError}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1311,7 +1663,7 @@ export default function PaymentPage() {
 
                 {/* Paystack Payment (Secure Popup) */}
                 {paymentMethod === 'paystack' && (
-                  paystackPublicKey ? (
+                  paystackKeyLoaded ? (
                     <PaystackCardForm
                       amount={finalTotal}
                       currency={preferences.currency.code}
@@ -1641,7 +1993,7 @@ function StripeCardForm({
             </>
           ) : (
             <>
-              <Icon name="credit-card" size={20} />
+              <Icon name="stripe" size={20} />
               Pay {formatPriceFn(amount)}
             </>
           )}
@@ -1680,6 +2032,7 @@ function PaystackCardForm({
 
   const PAYSTACK_SUPPORTED = ['NGN', 'GHS', 'ZAR', 'KES']
   const isCurrencySupported = PAYSTACK_SUPPORTED.includes(currency.toUpperCase())
+  const isKeyMissing = !publicKey
 
   const handlePayment = async () => {
     setProcessing(true)
@@ -1782,7 +2135,7 @@ function PaystackCardForm({
     <div className="space-y-6">
       <div className="bg-charcoal border border-border-dark rounded-xl p-6 space-y-6">
         <div className="text-center">
-          <Icon name="credit-card" size={48} className="text-primary mx-auto mb-4" />
+          <Icon name="paystack" size={48} className="text-primary mx-auto mb-4" />
           <h3 className="text-white font-bold mb-2">Pay with Card</h3>
           <p className="text-slate-500 text-sm">Secure payments via Paystack — supports Visa, Mastercard, Verve, and mobile money</p>
         </div>
@@ -1792,7 +2145,17 @@ function PaystackCardForm({
           <p className="text-2xl font-bold text-white">{formatPriceFn(amount)}</p>
         </div>
 
-        {!isCurrencySupported && (
+        {isKeyMissing && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
+            <Icon name="alert" size={20} className="text-red-500 mx-auto mb-2" />
+            <p className="text-red-400 text-sm font-bold mb-1">Configuration Error</p>
+            <p className="text-slate-400 text-xs">
+              Paystack is not configured properly. Please try again later or use a different payment method.
+            </p>
+          </div>
+        )}
+
+        {!isCurrencySupported && !isKeyMissing && (
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center">
             <Icon name="info" size={20} className="text-yellow-500 mx-auto mb-2" />
             <p className="text-yellow-400 text-sm font-bold mb-1">Currency Not Supported</p>
@@ -1822,7 +2185,7 @@ function PaystackCardForm({
         <button
           type="button"
           onClick={handlePayment}
-          disabled={processing || !isCurrencySupported}
+          disabled={processing || !isCurrencySupported || isKeyMissing}
           className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {processing ? (
@@ -1832,7 +2195,7 @@ function PaystackCardForm({
             </>
           ) : (
             <>
-              <Icon name="credit-card" size={20} />
+              <Icon name="paystack" size={20} />
               Pay {formatPriceFn(amount)}
             </>
           )}

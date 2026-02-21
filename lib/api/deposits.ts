@@ -1,6 +1,8 @@
-import { apiFetch, ApiResponse } from './client'
+import { localApiFetch, ApiResponse } from './client'
 
-export type DepositMethod = 'CARD' | 'PAYSTACK' | 'PAYPAL' | 'BANK_TRANSFER' | 'CRYPTO_BTC' | 'CRYPTO_ETH' | 'CRYPTO_USDT'
+// Updated deposit methods - STRIPE instead of CARD, crypto networks
+export type DepositMethod = 'STRIPE' | 'PAYSTACK' | 'PAYPAL' | 'BANK_TRANSFER' | 'CRYPTO'
+export type CryptoNetwork = 'BTC' | 'ETH' | 'USDT' | 'SOL' | 'BNB' | 'TRON'
 export type DepositStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'EXPIRED'
 
 export interface Deposit {
@@ -34,7 +36,7 @@ export interface DepositsListResponse {
   }
 }
 
-export interface CardDepositResponse {
+export interface StripeDepositResponse {
   depositId: string
   clientSecret: string
   intentId: string
@@ -57,6 +59,7 @@ export interface CryptoDepositResponse {
   depositId: string
   address: string
   network: string
+  networkLabel: string
   instructions: string
 }
 
@@ -73,20 +76,23 @@ export interface BankTransferResponse {
 }
 
 /**
- * Initiate a card deposit (Stripe)
+ * Initiate a Stripe deposit
  */
-export async function initiateCardDeposit(amount: number): Promise<ApiResponse<CardDepositResponse>> {
-  return apiFetch<CardDepositResponse>('/deposits/card', {
+export async function initiateStripeDeposit(amount: number): Promise<ApiResponse<StripeDepositResponse>> {
+  return localApiFetch<StripeDepositResponse>('/deposits/stripe', {
     method: 'POST',
     body: JSON.stringify({ amount }),
   })
 }
 
+// Legacy alias for backward compatibility
+export const initiateCardDeposit = initiateStripeDeposit
+
 /**
  * Initiate a Paystack deposit (redirects to hosted checkout)
  */
 export async function initiatePaystackDeposit(amount: number): Promise<ApiResponse<PaystackDepositResponse>> {
-  return apiFetch<PaystackDepositResponse>('/deposits/paystack', {
+  return localApiFetch<PaystackDepositResponse>('/deposits/paystack', {
     method: 'POST',
     body: JSON.stringify({ amount }),
   })
@@ -96,14 +102,14 @@ export async function initiatePaystackDeposit(amount: number): Promise<ApiRespon
  * Verify a Paystack payment by reference (called after redirect)
  */
 export async function verifyPaystackDeposit(reference: string): Promise<ApiResponse<Deposit>> {
-  return apiFetch<Deposit>(`/deposits/paystack/verify?reference=${encodeURIComponent(reference)}`)
+  return localApiFetch<Deposit>(`/deposits/paystack/verify?reference=${encodeURIComponent(reference)}`)
 }
 
 /**
  * Initiate a PayPal deposit
  */
 export async function initiatePayPalDeposit(amount: number): Promise<ApiResponse<PayPalDepositResponse>> {
-  return apiFetch<PayPalDepositResponse>('/deposits/paypal', {
+  return localApiFetch<PayPalDepositResponse>('/deposits/paypal', {
     method: 'POST',
     body: JSON.stringify({ amount }),
   })
@@ -113,7 +119,7 @@ export async function initiatePayPalDeposit(amount: number): Promise<ApiResponse
  * Capture PayPal payment after user approves
  */
 export async function capturePayPalDeposit(depositId: string, orderId: string): Promise<ApiResponse<Deposit>> {
-  return apiFetch<Deposit>('/deposits/paypal/capture', {
+  return localApiFetch<Deposit>('/deposits/paypal/capture', {
     method: 'POST',
     body: JSON.stringify({ depositId, orderId }),
   })
@@ -121,14 +127,16 @@ export async function capturePayPalDeposit(depositId: string, orderId: string): 
 
 /**
  * Initiate a crypto deposit (get wallet address)
+ * @param amount - USD amount to deposit
+ * @param network - Crypto network: BTC, ETH, USDT, SOL, BNB, TRON
  */
 export async function initiateCryptoDeposit(
   amount: number,
-  cryptoType: 'CRYPTO_BTC' | 'CRYPTO_ETH' | 'CRYPTO_USDT'
+  network: CryptoNetwork
 ): Promise<ApiResponse<CryptoDepositResponse>> {
-  return apiFetch<CryptoDepositResponse>('/deposits/crypto', {
+  return localApiFetch<CryptoDepositResponse>('/deposits/crypto', {
     method: 'POST',
-    body: JSON.stringify({ amount, cryptoType }),
+    body: JSON.stringify({ amount, network }),
   })
 }
 
@@ -136,7 +144,7 @@ export async function initiateCryptoDeposit(
  * Submit crypto transaction hash for verification
  */
 export async function submitCryptoTxHash(depositId: string, txHash: string): Promise<ApiResponse<Deposit>> {
-  return apiFetch<Deposit>(`/deposits/${depositId}/crypto-txhash`, {
+  return localApiFetch<Deposit>(`/deposits/${depositId}/crypto-txhash`, {
     method: 'POST',
     body: JSON.stringify({ txHash }),
   })
@@ -146,7 +154,7 @@ export async function submitCryptoTxHash(depositId: string, txHash: string): Pro
  * Initiate a bank transfer deposit
  */
 export async function initiateBankTransfer(amount: number): Promise<ApiResponse<BankTransferResponse>> {
-  return apiFetch<BankTransferResponse>('/deposits/bank', {
+  return localApiFetch<BankTransferResponse>('/deposits/bank', {
     method: 'POST',
     body: JSON.stringify({ amount }),
   })
@@ -156,7 +164,7 @@ export async function initiateBankTransfer(amount: number): Promise<ApiResponse<
  * Upload bank transfer proof of payment
  */
 export async function uploadBankProof(depositId: string, proofUrl: string): Promise<ApiResponse<Deposit>> {
-  return apiFetch<Deposit>(`/deposits/${depositId}/bank-proof`, {
+  return localApiFetch<Deposit>(`/deposits/${depositId}/bank-proof`, {
     method: 'POST',
     body: JSON.stringify({ proofUrl }),
   })
@@ -166,7 +174,7 @@ export async function uploadBankProof(depositId: string, proofUrl: string): Prom
  * Cancel a pending deposit
  */
 export async function cancelDeposit(depositId: string): Promise<ApiResponse<void>> {
-  return apiFetch<void>(`/deposits/${depositId}/cancel`, {
+  return localApiFetch<void>(`/deposits/${depositId}/cancel`, {
     method: 'POST',
   })
 }
@@ -186,14 +194,14 @@ export async function getMyDeposits(
   if (status) params.set('status', status)
   if (method) params.set('method', method)
 
-  return apiFetch<DepositsListResponse>(`/deposits/my?${params.toString()}`)
+  return localApiFetch<DepositsListResponse>(`/deposits/my?${params.toString()}`)
 }
 
 /**
  * Get deposit by ID
  */
 export async function getMyDepositById(depositId: string): Promise<ApiResponse<Deposit>> {
-  return apiFetch<Deposit>(`/deposits/my/${depositId}`)
+  return localApiFetch<Deposit>(`/deposits/my/${depositId}`)
 }
 
 /**
@@ -213,21 +221,21 @@ export async function getAllDeposits(
   if (method) params.set('method', method)
   if (search) params.set('search', search)
 
-  return apiFetch(`/deposits?${params.toString()}`)
+  return localApiFetch(`/deposits?${params.toString()}`)
 }
 
 /**
  * Get deposit stats (admin)
  */
 export async function getDepositStats(): Promise<ApiResponse<any>> {
-  return apiFetch('/deposits/stats')
+  return localApiFetch('/deposits/stats')
 }
 
 /**
  * Approve a deposit (admin - for bank/crypto)
  */
 export async function approveDeposit(depositId: string): Promise<ApiResponse<void>> {
-  return apiFetch<void>(`/deposits/${depositId}/approve`, {
+  return localApiFetch<void>(`/deposits/${depositId}/approve`, {
     method: 'POST',
   })
 }
@@ -236,7 +244,7 @@ export async function approveDeposit(depositId: string): Promise<ApiResponse<voi
  * Reject a deposit (admin)
  */
 export async function rejectDeposit(depositId: string, reason: string): Promise<ApiResponse<void>> {
-  return apiFetch<void>(`/deposits/${depositId}/reject`, {
+  return localApiFetch<void>(`/deposits/${depositId}/reject`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
   })

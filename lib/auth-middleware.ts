@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAccessToken, TokenPayload } from './auth-utils'
 import db from './db'
 
+// Railway backend URL for auth verification
+const RAILWAY_API = process.env.NEXT_PUBLIC_API_URL || 'https://api-production-8db8.up.railway.app/api'
+
 export interface AuthenticatedUser {
   id: string
   email: string
@@ -27,35 +30,55 @@ export async function authenticateRequest(request: NextRequest): Promise<Authent
     }
 
     const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+
+    // First try local verification (for tokens created locally)
     const payload = verifyAccessToken(token)
-
-    if (!payload) {
-      return null
-    }
-
-    // Handle both Railway JWT format (id) and local format (userId)
-    const userId = payload.userId || (payload as any).id
-
-    if (!userId) {
-      return null
-    }
-
-    // Verify user still exists
-    const client = await db.connect()
-    try {
-      const result = await client.query(
-        'SELECT id, email, name, role, avatar FROM users WHERE id = $1',
-        [userId]
-      )
-
-      if (result.rows.length === 0) {
-        return null
+    if (payload) {
+      const userId = payload.userId || (payload as any).id
+      if (userId) {
+        // Verify user still exists in DB
+        const client = await db.connect()
+        try {
+          const result = await client.query(
+            'SELECT id, email, name, role, avatar FROM users WHERE id = $1',
+            [userId]
+          )
+          if (result.rows.length > 0) {
+            return result.rows[0]
+          }
+        } finally {
+          client.release()
+        }
       }
-
-      return result.rows[0]
-    } finally {
-      client.release()
     }
+
+    // Fallback: verify against Railway backend (for tokens created by Railway)
+    try {
+      const railwayRes = await fetch(`${RAILWAY_API}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (railwayRes.ok) {
+        const data = await railwayRes.json()
+        if (data.success && data.data?.user) {
+          const user = data.data.user
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            avatar: user.avatar,
+          }
+        }
+      }
+    } catch (railwayError) {
+      console.error('Railway auth verification error:', railwayError)
+    }
+
+    return null
   } catch (error) {
     console.error('Authentication error:', error)
     return null

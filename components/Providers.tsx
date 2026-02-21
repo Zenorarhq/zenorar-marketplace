@@ -10,6 +10,7 @@ import { WishlistProvider } from '@/hooks/use-wishlist'
 import { NotificationsProvider } from '@/hooks/use-notifications'
 import { SiteSettingsProvider } from '@/contexts/SiteSettingsContext'
 import LiveChat from '@/components/LiveChat'
+import EmailPromptWrapper from '@/components/auth/EmailPromptWrapper'
 
 interface ProvidersProps {
   children: ReactNode
@@ -42,6 +43,7 @@ export default function Providers({ children }: ProvidersProps) {
                   <NotificationsProvider>
                     {children}
                     <LiveChat />
+                    <EmailPromptWrapper />
                   </NotificationsProvider>
                 </WishlistProvider>
               </CartProvider>

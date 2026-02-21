@@ -13,6 +13,8 @@ const fallbackRates: Record<string, number> = {
   GBP: 0.79,
   NGN: 1550,
   GHS: 15.5,
+  ZAR: 18.5,
+  KES: 153,
   CNY: 7.24,
   BTC: 0.000016,
   ETH: 0.00042,
@@ -91,6 +93,14 @@ export function getStripeCurrency(preferenceCode: string): string {
   return STRIPE_SUPPORTED.has(lower) ? lower : 'usd'
 }
 
+// Paystack supported currencies
+export const PAYSTACK_CURRENCIES = [
+  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
+  { code: 'GHS', name: 'Ghanaian Cedi', symbol: '₵' },
+  { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
+  { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
+]
+
 // List of all supported currencies (for reference)
 export const supportedCurrencies: Currency[] = [
   { code: 'USD', name: 'US Dollar', symbol: '$' },
@@ -98,6 +108,8 @@ export const supportedCurrencies: Currency[] = [
   { code: 'GBP', name: 'British Pound', symbol: '£' },
   { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
   { code: 'GHS', name: 'Ghanaian Cedi', symbol: '₵' },
+  { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
+  { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
   { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
   { code: 'BTC', name: 'Bitcoin', symbol: '₿' },
   { code: 'ETH', name: 'Ethereum', symbol: 'Ξ' },
