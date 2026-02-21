@@ -155,6 +155,7 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
   const [, setSettings] = useState<any>(null)
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
   const [paystackPublicKey, setPaystackPublicKey] = useState('')
+  const [paystackScriptReady, setPaystackScriptReady] = useState(false)
   const [paystackCurrency, setPaystackCurrency] = useState('NGN') // Default to NGN
   const [exchangeRatesLoaded, setExchangeRatesLoaded] = useState(false)
   const [paystackEmail, setPaystackEmail] = useState('') // Email input for Paystack
@@ -260,11 +261,22 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
         if (data.data?.publicKey) {
           setPaystackPublicKey(data.data.publicKey)
           // Load Paystack script
-          if (!document.querySelector('script[src*="paystack"]')) {
+          if ((window as any).PaystackPop) {
+            setPaystackScriptReady(true)
+          } else if (!document.querySelector('script[src*="paystack"]')) {
             const script = document.createElement('script')
             script.src = 'https://js.paystack.co/v1/inline.js'
             script.async = true
+            script.onload = () => setPaystackScriptReady(true)
             document.head.appendChild(script)
+          } else {
+            // Script tag exists but still loading — poll until ready
+            const poll = setInterval(() => {
+              if ((window as any).PaystackPop) {
+                setPaystackScriptReady(true)
+                clearInterval(poll)
+              }
+            }, 100)
           }
         }
       })
@@ -459,6 +471,10 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
           throw new Error(createData.error || 'Failed to create deposit')
         }
         const paystackDepositId = createData.data.depositId
+
+        if (!(window as any).PaystackPop) {
+          throw new Error('Payment system is still loading. Please wait a moment and try again.')
+        }
 
         const handler = (window as any).PaystackPop.setup({
           key: paystackPublicKey,

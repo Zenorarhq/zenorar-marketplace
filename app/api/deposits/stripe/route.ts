@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     // Create deposit record in database
     const depositResult = await executeQuery(
       `INSERT INTO deposits (user_id, amount, currency, payment_method, status)
-       VALUES ($1, $2, $3, 'STRIPE', 'PENDING')
+       VALUES ($1, $2, $3, 'CARD', 'PENDING')
        RETURNING id`,
       [user.id, amount, currency.toUpperCase()]
     )
