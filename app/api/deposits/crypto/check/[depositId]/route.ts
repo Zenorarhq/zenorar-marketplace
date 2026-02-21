@@ -100,43 +100,43 @@ export async function GET(
     })
 
     if (verification.found && verification.txHash) {
-      // Payment found! Update deposit status
-      await executeQuery(
-        `UPDATE deposits
-         SET status = 'COMPLETED', crypto_tx_hash = $2, crypto_amount = $3,
-             completed_at = NOW(), updated_at = NOW()
-         WHERE id = $1`,
-        [depositId, verification.txHash, verification.amount]
-      )
-
-      // Credit wallet via external backend
+      // Payment found! Complete deposit via Railway API
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
       const authHeader = request.headers.get('authorization')
 
       try {
-        const creditResponse = await fetch(`${apiUrl}/wallet/credit`, {
+        const completeResponse = await fetch(`${apiUrl}/deposits/${depositId}/crypto-complete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(authHeader && { Authorization: authHeader }),
           },
           body: JSON.stringify({
-            userId: deposit.user_id,
-            amount: parseFloat(deposit.amount),
-            description: `Crypto deposit (${deposit.crypto_network}) #${depositId.slice(0, 8)}`,
+            txHash: verification.txHash,
+            amount: verification.amount,
           }),
         })
 
-        if (!creditResponse.ok) {
-          console.error('Failed to credit wallet for crypto deposit:', await creditResponse.text())
-          // Mark for manual review but still return success to user
+        if (!completeResponse.ok) {
+          const errorText = await completeResponse.text()
+          console.error('Failed to complete crypto deposit:', errorText)
+          // Update local record for manual review
           await executeQuery(
-            `UPDATE deposits SET failure_reason = 'Wallet credit failed - requires manual review', updated_at = NOW() WHERE id = $1`,
+            `UPDATE deposits SET failure_reason = 'Completion failed - requires manual review', updated_at = NOW() WHERE id = $1`,
             [depositId]
+          )
+        } else {
+          // Update local record to match Railway
+          await executeQuery(
+            `UPDATE deposits
+             SET status = 'COMPLETED', crypto_tx_hash = $2, crypto_amount = $3,
+                 completed_at = NOW(), updated_at = NOW()
+             WHERE id = $1`,
+            [depositId, verification.txHash, verification.amount]
           )
         }
       } catch (creditError) {
-        console.error('Credit wallet error:', creditError)
+        console.error('Complete crypto deposit error:', creditError)
       }
 
       return NextResponse.json({

@@ -235,15 +235,24 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 >
                   <div className="relative flex-shrink-0">
                     <Icon name={item.icon} size={20} />
-                    {/* Notification dot for pending items */}
+                    {/* Red dot ON ICON - shows when collapsed or mobile */}
                     {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
                       (item.href === '/admin/purchases' && pendingCounts?.orders && pendingCounts.orders > 0)) && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#111111]" />
+                      <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#111111] ${
+                        desktopCollapsed ? '' : 'lg:hidden'
+                      }`} />
                     )}
                   </div>
-                  {/* Label - hidden on mobile, shown on desktop when not collapsed */}
+                  {/* Label with inline red dot - hidden on mobile, shown on expanded desktop */}
                   {!desktopCollapsed && (
-                    <span className="text-sm font-medium hidden lg:block">{item.label}</span>
+                    <span className="text-sm font-medium hidden lg:flex items-center gap-2">
+                      {item.label}
+                      {/* Red dot AFTER TEXT - only on expanded desktop */}
+                      {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
+                        (item.href === '/admin/purchases' && pendingCounts?.orders && pendingCounts.orders > 0)) && (
+                        <span className="w-2 h-2 bg-red-500 rounded-full" />
+                      )}
+                    </span>
                   )}
                 </Link>
                 {/* Tooltip - shows on mobile always, on desktop only when collapsed */}

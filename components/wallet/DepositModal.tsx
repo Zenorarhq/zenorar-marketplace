@@ -74,8 +74,9 @@ function StripeCardForm({
       if (error) {
         onError(error.message || 'Payment failed')
       } else if (paymentIntent?.status === 'succeeded') {
-        // Confirm deposit via local API route (credits wallet)
-        await fetch('/api/deposits/stripe/confirm', {
+        // Confirm deposit via Railway API (credits wallet)
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+        const confirmRes = await fetch(`${apiUrl}/deposits/${depositId}/stripe-complete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -83,11 +84,12 @@ function StripeCardForm({
               Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
             }),
           },
-          body: JSON.stringify({
-            depositId,
-            paymentIntentId: paymentIntent.id,
-          }),
+          body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
         })
+        const confirmResult = await confirmRes.json()
+        if (!confirmRes.ok || !confirmResult.success) {
+          console.error('Stripe completion failed:', confirmResult)
+        }
         onSuccess()
       } else {
         onError('Payment was not completed')
@@ -442,25 +444,26 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
           currency: paystackCurrency, // Use selected currency (NGN, GHS, ZAR, KES)
           ref: depositRef,
           callback: (response: any) => {
-            // Wrap async verification in a non-async callback (Paystack requires a plain function)
-            fetch(`${apiUrl}/wallet/deposit/paystack`, {
-              method: 'POST',
+            // Verify payment via Railway API endpoint
+            fetch(`${apiUrl}/deposits/paystack/verify?reference=${encodeURIComponent(response.reference)}`, {
+              method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
                 ...(localStorage.getItem('auth_token') && {
                   Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
                 }),
               },
-              body: JSON.stringify({
-                amount: finalAmount, // Credit wallet in USD
-                reference: response.reference,
-                currency: paystackCurrency, // For verification
-                chargedAmount: chargeAmount, // What was actually charged
-              }),
             })
-              .then(() => {
-                queryClient.invalidateQueries({ queryKey: ['wallet'] })
-                setStep('success')
+              .then(res => res.json())
+              .then(result => {
+                if (result.success) {
+                  queryClient.invalidateQueries({ queryKey: ['wallet'] })
+                  queryClient.invalidateQueries({ queryKey: ['deposits'] })
+                  setStep('success')
+                } else {
+                  setError('Payment verification failed. Please contact support.')
+                }
+                setLoading(false)
               })
               .catch(() => {
                 setError('Payment verification failed. Please contact support.')
