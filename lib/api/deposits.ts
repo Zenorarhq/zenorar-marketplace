@@ -1,4 +1,4 @@
-import { localApiFetch, ApiResponse } from './client'
+import { apiFetch, localApiFetch, ApiResponse } from './client'
 
 // Updated deposit methods - STRIPE instead of CARD, crypto networks
 export type DepositMethod = 'STRIPE' | 'PAYSTACK' | 'PAYPAL' | 'BANK_TRANSFER' | 'CRYPTO'
@@ -194,14 +194,14 @@ export async function getMyDeposits(
   if (status) params.set('status', status)
   if (method) params.set('method', method)
 
-  return localApiFetch<DepositsListResponse>(`/deposits/my?${params.toString()}`)
+  return apiFetch<DepositsListResponse>(`/deposits/my?${params.toString()}`)
 }
 
 /**
  * Get deposit by ID
  */
 export async function getMyDepositById(depositId: string): Promise<ApiResponse<Deposit>> {
-  return localApiFetch<Deposit>(`/deposits/my/${depositId}`)
+  return apiFetch<Deposit>(`/deposits/my/${depositId}`)
 }
 
 /**
@@ -221,21 +221,21 @@ export async function getAllDeposits(
   if (method) params.set('method', method)
   if (search) params.set('search', search)
 
-  return localApiFetch(`/deposits?${params.toString()}`)
+  return apiFetch(`/deposits?${params.toString()}`)
 }
 
 /**
  * Get deposit stats (admin)
  */
 export async function getDepositStats(): Promise<ApiResponse<any>> {
-  return localApiFetch('/deposits/stats')
+  return apiFetch('/deposits/stats')
 }
 
 /**
  * Approve a deposit (admin - for bank/crypto)
  */
 export async function approveDeposit(depositId: string): Promise<ApiResponse<void>> {
-  return localApiFetch<void>(`/deposits/${depositId}/approve`, {
+  return apiFetch<void>(`/deposits/${depositId}/approve`, {
     method: 'POST',
   })
 }
@@ -244,7 +244,7 @@ export async function approveDeposit(depositId: string): Promise<ApiResponse<voi
  * Reject a deposit (admin)
  */
 export async function rejectDeposit(depositId: string, reason: string): Promise<ApiResponse<void>> {
-  return localApiFetch<void>(`/deposits/${depositId}/reject`, {
+  return apiFetch<void>(`/deposits/${depositId}/reject`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
   })

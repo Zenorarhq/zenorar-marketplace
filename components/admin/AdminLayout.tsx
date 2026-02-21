@@ -70,6 +70,23 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     enabled: isAuthenticated,
   })
 
+  // Fetch pending counts for nav badges (deposits, orders)
+  const { data: pendingCounts } = useQuery({
+    queryKey: ['admin-pending-counts'],
+    queryFn: async () => {
+      const [depositsRes, ordersRes] = await Promise.all([
+        apiFetch<{ count: number }>('/deposits/pending-count'),
+        apiFetch<{ count: number }>('/orders/pending-count'),
+      ])
+      return {
+        deposits: depositsRes.data?.count || 0,
+        orders: ordersRes.data?.count || 0,
+      }
+    },
+    refetchInterval: 30000,
+    enabled: isAuthenticated,
+  })
+
   // Fetch branding settings for logo
   const { data: brandingData } = useQuery({
     queryKey: ['branding-settings'],
@@ -216,7 +233,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       : 'text-slate-400 hover:bg-white/5 hover:text-white'
                   }`}
                 >
-                  <Icon name={item.icon} size={20} className="flex-shrink-0" />
+                  <div className="relative flex-shrink-0">
+                    <Icon name={item.icon} size={20} />
+                    {/* Notification dot for pending items */}
+                    {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
+                      (item.href === '/admin/purchases' && pendingCounts?.orders && pendingCounts.orders > 0)) && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#111111]" />
+                    )}
+                  </div>
                   {/* Label - hidden on mobile, shown on desktop when not collapsed */}
                   {!desktopCollapsed && (
                     <span className="text-sm font-medium hidden lg:block">{item.label}</span>

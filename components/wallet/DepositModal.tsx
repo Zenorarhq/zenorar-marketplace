@@ -25,6 +25,7 @@ const CRYPTO_OPTIONS: { id: CryptoNetwork; label: string; settingKey: string }[]
 interface DepositModalProps {
   isOpen: boolean
   onClose: () => void
+  onBackToWallet?: () => void
 }
 
 // Stripe Card Form component - uses local API routes
@@ -131,7 +132,7 @@ function StripeCardForm({
   )
 }
 
-export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
+export default function DepositModal({ isOpen, onClose, onBackToWallet }: DepositModalProps) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [method, setMethod] = useState<PaymentMethod>('stripe')
@@ -1152,6 +1153,12 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                           {proofUrl || proofFile ? 'Proof submitted!' : 'Transfer noted!'} Admin will verify and credit your wallet.
                         </p>
                         <p className="text-slate-500 text-xs mt-2">This usually takes up to 30 minutes during business hours.</p>
+                        <button
+                          onClick={() => { onClose(); onBackToWallet?.() }}
+                          className="mt-4 w-full py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all"
+                        >
+                          Back to Wallet
+                        </button>
                       </div>
                     )}
                   </div>

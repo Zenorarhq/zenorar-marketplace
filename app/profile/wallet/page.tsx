@@ -109,7 +109,8 @@ function WalletPageContent() {
         throw new Error(result.error || 'Failed to load transactions')
       }
       return result.data
-    }
+    },
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes - don't refetch on tab switch
   })
 
   // Fetch deposit history
@@ -123,6 +124,7 @@ function WalletPageContent() {
       return result.data
     },
     enabled: activeTab === 'deposits',
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes - don't refetch on tab switch
   })
 
   const formatDate = (dateString: string) => {
@@ -169,7 +171,14 @@ function WalletPageContent() {
   return (
     <ProfileLayout>
       {/* Deposit modal */}
-      <DepositModal isOpen={showDepositModal} onClose={handleDepositModalClose} />
+      <DepositModal
+        isOpen={showDepositModal}
+        onClose={handleDepositModalClose}
+        onBackToWallet={() => {
+          setActiveTab('deposits')
+          queryClient.invalidateQueries({ queryKey: ['deposits', 'my'] })
+        }}
+      />
 
       {/* Header */}
       <div className="mb-10 pb-6 border-b border-border-dark">
@@ -391,13 +400,6 @@ function WalletPageContent() {
               <Icon name="arrow-down-circle" size={20} className="text-primary" />
               Deposit History
             </h3>
-            <button
-              onClick={() => setShowDepositModal(true)}
-              className="px-4 py-2 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center gap-2 text-sm"
-            >
-              <Icon name="plus" size={16} />
-              New Deposit
-            </button>
           </div>
 
           {depositsLoading ? (
