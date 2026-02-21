@@ -612,16 +612,35 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
     try {
       const formData = new FormData()
       formData.append('file', proofFile)
-      const uploadRes = await fetch('/api/media/upload', {
+
+      // Try Railway API first, fallback to local
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      let uploadRes = await fetch(`${apiUrl}/deposits/upload-proof`, {
         method: 'POST',
         body: formData,
-        credentials: 'include',
+        headers: {
+          ...(localStorage.getItem('auth_token') && {
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          }),
+        },
       })
+
+      // Fallback to local upload if Railway fails
+      if (!uploadRes.ok) {
+        console.log('Railway upload failed, trying local')
+        uploadRes = await fetch('/api/media/upload', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        })
+      }
+
       const uploadData = await uploadRes.json()
-      if (!uploadRes.ok || !uploadData.url) {
+      const imageUrl = uploadData.data?.url || uploadData.url
+      if (!uploadRes.ok || !imageUrl) {
         throw new Error(uploadData.error || 'Failed to upload image')
       }
-      await handleBankProofSubmit(uploadData.url)
+      await handleBankProofSubmit(imageUrl)
     } catch (err: any) {
       setError(err.message || 'Failed to upload proof')
     } finally {
