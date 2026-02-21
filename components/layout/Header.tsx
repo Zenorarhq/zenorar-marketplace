@@ -316,14 +316,6 @@ export default function Header() {
                 {showMobileUserMenu && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
                     <Link
-                      href="/profile"
-                      onClick={() => setShowMobileUserMenu(false)}
-                      className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
-                    >
-                      <Icon name="user" size={16} />
-                      My Profile
-                    </Link>
-                    <Link
                       href="/profile/orders"
                       onClick={() => setShowMobileUserMenu(false)}
                       className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
@@ -346,6 +338,14 @@ export default function Header() {
                     >
                       <Icon name="heart" size={16} />
                       Wishlist
+                    </Link>
+                    <Link
+                      href="/profile"
+                      onClick={() => setShowMobileUserMenu(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="user" size={16} />
+                      Profile
                     </Link>
                     <div className="border-t border-border-dark" />
                     <button
@@ -460,14 +460,6 @@ export default function Header() {
                   {showUserMenu && (
                     <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
                       <Link
-                        href="/profile"
-                        onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
-                      >
-                        <Icon name="user" size={16} />
-                        My Profile
-                      </Link>
-                      <Link
                         href="/profile/orders"
                         onClick={() => setShowUserMenu(false)}
                         className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
@@ -490,6 +482,14 @@ export default function Header() {
                       >
                         <Icon name="heart" size={16} />
                         Wishlist
+                      </Link>
+                      <Link
+                        href="/profile"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="user" size={16} />
+                        Profile
                       </Link>
                       <div className="border-t border-border-dark" />
                       <button
