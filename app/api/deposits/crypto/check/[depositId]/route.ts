@@ -122,9 +122,20 @@ export async function GET(
           console.error('Failed to complete crypto deposit:', errorText)
           // Update local record for manual review
           await executeQuery(
-            `UPDATE deposits SET failure_reason = 'Completion failed - requires manual review', updated_at = NOW() WHERE id = $1`,
-            [depositId]
+            `UPDATE deposits SET status = 'PROCESSING', crypto_tx_hash = $2, crypto_amount = $3, failure_reason = 'Wallet credit failed - requires manual review', updated_at = NOW() WHERE id = $1`,
+            [depositId, verification.txHash, verification.amount]
           )
+          // Return PROCESSING - payment detected but wallet not credited
+          return NextResponse.json({
+            success: true,
+            data: {
+              status: 'PROCESSING',
+              txHash: verification.txHash,
+              confirmedAmount: verification.amount,
+              explorerUrl: getExplorerUrl(deposit.crypto_network, verification.txHash),
+              message: 'Payment detected but wallet credit pending. Please contact support if not resolved shortly.',
+            },
+          })
         } else {
           // Update local record to match Railway
           await executeQuery(
@@ -137,6 +148,21 @@ export async function GET(
         }
       } catch (creditError) {
         console.error('Complete crypto deposit error:', creditError)
+        // Save tx hash even if completion failed
+        await executeQuery(
+          `UPDATE deposits SET status = 'PROCESSING', crypto_tx_hash = $2, crypto_amount = $3, failure_reason = 'Wallet credit failed - requires manual review', updated_at = NOW() WHERE id = $1`,
+          [depositId, verification.txHash, verification.amount]
+        ).catch(() => {})
+        return NextResponse.json({
+          success: true,
+          data: {
+            status: 'PROCESSING',
+            txHash: verification.txHash,
+            confirmedAmount: verification.amount,
+            explorerUrl: getExplorerUrl(deposit.crypto_network, verification.txHash),
+            message: 'Payment detected but wallet credit pending. Please contact support if not resolved shortly.',
+          },
+        })
       }
 
       return NextResponse.json({

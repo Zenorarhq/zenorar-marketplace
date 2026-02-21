@@ -46,8 +46,29 @@ function WalletPageContent() {
     const handlePayPalCapture = async () => {
       if (deposit === 'paypal_success' && depositId) {
         try {
-          // Get PayPal order ID from URL if present, otherwise get from deposit record
-          const token = searchParams.get('token') // PayPal adds this
+          // Get PayPal order ID from URL (PayPal adds ?token=<orderId>)
+          let orderId = searchParams.get('token')
+
+          // Fallback: look up order ID from deposit record if token missing
+          if (!orderId) {
+            try {
+              const authToken = localStorage.getItem('auth_token')
+              const lookupRes = await fetch(`/api/deposits/paypal/lookup?depositId=${depositId}`, {
+                headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+              })
+              const lookupData = await lookupRes.json()
+              if (lookupData.success && lookupData.data?.orderId) {
+                orderId = lookupData.data.orderId
+              }
+            } catch {}
+          }
+
+          if (!orderId) {
+            setDepositMessage({ type: 'error', text: 'Missing PayPal order ID. Please contact support.' })
+            window.history.replaceState({}, '', '/profile/wallet')
+            return
+          }
+
           const response = await fetch('/api/deposits/paypal/capture', {
             method: 'POST',
             headers: {
@@ -56,7 +77,7 @@ function WalletPageContent() {
                 Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
               }),
             },
-            body: JSON.stringify({ depositId, orderId: token }),
+            body: JSON.stringify({ depositId, orderId }),
           })
           const result = await response.json()
 

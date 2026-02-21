@@ -225,7 +225,14 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
     if (!isOpen || !enabledProviders.stripe || stripePromise) return
 
     fetch(`${apiUrl}/payments/stripe/config`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Railway failed')
+        return res.json()
+      })
+      .catch(() => {
+        console.log('Falling back to local Stripe config')
+        return fetch('/api/payments/stripe/config').then(res => res.json())
+      })
       .then(data => {
         if (data.data?.publishableKey) {
           setStripePromise(loadStripe(data.data.publishableKey))
@@ -422,7 +429,6 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
       if (method === 'stripe') {
         setStep('payment')
       } else if (method === 'paystack') {
-        // Paystack uses external backend
         if (!paystackPublicKey || !(window as any).PaystackPop) {
           throw new Error('Paystack is not configured')
         }
@@ -437,22 +443,38 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
         const chargeAmount = convertPrice(finalAmount, paystackCurrency)
 
         const depositRef = `DEP-${Date.now()}-${Math.random().toString(36).substring(7)}`
+        const authToken = localStorage.getItem('auth_token')
+
+        // Create deposit record before opening popup
+        const createRes = await fetch('/api/deposits/paystack', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken && { Authorization: `Bearer ${authToken}` }),
+          },
+          body: JSON.stringify({ amount: finalAmount, reference: depositRef }),
+        })
+        const createData = await createRes.json()
+        if (!createData.success) {
+          throw new Error(createData.error || 'Failed to create deposit')
+        }
+        const paystackDepositId = createData.data.depositId
+
         const handler = (window as any).PaystackPop.setup({
           key: paystackPublicKey,
           email: emailToUse,
-          amount: Math.round(chargeAmount * 100), // Amount in selected currency (kobo/pesewas/cents)
-          currency: paystackCurrency, // Use selected currency (NGN, GHS, ZAR, KES)
+          amount: Math.round(chargeAmount * 100),
+          currency: paystackCurrency,
           ref: depositRef,
           callback: (response: any) => {
-            // Verify payment via Railway API endpoint
-            fetch(`${apiUrl}/deposits/paystack/verify?reference=${encodeURIComponent(response.reference)}`, {
-              method: 'GET',
+            // Verify payment and credit wallet via local route
+            fetch('/api/deposits/paystack/verify', {
+              method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                ...(localStorage.getItem('auth_token') && {
-                  Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-                }),
+                ...(authToken && { Authorization: `Bearer ${authToken}` }),
               },
+              body: JSON.stringify({ depositId: paystackDepositId, reference: response.reference }),
             })
               .then(res => res.json())
               .then(result => {
@@ -461,7 +483,7 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
                   queryClient.invalidateQueries({ queryKey: ['deposits'] })
                   setStep('success')
                 } else {
-                  setError('Payment verification failed. Please contact support.')
+                  setError(result.error || 'Payment verification failed. Please contact support.')
                 }
                 setLoading(false)
               })

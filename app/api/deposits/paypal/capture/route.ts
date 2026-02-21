@@ -107,41 +107,36 @@ export async function POST(req: NextRequest) {
       throw new Error(`Payment capture failed: ${captureResult.status}`)
     }
 
-    // Update deposit status to COMPLETED
+    // Complete deposit and credit wallet via Railway backend
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+    const authHeader = req.headers.get('authorization')
+
+    const completeResponse = await fetch(`${apiUrl}/deposits/${depositId}/finalize`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authHeader && { Authorization: authHeader }),
+      },
+      body: JSON.stringify({ gatewayTxnId: orderId }),
+    })
+
+    if (!completeResponse.ok) {
+      console.error('Failed to finalize deposit:', await completeResponse.text())
+      await executeQuery(
+        `UPDATE deposits SET status = 'PROCESSING', failure_reason = 'Wallet credit failed - requires manual review', updated_at = NOW() WHERE id = $1`,
+        [depositId]
+      )
+      return NextResponse.json(
+        { success: false, error: 'Payment captured but wallet credit failed. Please contact support.' },
+        { status: 500 }
+      )
+    }
+
+    // Sync local record
     await executeQuery(
       `UPDATE deposits SET status = 'COMPLETED', completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
       [depositId]
     )
-
-    // Credit wallet via external backend
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
-    const authHeader = req.headers.get('authorization')
-
-    try {
-      const creditResponse = await fetch(`${apiUrl}/wallet/credit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authHeader && { Authorization: authHeader }),
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          amount: parseFloat(deposit.amount),
-          description: `PayPal deposit #${depositId.slice(0, 8)}`,
-        }),
-      })
-
-      if (!creditResponse.ok) {
-        console.error('Failed to credit wallet:', await creditResponse.text())
-        // Mark for manual review but still return success
-        await executeQuery(
-          `UPDATE deposits SET failure_reason = 'Wallet credit failed - requires manual review', updated_at = NOW() WHERE id = $1`,
-          [depositId]
-        )
-      }
-    } catch (creditError) {
-      console.error('Credit wallet error:', creditError)
-    }
 
     return NextResponse.json({
       success: true,

@@ -90,35 +90,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Update deposit status to COMPLETED
-    await executeQuery(
-      `UPDATE deposits
-       SET status = 'COMPLETED', gateway_txn_id = $1, completed_at = NOW(), updated_at = NOW()
-       WHERE id = $2`,
-      [paymentIntentId, depositId]
-    )
-
-    // Credit wallet via external backend
+    // Complete deposit and credit wallet via Railway backend
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
-    const creditResponse = await fetch(`${apiUrl}/wallet/credit`, {
+    const completeResponse = await fetch(`${apiUrl}/deposits/${depositId}/finalize`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Pass the user's auth through
         ...(req.headers.get('authorization') && {
           Authorization: req.headers.get('authorization')!,
         }),
       },
-      body: JSON.stringify({
-        userId: user.id,
-        amount: parseFloat(deposit.amount),
-        description: `Stripe deposit #${depositId.slice(0, 8)}`,
-      }),
+      body: JSON.stringify({ gatewayTxnId: paymentIntentId }),
     })
 
-    if (!creditResponse.ok) {
-      console.error('Failed to credit wallet:', await creditResponse.text())
-      // Mark deposit as needing manual review
+    if (!completeResponse.ok) {
+      console.error('Failed to finalize deposit:', await completeResponse.text())
       await executeQuery(
         `UPDATE deposits SET status = 'PROCESSING', failure_reason = 'Wallet credit failed - requires manual review', updated_at = NOW() WHERE id = $1`,
         [depositId]
@@ -128,6 +114,12 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Sync local record
+    await executeQuery(
+      `UPDATE deposits SET status = 'COMPLETED', gateway_txn_id = $1, completed_at = NOW(), updated_at = NOW() WHERE id = $2`,
+      [paymentIntentId, depositId]
+    )
 
     return NextResponse.json({
       success: true,
