@@ -8,7 +8,7 @@ import Icon from '@/components/ui/Icon'
 import { productsApi, Product } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, localApiFetch } from '@/lib/api/client'
 import ProductReviewsModal from '@/components/admin/ProductReviewsModal'
 
 export default function ProductsPage() {
@@ -47,11 +47,11 @@ export default function ProductsPage() {
     },
   })
 
-  // Fetch staff pick IDs from Railway
+  // Fetch staff pick IDs from local Next.js API
   const { data: staffPickIds = [] } = useQuery<string[]>({
     queryKey: ['admin-staff-picks'],
     queryFn: async () => {
-      const data = await apiFetch<string[]>('/products/admin/staff-picks')
+      const data = await localApiFetch<string[]>('/admin/products/staff-picks')
       return (data.success && data.data) ? data.data : []
     },
   })
@@ -122,7 +122,7 @@ export default function ProductsPage() {
 
   async function handleToggleStaffPick(productId: string) {
     try {
-      const data = await apiFetch(`/products/${productId}/staff-pick`, { method: 'PATCH' })
+      const data = await localApiFetch(`/admin/products/${productId}/staff-pick`, { method: 'PATCH' })
       if (data.success) {
         queryClient.invalidateQueries({ queryKey: ['admin-staff-picks'] })
       }

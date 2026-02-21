@@ -61,7 +61,7 @@ const DEFAULT_HEADER: HeaderConfig = {
 const DEFAULT_FOOTER: FooterConfig = {
   columns: [
     { title: 'Products', links: [{ label: 'Premium Scripts', url: '/scripts' }, { label: 'Global eSIMs', url: '/esim' }] },
-    { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }, { label: 'My Account', url: '/profile' }] },
+    { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }, { label: 'Product Request', url: '/product-request' }, { label: 'My Account', url: '/profile' }] },
     { title: 'Community', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }] },
   ],
   showNewsletter: true, newsletterTitle: 'Newsletter', socialLinks: [], copyrightText: '',

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db-helpers'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const limit = Math.min(parseInt(searchParams.get('limit') || '6'), 50)
+
   try {
     const result = await executeQuery(`
       SELECT
@@ -20,7 +23,7 @@ export async function GET() {
       WHERE p.status = 'ACTIVE' AND p.is_staff_pick = true
       GROUP BY p.id, c.name
       ORDER BY p."createdAt" DESC
-      LIMIT 6
+      LIMIT ${limit}
     `)
 
     return NextResponse.json({ success: true, data: result.rows })

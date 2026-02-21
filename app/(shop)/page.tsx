@@ -61,19 +61,25 @@ const DEFAULT_LAYOUT = [
 ]
 
 export default function Home() {
-  const { rawSettings } = useSiteSettings()
+  const { rawSettings, isLoaded } = useSiteSettings()
 
   const sections = useMemo(() => {
+    if (!isLoaded) return []
     try {
       const raw = rawSettings.home_page_layout
       if (!raw) return DEFAULT_LAYOUT
       const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
       // Handle wrapped format { value: "..." }
       const data = parsed?.value ? (typeof parsed.value === 'string' ? JSON.parse(parsed.value) : parsed.value) : parsed
-      if (Array.isArray(data) && data.length > 0) return data
+      if (Array.isArray(data) && data.length > 0) {
+      // Merge with defaults — add any new sections not in saved layout
+      const savedIds = new Set(data.map((s: any) => s.id))
+      const missing = DEFAULT_LAYOUT.filter(s => !savedIds.has(s.id))
+      return [...data, ...missing]
+    }
     } catch {}
     return DEFAULT_LAYOUT
-  }, [rawSettings.home_page_layout])
+  }, [rawSettings.home_page_layout, isLoaded])
 
   return (
     <main className="max-w-container mx-auto px-4 lg:px-12 py-8 w-full">

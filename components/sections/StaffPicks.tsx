@@ -44,7 +44,7 @@ export default function StaffPicks({ config }: { config?: { title?: string; colu
           {config?.title || 'Staff Picks'}
         </h2>
         <Link
-          href="/scripts?staff_picks=true"
+          href="/staff-picks"
           className="text-sm text-slate-400 hover:text-primary transition-colors"
         >
           See all

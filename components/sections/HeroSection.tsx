@@ -55,7 +55,7 @@ const DEFAULT_BANNERS = [
 ]
 
 export default function HeroSection({ config }: { config?: Record<string, any> } = {}) {
-  const { rawSettings } = useSiteSettings()
+  const { rawSettings, isLoaded } = useSiteSettings()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [recommended, setRecommended] = useState<RecommendedProduct[]>([])
@@ -65,6 +65,7 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
 
   // Use CMS slides if available, otherwise fall back to defaults
   const banners = useMemo(() => {
+    if (!isLoaded) return []
     try {
       const raw = rawSettings.home_hero_slides
       if (!raw) return DEFAULT_BANNERS
@@ -74,7 +75,7 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
       if (Array.isArray(data) && data.length > 0) return data
     } catch {}
     return DEFAULT_BANNERS
-  }, [rawSettings.home_hero_slides])
+  }, [rawSettings.home_hero_slides, isLoaded])
 
   const goToSlide = useCallback((index: number) => {
     if (isTransitioning) return
@@ -135,6 +136,8 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
       prevSlide()
     }
   }
+
+  if (banners.length === 0) return null
 
   const currentBanner = banners[currentSlide]
 

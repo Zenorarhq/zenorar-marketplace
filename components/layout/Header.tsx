@@ -55,7 +55,7 @@ export default function Header() {
   const { user, isAuthenticated, logout } = useAuth()
   const { preferences } = usePreferences()
   const { unreadCount } = useNotifications()
-  const { siteName, logoUrl, rawSettings } = useSiteSettings()
+  const { siteName, logoUrl, rawSettings, isLoaded } = useSiteSettings()
 
   // Parse CMS header config
   const headerConfig = (() => {
@@ -208,14 +208,14 @@ export default function Header() {
               href="/"
               className="flex items-center gap-1.5 sm:gap-2 font-bold text-base sm:text-lg md:text-xl tracking-tight text-primary flex-shrink-0"
             >
-              {logoUrl ? (
+              {isLoaded && (logoUrl ? (
                 <>
                   <img src={logoUrl} alt={siteName} className={`${logoHeightClass} w-auto object-contain`} />
                   {showSiteName && <span>{siteName}</span>}
                 </>
               ) : siteName ? (
                 <span>{siteName}</span>
-              ) : null}
+              ) : null)}
             </Link>
           </div>
 

@@ -15,6 +15,22 @@ interface SiteSettings {
 }
 
 const CACHE_KEY = 'site_settings'
+const RAW_CACHE_KEY = 'site_raw_settings'
+
+function loadRawCached(): Record<string, any> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(RAW_CACHE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return {}
+}
+
+function saveRawCache(raw: Record<string, any>) {
+  try {
+    localStorage.setItem(RAW_CACHE_KEY, JSON.stringify({ site_footer: raw.site_footer, home_page_layout: raw.home_page_layout }))
+  } catch {}
+}
 
 const DEFAULTS: SiteSettings = {
   siteName: '',
@@ -62,6 +78,8 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Load cached values first (client-only, after hydration)
     const cached = loadCached()
+    const cachedRaw = loadRawCached()
+    if (cachedRaw.site_footer) setRawSettings(cachedRaw)
     if (cached.siteName || cached.logoUrl || cached.faviconUrl || cached.maintenanceMode) {
       setSettings(cached)
       setIsLoaded(true)
@@ -72,6 +90,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       if (res.success && res.data) {
         const d = res.data
         setRawSettings(d)
+        saveRawCache(d)
         // When API returns a key (even empty ""), use it directly — don't fall back to stale cache
         const fresh: SiteSettings = {
           siteName: ('siteName' in d ? extractValue(d, 'siteName') : cached.siteName) || DEFAULTS.siteName,

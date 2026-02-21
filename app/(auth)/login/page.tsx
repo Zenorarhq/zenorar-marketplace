@@ -34,7 +34,7 @@ export default function LoginPage() {
   const currentYear = new Date().getFullYear()
 
   // Fetch branding settings for logo
-  const { data: brandingData } = useQuery({
+  const { data: brandingData, isLoading: brandingLoading } = useQuery({
     queryKey: ['branding-settings'],
     queryFn: async () => {
       const res = await apiFetch<any>('/settings/public')
@@ -336,14 +336,14 @@ export default function LoginPage() {
           <Link href="/" className="flex items-center gap-3 font-bold text-2xl tracking-tight text-white">
             {siteLogo ? (
               <img src={siteLogo} alt="Site Logo" className="h-10 w-auto object-contain" />
-            ) : (
+            ) : !brandingLoading ? (
               <>
                 <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black">
                   <Icon name="grid-view" size={24} />
                 </div>
                 Marketplace
               </>
-            )}
+            ) : null}
           </Link>
 
           {/* Hero Content */}
@@ -394,12 +394,12 @@ export default function LoginPage() {
             <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary">
               {siteLogo ? (
                 <img src={siteLogo} alt="Site Logo" className="h-8 w-auto object-contain" />
-              ) : (
+              ) : !brandingLoading ? (
                 <>
                   <Icon name="grid-view" size={24} />
                   Marketplace
                 </>
-              )}
+              ) : null}
             </Link>
           </div>
 

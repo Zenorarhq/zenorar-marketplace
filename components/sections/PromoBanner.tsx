@@ -7,7 +7,7 @@ import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import { discountsApi, type ValidateDiscountResponse } from '@/lib/api/discounts'
 
 export default function PromoBanner({ config }: { config?: Record<string, any> } = {}) {
-  const { promoBannerCode } = useSiteSettings()
+  const { promoBannerCode, isLoaded } = useSiteSettings()
   const [discount, setDiscount] = useState<ValidateDiscountResponse | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [email, setEmail] = useState('')
@@ -15,6 +15,8 @@ export default function PromoBanner({ config }: { config?: Record<string, any> }
   const [copied, setCopied] = useState(false)
 
   const hasPromoCode = !!promoBannerCode
+
+  if (!isLoaded) return null
 
   // Validate the promo code on mount to get real discount info
   useEffect(() => {
