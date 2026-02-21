@@ -5,6 +5,13 @@ import { executeQuery } from '@/lib/db-helpers'
 // GET /api/finance/overview — Finance overview (admin only)
 export const GET = requireAdmin(async (request: NextRequest) => {
   try {
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+
+    const dateFilter = startDate && endDate ? `WHERE "createdAt" >= $1 AND "createdAt" <= $2` : ''
+    const params = startDate && endDate ? [startDate, endDate] : []
+
     const result = await executeQuery(`
       SELECT
         COALESCE(SUM(total), 0)::float AS "totalRevenue",
@@ -26,7 +33,8 @@ export const GET = requireAdmin(async (request: NextRequest) => {
           END
         ), 0)::float AS "pendingBalance"
       FROM orders
-    `)
+      ${dateFilter}
+    `, params)
 
     return successResponse({
       ...result.rows[0],

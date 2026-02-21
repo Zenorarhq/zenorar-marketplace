@@ -1,8 +1,8 @@
-import { apiFetch, localApiFetch } from './client'
+import { apiFetch } from './client'
 import { ordersApi } from './orders'
 import { productsApi } from './products'
 import { ticketsApi } from './tickets'
-import { financeApi } from './finance'
+import { financeApi, FinanceOverview } from './finance'
 import { usersApi } from './users'
 
 export interface DashboardStats {
@@ -38,6 +38,12 @@ export const analyticsApi = {
    */
   async getDashboardStats(startDate?: string, endDate?: string): Promise<{ success: boolean; data?: DashboardStats; error?: string }> {
     try {
+      // Build local finance URL with optional date filtering
+      const financeParams = new URLSearchParams()
+      if (startDate) financeParams.set('startDate', startDate)
+      if (endDate) financeParams.set('endDate', endDate)
+      const financeQuery = financeParams.toString() ? `?${financeParams.toString()}` : ''
+
       // Fetch data from multiple sources in parallel
       const [ordersResult, financeResult, productsResult, ticketsResult, usersResult] = await Promise.all([
         ordersApi.getStats(),
@@ -63,6 +69,7 @@ export const analyticsApi = {
         const prevEnd = new Date(new Date(startDate).getTime())
         const prevStart = new Date(prevEnd.getTime() - duration)
 
+        const prevParams = new URLSearchParams({ startDate: prevStart.toISOString(), endDate: prevEnd.toISOString() })
         const prevResult = await financeApi.getOverview(prevStart.toISOString(), prevEnd.toISOString())
         if (prevResult.success && prevResult.data) {
           const prevRevenue = prevResult.data.totalRevenue || 0
@@ -130,20 +137,20 @@ export const analyticsApi = {
    * Get daily customer signups
    */
   async getCustomerGrowth(days: number = 30) {
-    return localApiFetch<{ date: string; signups: number }[]>(`/analytics/customer-growth?days=${days}`)
+    return apiFetch<{ date: string; signups: number }[]>(`/analytics/customer-growth?days=${days}`)
   },
 
   /**
    * Get revenue breakdown by category
    */
   async getRevenueByCategory() {
-    return localApiFetch<{ category: string; revenue: number; orders: number }[]>('/analytics/revenue-by-category')
+    return apiFetch<{ category: string; revenue: number; orders: number }[]>('/analytics/revenue-by-category')
   },
 
   /**
    * Get recent activity feed (orders, signups, tickets)
    */
   async getActivityFeed(limit: number = 10) {
-    return localApiFetch<{ type: string; id: string; label: string; value: any; detail: string | null; timestamp: string }[]>(`/analytics/activity-feed?limit=${limit}`)
+    return apiFetch<{ type: string; id: string; label: string; value: any; detail: string | null; timestamp: string }[]>(`/analytics/activity-feed?limit=${limit}`)
   },
 }

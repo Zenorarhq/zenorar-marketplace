@@ -28,7 +28,7 @@ function loadRawCached(): Record<string, any> {
 
 function saveRawCache(raw: Record<string, any>) {
   try {
-    localStorage.setItem(RAW_CACHE_KEY, JSON.stringify({ site_footer: raw.site_footer, home_page_layout: raw.home_page_layout }))
+    localStorage.setItem(RAW_CACHE_KEY, JSON.stringify({ site_footer: raw.site_footer, home_page_layout: raw.home_page_layout, home_hero_slides: raw.home_hero_slides }))
   } catch {}
 }
 
@@ -79,7 +79,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     // Load cached values first (client-only, after hydration)
     const cached = loadCached()
     const cachedRaw = loadRawCached()
-    if (cachedRaw.site_footer) setRawSettings(cachedRaw)
+    if (Object.keys(cachedRaw).length > 0) setRawSettings(cachedRaw)
     if (cached.siteName || cached.logoUrl || cached.faviconUrl || cached.maintenanceMode) {
       setSettings(cached)
       setIsLoaded(true)

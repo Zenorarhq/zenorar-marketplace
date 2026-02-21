@@ -112,6 +112,8 @@ export default function AdminSettingsPage() {
   const [recipients, setRecipients] = useState<any[]>([])
   const [loadingRecipients, setLoadingRecipients] = useState(false)
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false)
+  const [selectedBatchIds, setSelectedBatchIds] = useState<Set<string>>(new Set())
+  const [deletingBulk, setDeletingBulk] = useState(false)
 
   // Payment Settings State
   const [paymentSettings, setPaymentSettings] = useState({
@@ -420,6 +422,55 @@ export default function AdminSettingsPage() {
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to delete notification batch' })
     }
+  }
+
+  const toggleSelectBatch = (batchId: string) => {
+    setSelectedBatchIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(batchId)) next.delete(batchId)
+      else next.add(batchId)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedBatchIds.size === sentNotifications.length) {
+      setSelectedBatchIds(new Set())
+    } else {
+      setSelectedBatchIds(new Set(sentNotifications.map((b) => b.batchId)))
+    }
+  }
+
+  const bulkDelete = async (batchIds: string[]) => {
+    setDeletingBulk(true)
+    try {
+      const data = await apiFetch<{ count: number }>('/notifications/sent/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ batchIds }),
+      })
+      if (data.success) {
+        setMessage({ type: 'success', text: `Deleted ${data.data?.count || 0} notifications` })
+        setSelectedBatchIds(new Set())
+        fetchSentNotifications()
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to delete' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to delete notifications' })
+    }
+    setDeletingBulk(false)
+  }
+
+  const deleteSelected = async () => {
+    if (selectedBatchIds.size === 0) return
+    if (!confirm(`Delete ${selectedBatchIds.size} selected notification(s) from all users?`)) return
+    await bulkDelete(Array.from(selectedBatchIds))
+  }
+
+  const deleteAll = async () => {
+    if (sentNotifications.length === 0) return
+    if (!confirm(`Delete all ${sentNotifications.length} notification batch(es) from all users? This cannot be undone.`)) return
+    await bulkDelete(sentNotifications.map((b) => b.batchId))
   }
 
   const handleAvatarClick = () => {
@@ -1310,13 +1361,35 @@ export default function AdminSettingsPage() {
                     <Icon name={isHistoryExpanded ? 'chevron-up' : 'chevron-down'} size={18} />
                     <span>Sent Notifications History</span>
                   </button>
-                  <button
-                    onClick={fetchSentNotifications}
-                    disabled={loadingSent}
-                    className="text-sm text-primary hover:text-primary/80 disabled:opacity-50"
-                  >
-                    {loadingSent ? 'Loading...' : 'Refresh'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {isHistoryExpanded && sentNotifications.length > 0 && (
+                      <>
+                        {selectedBatchIds.size > 0 && (
+                          <button
+                            onClick={deleteSelected}
+                            disabled={deletingBulk}
+                            className="text-sm px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50"
+                          >
+                            Delete Selected ({selectedBatchIds.size})
+                          </button>
+                        )}
+                        <button
+                          onClick={deleteAll}
+                          disabled={deletingBulk}
+                          className="text-sm px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50"
+                        >
+                          Delete All
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={fetchSentNotifications}
+                      disabled={loadingSent}
+                      className="text-sm text-primary hover:text-primary/80 disabled:opacity-50"
+                    >
+                      {loadingSent ? 'Loading...' : 'Refresh'}
+                    </button>
+                  </div>
                 </div>
 
                 {isHistoryExpanded && (
@@ -1327,49 +1400,70 @@ export default function AdminSettingsPage() {
                       <div className="text-center py-8 text-slate-500">No notifications sent yet</div>
                     ) : (
                       <div className="space-y-2">
+                        {/* Select All row */}
+                        <div className="flex items-center gap-3 px-1 pb-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedBatchIds.size === sentNotifications.length}
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 accent-primary cursor-pointer"
+                          />
+                          <span className="text-xs text-slate-500">Select all</span>
+                        </div>
                         {sentNotifications.map((batch) => (
-                          <div key={batch.batchId} className="p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span
-                                    className={`text-xs px-2 py-0.5 rounded ${
-                                      batch.type === 'PROMOTIONAL' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
-                                    }`}
-                                  >
-                                    {batch.type}
-                                  </span>
-                                  <span className="text-sm text-white font-medium truncate">{batch.title}</span>
+                          <div
+                            key={batch.batchId}
+                            className={`p-4 bg-[#1a1a1a] rounded-lg border transition-colors ${selectedBatchIds.has(batch.batchId) ? 'border-primary/40' : 'border-[#2a2a2a]'}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedBatchIds.has(batch.batchId)}
+                                onChange={() => toggleSelectBatch(batch.batchId)}
+                                className="mt-1 w-4 h-4 accent-primary cursor-pointer flex-shrink-0"
+                              />
+                              <div className="flex-1 min-w-0 flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span
+                                      className={`text-xs px-2 py-0.5 rounded ${
+                                        batch.type === 'PROMOTIONAL' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
+                                      }`}
+                                    >
+                                      {batch.type}
+                                    </span>
+                                    <span className="text-sm text-white font-medium truncate">{batch.title}</span>
+                                  </div>
+                                  <p className="text-sm text-slate-400 line-clamp-1">{batch.message}</p>
+                                  <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                                    <span>{batch.stats.total} recipients</span>
+                                    <span
+                                      className={`px-2 py-0.5 rounded ${
+                                        batch.stats.unread > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+                                      }`}
+                                    >
+                                      {batch.stats.unread} unread / {batch.stats.total} total
+                                    </span>
+                                    <span>{new Date(batch.sentAt).toLocaleString()}</span>
+                                  </div>
                                 </div>
-                                <p className="text-sm text-slate-400 line-clamp-1">{batch.message}</p>
-                                <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                                  <span>{batch.stats.total} recipients</span>
-                                  <span
-                                    className={`px-2 py-0.5 rounded ${
-                                      batch.stats.unread > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
-                                    }`}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedBatch(batch)
+                                      fetchRecipients(batch.batchId)
+                                    }}
+                                    className="text-sm px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded transition-colors"
                                   >
-                                    {batch.stats.unread} unread / {batch.stats.total} total
-                                  </span>
-                                  <span>{new Date(batch.sentAt).toLocaleString()}</span>
+                                    View Recipients
+                                  </button>
+                                  <button
+                                    onClick={() => deleteBatch(batch.batchId)}
+                                    className="text-sm px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors"
+                                  >
+                                    Delete
+                                  </button>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setSelectedBatch(batch)
-                                    fetchRecipients(batch.batchId)
-                                  }}
-                                  className="text-sm px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded transition-colors"
-                                >
-                                  View Recipients
-                                </button>
-                                <button
-                                  onClick={() => deleteBatch(batch.batchId)}
-                                  className="text-sm px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition-colors"
-                                >
-                                  Delete
-                                </button>
                               </div>
                             </div>
                           </div>

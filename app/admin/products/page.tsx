@@ -8,7 +8,7 @@ import Icon from '@/components/ui/Icon'
 import { productsApi, Product } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
-import { apiFetch, localApiFetch } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
 import ProductReviewsModal from '@/components/admin/ProductReviewsModal'
 
 export default function ProductsPage() {
@@ -51,7 +51,7 @@ export default function ProductsPage() {
   const { data: staffPickIds = [] } = useQuery<string[]>({
     queryKey: ['admin-staff-picks'],
     queryFn: async () => {
-      const data = await localApiFetch<string[]>('/admin/products/staff-picks')
+      const data = await apiFetch<string[]>('/products/admin/staff-picks')
       return (data.success && data.data) ? data.data : []
     },
   })
@@ -122,7 +122,7 @@ export default function ProductsPage() {
 
   async function handleToggleStaffPick(productId: string) {
     try {
-      const data = await localApiFetch(`/admin/products/${productId}/staff-pick`, { method: 'PATCH' })
+      const data = await apiFetch(`/products/${productId}/staff-pick`, { method: 'PATCH' })
       if (data.success) {
         queryClient.invalidateQueries({ queryKey: ['admin-staff-picks'] })
       }

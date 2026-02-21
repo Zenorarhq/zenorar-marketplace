@@ -59,7 +59,7 @@ function groupByWeek(dailyData: any[]): { date: string; revenue: number; orders:
     const chunk = dailyData.slice(i, i + 7)
     const total = chunk.reduce((sum: number, d: any) => sum + (d.amount || d.revenue || 0), 0)
     const label = chunk[0]?.date || ''
-    weeks.push({ date: label, revenue: total, orders: 0 })
+    weeks.push({ date: label, revenue: total, orders: chunk.reduce((s: number, d: any) => s + (d.orders || 0), 0) })
   }
   return weeks
 }
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
 
   // Fetch recent orders
   const { data: recentOrders = [] } = useQuery({
-    queryKey: ['dashboard-recent-orders', period],
+    queryKey: ['dashboard-recent-orders'],
     queryFn: async () => {
       const result = await ordersApi.list({ limit: 5, sortBy: 'createdAt', sortOrder: 'desc' })
       if (result.success && result.data) {
@@ -228,14 +228,14 @@ export default function AdminDashboard() {
     : period === 'yesterday' ? 'vs day before'
     : period === '7days' ? 'vs prev 7 days'
     : period === '30days' ? 'vs prev 30 days'
-    : ''
+    : 'all time'
 
   const statCards = [
     {
       label: 'Total Revenue',
       value: formatCurrency(stats?.totalRevenue || 0),
-      change: stats?.revenueChange != null ? `${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}%` : '-',
-      changeLabel: changeLabel || 'all time',
+      change: stats?.revenueChange != null ? `${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}%` : '',
+      changeLabel,
       positive: !stats?.revenueChange || stats.revenueChange >= 0,
       icon: 'wallet'
     },
@@ -245,13 +245,13 @@ export default function AdminDashboard() {
       change: '-',
       changeLabel: 'active items',
       positive: true,
-      icon: 'code'
+      icon: 'box'
     },
     {
       label: 'Total Orders',
       value: formatNumber(stats?.totalOrders || 0),
-      change: stats?.ordersChange != null ? `${stats.ordersChange > 0 ? '+' : ''}${stats.ordersChange}%` : '-',
-      changeLabel: changeLabel || 'all time',
+      change: stats?.ordersChange != null ? `${stats.ordersChange > 0 ? '+' : ''}${stats.ordersChange}%` : '',
+      changeLabel,
       positive: !stats?.ordersChange || stats.ordersChange >= 0,
       icon: 'shopping-cart'
     },

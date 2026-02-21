@@ -65,16 +65,17 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
 
   // Use CMS slides if available, otherwise fall back to defaults
   const banners = useMemo(() => {
-    if (!isLoaded) return []
     try {
       const raw = rawSettings.home_hero_slides
-      if (!raw) return DEFAULT_BANNERS
-      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-      // Handle wrapped format { value: "..." }
-      const data = parsed?.value ? (typeof parsed.value === 'string' ? JSON.parse(parsed.value) : parsed.value) : parsed
-      if (Array.isArray(data) && data.length > 0) return data
+      if (raw) {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        // Handle wrapped format { value: "..." }
+        const data = parsed?.value ? (typeof parsed.value === 'string' ? JSON.parse(parsed.value) : parsed.value) : parsed
+        if (Array.isArray(data) && data.length > 0) return data
+      }
     } catch {}
-    return DEFAULT_BANNERS
+    if (!isLoaded) return []     // No slides found and still loading — render nothing
+    return DEFAULT_BANNERS       // Loaded but no CMS slides configured — show defaults
   }, [rawSettings.home_hero_slides, isLoaded])
 
   const goToSlide = useCallback((index: number) => {

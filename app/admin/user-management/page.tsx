@@ -10,13 +10,14 @@ import { usersApi, UsersListResponse } from '@/lib/api/users'
 import { staffApi, StaffListResponse } from '@/lib/api/staff'
 import { rolesApi, Role } from '@/lib/api/roles'
 
-type Tab = 'users' | 'staff' | 'roles' | 'guest-purchases'
+type Tab = 'users' | 'staff' | 'roles' | 'guest-purchases' | 'newsletter'
 
 const tabs = [
   { id: 'users' as Tab, label: 'Users', icon: 'user', permission: 'view_users' },
   { id: 'staff' as Tab, label: 'Staff', icon: 'people', permission: 'view_staff' },
   { id: 'roles' as Tab, label: 'Roles', icon: 'shield', permission: 'manage_roles' },
   { id: 'guest-purchases' as Tab, label: 'Guest Purchases', icon: 'shopping-cart', permission: 'view_orders' },
+  { id: 'newsletter' as Tab, label: 'Newsletter', icon: 'mail', permission: 'view_users' },
 ]
 
 export default function UserManagementPage() {
@@ -58,6 +59,7 @@ export default function UserManagementPage() {
           {activeTab === 'staff' && <StaffTab />}
           {activeTab === 'roles' && <RolesTab />}
           {activeTab === 'guest-purchases' && <GuestPurchasesTab />}
+          {activeTab === 'newsletter' && <NewsletterTab />}
         </div>
       </AdminLayout>
     </AdminRoute>
@@ -930,6 +932,96 @@ function GuestPurchasesTab() {
                 <div className="flex gap-2">
                   <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={pagination.page === 1} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm hover:bg-[#2a2a2a] disabled:opacity-50">Previous</button>
                   <button onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))} disabled={pagination.page === pagination.totalPages} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm hover:bg-[#2a2a2a] disabled:opacity-50">Next</button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Newsletter Tab Component
+function NewsletterTab() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-newsletter', currentPage, searchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(currentPage) })
+      if (searchQuery) params.set('search', searchQuery)
+      const res = await fetch(`/api/admin/newsletter?${params}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` },
+      })
+      return res.json()
+    },
+  })
+
+  const subscribers: { id: string; email: string; createdAt: string }[] = data?.data || []
+  const total: number = data?.total || 0
+  const totalPages: number = data?.totalPages || 1
+
+  return (
+    <div className="space-y-6">
+      {/* Stat */}
+      <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5 w-fit">
+        <p className="text-slate-400 text-sm mb-1">Total Subscribers</p>
+        <p className="text-3xl font-bold text-white">{total}</p>
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search by email..."
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+            className="w-full pl-9 pr-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Icon name="loading" size={24} className="text-primary animate-spin" />
+          </div>
+        ) : subscribers.length === 0 ? (
+          <div className="text-center py-16 text-slate-500">
+            <Icon name="mail" size={32} className="mx-auto mb-3 opacity-30" />
+            <p>No subscribers found</p>
+          </div>
+        ) : (
+          <>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#1f1f1f]">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Subscribed</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1f1f1f]">
+                {subscribers.map((sub) => (
+                  <tr key={sub.id} className="hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 text-sm text-white">{sub.email}</td>
+                    <td className="px-4 py-3 text-sm text-slate-400">
+                      {new Date(sub.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {totalPages > 1 && (
+              <div className="px-4 py-3 border-t border-[#1f1f1f] flex justify-between">
+                <p className="text-sm text-slate-400">Page {currentPage} of {totalPages}</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm hover:bg-[#2a2a2a] disabled:opacity-50">Previous</button>
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm hover:bg-[#2a2a2a] disabled:opacity-50">Next</button>
                 </div>
               </div>
             )}
