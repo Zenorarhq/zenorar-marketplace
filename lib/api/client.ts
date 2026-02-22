@@ -54,6 +54,20 @@ export function clearAccessToken() {
   }
 }
 
+// Clear all user-specific localStorage keys (used on any auth transition)
+export function clearUserStorage() {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem('user')
+  localStorage.removeItem('zenorar_cart')
+  localStorage.removeItem('zenorar_wishlist')
+  localStorage.removeItem('userPreferences')
+  localStorage.removeItem('session_id')
+  localStorage.removeItem('sessionTimeout')
+  localStorage.removeItem('chat_conversation_id')
+  localStorage.removeItem('last_activity')
+  localStorage.removeItem('recentSearches')
+}
+
 // Session ID for guest users
 export function getSessionId(): string {
   if (typeof window === 'undefined') return ''

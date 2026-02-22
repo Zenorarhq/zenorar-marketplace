@@ -1,6 +1,6 @@
 // Auth API
 
-import { apiFetch, setAccessToken, clearAccessToken, User } from './client'
+import { apiFetch, setAccessToken, clearAccessToken, clearUserStorage, User } from './client'
 
 export interface LoginResponse {
   user: User
@@ -29,6 +29,7 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     })
     if (result.success && result.data && !result.data.requiresTwoFactor) {
+      clearUserStorage()
       setAccessToken(result.data.accessToken)
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(result.data.user))
@@ -43,6 +44,7 @@ export const authApi = {
       body: JSON.stringify(data),
     })
     if (result.success && result.data) {
+      clearUserStorage()
       setAccessToken(result.data.accessToken)
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(result.data.user))
@@ -58,6 +60,7 @@ export const authApi = {
       body: JSON.stringify({ idToken }),
     })
     if (result.success && result.data) {
+      clearUserStorage()
       setAccessToken(result.data.accessToken)
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(result.data.user))
@@ -80,6 +83,7 @@ export const authApi = {
       body: JSON.stringify({ walletAddress, signature, nonce }),
     })
     if (result.success && result.data) {
+      clearUserStorage()
       setAccessToken(result.data.accessToken)
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(result.data.user))
@@ -155,6 +159,7 @@ export const authApi = {
       body: JSON.stringify({ tempToken, code }),
     })
     if (result.success && result.data) {
+      clearUserStorage()
       setAccessToken(result.data.accessToken)
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(result.data.user))

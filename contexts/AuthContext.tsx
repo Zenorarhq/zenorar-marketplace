@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { User, getAccessToken, clearAccessToken, setAccessToken, apiFetch } from '@/lib/api'
+import { User, getAccessToken, clearAccessToken, clearUserStorage, setAccessToken, apiFetch } from '@/lib/api'
 import { useSessionTimeout } from '@/hooks/use-session-timeout'
 
 interface LoginResult {
@@ -45,17 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Shared helper: clear all user-specific data (localStorage + query cache)
   const clearUserData = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user')
-      localStorage.removeItem('zenorar_cart')
-      localStorage.removeItem('zenorar_wishlist')
-      localStorage.removeItem('userPreferences')
-      localStorage.removeItem('session_id')
-      localStorage.removeItem('sessionTimeout')
-      localStorage.removeItem('chat_conversation_id')
-      localStorage.removeItem('last_activity')
-      localStorage.removeItem('recentSearches')
-    }
+    clearUserStorage()
     queryClient.clear()
   }, [queryClient])
 
