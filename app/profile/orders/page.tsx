@@ -419,7 +419,7 @@ export default function OrdersPage() {
                     )
                   ) : (
                     <>
-                      {(order.status === 'PENDING' || order.status === 'CONFIRMED') && (
+                      {order.status === 'PENDING' && (
                         <button
                           onClick={() => handleCancel(order.id)}
                           disabled={cancellingId === order.id}

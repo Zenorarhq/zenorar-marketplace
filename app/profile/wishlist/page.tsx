@@ -82,7 +82,7 @@ export default function WishlistPage() {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">My Wishlist</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">My Wishlist</h1>
             <p className="text-slate-400">
               {items.length === 0
                 ? 'Save products you love for later.'
@@ -135,7 +135,7 @@ export default function WishlistPage() {
                 key={product.id}
                 className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden shadow-lg"
               >
-                <div className="p-6 flex flex-col lg:flex-row lg:items-center gap-6">
+                <div className="p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center gap-4 sm:gap-6">
                   {/* Image */}
                   <div className="h-16 w-16 rounded-xl bg-surface-dark border border-border-dark flex-shrink-0 overflow-hidden">
                     {primaryImage ? (
@@ -152,7 +152,7 @@ export default function WishlistPage() {
                     <div className="flex flex-wrap items-center gap-3 mb-1">
                       <Link
                         href={`/products/${product.slug}`}
-                        className="text-white font-bold text-lg hover:text-primary transition-colors"
+                        className="text-white font-bold text-base sm:text-lg hover:text-primary transition-colors"
                       >
                         {product.name}
                       </Link>
@@ -180,17 +180,17 @@ export default function WishlistPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-3 flex-shrink-0">
+                  <div className="flex flex-wrap gap-2 sm:gap-3 flex-shrink-0">
                     <button
                       onClick={() => handleAddToCart(product)}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+                      className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
                     >
                       <Icon name="shopping-cart" size={18} />
                       Add to Cart
                     </button>
                     <button
                       onClick={() => handleRemove(product.id)}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-red-400 hover:border-red-400/30 transition-colors"
+                      className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-red-400 hover:border-red-400/30 transition-colors"
                       aria-label="Remove from wishlist"
                     >
                       <Icon name="delete" size={18} />

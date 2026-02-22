@@ -227,7 +227,7 @@ function WalletPageContent() {
 
       {/* Header */}
       <div className="mb-10 pb-6 border-b border-border-dark">
-        <h1 className="text-3xl font-bold text-white mb-2">Wallet & Credits</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Wallet & Credits</h1>
         <p className="text-slate-400">
           Manage your balance and track transactions.
         </p>
@@ -253,7 +253,7 @@ function WalletPageContent() {
 
       {/* Balance Card */}
       <div className="mb-12">
-        <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 rounded-2xl p-8 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 rounded-2xl p-5 sm:p-8 relative overflow-hidden">
           {/* Background pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute -right-8 -top-8 w-64 h-64 bg-white rounded-full blur-3xl" />
@@ -261,7 +261,7 @@ function WalletPageContent() {
           </div>
 
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-black/20 flex items-center justify-center">
                   <Icon name="wallet" size={24} className="text-black" />
@@ -273,7 +273,7 @@ function WalletPageContent() {
               </div>
               <button
                 onClick={() => setShowDepositModal(true)}
-                className="px-5 py-2.5 bg-black text-primary font-bold rounded-xl hover:bg-black/90 transition-all flex items-center gap-2 text-sm"
+                className="w-full sm:w-auto justify-center px-4 py-2 sm:px-5 sm:py-2.5 bg-black text-primary font-bold rounded-xl hover:bg-black/90 transition-all flex items-center gap-2 text-sm"
               >
                 <Icon name="plus" size={18} />
                 Add Money
@@ -283,7 +283,7 @@ function WalletPageContent() {
             {walletLoading ? (
               <div className="h-16 bg-black/10 animate-pulse rounded-lg mb-6" />
             ) : (
-              <p className="text-5xl font-bold text-black mb-6">
+              <p className="text-3xl sm:text-5xl font-bold text-black mb-6">
                 {formatCurrency(walletData?.balance || 0)}
               </p>
             )}
@@ -291,7 +291,7 @@ function WalletPageContent() {
             <div className="flex gap-3">
               <Link
                 href="/profile/referrals"
-                className="px-6 py-3 bg-black/20 text-black font-medium rounded-xl hover:bg-black/30 transition-all flex items-center gap-2"
+                className="px-4 py-2.5 sm:px-6 sm:py-3 bg-black/20 text-black font-medium rounded-xl hover:bg-black/30 transition-all flex items-center gap-2"
               >
                 <Icon name="gift" size={20} />
                 Earn via Referrals
@@ -328,8 +328,8 @@ function WalletPageContent() {
       {/* Transaction History */}
       {activeTab === 'transactions' && (
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
               <Icon name="clock" size={20} className="text-primary" />
               Transaction History
             </h3>
@@ -367,11 +367,11 @@ function WalletPageContent() {
                 return (
                   <div
                     key={transaction.id}
-                    className="bg-black border border-border-dark rounded-xl p-6 hover:border-border-dark/50 transition-colors"
+                    className="bg-black border border-border-dark rounded-xl p-4 sm:p-6 hover:border-border-dark/50 transition-colors"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4 flex-1">
-                        <div className={`w-12 h-12 rounded-full bg-surface-dark flex items-center justify-center ${color}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-0">
+                      <div className="flex items-start gap-3 sm:gap-4 flex-1">
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-surface-dark flex items-center justify-center ${color}`}>
                           <Icon name={icon as any} size={24} />
                         </div>
 
@@ -404,7 +404,7 @@ function WalletPageContent() {
                       </div>
 
                       <div className="text-right">
-                        <p className={`text-2xl font-bold ${isCredit ? 'text-green-500' : 'text-red-500'}`}>
+                        <p className={`text-lg sm:text-2xl font-bold ${isCredit ? 'text-green-500' : 'text-red-500'}`}>
                           {isCredit ? '+' : '-'}{formatCurrency(Math.abs(Number(transaction.amount)))}
                         </p>
                         <p className="text-slate-500 text-sm mt-1">
@@ -464,7 +464,7 @@ function WalletPageContent() {
       {activeTab === 'deposits' && (
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
               <Icon name="money-receive" size={20} className="text-primary" />
               Deposit History
             </h3>
@@ -485,10 +485,10 @@ function WalletPageContent() {
                 return (
                   <div
                     key={deposit.id}
-                    className="bg-black border border-border-dark rounded-xl p-5 hover:border-border-dark/50 transition-colors"
+                    className="bg-black border border-border-dark rounded-xl p-4 sm:p-5 hover:border-border-dark/50 transition-colors"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+                      <div className="flex items-center gap-3 sm:gap-4">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                           <Icon name="money-receive" size={20} className="text-primary" />
                         </div>
@@ -507,7 +507,7 @@ function WalletPageContent() {
                       </div>
 
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-green-500">
+                        <p className="text-lg sm:text-2xl font-bold text-green-500">
                           +{formatCurrency(Number(deposit.amount))}
                         </p>
                         {deposit.completedAt && (

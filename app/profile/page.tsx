@@ -257,7 +257,7 @@ export default function ProfileSettingsPage() {
               type="text"
               value={formData.fullName}
               onChange={handleInputChange}
-              className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              className="w-full bg-black border border-border-dark rounded-2xl px-4 py-3 sm:px-5 sm:py-4 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
             />
           </div>
           <div className="space-y-3">
@@ -270,7 +270,7 @@ export default function ProfileSettingsPage() {
               type="text"
               value={formData.displayName}
               onChange={handleInputChange}
-              className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              className="w-full bg-black border border-border-dark rounded-2xl px-4 py-3 sm:px-5 sm:py-4 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
             />
           </div>
           <div className="space-y-3 md:col-span-2">
@@ -284,7 +284,7 @@ export default function ProfileSettingsPage() {
               value={formData.email}
               onChange={handleInputChange}
               disabled
-              className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 text-slate-400 placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all cursor-not-allowed"
+              className="w-full bg-black border border-border-dark rounded-2xl px-4 py-3 sm:px-5 sm:py-4 text-slate-400 placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all cursor-not-allowed"
             />
             <p className="text-xs text-slate-500 ml-1">Email cannot be changed</p>
           </div>
@@ -298,7 +298,7 @@ export default function ProfileSettingsPage() {
               value={formData.bio}
               onChange={handleInputChange}
               rows={4}
-              className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none leading-relaxed"
+              className="w-full bg-black border border-border-dark rounded-2xl px-4 py-3 sm:px-5 sm:py-4 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none leading-relaxed"
             />
           </div>
         </div>
@@ -365,14 +365,14 @@ export default function ProfileSettingsPage() {
           <button
             type="button"
             onClick={handleCancel}
-            className="text-slate-400 font-bold px-6 py-3.5 rounded-xl hover:text-white transition-colors"
+            className="text-slate-400 font-bold px-4 py-3 sm:px-6 sm:py-3.5 rounded-xl hover:text-white transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="bg-primary hover:bg-green-400 text-black font-bold px-10 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 w-full sm:w-auto"
+            className="bg-primary hover:bg-green-400 text-black font-bold px-6 py-3 sm:px-10 sm:py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 w-full sm:w-auto"
           >
             {isLoading ? 'Saving...' : 'Save Changes'}
           </button>

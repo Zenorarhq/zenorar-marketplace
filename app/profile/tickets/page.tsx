@@ -204,12 +204,12 @@ export default function TicketsPage() {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Support Tickets</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Support Tickets</h1>
             <p className="text-slate-400">Track and manage your support requests.</p>
           </div>
           <button
             onClick={() => setShowNewTicketModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+            className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
           >
             <Icon name="add" size={18} />
             New Ticket
@@ -233,7 +233,7 @@ export default function TicketsPage() {
               <button
                 key={filter.key}
                 onClick={() => setActiveFilter(filter.key)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`px-3 sm:px-4 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                   activeFilter === filter.key
                     ? 'bg-primary text-black font-bold'
                     : 'text-slate-400 hover:text-white'
@@ -279,7 +279,7 @@ export default function TicketsPage() {
                       uiStatus === 'closed' ? 'opacity-60' : ''
                     }`}
                   >
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                         {/* Ticket Info */}
                         <div className="flex-grow">
@@ -288,7 +288,7 @@ export default function TicketsPage() {
                             {getStatusBadge(ticket.status)}
                             {getPriorityBadge(ticket.priority)}
                           </div>
-                          <h3 className="text-white font-bold text-lg mb-2">{ticket.subject}</h3>
+                          <h3 className="text-white font-bold text-base sm:text-lg mb-2">{ticket.subject}</h3>
                           <p className="text-slate-400 text-sm line-clamp-2 mb-3">{ticket.description}</p>
                           <div className="flex flex-wrap gap-4 text-xs text-slate-500">
                             <span className="flex items-center gap-1">
@@ -339,37 +339,37 @@ export default function TicketsPage() {
 
           {/* Stats Summary */}
           <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-[#121212] border border-border-dark rounded-xl p-5">
+            <div className="bg-[#121212] border border-border-dark rounded-xl p-3 sm:p-5">
               <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
                 <Icon name="ticket" size={16} />
                 Total Tickets
               </div>
-              <p className="text-2xl font-bold text-white">{tickets.length}</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{tickets.length}</p>
             </div>
-            <div className="bg-[#121212] border border-border-dark rounded-xl p-5">
+            <div className="bg-[#121212] border border-border-dark rounded-xl p-3 sm:p-5">
               <div className="flex items-center gap-2 text-blue-400 text-sm mb-2">
                 <Icon name="alert" size={16} />
                 Open
               </div>
-              <p className="text-2xl font-bold text-blue-400">
+              <p className="text-xl sm:text-2xl font-bold text-blue-400">
                 {tickets.filter((t) => mapStatus(t.status) === 'open').length}
               </p>
             </div>
-            <div className="bg-[#121212] border border-border-dark rounded-xl p-5">
+            <div className="bg-[#121212] border border-border-dark rounded-xl p-3 sm:p-5">
               <div className="flex items-center gap-2 text-yellow-500 text-sm mb-2">
                 <Icon name="loading" size={16} />
                 In Progress
               </div>
-              <p className="text-2xl font-bold text-yellow-500">
+              <p className="text-xl sm:text-2xl font-bold text-yellow-500">
                 {tickets.filter((t) => mapStatus(t.status) === 'in-progress').length}
               </p>
             </div>
-            <div className="bg-[#121212] border border-border-dark rounded-xl p-5">
+            <div className="bg-[#121212] border border-border-dark rounded-xl p-3 sm:p-5">
               <div className="flex items-center gap-2 text-green-500 text-sm mb-2">
                 <Icon name="check-circle" size={16} />
                 Resolved
               </div>
-              <p className="text-2xl font-bold text-green-500">
+              <p className="text-xl sm:text-2xl font-bold text-green-500">
                 {tickets.filter((t) => mapStatus(t.status) === 'resolved').length}
               </p>
             </div>
@@ -381,7 +381,7 @@ export default function TicketsPage() {
       {showNewTicketModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-surface-dark border border-border-dark rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-border-dark flex items-center justify-between">
+            <div className="p-4 sm:p-6 border-b border-border-dark flex items-center justify-between">
               <h2 className="text-xl font-bold text-white">Create New Ticket</h2>
               <button
                 onClick={() => { setShowNewTicketModal(false); setCreateError('') }}
@@ -390,7 +390,7 @@ export default function TicketsPage() {
                 <Icon name="close" size={24} />
               </button>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-5">
               {createError && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-red-400 text-sm">
                   {createError}
@@ -453,17 +453,17 @@ export default function TicketsPage() {
                 </div>
               </div>
             </div>
-            <div className="p-6 border-t border-border-dark flex gap-3 justify-end">
+            <div className="p-4 sm:p-6 border-t border-border-dark flex gap-3 justify-end">
               <button
                 onClick={() => { setShowNewTicketModal(false); setCreateError('') }}
-                className="px-5 py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors font-medium"
+                className="px-4 py-2 sm:px-5 sm:py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateTicket}
                 disabled={isCreating}
-                className="px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
+                className="px-4 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
               >
                 {isCreating ? 'Submitting...' : 'Submit Ticket'}
               </button>
@@ -476,7 +476,7 @@ export default function TicketsPage() {
       {showViewModal && selectedTicketId && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-surface-dark border border-border-dark rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-border-dark flex items-center justify-between">
+            <div className="p-4 sm:p-6 border-b border-border-dark flex items-center justify-between">
               <h2 className="text-xl font-bold text-white">
                 {ticketDetail?.ticketNumber || 'Loading...'}
               </h2>
@@ -496,7 +496,7 @@ export default function TicketsPage() {
             ) : ticketDetail ? (
               <>
                 {/* Ticket Info */}
-                <div className="p-6 border-b border-border-dark">
+                <div className="p-4 sm:p-6 border-b border-border-dark">
                   <div className="flex flex-wrap items-center gap-3 mb-3">
                     {getStatusBadge(ticketDetail.status)}
                     {getPriorityBadge(ticketDetail.priority)}
@@ -516,7 +516,7 @@ export default function TicketsPage() {
                 </div>
 
                 {/* Conversation Thread */}
-                <div className="p-6 space-y-4">
+                <div className="p-4 sm:p-6 space-y-4">
                   <h4 className="text-white font-semibold text-sm">
                     Responses ({ticketDetail.responses?.filter(r => !r.isInternal).length || 0})
                   </h4>

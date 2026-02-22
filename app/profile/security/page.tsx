@@ -82,7 +82,7 @@ export default function SecurityPage() {
     <ProfileLayout>
       {/* Header */}
       <div className="mb-10 pb-6 border-b border-border-dark">
-        <h1 className="text-3xl font-bold text-white mb-2">Security Settings</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Security Settings</h1>
         <p className="text-slate-400">
           Manage your password, login history, and 2FA settings to secure your account.
         </p>
@@ -90,9 +90,9 @@ export default function SecurityPage() {
 
       {/* 2FA Section */}
       <div className="mb-12">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
               <Icon name="lock" size={20} className="text-primary" />
               Two-Factor Authentication (2FA)
             </h3>
@@ -116,7 +116,7 @@ export default function SecurityPage() {
         {/* Idle state — show setup or disable options */}
         {twoFaStep === 'idle' && !twoFaStatus.enabled && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-black border border-border-dark rounded-2xl p-6 flex flex-col justify-between group hover:border-primary/50 transition-colors">
+            <div className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 flex flex-col justify-between group hover:border-primary/50 transition-colors">
               <div>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-surface-dark flex items-center justify-center text-primary">
@@ -151,7 +151,7 @@ export default function SecurityPage() {
               </button>
             </div>
 
-            <div className="bg-black border border-border-dark rounded-2xl p-6 flex flex-col justify-between group hover:border-primary/50 transition-colors">
+            <div className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 flex flex-col justify-between group hover:border-primary/50 transition-colors">
               <div>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-surface-dark flex items-center justify-center text-primary">
@@ -187,7 +187,7 @@ export default function SecurityPage() {
 
         {/* TOTP: Show QR Code */}
         {twoFaStep === 'totp-qr' && (
-          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+          <div className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 max-w-md">
             <h4 className="font-bold text-white mb-3">Scan QR Code</h4>
             <p className="text-slate-500 text-sm mb-4">Open your authenticator app and scan this QR code.</p>
             <div className="bg-white rounded-xl p-4 mb-4 flex justify-center">
@@ -241,7 +241,7 @@ export default function SecurityPage() {
 
         {/* SMS: Enter phone number */}
         {twoFaStep === 'sms-phone' && (
-          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+          <div className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 max-w-md">
             <h4 className="font-bold text-white mb-3">SMS Verification Setup</h4>
             <p className="text-slate-500 text-sm mb-4">Enter your phone number to receive verification codes.</p>
             <div className="space-y-3">
@@ -285,7 +285,7 @@ export default function SecurityPage() {
 
         {/* SMS: Verify code */}
         {twoFaStep === 'sms-verify' && (
-          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+          <div className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 max-w-md">
             <h4 className="font-bold text-white mb-3">Enter Verification Code</h4>
             <p className="text-slate-500 text-sm mb-4">We sent a 6-digit code to {smsPhone}</p>
             <div className="space-y-3">
@@ -332,7 +332,7 @@ export default function SecurityPage() {
 
         {/* Show backup codes */}
         {twoFaStep === 'backup-codes' && (
-          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+          <div className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 max-w-md">
             <h4 className="font-bold text-white mb-3 flex items-center gap-2">
               <Icon name="check-circle" size={20} className="text-primary" />
               2FA Enabled Successfully
@@ -368,7 +368,7 @@ export default function SecurityPage() {
 
         {/* Disable 2FA */}
         {twoFaStep === 'disable' && (
-          <div className="bg-black border border-border-dark rounded-2xl p-6 max-w-md">
+          <div className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 max-w-md">
             <h4 className="font-bold text-white mb-3">Disable Two-Factor Authentication</h4>
             <p className="text-slate-500 text-sm mb-4">Enter your password to confirm.</p>
             <div className="space-y-3">
@@ -415,7 +415,7 @@ export default function SecurityPage() {
 
       {/* Change Password Section */}
       <form onSubmit={handleSubmit} className="mb-12">
-        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+        <h3 className="text-lg sm:text-xl font-bold text-white mb-6 flex items-center gap-2">
           <Icon name="key" size={20} className="text-primary" />
           Change Password
         </h3>
@@ -436,7 +436,7 @@ export default function SecurityPage() {
                   setPasswordError(null)
                 }}
                 placeholder="Enter current password"
-                className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 pr-12 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                className="w-full bg-black border border-border-dark rounded-2xl px-4 py-3 sm:px-5 sm:py-4 pr-12 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
               />
               <button
                 type="button"
@@ -464,7 +464,7 @@ export default function SecurityPage() {
                   setPasswordError(null)
                 }}
                 placeholder="Enter new password"
-                className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 pr-12 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                className="w-full bg-black border border-border-dark rounded-2xl px-4 py-3 sm:px-5 sm:py-4 pr-12 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
               />
               <button
                 type="button"
@@ -490,7 +490,7 @@ export default function SecurityPage() {
                   setPasswordError(null)
                 }}
                 placeholder="Confirm new password"
-                className="w-full bg-black border border-border-dark rounded-2xl px-5 py-4 pr-12 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                className="w-full bg-black border border-border-dark rounded-2xl px-4 py-3 sm:px-5 sm:py-4 pr-12 text-white placeholder-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
               />
               <button
                 type="button"
@@ -514,7 +514,7 @@ export default function SecurityPage() {
 
       {/* Login History */}
       <div>
-        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+        <h3 className="text-lg sm:text-xl font-bold text-white mb-6 flex items-center gap-2">
           <Icon name="history" size={20} className="text-primary" />
           Login History
         </h3>
@@ -523,10 +523,10 @@ export default function SecurityPage() {
           <table className="w-full text-left text-sm text-slate-400">
             <thead className="text-xs uppercase bg-black text-slate-200">
               <tr>
-                <th className="px-6 py-4 font-bold">Device</th>
-                <th className="px-6 py-4 font-bold">IP Address</th>
-                <th className="px-6 py-4 font-bold">Date</th>
-                <th className="px-6 py-4 font-bold text-right">Status</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Device</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">IP Address</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Date</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-dark bg-black/20">
@@ -541,12 +541,12 @@ export default function SecurityPage() {
               ) : (
                 loginHistory.map((entry) => (
                   <tr key={entry.id} className="hover:bg-black/40 transition-colors">
-                    <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 font-medium text-white flex items-center gap-3">
                       <Icon name={entry.deviceType === 'Mobile' ? 'smartphone' : entry.deviceType === 'Tablet' ? 'tablet' : 'computer'} size={18} />
                       {entry.browserName || 'Unknown'} on {entry.deviceType || 'Unknown'}
                     </td>
-                    <td className="px-6 py-4">{entry.ipAddress}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">{entry.ipAddress}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       {new Date(entry.createdAt).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -555,7 +555,7 @@ export default function SecurityPage() {
                         minute: '2-digit',
                       })}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-right">
                       {entry.success ? (
                         <span className="text-primary bg-primary/10 px-2 py-1 rounded text-xs font-bold border border-primary/20">
                           Success
@@ -575,7 +575,7 @@ export default function SecurityPage() {
       </div>
 
       {/* Actions */}
-      <div className="pt-10 flex items-center justify-end gap-4">
+      <div className="pt-10 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 sm:gap-4">
         {saved && (
           <span className="text-primary text-sm font-medium flex items-center gap-1">
             <Icon name="check-circle" size={18} />
@@ -584,14 +584,14 @@ export default function SecurityPage() {
         )}
         <button
           type="button"
-          className="text-slate-400 font-bold px-6 py-3.5 rounded-xl hover:text-white transition-colors"
+          className="text-slate-400 font-bold px-4 py-3 sm:px-6 sm:py-3.5 rounded-xl hover:text-white transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={isLoading}
-          className="bg-primary hover:bg-green-400 text-black font-bold px-10 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+          className="bg-primary hover:bg-green-400 text-black font-bold px-6 py-3 sm:px-10 sm:py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 w-full sm:w-auto"
         >
           {isLoading ? 'Saving...' : 'Save Security'}
         </button>

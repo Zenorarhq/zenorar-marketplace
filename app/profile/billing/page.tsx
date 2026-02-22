@@ -174,7 +174,7 @@ export default function BillingPage() {
     <ProfileLayout>
       {/* Header */}
       <div className="mb-10 pb-6 border-b border-border-dark">
-        <h1 className="text-3xl font-bold text-white mb-2">Billing & Payments</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Billing & Payments</h1>
         <p className="text-slate-400">
           Manage your payment methods, billing address, and view your transaction history.
         </p>
@@ -183,7 +183,7 @@ export default function BillingPage() {
       {/* Payment Methods */}
       <div className="mb-12">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+          <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <Icon name="credit-card" size={20} className="text-primary" />
             Saved Payment Methods
           </h3>
@@ -192,7 +192,7 @@ export default function BillingPage() {
         {loadingMethods ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {[1, 2].map((i) => (
-              <div key={i} className="bg-black border border-border-dark rounded-2xl p-6 animate-pulse">
+              <div key={i} className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 animate-pulse">
                 <div className="h-6 w-16 bg-surface-dark rounded mb-6" />
                 <div className="h-5 w-48 bg-surface-dark rounded mb-4" />
                 <div className="h-4 w-20 bg-surface-dark rounded" />
@@ -204,7 +204,7 @@ export default function BillingPage() {
             {methods.map((method) => (
               <div
                 key={method.id}
-                className="bg-black border border-border-dark rounded-2xl p-6 relative group hover:border-primary/50 transition-colors"
+                className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 relative group hover:border-primary/50 transition-colors"
               >
                 <div className="flex justify-between items-start mb-6">
                   <div className="bg-white/10 rounded px-2 py-1">
@@ -221,12 +221,12 @@ export default function BillingPage() {
 
                 <div className="mb-4">
                   <p className="text-slate-500 text-xs mb-1">Card Number</p>
-                  <p className="text-white font-mono text-lg tracking-widest">
+                  <p className="text-white font-mono text-base sm:text-lg tracking-widest">
                     .... .... .... {method.last4 || '****'}
                   </p>
                 </div>
 
-                <div className="flex justify-between items-end">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-3">
                   <div>
                     <p className="text-slate-500 text-xs mb-1">Expires</p>
                     <p className="text-white font-medium">
@@ -256,7 +256,7 @@ export default function BillingPage() {
             {/* Add New Card */}
             <button
               onClick={openAddCard}
-              className="bg-black border border-dashed border-border-dark rounded-2xl p-6 flex flex-col items-center justify-center gap-3 hover:border-primary hover:bg-black/40 transition-all group h-full min-h-[180px]"
+              className="bg-black border border-dashed border-border-dark rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center gap-3 hover:border-primary hover:bg-black/40 transition-all group h-full min-h-[180px]"
             >
               <div className="w-12 h-12 rounded-full bg-surface-dark flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                 <Icon name="add" size={24} />
@@ -270,13 +270,13 @@ export default function BillingPage() {
       {/* Billing Address */}
       <div className="mb-12">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+          <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <Icon name="location" size={20} className="text-primary" />
             Billing Address
           </h3>
         </div>
 
-        <div className="bg-black border border-border-dark rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-primary/30 transition-colors">
+        <div className="bg-black border border-border-dark rounded-2xl p-4 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 hover:border-primary/30 transition-colors">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-surface-dark flex items-center justify-center text-slate-400 flex-shrink-0">
               <Icon name="home" size={20} />
@@ -299,8 +299,8 @@ export default function BillingPage() {
 
       {/* Transaction History */}
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <Icon name="receipt" size={20} className="text-primary" />
             Transaction History
           </h3>
@@ -331,9 +331,9 @@ export default function BillingPage() {
             <table className="w-full text-left text-sm text-slate-400">
               <thead className="text-xs uppercase bg-black text-slate-200">
                 <tr>
-                  <th className="px-6 py-4 font-bold">Date</th>
-                  <th className="px-6 py-4 font-bold">Description</th>
-                  <th className="px-6 py-4 font-bold">Amount</th>
+                  <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Date</th>
+                  <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Description</th>
+                  <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Amount</th>
                   <th className="px-6 py-4 font-bold text-center">Status</th>
                 </tr>
               </thead>
@@ -353,10 +353,10 @@ export default function BillingPage() {
 
                   return (
                     <tr key={order.id} className="hover:bg-black/40 transition-colors">
-                      <td className="px-6 py-4 text-white whitespace-nowrap">
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-white whitespace-nowrap">
                         {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-3 sm:px-6 sm:py-4">
                         <div className="flex items-center gap-2">
                           <span className="w-8 h-8 rounded bg-surface-dark flex items-center justify-center text-slate-500">
                             <Icon name="shopping-bag" size={14} />
@@ -364,8 +364,8 @@ export default function BillingPage() {
                           <span className="truncate max-w-[200px]">{description}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-mono text-white">${Number(order.total).toFixed(2)}</td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 font-mono text-white">${Number(order.total).toFixed(2)}</td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-center">
                         <span className={`px-2 py-1 rounded text-xs font-bold border ${status.color}`}>
                           {status.label}
                         </span>
@@ -382,7 +382,7 @@ export default function BillingPage() {
       {/* Add Card Modal */}
       {showAddCard && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-dark rounded-2xl p-8 max-w-md w-full border border-border-dark">
+          <div className="bg-surface-dark rounded-2xl p-5 sm:p-8 max-w-md w-full border border-border-dark">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-white">Add Payment Method</h3>
               <button
