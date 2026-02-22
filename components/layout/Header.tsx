@@ -340,6 +340,14 @@ export default function Header() {
                       Wishlist
                     </Link>
                     <Link
+                      href="/profile/wallet"
+                      onClick={() => setShowMobileUserMenu(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="wallet" size={16} />
+                      Wallet & Credit
+                    </Link>
+                    <Link
                       href="/profile"
                       onClick={() => setShowMobileUserMenu(false)}
                       className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
@@ -482,6 +490,14 @@ export default function Header() {
                       >
                         <Icon name="heart" size={16} />
                         Wishlist
+                      </Link>
+                      <Link
+                        href="/profile/wallet"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="wallet" size={16} />
+                        Wallet & Credit
                       </Link>
                       <Link
                         href="/profile"
