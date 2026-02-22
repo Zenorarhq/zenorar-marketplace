@@ -55,6 +55,7 @@ export default function PaymentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('wallet')
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
+  const [stripeConfigError, setStripeConfigError] = useState<string | null>(null)
   const [paystackPublicKey, setPaystackPublicKey] = useState<string>('')
   const [paystackKeyLoaded, setPaystackKeyLoaded] = useState(false)
   const [selectedNetwork, setSelectedNetwork] = useState<CryptoNetwork>('BTC')
@@ -194,14 +195,20 @@ export default function PaymentPage() {
   // Load Stripe publishable key when Stripe is enabled
   useEffect(() => {
     if (enabledProviders.stripe) {
+      setStripeConfigError(null)
       fetch('/api/payments/stripe/config')
         .then(res => res.json())
         .then(data => {
           if (data.data?.publishableKey) {
             setStripePromise(loadStripe(data.data.publishableKey))
+          } else {
+            setStripeConfigError(data.error || 'Stripe is not configured')
           }
         })
-        .catch(err => console.error('Failed to load Stripe config:', err))
+        .catch(err => {
+          console.error('Failed to load Stripe config:', err)
+          setStripeConfigError('Failed to load Stripe. Please try again.')
+        })
     }
   }, [enabledProviders.stripe])
 
@@ -1653,6 +1660,11 @@ export default function PaymentPage() {
                         onBack={() => router.push('/checkout')}
                       />
                     </Elements>
+                  ) : stripeConfigError ? (
+                    <div className="bg-charcoal border border-border-dark rounded-xl p-6 text-center">
+                      <Icon name="alert-triangle" size={32} className="text-red-400 mx-auto mb-3" />
+                      <p className="text-red-400 text-sm">{stripeConfigError}</p>
+                    </div>
                   ) : (
                     <div className="bg-charcoal border border-border-dark rounded-xl p-6 text-center">
                       <Icon name="loading" size={32} className="text-primary animate-spin mx-auto mb-3" />

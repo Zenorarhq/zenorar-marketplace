@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
   try {
     const mode = (await getSiteSetting('stripeMode')) || 'test'
     const publishableKey = mode === 'live'
-      ? await getSiteSetting('stripeLivePublishableKey')
-      : await getSiteSetting('stripeTestPublishableKey')
+      ? await getSiteSetting('stripeLivePublicKey')
+      : await getSiteSetting('stripeTestPublicKey')
 
     if (!publishableKey) {
       return NextResponse.json({
