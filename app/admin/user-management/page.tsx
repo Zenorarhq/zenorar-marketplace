@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import AdminRoute from '@/components/admin/AdminRoute'
@@ -22,6 +22,20 @@ const tabs = [
 
 export default function UserManagementPage() {
   const [activeTab, setActiveTab] = useState<Tab>('users')
+  const tabsRef = useRef<HTMLDivElement>(null)
+
+  const handleTabClick = (tabId: Tab, index: number) => {
+    setActiveTab(tabId)
+    if (tabsRef.current) {
+      const container = tabsRef.current
+      const tabElements = container.children
+      if (tabElements[index]) {
+        const tab = tabElements[index] as HTMLElement
+        const scrollLeft = tab.offsetLeft - container.offsetWidth / 2 + tab.offsetWidth / 2
+        container.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' })
+      }
+    }
+  }
 
   return (
     <AdminRoute requiredPermissions={['view_users', 'view_staff', 'manage_roles']}>
@@ -29,29 +43,31 @@ export default function UserManagementPage() {
         <div className="space-y-6">
           {/* Header */}
           <div>
-            <h1 className="text-2xl font-bold text-white mb-2">User Management</h1>
-            <p className="text-slate-400">Manage users, staff members, and roles</p>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">User Management</h1>
+            <p className="text-slate-400 text-xs sm:text-sm">Manage users, staff members, and roles</p>
           </div>
 
           {/* Tabs */}
-          <div>
-            <div className="flex gap-2 overflow-x-auto max-w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' as const }}>
-              {tabs.map((tab) => (
-                <PermissionGate key={tab.id} permission={tab.permission}>
-                  <button
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
-                      activeTab === tab.id
-                        ? 'bg-primary text-black'
-                        : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'
-                    }`}
-                  >
-                    <Icon name={tab.icon} size={18} />
-                    {tab.label}
-                  </button>
-                </PermissionGate>
-              ))}
-            </div>
+          <div
+            ref={tabsRef}
+            className="flex gap-2 overflow-x-auto max-w-full"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' as const }}
+          >
+            {tabs.map((tab, index) => (
+              <PermissionGate key={tab.id} permission={tab.permission}>
+                <button
+                  onClick={() => handleTabClick(tab.id, index)}
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
+                    activeTab === tab.id
+                      ? 'bg-primary text-black'
+                      : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'
+                  }`}
+                >
+                  <Icon name={tab.icon} size={14} />
+                  {tab.label}
+                </button>
+              </PermissionGate>
+            ))}
           </div>
 
           {/* Tab Content */}
@@ -175,23 +191,21 @@ function UsersTab() {
   return (
     <div className="space-y-6">
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           {[
-            { label: 'Total Customers', value: stats.totalCustomers, icon: 'user', color: 'blue' },
+            { label: 'Total Customers', value: stats.totalCustomers, icon: 'user', color: 'primary' },
             { label: 'New Today', value: stats.newCustomersToday, icon: 'trending-up', color: 'green' },
-            { label: 'Total Orders', value: stats.totalOrders, icon: 'shopping-cart', color: 'purple' },
-            { label: 'Active Customers', value: stats.activeCustomers, icon: 'check', color: 'primary' },
+            { label: 'Total Orders', value: stats.totalOrders, icon: 'shopping-cart', color: 'blue' },
+            { label: 'Active Customers', value: stats.activeCustomers, icon: 'check', color: 'purple' },
           ].map((stat) => (
-            <div key={stat.label} className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center`}>
-                  <Icon name={stat.icon} size={20} className={`text-${stat.color}-500`} />
-                </div>
-                <div>
-                  <p className="text-slate-400 text-sm">{stat.label}</p>
-                  <p className="text-white text-xl font-bold">{stat.value}</p>
+            <div key={stat.label} className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+              <div className="flex items-start justify-between mb-3">
+                <p className="text-slate-400 text-xs lg:text-sm">{stat.label}</p>
+                <div className={`w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center`}>
+                  <Icon name={stat.icon} size={16} className={`text-${stat.color}-500`} />
                 </div>
               </div>
+              <p className="text-white text-lg lg:text-2xl font-bold">{stat.value?.toLocaleString() ?? 0}</p>
             </div>
           ))}
         </div>
@@ -542,23 +556,21 @@ function StaffTab() {
   return (
     <div className="space-y-6">
       {staffStats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           {[
-            { label: 'Total Staff', value: staffStats.totalStaff, icon: 'people', color: 'blue' },
+            { label: 'Total Staff', value: staffStats.totalStaff, icon: 'people', color: 'primary' },
             { label: 'Admins', value: staffStats.adminCount, icon: 'shield', color: 'red' },
             { label: 'Editors', value: staffStats.editorCount, icon: 'edit', color: 'green' },
             { label: 'With Custom Roles', value: staffStats.staffWithRolesCount, icon: 'key', color: 'purple' },
           ].map((stat) => (
-            <div key={stat.label} className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center`}>
-                  <Icon name={stat.icon} size={20} className={`text-${stat.color}-500`} />
-                </div>
-                <div>
-                  <p className="text-slate-400 text-sm">{stat.label}</p>
-                  <p className="text-white text-xl font-bold">{stat.value}</p>
+            <div key={stat.label} className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+              <div className="flex items-start justify-between mb-3">
+                <p className="text-slate-400 text-xs lg:text-sm">{stat.label}</p>
+                <div className={`w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center`}>
+                  <Icon name={stat.icon} size={16} className={`text-${stat.color}-500`} />
                 </div>
               </div>
+              <p className="text-white text-lg lg:text-2xl font-bold">{stat.value?.toLocaleString() ?? 0}</p>
             </div>
           ))}
         </div>
@@ -850,22 +862,20 @@ function GuestPurchasesTab() {
   return (
     <div className="space-y-6">
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
           {[
-            { label: 'Total Guest Orders', value: stats.totalGuestOrders, icon: 'shopping-cart', color: 'blue' },
+            { label: 'Total Guest Orders', value: stats.totalGuestOrders, icon: 'shopping-cart', color: 'primary' },
             { label: 'Today', value: stats.guestOrdersToday, icon: 'trending-up', color: 'green' },
-            { label: 'Total Revenue', value: `$${Number(stats.totalGuestRevenue).toFixed(2)}`, icon: 'wallet', color: 'primary' },
+            { label: 'Total Revenue', value: `$${Number(stats.totalGuestRevenue).toFixed(2)}`, icon: 'wallet', color: 'blue' },
           ].map((stat) => (
-            <div key={stat.label} className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center`}>
-                  <Icon name={stat.icon} size={20} className={`text-${stat.color}-500`} />
-                </div>
-                <div>
-                  <p className="text-slate-400 text-sm">{stat.label}</p>
-                  <p className="text-white text-xl font-bold">{stat.value}</p>
+            <div key={stat.label} className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+              <div className="flex items-start justify-between mb-3">
+                <p className="text-slate-400 text-xs lg:text-sm">{stat.label}</p>
+                <div className={`w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center`}>
+                  <Icon name={stat.icon} size={16} className={`text-${stat.color}-500`} />
                 </div>
               </div>
+              <p className="text-white text-lg lg:text-2xl font-bold">{typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}</p>
             </div>
           ))}
         </div>

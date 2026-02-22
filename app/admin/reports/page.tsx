@@ -202,7 +202,7 @@ export default function AdminReportsPage() {
                     <Icon name="stats" size={16} />
                   </div>
                 </div>
-                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(avgOrderValue)}</p>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(avgOrderValue, 2)}</p>
                 <p className="text-xs">
                   <span className="text-slate-500">per order</span>
                 </p>
@@ -422,7 +422,7 @@ export default function AdminReportsPage() {
                     <Icon name="stats" size={16} />
                   </div>
                 </div>
-                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(avgOrderValue)}</p>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(avgOrderValue, 2)}</p>
                 <p className="text-xs">
                   <span className="text-slate-500">per order</span>
                 </p>
@@ -694,7 +694,7 @@ export default function AdminReportsPage() {
                     <Icon name="wallet" size={16} />
                   </div>
                 </div>
-                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(avgOrderValue)}</p>
+                <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(avgOrderValue, 2)}</p>
                 <p className="text-xs">
                   <span className="text-slate-500">per customer</span>
                 </p>
