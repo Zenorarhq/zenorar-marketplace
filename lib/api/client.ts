@@ -28,28 +28,30 @@ export interface User {
   createdAt: string
 }
 
-// Token management
-let accessToken: string | null = null
+// Token management — separate keys for admin and regular user sessions
+function getTokenKey(): string {
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+    return 'admin_auth_token'
+  }
+  return 'auth_token'
+}
 
 export function setAccessToken(token: string) {
-  accessToken = token
   if (typeof window !== 'undefined') {
-    localStorage.setItem('auth_token', token)
+    localStorage.setItem(getTokenKey(), token)
   }
 }
 
 export function getAccessToken(): string | null {
-  if (accessToken) return accessToken
   if (typeof window !== 'undefined') {
-    accessToken = localStorage.getItem('auth_token')
+    return localStorage.getItem(getTokenKey())
   }
-  return accessToken
+  return null
 }
 
 export function clearAccessToken() {
-  accessToken = null
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('auth_token')
+    localStorage.removeItem(getTokenKey())
     localStorage.removeItem('user')
   }
 }
