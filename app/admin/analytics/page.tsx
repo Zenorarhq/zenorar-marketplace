@@ -464,7 +464,7 @@ export default function AnalyticsPage() {
             <div className="space-y-1">
               {activityFeed.length > 0 ? (
                 activityFeed.map((item: any, i: number) => {
-                  const iconName = item.type === 'order' ? 'shopping-cart' : item.type === 'signup' ? 'users' : 'ticket'
+                  const iconName = item.type === 'order' ? 'shopping-cart' : item.type === 'signup' ? 'user-add' : 'ticket'
                   const iconColor = item.type === 'order' ? 'text-primary bg-primary/10' : item.type === 'signup' ? 'text-blue-400 bg-blue-500/10' : 'text-orange-400 bg-orange-500/10'
                   const timeAgo = getTimeAgo(item.timestamp)
                   return (

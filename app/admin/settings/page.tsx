@@ -412,18 +412,9 @@ export default function AdminSettingsPage() {
     })
   }, [])
 
-  // Fetch sent notifications
+  // Fetch sent notifications (endpoint not yet available on backend)
   const fetchSentNotifications = async () => {
-    setLoadingSent(true)
-    try {
-      const data = await apiFetch<any[]>('/notifications/sent?limit=20')
-      if (data.success) {
-        setSentNotifications(data.data || [])
-      }
-    } catch (error) {
-      console.error('Failed to fetch sent notifications:', error)
-    }
-    setLoadingSent(false)
+    setSentNotifications([])
   }
 
   // Fetch recipients for a batch

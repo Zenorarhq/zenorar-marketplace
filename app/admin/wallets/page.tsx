@@ -251,7 +251,7 @@ export default function AdminWalletsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Total Balance', value: formatCurrency(walletStats.totalBalance || 0), icon: 'wallet', color: 'text-primary' },
-            { label: 'Total Wallets', value: walletStats.totalWallets || 0, icon: 'users', color: 'text-blue-500' },
+            { label: 'Total Wallets', value: walletStats.totalWallets || 0, icon: 'user-group', color: 'text-blue-500' },
             { label: 'Active', value: walletStats.activeCount || 0, icon: 'check-circle', color: 'text-green-500' },
             { label: 'Frozen', value: walletStats.frozenCount || 0, icon: 'lock', color: 'text-red-500' },
           ].map((stat) => (

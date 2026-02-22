@@ -74,15 +74,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { data: pendingCounts } = useQuery({
     queryKey: ['admin-pending-counts'],
     queryFn: async () => {
-      const [depositsRes, ordersRes, ticketsRes] = await Promise.all([
+      const [depositsRes, ordersRes] = await Promise.all([
         apiFetch<{ count: number }>('/deposits/pending-count'),
         apiFetch<{ count: number }>('/orders/pending-count'),
-        apiFetch<{ count: number }>('/tickets/pending-count'),
       ])
       return {
         deposits: depositsRes.data?.count || 0,
         orders: ordersRes.data?.count || 0,
-        tickets: ticketsRes.data?.count || 0,
       }
     },
     refetchInterval: 30000,
@@ -240,7 +238,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     {/* Red dot ON ICON - shows when collapsed or mobile */}
                     {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
                       (item.href === '/admin/purchases' && pendingCounts?.orders && pendingCounts.orders > 0) ||
-                      (item.href === '/admin/tickets' && pendingCounts?.tickets && pendingCounts.tickets > 0) ||
                       (item.href === '/admin/chat' && unreadChats > 0)) && (
                       <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#111111] ${
                         desktopCollapsed ? '' : 'lg:hidden'
@@ -254,7 +251,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       {/* Red dot AFTER TEXT - only on expanded desktop */}
                       {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
                         (item.href === '/admin/purchases' && pendingCounts?.orders && pendingCounts.orders > 0) ||
-                        (item.href === '/admin/tickets' && pendingCounts?.tickets && pendingCounts.tickets > 0) ||
                         (item.href === '/admin/chat' && unreadChats > 0)) && (
                         <span className="w-2 h-2 bg-red-500 rounded-full" />
                       )}
