@@ -178,10 +178,10 @@ export default function ProfileSettingsPage() {
   return (
     <ProfileLayout>
       {/* Avatar Section */}
-      <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12 pb-10 border-b border-border-dark">
+      <div className="flex flex-col md:flex-row items-center md:items-start gap-5 sm:gap-8 mb-8 sm:mb-12 pb-8 sm:pb-10 border-b border-border-dark">
         <div className="relative group">
           <div
-            className="w-28 h-28 rounded-3xl overflow-hidden bg-black ring-4 ring-black shadow-xl flex items-center justify-center cursor-pointer"
+            className="w-20 h-20 sm:w-28 sm:h-28 rounded-3xl overflow-hidden bg-black ring-4 ring-black shadow-xl flex items-center justify-center cursor-pointer"
             onClick={handleAvatarClick}
           >
             {isUploadingAvatar ? (
@@ -216,13 +216,13 @@ export default function ProfileSettingsPage() {
           />
         </div>
         <div className="flex-1 text-center md:text-left mt-2">
-          <h1 className="text-3xl font-bold text-white mb-1">{formData.fullName}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">{formData.fullName}</h1>
           <p className="text-slate-400 mb-6 font-medium">{formData.email}</p>
           <div className="flex flex-wrap gap-3 justify-center md:justify-start">
             <button
               onClick={handleAvatarClick}
               disabled={isUploadingAvatar}
-              className="text-xs font-bold text-primary border border-primary/30 px-5 py-2.5 rounded-xl hover:bg-primary/10 transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+              className="text-xs font-bold text-primary border border-primary/30 px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl hover:bg-primary/10 transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
             >
               <Icon name="upload" size={14} />
               {avatarPreview ? 'Change Avatar' : 'Upload Avatar'}
@@ -231,7 +231,7 @@ export default function ProfileSettingsPage() {
               <button
                 onClick={handleRemoveAvatar}
                 disabled={isUploadingAvatar}
-                className="text-xs font-bold text-red-400 border border-red-400/30 px-5 py-2.5 rounded-xl hover:bg-red-400/10 transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
+                className="text-xs font-bold text-red-400 border border-red-400/30 px-3 py-2 sm:px-5 sm:py-2.5 rounded-xl hover:bg-red-400/10 transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-50"
               >
                 <Icon name="delete" size={14} />
                 Remove
@@ -244,9 +244,9 @@ export default function ProfileSettingsPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-10">
+      <form onSubmit={handleSubmit} className="space-y-8 sm:space-y-10">
         {/* Form Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8">
           <div className="space-y-3">
             <label htmlFor="fullName" className="text-sm font-semibold text-slate-300 ml-1">
               Full Name
@@ -309,7 +309,7 @@ export default function ProfileSettingsPage() {
             <Icon name="settings" size={20} className="text-primary" />
             Preferences
           </h3>
-          <div className="space-y-6 bg-black/40 rounded-2xl p-6 border border-border-dark">
+          <div className="space-y-6 bg-black/40 rounded-2xl p-4 sm:p-6 border border-border-dark">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-bold text-white text-sm">Email Notifications</h4>
@@ -355,7 +355,7 @@ export default function ProfileSettingsPage() {
         </div>
 
         {/* Actions */}
-        <div className="pt-4 flex items-center justify-end gap-4">
+        <div className="pt-4 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 sm:gap-4">
           {saved && (
             <span className="text-primary text-sm font-medium flex items-center gap-1">
               <Icon name="check-circle" size={18} />
@@ -372,7 +372,7 @@ export default function ProfileSettingsPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="bg-primary hover:bg-green-400 text-black font-bold px-10 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+            className="bg-primary hover:bg-green-400 text-black font-bold px-10 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 w-full sm:w-auto"
           >
             {isLoading ? 'Saving...' : 'Save Changes'}
           </button>

@@ -175,7 +175,7 @@ export default function OrdersPage() {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Order History</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Order History</h1>
             <p className="text-slate-400">View and manage your recent transactions and returns.</p>
           </div>
           <div className="flex gap-3">
@@ -260,7 +260,7 @@ export default function OrdersPage() {
               <button
                 key={filter.key}
                 onClick={() => setActiveFilter(filter.key)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`px-3 py-1.5 sm:px-4 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
                   activeFilter === filter.key
                     ? 'bg-primary text-black font-bold'
                     : 'text-slate-400 hover:text-white'
@@ -328,8 +328,8 @@ export default function OrdersPage() {
               className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden shadow-lg"
             >
               {/* Order Header */}
-              <div className="px-6 py-4 border-b border-border-dark flex flex-wrap justify-between items-center gap-4 bg-[#161616]">
-                <div className="flex gap-8">
+              <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-border-dark flex flex-wrap justify-between items-center gap-3 sm:gap-4 bg-[#161616]">
+                <div className="flex gap-4 sm:gap-8">
                   <div>
                     <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">
                       Order ID
@@ -348,7 +348,7 @@ export default function OrdersPage() {
 
               {/* Order Items */}
               <div
-                className={`p-6 border-b border-border-dark ${
+                className={`p-4 sm:p-6 border-b border-border-dark ${
                   order.status === 'CANCELLED' || order.status === 'REFUNDED' ? 'opacity-60' : ''
                 }`}
               >
@@ -356,8 +356,8 @@ export default function OrdersPage() {
                   {order.items.map((item, index) => (
                     <div
                       key={item.id || index}
-                      className={`flex items-start gap-5 ${
-                        index > 0 ? 'border-t border-dashed border-border-dark pt-6' : ''
+                      className={`flex items-start gap-3 sm:gap-5 ${
+                        index > 0 ? 'border-t border-dashed border-border-dark pt-4 sm:pt-6' : ''
                       }`}
                     >
                       <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -372,7 +372,7 @@ export default function OrdersPage() {
                         )}
                       </div>
                       <div>
-                        <h3 className="text-white font-bold text-lg leading-tight mb-1">
+                        <h3 className="text-white font-bold text-base sm:text-lg leading-tight mb-1">
                           {item.name}
                         </h3>
                         {item.variant && (
@@ -394,7 +394,7 @@ export default function OrdersPage() {
               </div>
 
               {/* Order Footer */}
-              <div className="px-6 py-4 bg-[#161616] flex flex-wrap items-center justify-between gap-4">
+              <div className="px-4 py-3 sm:px-6 sm:py-4 bg-[#161616] flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                 {order.status === 'REFUNDED' ? (
                   <div className="flex items-center gap-2">
                     <span className="text-slate-500 text-sm">Refund Status:</span>
@@ -407,7 +407,7 @@ export default function OrdersPage() {
                   </div>
                 )}
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                   {order.status === 'CANCELLED' || order.status === 'REFUNDED' ? (
                     order.items[0]?.product?.slug && (
                       <Link

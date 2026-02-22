@@ -1953,6 +1953,12 @@ function StripeCardForm({
       const orderId = orderResult.data.id
       const orderNumber = orderResult.data.orderNumber
 
+      // Notify user: order placed
+      apiFetch('/notifications/create', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'ORDER_PLACED', title: 'Order Placed', message: `Your order #${orderNumber} has been placed successfully.`, data: { orderId, orderNumber } }),
+      }).catch(() => {})
+
       // 2. Create PaymentIntent in user's selected currency
       const chargeAmount = currency === 'usd' ? amount : convertPrice(amount, currency.toUpperCase())
       const intentResponse = await fetch('/api/payments/stripe/create-intent', {
@@ -2142,6 +2148,12 @@ function PaystackCardForm({
       const orderResult = await orderResponse.json()
       const orderId = orderResult.data.id
       const orderNumber = orderResult.data.orderNumber
+
+      // Notify user: order placed
+      apiFetch('/notifications/create', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'ORDER_PLACED', title: 'Order Placed', message: `Your order #${orderNumber} has been placed successfully.`, data: { orderId, orderNumber } }),
+      }).catch(() => {})
 
       // 2. Open Paystack popup
       const PaystackPop = (window as any).PaystackPop

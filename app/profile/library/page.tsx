@@ -160,7 +160,7 @@ export default function LibraryPage() {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">My Library</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">My Library</h1>
             <p className="text-slate-400">Access and manage all your purchased digital products.</p>
           </div>
           <div className="flex gap-3">
@@ -188,7 +188,7 @@ export default function LibraryPage() {
               <button
                 key={filter.key}
                 onClick={() => setActiveFilter(filter.key)}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
                   activeFilter === filter.key
                     ? 'bg-primary text-black font-bold'
                     : 'text-slate-400 hover:text-white'
@@ -232,7 +232,7 @@ export default function LibraryPage() {
                 item.status === 'expired' ? 'opacity-60' : ''
               }`}
             >
-              <div className="p-6 flex flex-col lg:flex-row lg:items-center gap-6">
+              <div className="p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center gap-4 sm:gap-6">
                 {/* Icon */}
                 <div className="h-16 w-16 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 text-primary">
                   <Icon name={item.icon} size={32} />
@@ -241,7 +241,7 @@ export default function LibraryPage() {
                 {/* Info */}
                 <div className="flex-grow">
                   <div className="flex flex-wrap items-center gap-3 mb-2">
-                    <h3 className="text-white font-bold text-lg">{item.name}</h3>
+                    <h3 className="text-white font-bold text-base sm:text-lg">{item.name}</h3>
                     {getStatusBadge(item.status)}
                   </div>
                   <p className="text-slate-400 text-sm mb-3">{item.description}</p>
@@ -272,12 +272,12 @@ export default function LibraryPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-3 flex-shrink-0">
+                <div className="flex flex-wrap gap-2 sm:gap-3 flex-shrink-0">
                   {item.status === 'expired' ? (
                     <button
                       onClick={() => handleRenew(item.id, item.name)}
                       disabled={loadingAction === `renew-${item.id}`}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loadingAction === `renew-${item.id}` ? (
                         <>
@@ -297,7 +297,7 @@ export default function LibraryPage() {
                         <button
                           onClick={() => handleDownload(item.id, item.name)}
                           disabled={loadingAction === `download-${item.id}`}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {loadingAction === `download-${item.id}` ? (
                             <>
@@ -316,7 +316,7 @@ export default function LibraryPage() {
                         <button
                           onClick={() => handleViewQR(item.id, item.name)}
                           disabled={loadingAction === `qr-${item.id}`}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {loadingAction === `qr-${item.id}` ? (
                             <>
@@ -335,7 +335,7 @@ export default function LibraryPage() {
                         <button
                           onClick={() => handleApiKey(item.id, item.name)}
                           disabled={loadingAction === `api-${item.id}`}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {loadingAction === `api-${item.id}` ? (
                             <>
@@ -350,7 +350,7 @@ export default function LibraryPage() {
                           )}
                         </button>
                       )}
-                      <button className="flex items-center gap-2 px-4 py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors">
+                      <button className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors">
                         <Icon name="more-horizontal" size={18} />
                       </button>
                     </>
@@ -364,37 +364,37 @@ export default function LibraryPage() {
 
       {/* Stats Summary */}
       <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-[#121212] border border-border-dark rounded-xl p-5">
+        <div className="bg-[#121212] border border-border-dark rounded-xl p-3 sm:p-5">
           <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
             <Icon name="package" size={16} />
             Total Items
           </div>
-          <p className="text-2xl font-bold text-white">{libraryItems.length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-white">{libraryItems.length}</p>
         </div>
-        <div className="bg-[#121212] border border-border-dark rounded-xl p-5">
+        <div className="bg-[#121212] border border-border-dark rounded-xl p-3 sm:p-5">
           <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
             <Icon name="check-circle" size={16} />
             Active
           </div>
-          <p className="text-2xl font-bold text-green-500">
+          <p className="text-xl sm:text-2xl font-bold text-green-500">
             {libraryItems.filter((i) => i.status === 'active' || i.status === 'update-available').length}
           </p>
         </div>
-        <div className="bg-[#121212] border border-border-dark rounded-xl p-5">
+        <div className="bg-[#121212] border border-border-dark rounded-xl p-3 sm:p-5">
           <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
             <Icon name="download" size={16} />
             Updates
           </div>
-          <p className="text-2xl font-bold text-blue-400">
+          <p className="text-xl sm:text-2xl font-bold text-blue-400">
             {libraryItems.filter((i) => i.status === 'update-available').length}
           </p>
         </div>
-        <div className="bg-[#121212] border border-border-dark rounded-xl p-5">
+        <div className="bg-[#121212] border border-border-dark rounded-xl p-3 sm:p-5">
           <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
             <Icon name="alert" size={16} />
             Expired
           </div>
-          <p className="text-2xl font-bold text-red-500">
+          <p className="text-xl sm:text-2xl font-bold text-red-500">
             {libraryItems.filter((i) => i.status === 'expired').length}
           </p>
         </div>
