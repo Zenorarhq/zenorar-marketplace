@@ -242,20 +242,19 @@ export default function AnalyticsPage() {
             {/* Revenue Trends */}
             <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
               <h3 className="text-white font-semibold mb-4">Revenue Trends</h3>
-              <div className="h-64 flex items-end justify-between gap-2">
+              <div className="h-48 flex items-end gap-[2px]">
                 {monthlyRevenue.length > 0 ? (
                   monthlyRevenue.map((data: any, i: number) => {
                     const height = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0
                     const monthLabel = new Date(data.date).toLocaleDateString('en-US', { month: 'short' })
                     return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                      <div key={i} className="flex-1 flex flex-col items-center justify-end h-full" title={`${monthLabel}: ${formatCurrency(data.revenue)}`}>
                         <div
-                          className="w-full bg-gradient-to-t from-primary/20 to-primary/5 rounded-t-lg relative"
-                          style={{ height: `${Math.max(height, 5)}%` }}
+                          className="w-full bg-gradient-to-t from-primary/30 to-primary/10 rounded-t relative min-h-[2px]"
+                          style={{ height: `${Math.max(height, 2)}%` }}
                         >
-                          <div className="absolute inset-x-0 top-0 h-1 bg-primary rounded-t-lg" />
+                          <div className="absolute inset-x-0 top-0 h-[2px] bg-primary rounded-t" />
                         </div>
-                        <span className="text-slate-500 text-xs">{monthLabel}</span>
                       </div>
                     )
                   })
@@ -265,6 +264,12 @@ export default function AnalyticsPage() {
                   </div>
                 )}
               </div>
+              {monthlyRevenue.length > 0 && (
+                <div className="flex justify-between mt-2">
+                  <span className="text-slate-500 text-xs">{new Date(monthlyRevenue[0]?.date).toLocaleDateString('en-US', { month: 'short' })}</span>
+                  <span className="text-slate-500 text-xs">{new Date(monthlyRevenue[monthlyRevenue.length - 1]?.date).toLocaleDateString('en-US', { month: 'short' })}</span>
+                </div>
+              )}
             </div>
 
             {/* Top Products by Sales */}
