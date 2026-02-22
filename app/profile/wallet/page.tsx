@@ -11,7 +11,7 @@ import { getMyDeposits, type Deposit, type DepositStatus, type DepositMethod } f
 import { formatCurrency } from '@/lib/currency'
 import Link from 'next/link'
 
-type TransactionFilter = 'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'
+type TransactionFilter = 'all' | 'CREDIT' | 'DEPOSIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'
 
 const depositMethodLabels: Record<string, string> = {
   CARD: 'Card',
@@ -158,6 +158,16 @@ function WalletPageContent() {
     staleTime: 2 * 60 * 1000, // Cache for 2 minutes - don't refetch on tab switch
   })
 
+  // Clean up transaction descriptions — Railway uses raw enum values as fallback
+  const formatDescription = (desc: string) => {
+    return desc
+      .replace(/via CARD/i, 'via Stripe')
+      .replace(/via CRYPTO_BTC/i, 'via Bitcoin')
+      .replace(/via CRYPTO_ETH/i, 'via Ethereum')
+      .replace(/via CRYPTO_USDT/i, 'via USDT')
+      .replace(/via BANK_TRANSFER/i, 'via Bank Transfer')
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -171,7 +181,7 @@ function WalletPageContent() {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'CREDIT': return { icon: 'arrow-down-circle', color: 'text-green-500' }
-      case 'DEPOSIT': return { icon: 'arrow-down-circle', color: 'text-green-500' }
+      case 'DEPOSIT': return { icon: 'money-receive', color: 'text-green-500' }
       case 'DEBIT': return { icon: 'arrow-up-circle', color: 'text-red-500' }
       case 'REFUND': return { icon: 'refresh', color: 'text-blue-500' }
       case 'ADJUSTMENT': return { icon: 'adjustments', color: 'text-yellow-500' }
@@ -324,7 +334,7 @@ function WalletPageContent() {
 
             {/* Filter */}
             <div className="flex gap-2 flex-wrap">
-              {(['all', 'CREDIT', 'DEBIT', 'REFUND', 'ADJUSTMENT'] as TransactionFilter[]).map((type) => (
+              {(['all', 'CREDIT', 'DEPOSIT', 'DEBIT', 'REFUND', 'ADJUSTMENT'] as TransactionFilter[]).map((type) => (
                 <button
                   key={type}
                   onClick={() => setFilter(type)}
@@ -365,7 +375,7 @@ function WalletPageContent() {
 
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-1">
-                            <p className="text-white font-medium">{transaction.description}</p>
+                            <p className="text-white font-medium">{formatDescription(transaction.description)}</p>
                             {getTransactionBadge(transaction.type)}
                           </div>
 
