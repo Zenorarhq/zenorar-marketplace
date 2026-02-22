@@ -521,6 +521,7 @@ export default function LoginPage() {
                 />
               )}
             </div>
+            
             <button
               type="button"
               onClick={handleWalletLogin}
