@@ -4,6 +4,13 @@ import { executeQuery, getSiteSetting } from '@/lib/db-helpers'
 
 const VALID_NETWORKS = ['BTC', 'ETH', 'USDT_ERC20', 'USDT_BEP20', 'USDT_TRC20', 'BNB', 'USDC', 'SOL', 'TRON']
 
+// Map network to Prisma DepositMethod enum value
+function getCryptoPaymentMethod(network: string): string {
+  if (network === 'BTC') return 'CRYPTO_BTC'
+  if (network === 'ETH') return 'CRYPTO_ETH'
+  return 'CRYPTO_USDT'
+}
+
 /**
  * POST /api/deposits/crypto/initiate
  * Creates a pending crypto deposit with 45-minute expiry
@@ -70,7 +77,7 @@ export async function POST(request: NextRequest) {
     // Check for existing pending deposit for this user and network
     const existingResult = await executeQuery(
       `SELECT id, status, created_at FROM deposits
-       WHERE user_id = $1 AND payment_method = 'CRYPTO' AND crypto_network = $2
+       WHERE user_id = $1 AND payment_method LIKE 'CRYPTO%' AND crypto_network = $2
        AND status = 'PENDING'
        AND created_at > NOW() - INTERVAL '45 minutes'
        ORDER BY created_at DESC LIMIT 1`,
@@ -114,12 +121,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new deposit with 45-minute expiry
+    const paymentMethod = getCryptoPaymentMethod(network)
     const insertResult = await executeQuery(
       `INSERT INTO deposits
        (user_id, amount, currency, payment_method, status, crypto_network, crypto_address, crypto_amount, crypto_tx_hash)
-       VALUES ($1, $2, 'USD', 'CRYPTO', 'PENDING', $3, $4, $5, $6)
+       VALUES ($1, $2, 'USD', $7, 'PENDING', $3, $4, $5, $6)
        RETURNING id, created_at`,
-      [user.id, amount, network, receivingAddress, expectedCryptoAmount || null, userTxHash || null]
+      [user.id, amount, network, receivingAddress, expectedCryptoAmount || null, userTxHash || null, paymentMethod]
     )
 
     const deposit = insertResult.rows[0]

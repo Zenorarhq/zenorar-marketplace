@@ -13,12 +13,16 @@ import Link from 'next/link'
 
 type TransactionFilter = 'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'
 
-const depositMethodLabels: Record<DepositMethod, string> = {
+const depositMethodLabels: Record<string, string> = {
+  CARD: 'Card',
   STRIPE: 'Stripe',
   PAYSTACK: 'Paystack',
   PAYPAL: 'PayPal',
   BANK_TRANSFER: 'Bank Transfer',
   CRYPTO: 'Crypto',
+  CRYPTO_BTC: 'Bitcoin',
+  CRYPTO_ETH: 'Ethereum',
+  CRYPTO_USDT: 'USDT',
 }
 
 const depositStatusConfig: Record<DepositStatus, { label: string; color: string }> = {
@@ -126,10 +130,13 @@ function WalletPageContent() {
     queryFn: async () => {
       const type = filter === 'all' ? undefined : filter as any
       const result = await getTransactionHistory(1, 50, type)
-      if (!result.success || !result.data || !Array.isArray(result.data.transactions)) {
+      if (!result.success) {
         throw new Error(result.error || 'Failed to load transactions')
       }
-      return result.data
+      // Railway returns { data: [array], pagination: {...} } at top level
+      const transactions = Array.isArray(result.data) ? result.data : (result.data?.transactions || [])
+      const pagination = result.pagination || result.data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 }
+      return { transactions, pagination }
     },
     staleTime: 2 * 60 * 1000, // Cache for 2 minutes - don't refetch on tab switch
   })
@@ -139,10 +146,13 @@ function WalletPageContent() {
     queryKey: ['deposits', 'my'],
     queryFn: async () => {
       const result = await getMyDeposits(1, 50)
-      if (!result.success || !result.data) {
+      if (!result.success) {
         return { deposits: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } }
       }
-      return result.data
+      // Railway returns { data: [array], pagination: {...} } at top level
+      const deposits = Array.isArray(result.data) ? result.data : (result.data?.deposits || [])
+      const pagination = result.pagination || result.data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 }
+      return { deposits, pagination }
     },
     enabled: activeTab === 'deposits',
     staleTime: 2 * 60 * 1000, // Cache for 2 minutes - don't refetch on tab switch
