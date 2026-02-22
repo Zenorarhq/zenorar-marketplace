@@ -19,7 +19,8 @@ export function formatNumber(num: number, decimals: number = 1): string {
   if (n >= 1000) {
     return (n / 1000).toFixed(decimals).replace(/\.0$/, '') + 'K'
   }
-  return n.toString()
+  // For numbers < 1000, also apply decimal formatting
+  return n.toFixed(decimals)
 }
 
 /**
