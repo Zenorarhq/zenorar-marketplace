@@ -25,16 +25,16 @@ export async function GET(request: Request) {
         p.description,
         c.slug as category,
         c.icon as category_icon,
-        MIN(oi.created_at) as purchase_date,
+        MIN(oi."createdAt") as purchase_date,
         COUNT(DISTINCT o.id) as purchase_count
       FROM orders o
-      JOIN order_items oi ON o.id = oi.order_id
-      JOIN products p ON oi.product_id = p.id
+      JOIN order_items oi ON o.id = oi."orderId"
+      JOIN products p ON oi."productId" = p.id
       JOIN categories c ON p."categoryId" = c.id
       WHERE o."userId" = $1
-        AND o.payment_status = 'PAID'
+        AND o."paymentStatus" = 'PAID'
       GROUP BY p.id, p.name, p.slug, p.description, c.slug, c.icon
-      ORDER BY MIN(oi.created_at) DESC
+      ORDER BY MIN(oi."createdAt") DESC
       `,
       [userId]
     )
