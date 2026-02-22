@@ -21,6 +21,7 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
     const productResult = await executeQuery(`
       SELECT
         p.id, p.name, p.slug, p.description, p.price, p."isFeatured" as is_featured, p.video_url,
+        p."demoUrl", p."demoInfo", p.features, p.specs,
         p."categoryId" as category_id, c.name as category_name,
         COALESCE(AVG(r.rating), 0) as average_rating,
         COUNT(DISTINCT r.id) as review_count,
@@ -82,6 +83,10 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
       images: imagesList,
       badge: row.is_featured ? 'HOT' : undefined,
       videoUrl: row.video_url || undefined,
+      demoUrl: row.demoUrl || undefined,
+      demoInfo: row.demoInfo || undefined,
+      features: row.features || undefined,
+      specs: row.specs || undefined,
       reviews,
     }
   } catch (error) {

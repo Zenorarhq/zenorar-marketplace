@@ -40,6 +40,10 @@ export default function EditProductPage() {
     isStaffPick: false,
     videoUrl: '',
     tags: '',
+    demoUrl: '',
+    demoInfo: '',
+    features: [] as { icon: string; title: string; description: string }[],
+    specs: [] as { label: string; value: string }[],
   })
 
   useEffect(() => {
@@ -90,6 +94,10 @@ export default function EditProductPage() {
         isStaffPick,
         videoUrl,
         tags: (p as any).tags?.join(', ') || '',
+        demoUrl: (p as any).demoUrl || '',
+        demoInfo: (p as any).demoInfo || '',
+        features: (p as any).features || [],
+        specs: (p as any).specs || [],
       })
     } else {
       setError(productResult.error || 'Product not found')
@@ -153,6 +161,10 @@ export default function EditProductPage() {
         isDigital: formData.isDigital,
         isFeatured: formData.isFeatured,
         tags: formData.tags ? formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+        demoUrl: formData.demoUrl.trim() || null,
+        demoInfo: formData.demoInfo.trim() || null,
+        features: formData.features.length > 0 ? formData.features : null,
+        specs: formData.specs.length > 0 ? formData.specs : null,
       }
 
       const result = await productsApi.update(productId, productData)
@@ -482,6 +494,69 @@ export default function EditProductPage() {
                 placeholder="https://youtube.com/watch?v=... or direct MP4 URL"
               />
               <p className="text-xs text-slate-500 mt-1">YouTube, Vimeo, or direct video URL (MP4). Leave empty if no video.</p>
+            </div>
+          </div>
+
+          {/* Demo & Overview */}
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Demo & Overview</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Demo URL</label>
+                <input type="text" name="demoUrl" value={formData.demoUrl} onChange={handleChange}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="https://demo.example.com" />
+                <p className="text-xs text-slate-500 mt-1">Link for the demo button on the product page</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Demo Information</label>
+                <textarea name="demoInfo" value={formData.demoInfo} onChange={handleChange} rows={3}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Description shown above the demo button..." />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-300">Key Features</label>
+                  <button type="button" onClick={() => setFormData(prev => ({ ...prev, features: [...prev.features, { icon: 'star', title: '', description: '' }] }))}
+                    className="text-primary text-xs font-medium hover:underline">+ Add Feature</button>
+                </div>
+                {formData.features.map((f, i) => (
+                  <div key={i} className="flex gap-2 mb-2 items-start">
+                    <input type="text" value={f.icon} placeholder="Icon"
+                      onChange={(e) => { const updated = [...formData.features]; updated[i] = { ...f, icon: e.target.value }; setFormData(prev => ({ ...prev, features: updated })) }}
+                      className="w-24 bg-[#1a1a1a] border border-[#2a2a2a] text-white px-3 py-2 rounded-lg text-sm" />
+                    <input type="text" value={f.title} placeholder="Title"
+                      onChange={(e) => { const updated = [...formData.features]; updated[i] = { ...f, title: e.target.value }; setFormData(prev => ({ ...prev, features: updated })) }}
+                      className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-white px-3 py-2 rounded-lg text-sm" />
+                    <input type="text" value={f.description} placeholder="Description"
+                      onChange={(e) => { const updated = [...formData.features]; updated[i] = { ...f, description: e.target.value }; setFormData(prev => ({ ...prev, features: updated })) }}
+                      className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-white px-3 py-2 rounded-lg text-sm" />
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, features: prev.features.filter((_, j) => j !== i) }))}
+                      className="p-2 text-red-400 hover:text-red-300 text-sm">X</button>
+                  </div>
+                ))}
+                {formData.features.length === 0 && <p className="text-xs text-slate-500">No features added yet.</p>}
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-300">Technical Specs</label>
+                  <button type="button" onClick={() => setFormData(prev => ({ ...prev, specs: [...prev.specs, { label: '', value: '' }] }))}
+                    className="text-primary text-xs font-medium hover:underline">+ Add Spec</button>
+                </div>
+                {formData.specs.map((s, i) => (
+                  <div key={i} className="flex gap-2 mb-2 items-start">
+                    <input type="text" value={s.label} placeholder="Label (e.g. Language)"
+                      onChange={(e) => { const updated = [...formData.specs]; updated[i] = { ...s, label: e.target.value }; setFormData(prev => ({ ...prev, specs: updated })) }}
+                      className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-white px-3 py-2 rounded-lg text-sm" />
+                    <input type="text" value={s.value} placeholder="Value (e.g. Python 3.10+)"
+                      onChange={(e) => { const updated = [...formData.specs]; updated[i] = { ...s, value: e.target.value }; setFormData(prev => ({ ...prev, specs: updated })) }}
+                      className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-white px-3 py-2 rounded-lg text-sm" />
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, specs: prev.specs.filter((_, j) => j !== i) }))}
+                      className="p-2 text-red-400 hover:text-red-300 text-sm">X</button>
+                  </div>
+                ))}
+                {formData.specs.length === 0 && <p className="text-xs text-slate-500">No specs added yet.</p>}
+              </div>
             </div>
           </div>
 

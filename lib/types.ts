@@ -49,6 +49,8 @@ export interface Product {
   reviews?: Review[]
   badge?: string
   videoUrl?: string
+  demoUrl?: string
+  demoInfo?: string
 }
 
 export interface CartItem {

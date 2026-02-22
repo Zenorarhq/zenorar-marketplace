@@ -375,7 +375,7 @@ export default function LibraryPage() {
                         {openMenuId === item.id && (
                           <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
                             <button
-                              onClick={() => { setOpenMenuId(null); router.push(`/p/${item.slug}`) }}
+                              onClick={() => { setOpenMenuId(null); router.push(`/products/${item.slug}`) }}
                               className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
                             >
                               <Icon name="eye" size={16} />

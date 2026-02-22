@@ -90,41 +90,54 @@ export default function ProductTabs({ product }: ProductTabsProps) {
             </div>
 
             {/* Product Demo */}
-            <div className="space-y-6">
-              <h2 className="text-xl font-bold text-white">Product Demo</h2>
+            {(product.images && product.images.length > 0) || product.demoInfo || product.demoUrl ? (
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-white">Product Demo</h2>
 
-              {/* Screenshot Gallery */}
-              <div className="overflow-x-auto no-scrollbar flex gap-4 pb-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="min-w-[280px] md:min-w-[400px] h-[240px] rounded-xl border border-border-dark overflow-hidden bg-background-dark shrink-0"
-                  >
-                    <Image
-                      src={product.image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvwgfYMEvcI_nX3811VEyCy34SMnKHy9dmdnqG3nSMOUjjKLHrwM1Buu7vIN4sHUv_IHj3lxtx8AuvVgtQJrjdBjilef-qD6NbH3AMwpj-xP3Cl3XD4r8kxRx3ZJzJe8Y-Z4MqVrZdrhg60-dWHm_iNTlUzZhPqmEvucOUsNN2Cqq1nlRE-lUiK6PR4GpN2-YM32iXvk86ERNf_KfTr8v3fkU0u395JRo_hw-hlhfenuygiypi5Pyn0V13zGizBFBqXGrkP8TTlHSx'}
-                      alt={`Screenshot ${i}`}
-                      width={400}
-                      height={240}
-                      className="w-full h-full object-cover"
-                    />
+                {/* Screenshot Gallery - use all product images */}
+                {product.images && product.images.length > 0 && (
+                  <div className="overflow-x-auto no-scrollbar flex gap-4 pb-2">
+                    {product.images.map((img, i) => (
+                      <div
+                        key={i}
+                        className="min-w-[280px] md:min-w-[400px] h-[240px] rounded-xl border border-border-dark overflow-hidden bg-background-dark shrink-0"
+                      >
+                        <Image
+                          src={img.url}
+                          alt={`Screenshot ${i + 1}`}
+                          width={400}
+                          height={240}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
 
-              {/* Demo Info */}
-              <div className="bg-surface-dark/50 p-6 rounded-xl border border-border-dark">
-                <h4 className="text-white font-bold mb-2 text-sm">Demo Information</h4>
-                <p className="text-slate-400 text-xs leading-relaxed">
-                  Experience the full power of the product through our live cloud-hosted sandbox. The demo includes access to all features and a trial period. No local installation required for the initial evaluation.
-                </p>
-              </div>
+                {/* Demo Info */}
+                {product.demoInfo && (
+                  <div className="bg-surface-dark/50 p-6 rounded-xl border border-border-dark">
+                    <h4 className="text-white font-bold mb-2 text-sm">Demo Information</h4>
+                    <p className="text-slate-400 text-xs leading-relaxed">
+                      {product.demoInfo}
+                    </p>
+                  </div>
+                )}
 
-              {/* Demo Link Button */}
-              <button className="w-full bg-primary text-black font-extrabold py-4 rounded-xl flex items-center justify-center gap-3 hover:brightness-105 transition-all text-sm uppercase tracking-wider">
-                Link to Demo
-                <Icon name="open-in-new" size={20} />
-              </button>
-            </div>
+                {/* Demo Link Button */}
+                {product.demoUrl && (
+                  <a
+                    href={product.demoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-primary text-black font-extrabold py-4 rounded-xl flex items-center justify-center gap-3 hover:brightness-105 transition-all text-sm uppercase tracking-wider"
+                  >
+                    Link to Demo
+                    <Icon name="open-in-new" size={20} />
+                  </a>
+                )}
+              </div>
+            ) : null}
 
             {/* Key Features */}
             {product.features && product.features.length > 0 && (
@@ -152,23 +165,21 @@ export default function ProductTabs({ product }: ProductTabsProps) {
         {activeTab === 'specs' && (
           <div>
             <h2 className="text-xl font-bold text-white mb-6">Technical Specifications</h2>
-            <div className="space-y-4">
-              {(product.specs || [
-                { label: 'Language', value: 'Python 3.10+' },
-                { label: 'Dependencies', value: 'Pandas, Scrapy, Selenium, PyYAML' },
-                { label: 'License', value: 'Commercial / Extended' },
-                { label: 'Last Updated', value: 'Oct 24, 2024' },
-                { label: 'OS Compatibility', value: 'Windows, Linux, macOS' },
-              ]).map((spec, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between py-3 border-b border-border-dark text-sm"
-                >
-                  <span className="text-slate-500">{spec.label}</span>
-                  <span className="text-white font-medium">{spec.value}</span>
-                </div>
-              ))}
-            </div>
+            {product.specs && product.specs.length > 0 ? (
+              <div className="space-y-4">
+                {product.specs.map((spec, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between py-3 border-b border-border-dark text-sm"
+                  >
+                    <span className="text-slate-500">{spec.label}</span>
+                    <span className="text-white font-medium">{spec.value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-500 text-sm">No specifications available yet.</p>
+            )}
           </div>
         )}
 
