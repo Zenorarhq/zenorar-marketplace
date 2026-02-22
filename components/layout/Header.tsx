@@ -557,7 +557,6 @@ export default function Header() {
                     </button>
                   )}
                 </div>
-                <CartPopupWrapper />
                 <CartDropdown
                   isOpen={showCartDropdown}
                   onClose={() => setShowCartDropdown(false)}
@@ -566,6 +565,9 @@ export default function Header() {
             </nav>
           </div>
         </div>
+
+        {/* Add to Cart Popup - rendered outside desktop nav so it works on mobile too */}
+        <CartPopupWrapper />
 
         {/* Mobile Search Bar */}
         {showSearch && <div className="md:hidden border-t border-border-dark bg-background-dark/80 px-3 sm:px-4 py-2">
