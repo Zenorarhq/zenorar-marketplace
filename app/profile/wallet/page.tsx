@@ -210,7 +210,8 @@ function WalletPageContent() {
 
   const handleDepositModalClose = () => {
     setShowDepositModal(false)
-    refetchBalance()
+    queryClient.invalidateQueries({ queryKey: ['wallet'] })
+    queryClient.invalidateQueries({ queryKey: ['deposits'] })
   }
 
   return (
