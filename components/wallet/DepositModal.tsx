@@ -304,7 +304,13 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
   useEffect(() => {
     if (!isOpen || paystackEmail) return
 
-    // Try localStorage first
+    // Auth context is the authoritative source for the logged-in user's email
+    if (user?.email && !user.email.endsWith('@wallet.local')) {
+      setPaystackEmail(user.email)
+      return
+    }
+
+    // Fallback to localStorage (for wallet-auth users without email in context)
     try {
       const storedUser = localStorage.getItem('user')
       if (storedUser) {
@@ -312,16 +318,10 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
         // Only use if it's a real email (not wallet-generated)
         if (userData.email && !userData.email.endsWith('@wallet.local')) {
           setPaystackEmail(userData.email)
-          return
         }
       }
     } catch {
       // JSON parse error
-    }
-
-    // Try user from context
-    if (user?.email && !user.email.endsWith('@wallet.local')) {
-      setPaystackEmail(user.email)
     }
   }, [isOpen, user])
 
