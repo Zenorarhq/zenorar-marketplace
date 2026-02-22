@@ -20,7 +20,7 @@ export function formatNumber(num: number, decimals: number = 1): string {
     return (n / 1000).toFixed(decimals).replace(/\.0$/, '') + 'K'
   }
   // For numbers < 1000, also apply decimal formatting
-  return n.toFixed(decimals)
+  return n.toFixed(decimals).replace(/\.0$/, '')
 }
 
 /**

@@ -20,6 +20,7 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
     id: item.product.id,
     name: item.product.name,
     icon: item.product.icon || 'code',
+    image: item.product.image || item.product.images?.[0]?.url,
     license: item.license === 'extended' ? 'Extended License' : 'Standard License',
     price: item.price,
     quantity: item.quantity,
@@ -53,7 +54,11 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
           displayItems.map((item) => (
             <div key={item.id} className="flex gap-4">
               <div className="w-16 h-16 rounded-xl bg-background-dark border border-border-dark overflow-hidden shrink-0 flex items-center justify-center">
-                <Icon name={item.icon} size={24} className="text-slate-500" />
+                {item.image ? (
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Icon name={item.icon} size={24} className="text-slate-500" />
+                )}
               </div>
               <div className="flex-grow">
                 <div className="flex justify-between items-start">

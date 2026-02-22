@@ -4,7 +4,7 @@ import { useCart } from '@/lib/cart-context'
 import AddToCartPopup from './AddToCartPopup'
 
 export default function CartPopupWrapper() {
-  const { showPopup, popupProduct, popupPrice, hidePopup } = useCart()
+  const { showPopup, popupProduct, popupPrice, hidePopup, items, total, itemCount } = useCart()
 
   return (
     <AddToCartPopup
@@ -12,6 +12,9 @@ export default function CartPopupWrapper() {
       onClose={hidePopup}
       product={popupProduct}
       price={popupPrice ?? undefined}
+      cartItems={items}
+      cartTotal={total}
+      cartItemCount={itemCount}
     />
   )
 }

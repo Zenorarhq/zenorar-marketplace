@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
-import { Product } from '@/lib/types'
+import { Product, CartItem } from '@/lib/types'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface AddToCartPopupProps {
@@ -12,6 +12,9 @@ interface AddToCartPopupProps {
   product: Product | null
   quantity?: number
   price?: number
+  cartItems?: CartItem[]
+  cartTotal?: number
+  cartItemCount?: number
 }
 
 export default function AddToCartPopup({
@@ -20,6 +23,9 @@ export default function AddToCartPopup({
   product,
   quantity = 1,
   price,
+  cartItems = [],
+  cartTotal = 0,
+  cartItemCount = 0,
 }: AddToCartPopupProps) {
   const { formatPrice } = usePreferences()
   const [isHovered, setIsHovered] = useState(false)
@@ -84,9 +90,6 @@ export default function AddToCartPopup({
 
   if (!isOpen || !product) return null
 
-  const displayPrice = price ?? product.price
-  const imageUrl = product.image || product.images?.[0]?.url
-
   return (
     <div
       ref={popupRef}
@@ -95,7 +98,7 @@ export default function AddToCartPopup({
       onMouseLeave={() => setIsHovered(false)}
     >
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
               <Icon name="check" size={20} className="text-primary" />
@@ -110,29 +113,50 @@ export default function AddToCartPopup({
           </button>
         </div>
 
-        {/* Product Info */}
-        <div className="flex gap-4 p-4 bg-surface-dark rounded-xl mb-6">
-          <div className="w-16 h-16 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
-            {imageUrl ? (
-              <img
-                src={imageUrl}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Icon name={product.icon} size={24} className="text-slate-600" />
+        {/* Cart Items List */}
+        <div className="max-h-[240px] overflow-y-auto space-y-2 mb-4" style={{ scrollbarWidth: 'thin' }}>
+          {cartItems.map((item) => {
+            const isJustAdded = item.product.id === product.id
+            const itemImageUrl = item.product.image || item.product.images?.[0]?.url
+            return (
+              <div
+                key={`${item.product.id}-${item.license}`}
+                className={`flex gap-3 p-3 rounded-xl ${isJustAdded ? 'bg-primary/10 border border-primary/20' : 'bg-surface-dark'}`}
+              >
+                <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
+                  {itemImageUrl ? (
+                    <img
+                      src={itemImageUrl}
+                      alt={item.product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Icon name={item.product.icon || 'box'} size={20} className="text-slate-600" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-grow min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-white font-bold text-xs truncate">{item.product.name}</h3>
+                    {isJustAdded && (
+                      <span className="text-primary text-[10px] font-bold flex-shrink-0">NEW</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-slate-500 text-xs">Qty: {item.quantity}</span>
+                    <span className="text-white font-bold text-sm">{formatPrice(item.price * item.quantity)}</span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-          <div className="flex-grow min-w-0">
-            <h3 className="text-white font-bold text-sm truncate">{product.name}</h3>
-            <p className="text-slate-400 text-xs truncate">{product.category}</p>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-slate-500 text-xs">Qty: {quantity}</span>
-              <span className="text-white font-bold">{formatPrice(Number(displayPrice))}</span>
-            </div>
-          </div>
+            )
+          })}
+        </div>
+
+        {/* Cart Total */}
+        <div className="flex items-center justify-between py-3 px-1 border-t border-white/10 mb-4">
+          <span className="text-slate-400 text-sm">{cartItemCount} {cartItemCount === 1 ? 'item' : 'items'}</span>
+          <span className="text-white font-bold">{formatPrice(cartTotal)}</span>
         </div>
 
         {/* Actions */}
@@ -154,7 +178,6 @@ export default function AddToCartPopup({
           </Link>
         </div>
 
-        {/* View Cart Link */}
         {/* View Cart Link */}
         <Link
           href="/cart"
