@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Icon from '@/components/ui/Icon'
+import { getAccessToken } from '@/lib/api/client'
 
 interface EmailProvider {
   provider: 'smtp' | 'resend' | 'sendgrid'
@@ -30,8 +31,8 @@ export default function EmailConfigSection() {
       const res = await fetch('/api/settings/email', {
         headers: {
           'Content-Type': 'application/json',
-          ...(localStorage.getItem('auth_token') && {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          ...(getAccessToken() && {
+            Authorization: `Bearer ${getAccessToken()}`,
           }),
         },
       })
@@ -67,8 +68,8 @@ export default function EmailConfigSection() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(localStorage.getItem('auth_token') && {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          ...(getAccessToken() && {
+            Authorization: `Bearer ${getAccessToken()}`,
           }),
         },
         body: JSON.stringify({ provider, config, isActive })
@@ -114,8 +115,8 @@ export default function EmailConfigSection() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(localStorage.getItem('auth_token') && {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          ...(getAccessToken() && {
+            Authorization: `Bearer ${getAccessToken()}`,
           }),
         },
         body: JSON.stringify({ testEmail: testEmail.trim() })
