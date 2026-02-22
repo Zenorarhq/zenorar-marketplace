@@ -1219,7 +1219,7 @@ export default function PaymentPage() {
 
                 {/* Wallet Payment */}
                 {paymentMethod === 'wallet' && (
-                  <div className="bg-charcoal border border-border-dark rounded-xl p-4 md:p-6 space-y-4 md:space-y-6">
+                  <div className={`bg-charcoal border border-border-dark rounded-xl p-4 md:p-6 space-y-4 md:space-y-6 ${useWalletBalance && finalTotal === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
                     {/* Network Selection */}
                     <div>
                       <h3 className="text-white font-bold text-sm md:text-base mb-2 md:mb-3">Select Network</h3>
