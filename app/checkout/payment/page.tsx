@@ -599,8 +599,29 @@ export default function PaymentPage() {
     }
   }
 
+  // Pay with wallet credits only (no external payment needed)
+  const processCreditsPayment = async () => {
+    setPaymentStatus('paying')
+    try {
+      const order = await createOrder('wallet_credits')
+      // Backend auto-completes the order when wallet covers full amount
+      clearCart()
+      sessionStorage.setItem('checkoutPayment', JSON.stringify({
+        method: 'wallet_credits',
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+      }))
+      sessionStorage.setItem('pending_order_number', order.orderNumber)
+      router.push('/checkout/success')
+    } catch (err: any) {
+      console.error('Credits payment error:', err)
+      setPaymentStatus('error')
+      setWalletError(err.message || 'Failed to process payment')
+    }
+  }
+
   // Helper function to create order (shared by all payment methods)
-  const createOrder = async () => {
+  const createOrder = async (overridePaymentMethod?: string) => {
     const shippingDataStr = sessionStorage.getItem('checkoutShipping')
     const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
 
@@ -623,7 +644,7 @@ export default function PaymentPage() {
         state: shippingData.state || 'N/A',
         zipCode: shippingData.zipCode || '00000',
         customerNote: shippingData.notes || '',
-        paymentMethod: `crypto_${selectedNetwork.toLowerCase()}`,
+        paymentMethod: overridePaymentMethod || `crypto_${selectedNetwork.toLowerCase()}`,
         discountCode: discountCode || undefined,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
         useWalletBalance: useWalletBalance,
@@ -1074,8 +1095,32 @@ export default function PaymentPage() {
                   </div>
                 )}
 
+                {/* Pay with Credits button when wallet covers full amount */}
+                {useWalletBalance && finalTotal === 0 && (
+                  <div className="mb-6">
+                    <button
+                      type="button"
+                      onClick={processCreditsPayment}
+                      disabled={paymentStatus === 'paying'}
+                      className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50"
+                    >
+                      {paymentStatus === 'paying' ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="wallet" size={24} />
+                          Pay with Account Credits
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
                 {/* Payment Method Selection */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
+                <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 ${useWalletBalance && finalTotal === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
                   {enabledProviders.wallet && (
                     <button
                       type="button"

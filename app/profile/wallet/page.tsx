@@ -41,6 +41,8 @@ function WalletPageContent() {
   const [showDepositModal, setShowDepositModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'transactions' | 'deposits'>('transactions')
   const [depositMessage, setDepositMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [txPage, setTxPage] = useState(1)
+  const [depositPage, setDepositPage] = useState(1)
 
   // Handle PayPal and other payment gateway redirects
   useEffect(() => {
@@ -126,36 +128,36 @@ function WalletPageContent() {
 
   // Fetch transaction history
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
-    queryKey: ['wallet', 'transactions', filter],
+    queryKey: ['wallet', 'transactions', filter, txPage],
     queryFn: async () => {
       const type = filter === 'all' ? undefined : filter as any
-      const result = await getTransactionHistory(1, 50, type)
+      const result = await getTransactionHistory(txPage, 10, type)
       if (!result.success) {
         throw new Error(result.error || 'Failed to load transactions')
       }
       // Railway returns { data: [array], pagination: {...} } at top level
       const transactions = Array.isArray(result.data) ? result.data : (result.data?.transactions || [])
-      const pagination = result.pagination || result.data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 }
+      const pagination = result.pagination || result.data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 }
       return { transactions, pagination }
     },
-    staleTime: 2 * 60 * 1000, // Cache for 2 minutes - don't refetch on tab switch
+    staleTime: 2 * 60 * 1000,
   })
 
   // Fetch deposit history
   const { data: depositsData, isLoading: depositsLoading } = useQuery({
-    queryKey: ['deposits', 'my'],
+    queryKey: ['deposits', 'my', depositPage],
     queryFn: async () => {
-      const result = await getMyDeposits(1, 50)
+      const result = await getMyDeposits(depositPage, 10)
       if (!result.success) {
-        return { deposits: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } }
+        return { deposits: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } }
       }
       // Railway returns { data: [array], pagination: {...} } at top level
       const deposits = Array.isArray(result.data) ? result.data : (result.data?.deposits || [])
-      const pagination = result.pagination || result.data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0 }
+      const pagination = result.pagination || result.data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 }
       return { deposits, pagination }
     },
     enabled: activeTab === 'deposits',
-    staleTime: 2 * 60 * 1000, // Cache for 2 minutes - don't refetch on tab switch
+    staleTime: 2 * 60 * 1000,
   })
 
   // Clean up transaction descriptions — Railway uses raw enum values as fallback
@@ -180,7 +182,7 @@ function WalletPageContent() {
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case 'CREDIT': return { icon: 'arrow-down-circle', color: 'text-green-500' }
+      case 'CREDIT': return { icon: 'money-receive', color: 'text-green-500' }
       case 'DEPOSIT': return { icon: 'money-receive', color: 'text-green-500' }
       case 'DEBIT': return { icon: 'arrow-up-circle', color: 'text-red-500' }
       case 'REFUND': return { icon: 'refresh', color: 'text-blue-500' }
@@ -337,7 +339,7 @@ function WalletPageContent() {
               {(['all', 'DEPOSIT', 'DEBIT'] as TransactionFilter[]).map((type) => (
                 <button
                   key={type}
-                  onClick={() => setFilter(type)}
+                  onClick={() => { setFilter(type); setTxPage(1) }}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     filter === type
                       ? 'bg-primary text-black'
@@ -413,6 +415,29 @@ function WalletPageContent() {
                   </div>
                 )
               })}
+
+              {/* Pagination */}
+              {transactionsData.pagination.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 mt-6">
+                  <button
+                    onClick={() => setTxPage(p => Math.max(1, p - 1))}
+                    disabled={txPage <= 1}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-surface-dark text-slate-400 hover:bg-border-dark disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-slate-400 text-sm">
+                    Page {txPage} of {transactionsData.pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setTxPage(p => Math.min(transactionsData.pagination.totalPages, p + 1))}
+                    disabled={txPage >= transactionsData.pagination.totalPages}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-surface-dark text-slate-400 hover:bg-border-dark disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
@@ -440,7 +465,7 @@ function WalletPageContent() {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <Icon name="arrow-down-circle" size={20} className="text-primary" />
+              <Icon name="money-receive" size={20} className="text-primary" />
               Deposit History
             </h3>
           </div>
@@ -465,7 +490,7 @@ function WalletPageContent() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Icon name="arrow-down-circle" size={20} className="text-primary" />
+                          <Icon name="money-receive" size={20} className="text-primary" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">
@@ -498,11 +523,34 @@ function WalletPageContent() {
                   </div>
                 )
               })}
+
+              {/* Pagination */}
+              {depositsData.pagination.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 mt-6">
+                  <button
+                    onClick={() => setDepositPage(p => Math.max(1, p - 1))}
+                    disabled={depositPage <= 1}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-surface-dark text-slate-400 hover:bg-border-dark disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-slate-400 text-sm">
+                    Page {depositPage} of {depositsData.pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setDepositPage(p => Math.min(depositsData.pagination.totalPages, p + 1))}
+                    disabled={depositPage >= depositsData.pagination.totalPages}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-surface-dark text-slate-400 hover:bg-border-dark disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
               <div className="w-16 h-16 rounded-full bg-surface-dark flex items-center justify-center mx-auto mb-4">
-                <Icon name="arrow-down-circle" size={32} className="text-slate-600" />
+                <Icon name="money-receive" size={32} className="text-slate-600" />
               </div>
               <h4 className="text-lg font-bold text-white mb-2">No deposits yet</h4>
               <p className="text-slate-500 mb-6">
