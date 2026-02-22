@@ -52,13 +52,13 @@ export default function ProfileLayout({ children }: ProfileLayoutProps) {
         <CategoryNav />
 
       <main className="flex-grow max-w-container mx-auto px-4 md:px-8 lg:px-12 w-full pb-24">
-        {/* Breadcrumbs - hidden on mobile */}
-        <div className="py-4 hidden md:block">
+        {/* Breadcrumbs - only on desktop */}
+        <div className="py-4 hidden lg:block">
           <Breadcrumbs className="mb-0" />
         </div>
 
-        {/* Mobile/Tablet Horizontal Scrollable Tabs */}
-        <div className="lg:hidden -mx-4 md:-mx-8 px-4 md:px-8 py-3 border-b border-border-dark bg-background-dark sticky top-[104px] md:top-[112px] z-40">
+        {/* Mobile/Tablet Fixed Tabs - never moves on scroll, pt-6 creates visual gap with solid background */}
+        <div className="lg:hidden fixed md:sticky top-[104px] sm:top-[115px] md:top-[64px] left-0 right-0 md:left-auto md:right-auto md:-mx-8 px-4 md:px-8 pt-6 md:pt-3 pb-3 border-b border-border-dark bg-[#0a0a0a] z-40">
           <div
             ref={scrollContainerRef}
             className="flex gap-2 overflow-x-auto no-scrollbar pb-1"
@@ -83,6 +83,9 @@ export default function ProfileLayout({ children }: ProfileLayoutProps) {
             })}
           </div>
         </div>
+
+        {/* Spacer for fixed tabs on mobile/tablet */}
+        <div className="h-[80px] sm:h-[88px] md:h-0 lg:hidden"></div>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-10 mt-4 lg:mt-0">
           {/* Sidebar - hidden on mobile/tablet */}
