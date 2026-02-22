@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { User, getAccessToken, clearAccessToken, setAccessToken, apiFetch } from '@/lib/api'
 import { useSessionTimeout } from '@/hooks/use-session-timeout'
 
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Route-based authentication state
   const pathname = usePathname()
   const isAdminRoute = pathname?.startsWith('/admin') ?? false
+  const queryClient = useQueryClient()
 
   const refreshUser = useCallback(async () => {
     const token = getAccessToken()
@@ -128,6 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Store access token
         if (result.data.accessToken) {
           setAccessToken(result.data.accessToken)
+          // Invalidate all cached queries so they refetch with the new auth token
+          queryClient.invalidateQueries()
         }
         // Store session timeout if provided by proxy
         if (typeof window !== 'undefined' && result.data.sessionTimeout) {
@@ -165,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       return { success: false, error: 'An error occurred during login' }
     }
-  }, [])
+  }, [queryClient])
 
   const register = useCallback(async (email: string, password: string, name: string, referralCode?: string) => {
     try {
