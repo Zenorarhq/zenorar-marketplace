@@ -249,3 +249,12 @@ export async function rejectDeposit(depositId: string, reason: string): Promise<
     body: JSON.stringify({ reason }),
   })
 }
+
+/**
+ * Reset a PROCESSING bank transfer deposit back to PENDING (admin)
+ */
+export async function resetDepositToPending(depositId: string): Promise<ApiResponse<void>> {
+  return localApiFetch<void>(`/admin/deposits/${depositId}/reset-pending`, {
+    method: 'POST',
+  })
+}

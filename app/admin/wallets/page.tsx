@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { getAllWallets, addCredit, deductCredit, adjustBalance, freezeWallet, unfreezeWallet, getWalletStats, getAllTransactions, getUserWallet } from '@/lib/api/wallet'
-import { getAllDeposits, getDepositStats, approveDeposit, rejectDeposit } from '@/lib/api/deposits'
+import { getAllDeposits, getDepositStats, approveDeposit, rejectDeposit, resetDepositToPending } from '@/lib/api/deposits'
 import { formatCurrency } from '@/lib/currency'
 import type { DepositStatus, DepositMethod } from '@/lib/api/deposits'
 
@@ -51,6 +51,7 @@ export default function AdminWalletsPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [rejectDepositId, setRejectDepositId] = useState<string | null>(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
+  const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null)
 
   // Transactions state
   const [txPage, setTxPage] = useState(1)
@@ -194,6 +195,16 @@ export default function AdminWalletsPage() {
       setShowRejectModal(false)
       setRejectReason('')
       setRejectDepositId(null)
+    },
+  })
+
+  const resetMutation = useMutation({
+    mutationFn: async (depositId: string) => {
+      const result = await resetDepositToPending(depositId)
+      if (!result.success) throw new Error(result.error || 'Failed to reset deposit')
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'deposits'] })
     },
   })
 
@@ -483,7 +494,7 @@ export default function AdminWalletsPage() {
       {activeTab === 'deposits' && (
         <div>
           <div className="flex gap-2 mb-6 flex-wrap">
-            {(['all', 'PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'] as const).map((s) => (
+            {(['all', 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED'] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => { setDepositStatus(s); setDepositPage(1) }}
@@ -514,7 +525,7 @@ export default function AdminWalletsPage() {
                     {depositsData.deposits.map((deposit: any) => {
                       const statusConfig = depositStatusConfig[deposit.status as DepositStatus] || depositStatusConfig.PENDING
                       const method = methodLabels[deposit.paymentMethod as DepositMethod] || deposit.paymentMethod
-                      const needsApproval = deposit.status === 'PENDING' &&
+                      const needsApproval = (deposit.status === 'PENDING' || deposit.status === 'PROCESSING') &&
                         (deposit.paymentMethod === 'BANK_TRANSFER' || deposit.paymentMethod.startsWith('CRYPTO'))
 
                       return (
@@ -550,10 +561,24 @@ export default function AdminWalletsPage() {
                                   </button>
                                 </>
                               )}
+                              {deposit.status === 'PROCESSING' && deposit.paymentMethod === 'BANK_TRANSFER' && (
+                                <button
+                                  onClick={() => resetMutation.mutate(deposit.id)}
+                                  disabled={resetMutation.isPending}
+                                  className="px-3 py-1 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 rounded-lg text-xs font-medium hover:bg-yellow-500/20 transition-colors disabled:opacity-50"
+                                >
+                                  Reset to Pending
+                                </button>
+                              )}
                               {deposit.bankProof && (
-                                <a href={deposit.bankProof} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-surface-dark border border-border-dark text-slate-400 rounded-lg text-xs font-medium hover:bg-border-dark transition-colors">
+                                <button
+                                  onClick={() => setProofPreviewUrl(deposit.bankProof)}
+                                  className="px-3 py-1 bg-surface-dark border border-border-dark text-slate-400 rounded-lg text-xs font-medium hover:bg-border-dark transition-colors flex items-center gap-1"
+                                  title="View proof"
+                                >
+                                  <Icon name="eye" size={14} />
                                   View Proof
-                                </a>
+                                </button>
                               )}
                             </div>
                           </td>
@@ -804,6 +829,20 @@ export default function AdminWalletsPage() {
                 {rejectMutation.isPending ? 'Rejecting...' : 'Reject Deposit'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ---- PROOF PREVIEW MODAL ---- */}
+      {proofPreviewUrl && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" onClick={() => setProofPreviewUrl(null)}>
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setProofPreviewUrl(null)}
+              className="absolute -top-10 right-0 text-white hover:text-slate-300"
+            >
+              <Icon name="close" size={24} />
+            </button>
+            <img src={proofPreviewUrl} alt="Payment proof" className="w-full rounded-xl border border-border-dark" />
           </div>
         </div>
       )}
