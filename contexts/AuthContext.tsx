@@ -179,14 +179,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (email: string, password: string, name: string, referralCode?: string) => {
     try {
-      const result = await apiFetch<{ user: User }>('/auth/register', {
+      const result = await apiFetch<{ user: User; accessToken?: string }>('/auth/register', {
         method: 'POST',
         body: JSON.stringify({ email, password, name, referralCode })
       })
 
       if (result.success && result.data) {
-        // Clear stale data from previous session before setting new user
+        // Clear all stale data from previous session, including old auth token
         clearUserData()
+        clearAccessToken()
+        // Store new token so API calls use the new user's identity immediately
+        if (result.data.accessToken) {
+          setAccessToken(result.data.accessToken)
+        }
         setUser(result.data.user)
         if (typeof window !== 'undefined') {
           localStorage.setItem('user', JSON.stringify(result.data.user))
