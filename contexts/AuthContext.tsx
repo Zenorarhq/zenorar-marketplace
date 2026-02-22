@@ -43,6 +43,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdminRoute = pathname?.startsWith('/admin') ?? false
   const queryClient = useQueryClient()
 
+  // Shared helper: clear all user-specific data (localStorage + query cache)
+  const clearUserData = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user')
+      localStorage.removeItem('zenorar_cart')
+      localStorage.removeItem('zenorar_wishlist')
+      localStorage.removeItem('userPreferences')
+      localStorage.removeItem('session_id')
+      localStorage.removeItem('sessionTimeout')
+      localStorage.removeItem('chat_conversation_id')
+      localStorage.removeItem('last_activity')
+      localStorage.removeItem('recentSearches')
+    }
+    queryClient.clear()
+  }, [queryClient])
+
   const refreshUser = useCallback(async () => {
     const token = getAccessToken()
     if (!token) {
@@ -129,9 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Store access token
         if (result.data.accessToken) {
+          // Clear stale data from previous session before setting new user
+          clearUserData()
           setAccessToken(result.data.accessToken)
-          // Invalidate all cached queries so they refetch with the new auth token
-          queryClient.invalidateQueries()
         }
         // Store session timeout if provided by proxy
         if (typeof window !== 'undefined' && result.data.sessionTimeout) {
@@ -179,6 +195,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (result.success && result.data) {
+        // Clear stale data from previous session before setting new user
+        clearUserData()
         setUser(result.data.user)
         if (typeof window !== 'undefined') {
           localStorage.setItem('user', JSON.stringify(result.data.user))
@@ -190,26 +208,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       return { success: false, error: 'An error occurred during registration' }
     }
-  }, [])
+  }, [clearUserData])
 
   const logout = useCallback(() => {
     // Call logout endpoint
     apiFetch('/auth/logout', { method: 'POST' })
-    // Clear local state
+    // Clear auth token, user state, and all cached data
     clearAccessToken()
     setUser(null)
     setPermissions([])
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user')
-      localStorage.removeItem('zenorar_cart')
-      localStorage.removeItem('zenorar_wishlist')
-      localStorage.removeItem('userPreferences')
-      localStorage.removeItem('session_id')
-      localStorage.removeItem('sessionTimeout')
-    }
-    // Clear all cached queries so next user starts fresh
-    queryClient.clear()
-  }, [queryClient])
+    clearUserData()
+  }, [clearUserData])
 
   // Auto-logout on session timeout (based on admin setting)
   useSessionTimeout(logout, !!user)
