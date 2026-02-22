@@ -40,7 +40,7 @@ export async function POST(
     // Update deposit with proof URL
     const result = await executeQuery(
       `UPDATE deposits
-       SET bank_proof_url = $2, updated_at = NOW()
+       SET bank_proof = $2, updated_at = NOW()
        WHERE id = $1 AND user_id = $3 AND payment_method = 'BANK_TRANSFER' AND status IN ('PENDING', 'PROCESSING')
        RETURNING id`,
       [depositId, proofUrl, user.id]
