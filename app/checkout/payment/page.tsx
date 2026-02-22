@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { BrowserProvider, parseEther, formatEther, getAddress } from 'ethers'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
@@ -49,6 +49,7 @@ interface WalletState {
 
 export default function PaymentPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const { items, total, clearCart } = useCart()
   const { formatPrice, preferences } = usePreferences()
@@ -605,6 +606,7 @@ export default function PaymentPage() {
     try {
       const order = await createOrder('wallet_credits')
       // Backend auto-completes the order when wallet covers full amount
+      queryClient.invalidateQueries({ queryKey: ['wallet'] })
       clearCart()
       sessionStorage.setItem('checkoutPayment', JSON.stringify({
         method: 'wallet_credits',

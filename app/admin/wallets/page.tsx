@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
-import { getAllWallets, addCredit, deductCredit, adjustBalance, freezeWallet, unfreezeWallet } from '@/lib/api/wallet'
+import { getAllWallets, addCredit, deductCredit, adjustBalance, freezeWallet, unfreezeWallet, getWalletStats, getAllTransactions, getUserWallet } from '@/lib/api/wallet'
 import { getAllDeposits, getDepositStats, approveDeposit, rejectDeposit } from '@/lib/api/deposits'
 import { formatCurrency } from '@/lib/currency'
 import type { DepositStatus, DepositMethod } from '@/lib/api/deposits'
@@ -30,9 +30,10 @@ const methodLabels: Record<DepositMethod, string> = {
 
 export default function AdminWalletsPage() {
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'wallets' | 'deposits'>('wallets')
+  const [activeTab, setActiveTab] = useState<'wallets' | 'deposits' | 'transactions'>('wallets')
 
   // Wallets state
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const [walletPage, setWalletPage] = useState(1)
   const [walletSearch, setWalletSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -51,6 +52,10 @@ export default function AdminWalletsPage() {
   const [rejectDepositId, setRejectDepositId] = useState<string | null>(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
 
+  // Transactions state
+  const [txPage, setTxPage] = useState(1)
+  const [txFilter, setTxFilter] = useState<'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'>('all')
+
   const limit = 20
 
   // ---- QUERIES ----
@@ -59,7 +64,8 @@ export default function AdminWalletsPage() {
     queryFn: async () => {
       const result = await getAllWallets(walletPage, limit, walletSearch || undefined)
       if (!result.success || !result.data) throw new Error(result.error || 'Failed to load wallets')
-      return result.data
+      const data = result.data as any
+      return { wallets: data?.wallets || data || [], pagination: result.pagination || data?.pagination }
     },
     enabled: activeTab === 'wallets',
   })
@@ -73,7 +79,8 @@ export default function AdminWalletsPage() {
         depositStatus === 'all' ? undefined : depositStatus
       )
       if (!result.success || !result.data) throw new Error(result.error || 'Failed to load deposits')
-      return result.data
+      const data = result.data as any
+      return { deposits: data?.deposits || data || [], pagination: result.pagination || data?.pagination }
     },
     enabled: activeTab === 'deposits',
   })
@@ -85,6 +92,39 @@ export default function AdminWalletsPage() {
       return result.success ? result.data : null
     },
     enabled: activeTab === 'deposits',
+  })
+
+  const { data: walletStats } = useQuery({
+    queryKey: ['admin', 'wallet-stats'],
+    queryFn: async () => {
+      const result = await getWalletStats()
+      return result.success ? result.data : null
+    },
+    enabled: activeTab === 'wallets',
+  })
+
+  const { data: txData, isLoading: txLoading } = useQuery({
+    queryKey: ['admin', 'transactions', txPage, txFilter],
+    queryFn: async () => {
+      const result = await getAllTransactions(
+        txPage,
+        limit,
+        txFilter === 'all' ? undefined : txFilter
+      )
+      if (!result.success || !result.data) throw new Error(result.error || 'Failed to load transactions')
+      return { transactions: result.data as any[], pagination: result.pagination! }
+    },
+    enabled: activeTab === 'transactions',
+  })
+
+  const { data: userDetail, isLoading: userDetailLoading } = useQuery({
+    queryKey: ['admin', 'user-wallet', expandedUserId],
+    queryFn: async () => {
+      if (!expandedUserId) return null
+      const result = await getUserWallet(expandedUserId)
+      return result.success ? result.data : null
+    },
+    enabled: !!expandedUserId,
   })
 
   // ---- MUTATIONS ----
@@ -195,6 +235,26 @@ export default function AdminWalletsPage() {
         <p className="text-slate-400">Manage user wallets, approve deposits, and adjust balances.</p>
       </div>
 
+      {/* Wallet Stats (shown when wallets tab is active) */}
+      {activeTab === 'wallets' && walletStats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Total Balance', value: formatCurrency(walletStats.totalBalance || 0), icon: 'wallet', color: 'text-primary' },
+            { label: 'Total Wallets', value: walletStats.totalWallets || 0, icon: 'users', color: 'text-blue-500' },
+            { label: 'Active', value: walletStats.activeCount || 0, icon: 'check-circle', color: 'text-green-500' },
+            { label: 'Frozen', value: walletStats.frozenCount || 0, icon: 'lock', color: 'text-red-500' },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-black border border-border-dark rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-2">
+                <Icon name={stat.icon as any} size={20} className={stat.color} />
+                <p className="text-slate-400 text-sm">{stat.label}</p>
+              </div>
+              <p className="text-2xl font-bold text-white">{stat.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Deposit Stats (shown when deposits tab is active) */}
       {activeTab === 'deposits' && depositStats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -216,12 +276,18 @@ export default function AdminWalletsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-surface-dark rounded-xl p-1 max-w-xs">
+      <div className="flex gap-1 mb-6 bg-surface-dark rounded-xl p-1 max-w-md">
         <button
           onClick={() => setActiveTab('wallets')}
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'wallets' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'}`}
         >
           User Wallets
+        </button>
+        <button
+          onClick={() => setActiveTab('transactions')}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'transactions' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'}`}
+        >
+          Transactions
         </button>
         <button
           onClick={() => setActiveTab('deposits')}
@@ -263,56 +329,127 @@ export default function AdminWalletsPage() {
                   </thead>
                   <tbody className="divide-y divide-border-dark bg-black/20">
                     {walletsData.wallets.map((wallet: any) => (
-                      <tr key={wallet.id} className="hover:bg-black/40 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="text-white font-medium">{wallet.user.name}</div>
-                          <div className="text-xs text-slate-500">{wallet.user.email}</div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className={`text-lg font-bold ${Number(wallet.balance) > 0 ? 'text-primary' : 'text-slate-500'}`}>
-                            {formatCurrency(Number(wallet.balance))}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          {wallet.isFrozen ? (
-                            <span className="px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-500 rounded text-xs font-bold">Frozen</span>
-                          ) : (
-                            <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 text-green-500 rounded text-xs font-bold">Active</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2 justify-center flex-wrap">
-                            <button
-                              onClick={() => openActionModal(wallet.userId, 'add')}
-                              className="px-3 py-1 bg-primary/10 border border-primary/30 text-primary rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors"
-                            >
-                              Add
-                            </button>
-                            <button
-                              onClick={() => openActionModal(wallet.userId, 'deduct')}
-                              className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
-                            >
-                              Deduct
-                            </button>
+                      <Fragment key={wallet.id}>
+                        <tr
+                          className={`hover:bg-black/40 transition-colors cursor-pointer ${expandedUserId === wallet.userId ? 'bg-black/40' : ''}`}
+                          onClick={() => setExpandedUserId(expandedUserId === wallet.userId ? null : wallet.userId)}
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <Icon name={expandedUserId === wallet.userId ? 'chevron-down' : 'chevron-right'} size={14} className="text-slate-500" />
+                              <div>
+                                <div className="text-white font-medium">{wallet.user.name}</div>
+                                <div className="text-xs text-slate-500">{wallet.user.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <span className={`text-lg font-bold ${Number(wallet.balance) > 0 ? 'text-primary' : 'text-slate-500'}`}>
+                              {formatCurrency(Number(wallet.balance))}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
                             {wallet.isFrozen ? (
-                              <button
-                                onClick={() => unfreezeMutation.mutate(wallet.userId)}
-                                disabled={unfreezeMutation.isPending}
-                                className="px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50"
-                              >
-                                Unfreeze
-                              </button>
+                              <span className="px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-500 rounded text-xs font-bold">Frozen</span>
                             ) : (
-                              <button
-                                onClick={() => { setFreezeUserId(wallet.userId); setShowFreezeModal(true) }}
-                                className="px-3 py-1 bg-slate-500/10 border border-slate-500/30 text-slate-400 rounded-lg text-xs font-medium hover:bg-slate-500/20 transition-colors"
-                              >
-                                Freeze
-                              </button>
+                              <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 text-green-500 rounded text-xs font-bold">Active</span>
                             )}
-                          </div>
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2 justify-center flex-wrap" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => openActionModal(wallet.userId, 'add')}
+                                className="px-3 py-1 bg-primary/10 border border-primary/30 text-primary rounded-lg text-xs font-medium hover:bg-primary/20 transition-colors"
+                              >
+                                Add
+                              </button>
+                              <button
+                                onClick={() => openActionModal(wallet.userId, 'deduct')}
+                                className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
+                              >
+                                Deduct
+                              </button>
+                              {wallet.isFrozen ? (
+                                <button
+                                  onClick={() => unfreezeMutation.mutate(wallet.userId)}
+                                  disabled={unfreezeMutation.isPending}
+                                  className="px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                                >
+                                  Unfreeze
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => { setFreezeUserId(wallet.userId); setShowFreezeModal(true) }}
+                                  className="px-3 py-1 bg-slate-500/10 border border-slate-500/30 text-slate-400 rounded-lg text-xs font-medium hover:bg-slate-500/20 transition-colors"
+                                >
+                                  Freeze
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {expandedUserId === wallet.userId && (
+                          <tr>
+                            <td colSpan={4} className="px-6 py-4 bg-black/60">
+                              {userDetailLoading ? (
+                                <div className="flex items-center gap-2 text-slate-400 text-sm py-4">
+                                  <Icon name="loading" size={16} className="animate-spin" />
+                                  Loading wallet details...
+                                </div>
+                              ) : userDetail ? (
+                                <div className="space-y-4">
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className="bg-surface-dark rounded-lg p-3">
+                                      <p className="text-xs text-slate-500 mb-1">Balance</p>
+                                      <p className="text-primary font-bold">{formatCurrency(Number(userDetail.balance || 0))}</p>
+                                    </div>
+                                    <div className="bg-surface-dark rounded-lg p-3">
+                                      <p className="text-xs text-slate-500 mb-1">Total Credits</p>
+                                      <p className="text-green-500 font-bold">{formatCurrency(Number(userDetail.totalCredits || 0))}</p>
+                                    </div>
+                                    <div className="bg-surface-dark rounded-lg p-3">
+                                      <p className="text-xs text-slate-500 mb-1">Total Debits</p>
+                                      <p className="text-red-500 font-bold">{formatCurrency(Number(userDetail.totalDebits || 0))}</p>
+                                    </div>
+                                    <div className="bg-surface-dark rounded-lg p-3">
+                                      <p className="text-xs text-slate-500 mb-1">Total Refunds</p>
+                                      <p className="text-yellow-500 font-bold">{formatCurrency(Number(userDetail.totalRefunds || 0))}</p>
+                                    </div>
+                                  </div>
+                                  {userDetail.transactions && userDetail.transactions.length > 0 && (
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-300 mb-2">Recent Transactions</p>
+                                      <div className="space-y-1">
+                                        {userDetail.transactions.map((tx: any) => (
+                                          <div key={tx.id} className="flex items-center justify-between bg-surface-dark rounded-lg px-3 py-2 text-sm">
+                                            <div className="flex items-center gap-3">
+                                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                                tx.type === 'CREDIT' ? 'text-green-500 bg-green-500/10' :
+                                                tx.type === 'DEBIT' ? 'text-red-500 bg-red-500/10' :
+                                                tx.type === 'REFUND' ? 'text-yellow-500 bg-yellow-500/10' :
+                                                'text-blue-500 bg-blue-500/10'
+                                              }`}>{tx.type}</span>
+                                              <span className="text-slate-400 truncate max-w-[200px]">{tx.description}</span>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                              <span className={`font-bold ${tx.type === 'DEBIT' ? 'text-red-500' : 'text-green-500'}`}>
+                                                {tx.type === 'DEBIT' ? '-' : '+'}{formatCurrency(Number(tx.amount))}
+                                              </span>
+                                              <span className="text-xs text-slate-500">{formatDate(tx.createdAt)}</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-slate-500 text-sm py-4">No wallet data found for this user.</p>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -446,6 +583,97 @@ export default function AdminWalletsPage() {
               <Icon name="arrow-down-circle" size={32} className="text-slate-600 mx-auto mb-4" />
               <h4 className="text-lg font-bold text-white mb-2">No deposits found</h4>
               <p className="text-slate-500">Deposits will appear here when users add money.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---- TRANSACTIONS TAB ---- */}
+      {activeTab === 'transactions' && (
+        <div>
+          <div className="flex gap-2 mb-6 flex-wrap">
+            {(['all', 'CREDIT', 'DEBIT', 'REFUND', 'ADJUSTMENT'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => { setTxFilter(t); setTxPage(1) }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${txFilter === t ? 'bg-primary text-black' : 'bg-surface-dark text-slate-400 hover:bg-border-dark'}`}
+              >
+                {t === 'all' ? 'All' : t.charAt(0) + t.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+
+          {txLoading ? (
+            <div className="space-y-3">{[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-16 bg-surface-dark animate-pulse rounded-xl" />)}</div>
+          ) : txData?.transactions && txData.transactions.length > 0 ? (
+            <>
+              <div className="overflow-x-auto rounded-2xl border border-border-dark">
+                <table className="w-full text-left text-sm text-slate-400">
+                  <thead className="text-xs uppercase bg-black text-slate-200">
+                    <tr>
+                      <th className="px-6 py-4 font-bold">User</th>
+                      <th className="px-6 py-4 font-bold">Type</th>
+                      <th className="px-6 py-4 font-bold text-right">Amount</th>
+                      <th className="px-6 py-4 font-bold text-right">Balance After</th>
+                      <th className="px-6 py-4 font-bold">Description</th>
+                      <th className="px-6 py-4 font-bold">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-dark bg-black/20">
+                    {txData.transactions.map((tx: any) => (
+                      <tr key={tx.id} className="hover:bg-black/40 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="text-white font-medium">{tx.user?.name || 'Unknown'}</div>
+                          <div className="text-xs text-slate-500">{tx.user?.email || ''}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            tx.type === 'CREDIT' ? 'text-green-500 bg-green-500/10 border border-green-500/20' :
+                            tx.type === 'DEBIT' ? 'text-red-500 bg-red-500/10 border border-red-500/20' :
+                            tx.type === 'REFUND' ? 'text-yellow-500 bg-yellow-500/10 border border-yellow-500/20' :
+                            'text-blue-500 bg-blue-500/10 border border-blue-500/20'
+                          }`}>{tx.type}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className={`font-bold ${tx.type === 'DEBIT' ? 'text-red-500' : 'text-green-500'}`}>
+                            {tx.type === 'DEBIT' ? '-' : '+'}{formatCurrency(Number(tx.amount))}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right text-white font-medium">
+                          {formatCurrency(Number(tx.balanceAfter))}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-slate-300 truncate max-w-[200px] block">{tx.description}</span>
+                          {tx.order?.orderNumber && (
+                            <span className="text-xs text-slate-500">Order: {tx.order.orderNumber}</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-xs">{formatDate(tx.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {txData.pagination.totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <p className="text-slate-400 text-sm">Page {txPage} of {txData.pagination.totalPages} ({txData.pagination.total} transactions)</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setTxPage(p => Math.max(1, p - 1))} disabled={txPage === 1} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
+                      <Icon name="arrow-left" size={16} />
+                    </button>
+                    <button onClick={() => setTxPage(p => Math.min(txData.pagination.totalPages, p + 1))} disabled={txPage === txData.pagination.totalPages} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
+                      <Icon name="arrow-right" size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
+              <Icon name="list" size={32} className="text-slate-600 mx-auto mb-4" />
+              <h4 className="text-lg font-bold text-white mb-2">No transactions found</h4>
+              <p className="text-slate-500">Wallet transactions will appear here.</p>
             </div>
           )}
         </div>

@@ -184,7 +184,7 @@ function WalletPageContent() {
     switch (type) {
       case 'CREDIT': return { icon: 'money-receive', color: 'text-green-500' }
       case 'DEPOSIT': return { icon: 'money-receive', color: 'text-green-500' }
-      case 'DEBIT': return { icon: 'arrow-up-circle', color: 'text-red-500' }
+      case 'DEBIT': return { icon: 'money-send', color: 'text-red-500' }
       case 'REFUND': return { icon: 'refresh', color: 'text-blue-500' }
       case 'ADJUSTMENT': return { icon: 'adjustments', color: 'text-yellow-500' }
       default: return { icon: 'currency-dollar', color: 'text-slate-500' }
