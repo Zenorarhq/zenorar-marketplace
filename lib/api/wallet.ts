@@ -157,3 +157,31 @@ export async function unfreezeWallet(userId: string): Promise<ApiResponse<any>> 
     body: JSON.stringify({ userId }),
   })
 }
+
+/**
+ * Get wallet stats across all users (admin)
+ */
+export async function getWalletStats(): Promise<ApiResponse<{
+  totalBalance: number
+  totalWallets: number
+  activeCount: number
+  frozenCount: number
+}>> {
+  return apiFetch('/wallet/stats')
+}
+
+/**
+ * Get all transactions across all users (admin)
+ */
+export async function getAllTransactions(
+  page = 1,
+  limit = 20,
+  type?: 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'
+): Promise<ApiResponse<any[]>> {
+  const params = new URLSearchParams()
+  params.set('page', page.toString())
+  params.set('limit', limit.toString())
+  if (type) params.set('type', type)
+
+  return apiFetch(`/wallet/transactions/all?${params.toString()}`)
+}
