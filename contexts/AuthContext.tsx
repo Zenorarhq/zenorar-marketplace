@@ -201,8 +201,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPermissions([])
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user')
+      localStorage.removeItem('zenorar_cart')
+      localStorage.removeItem('zenorar_wishlist')
+      localStorage.removeItem('userPreferences')
+      localStorage.removeItem('session_id')
+      localStorage.removeItem('sessionTimeout')
     }
-  }, [])
+    // Clear all cached queries so next user starts fresh
+    queryClient.clear()
+  }, [queryClient])
 
   // Auto-logout on session timeout (based on admin setting)
   useSessionTimeout(logout, !!user)
