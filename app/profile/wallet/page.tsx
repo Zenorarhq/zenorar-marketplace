@@ -11,7 +11,7 @@ import { getMyDeposits, type Deposit, type DepositStatus, type DepositMethod } f
 import { formatCurrency } from '@/lib/currency'
 import Link from 'next/link'
 
-type TransactionFilter = 'all' | 'CREDIT' | 'DEPOSIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'
+type TransactionFilter = 'all' | 'DEPOSIT' | 'DEBIT'
 
 const depositMethodLabels: Record<string, string> = {
   CARD: 'Card',
@@ -334,7 +334,7 @@ function WalletPageContent() {
 
             {/* Filter */}
             <div className="flex gap-2 flex-wrap">
-              {(['all', 'CREDIT', 'DEPOSIT', 'DEBIT', 'REFUND', 'ADJUSTMENT'] as TransactionFilter[]).map((type) => (
+              {(['all', 'DEPOSIT', 'DEBIT'] as TransactionFilter[]).map((type) => (
                 <button
                   key={type}
                   onClick={() => setFilter(type)}
