@@ -8,6 +8,7 @@ import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import { apiFetch } from '@/lib/api/client'
+import { trackPurchase } from '@/lib/tracking'
 
 interface PaymentInfo {
   method: string
@@ -114,6 +115,12 @@ function SuccessPageContent() {
         if (result.success && result.data) {
           setOrderData(result.data)
           setError(null)
+          // Fire Purchase conversion event
+          trackPurchase(
+            result.data.orderNumber,
+            result.data.total,
+            result.data.items.map(i => ({ id: i.productId, name: i.product.name, price: i.price, quantity: i.quantity }))
+          )
         } else {
           setError('Order not found')
           // Fall back to session storage

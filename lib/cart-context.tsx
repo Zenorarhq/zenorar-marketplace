@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Product, CartItem } from './types'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiFetch } from '@/lib/api/client'
+import { trackAddToCart } from '@/lib/tracking'
 import type { CartSummary } from '@/lib/api'
 
 interface CartContextType {
@@ -337,6 +338,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setPopupProduct(product)
     setPopupPrice(price ?? null)
     setShowPopup(true)
+    trackAddToCart({ id: product.id, name: product.name, price: product.price }, 1, price ?? product.price)
   }, [])
 
   const hidePopup = useCallback(() => {

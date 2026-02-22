@@ -8,6 +8,7 @@ import ProductTabs from '@/components/product/ProductTabs'
 import ProductPurchasePanel from '@/components/product/ProductPurchasePanel'
 import ProductVideoModal from '@/components/product/ProductVideoModal'
 import RelatedProducts from '@/components/product/RelatedProducts'
+import ProductTracker from '@/components/product/ProductTracker'
 import { executeQuery } from '@/lib/db-helpers'
 import { Product } from '@/lib/types'
 
@@ -175,7 +176,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     openGraph: {
       title: product.name,
       description: product.description || undefined,
-      images: product.image ? [{ url: product.image }] : undefined,
+      images: product.image ? [{ url: product.image, width: 1200, height: 630 }] : undefined,
+      type: 'website',
     },
   }
 }
@@ -213,6 +215,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <main className="max-w-container mx-auto px-4 lg:px-12 pb-24">
+      <ProductTracker product={{ id: product.id, name: product.name, price: product.price, category: product.category }} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

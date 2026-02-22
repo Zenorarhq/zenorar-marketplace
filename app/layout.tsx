@@ -31,6 +31,7 @@ async function getSiteSettings() {
       siteName: getValue('siteName') || DEFAULTS.siteName,
       siteDescription: getValue('siteDescription') || DEFAULTS.description,
       faviconUrl: getValue('faviconUrl') || null,
+      defaultOgImage: getValue('defaultOgImage') || null,
     }
   } catch {
     return null
@@ -53,6 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
       type: 'website',
       siteName,
       locale: 'en_US',
+      ...(settings?.defaultOgImage ? { images: [{ url: settings.defaultOgImage, width: 1200, height: 630 }] } : {}),
     },
     twitter: {
       card: 'summary_large_image',

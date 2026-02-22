@@ -11,6 +11,7 @@ import { NotificationsProvider } from '@/hooks/use-notifications'
 import { SiteSettingsProvider } from '@/contexts/SiteSettingsContext'
 import LiveChat from '@/components/LiveChat'
 import EmailPromptWrapper from '@/components/auth/EmailPromptWrapper'
+import TrackingScripts from '@/components/tracking/TrackingScripts'
 
 interface ProvidersProps {
   children: ReactNode
@@ -42,6 +43,7 @@ export default function Providers({ children }: ProvidersProps) {
                 <WishlistProvider>
                   <NotificationsProvider>
                     {children}
+                    <TrackingScripts />
                     <LiveChat />
                     <EmailPromptWrapper />
                   </NotificationsProvider>

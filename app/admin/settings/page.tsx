@@ -10,7 +10,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import EmailConfigSection from '@/components/admin/EmailConfigSection'
 
-type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'email'
+type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'email' | 'marketing'
 
 const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'profile', label: 'Profile', icon: 'user' },
@@ -21,6 +21,7 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'referral', label: 'Referral Program', icon: 'gift' },
   { id: 'api', label: 'API Keys', icon: 'key' },
   { id: 'email', label: 'Email Service', icon: 'mail' },
+  { id: 'marketing', label: 'Marketing', icon: 'campaign' },
 ]
 
 export default function AdminSettingsPage() {
@@ -221,6 +222,13 @@ export default function AdminSettingsPage() {
     minFirstPurchase: '0.00',
   })
 
+  // Marketing Settings State
+  const [marketingSettings, setMarketingSettings] = useState({
+    facebookPixelId: '',
+    ga4MeasurementId: '',
+    defaultOgImage: '',
+  })
+
   // Load general settings from API on mount
   useEffect(() => {
     settingsApi.getSettingsByGroup('general').then((res) => {
@@ -373,6 +381,17 @@ export default function AdminSettingsPage() {
           referrerRewardAmount: d.referrerRewardAmount ?? prev.referrerRewardAmount,
           refereeRewardAmount: d.refereeRewardAmount ?? prev.refereeRewardAmount,
           minFirstPurchase: d.minFirstPurchase ?? prev.minFirstPurchase,
+        }))
+      }
+    })
+    // Load marketing settings
+    settingsApi.getSettingsByGroup('marketing').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setMarketingSettings((prev) => ({
+          facebookPixelId: d.facebookPixelId ?? prev.facebookPixelId,
+          ga4MeasurementId: d.ga4MeasurementId ?? prev.ga4MeasurementId,
+          defaultOgImage: d.defaultOgImage ?? prev.defaultOgImage,
         }))
       }
     })
@@ -752,6 +771,10 @@ export default function AdminSettingsPage() {
       { key: 'referrerRewardAmount', value: referralSettings.referrerRewardAmount, group: 'referral', isPublic: false },
       { key: 'refereeRewardAmount', value: referralSettings.refereeRewardAmount, group: 'referral', isPublic: false },
       { key: 'minFirstPurchase', value: referralSettings.minFirstPurchase, group: 'referral', isPublic: false },
+      // Marketing settings
+      { key: 'facebookPixelId', value: marketingSettings.facebookPixelId, group: 'marketing', isPublic: true },
+      { key: 'ga4MeasurementId', value: marketingSettings.ga4MeasurementId, group: 'marketing', isPublic: true },
+      { key: 'defaultOgImage', value: marketingSettings.defaultOgImage, group: 'marketing', isPublic: true },
     ]
 
     const result = await settingsApi.updateSettings(settingsToSave)
@@ -2673,6 +2696,69 @@ export default function AdminSettingsPage() {
           {activeTab === 'email' && (
             <div className="space-y-6">
               <EmailConfigSection />
+            </div>
+          )}
+
+          {/* Marketing Settings */}
+          {activeTab === 'marketing' && (
+            <div className="space-y-6">
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Tracking & Analytics</h3>
+                <p className="text-sm text-slate-400 mb-6">Connect your Facebook Pixel and Google Analytics to track conversions from ads.</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Facebook Pixel ID</label>
+                    <input
+                      type="text"
+                      value={marketingSettings.facebookPixelId}
+                      onChange={(e) => setMarketingSettings({ ...marketingSettings, facebookPixelId: e.target.value })}
+                      placeholder="123456789012345"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Find this in your Facebook Events Manager. Leave empty to disable.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">GA4 Measurement ID</label>
+                    <input
+                      type="text"
+                      value={marketingSettings.ga4MeasurementId}
+                      onChange={(e) => setMarketingSettings({ ...marketingSettings, ga4MeasurementId: e.target.value })}
+                      placeholder="G-XXXXXXXXXX"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Find this in Google Analytics → Admin → Data Streams. Leave empty to disable.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Social Sharing</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Image URL</label>
+                    <input
+                      type="text"
+                      value={marketingSettings.defaultOgImage}
+                      onChange={(e) => setMarketingSettings({ ...marketingSettings, defaultOgImage: e.target.value })}
+                      placeholder="https://example.com/og-image.jpg"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Fallback image shown when pages are shared on social media. Recommended: 1200x630px.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                <h4 className="text-sm font-medium text-blue-400 mb-2">Conversion Events</h4>
+                <p className="text-xs text-slate-400">When tracking IDs are configured, the following events fire automatically:</p>
+                <ul className="text-xs text-slate-400 mt-2 space-y-1 list-disc list-inside">
+                  <li><strong className="text-slate-300">PageView</strong> — Every page load</li>
+                  <li><strong className="text-slate-300">ViewContent</strong> — Product detail page</li>
+                  <li><strong className="text-slate-300">AddToCart</strong> — Item added to cart</li>
+                  <li><strong className="text-slate-300">InitiateCheckout</strong> — Checkout page opened</li>
+                  <li><strong className="text-slate-300">Purchase</strong> — Order completed with value</li>
+                </ul>
+              </div>
             </div>
           )}
 

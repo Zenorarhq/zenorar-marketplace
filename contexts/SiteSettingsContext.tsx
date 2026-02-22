@@ -12,6 +12,9 @@ interface SiteSettings {
   maintenanceMode: boolean
   timezone: string
   promoBannerCode: string
+  facebookPixelId: string
+  ga4MeasurementId: string
+  defaultOgImage: string
 }
 
 const CACHE_KEY = 'site_settings'
@@ -41,6 +44,9 @@ const DEFAULTS: SiteSettings = {
   maintenanceMode: false,
   timezone: 'auto',
   promoBannerCode: '',
+  facebookPixelId: '',
+  ga4MeasurementId: '',
+  defaultOgImage: '',
 }
 
 function loadCached(): SiteSettings {
@@ -101,6 +107,9 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
           maintenanceMode: 'maintenanceMode' in d ? Boolean(d.maintenanceMode) : false,
           timezone: 'timezone' in d ? extractValue(d, 'timezone') : (cached.timezone || 'auto'),
           promoBannerCode: 'promoBannerCode' in d ? extractValue(d, 'promoBannerCode') : (cached.promoBannerCode || ''),
+          facebookPixelId: 'facebookPixelId' in d ? extractValue(d, 'facebookPixelId') : (cached.facebookPixelId || ''),
+          ga4MeasurementId: 'ga4MeasurementId' in d ? extractValue(d, 'ga4MeasurementId') : (cached.ga4MeasurementId || ''),
+          defaultOgImage: 'defaultOgImage' in d ? extractValue(d, 'defaultOgImage') : (cached.defaultOgImage || ''),
         }
         setSettings(fresh)
         saveCache(fresh)

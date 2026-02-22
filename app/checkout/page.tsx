@@ -12,6 +12,7 @@ import Icon from '@/components/ui/Icon'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/lib/cart-context'
 import { discountsApi } from '@/lib/api/discounts'
+import { trackInitiateCheckout } from '@/lib/tracking'
 
 interface ShippingForm {
   fullName: string
@@ -62,6 +63,13 @@ export default function CheckoutPage() {
       router.push('/cart')
     }
   }, [items, authLoading, router])
+
+  // Track InitiateCheckout event
+  useEffect(() => {
+    if (items && items.length > 0) {
+      trackInitiateCheckout(total, items.length)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load discount from sessionStorage (set in cart page)
   useEffect(() => {
