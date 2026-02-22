@@ -54,23 +54,25 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
           )}
         </div>
 
-        {/* License Select */}
-        <div className="space-y-4 mb-6">
-          <div>
-            <label htmlFor="license-type" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              License Type
-            </label>
-            <select
-              id="license-type"
-              value={selectedLicense}
-              onChange={(e) => setSelectedLicense(e.target.value as 'standard' | 'extended')}
-              className="w-full bg-background-dark border-border-dark rounded-lg text-slate-300 text-sm focus:ring-primary focus:border-primary px-4 py-3"
-            >
-              <option value="standard">Standard License ({formatPrice(product.priceRange?.min || product.price)})</option>
-              <option value="extended">Extended License ({formatPrice(product.priceRange?.max || product.price)})</option>
-            </select>
+        {/* License Select - only show when extended price is set */}
+        {product.priceRange && (
+          <div className="space-y-4 mb-6">
+            <div>
+              <label htmlFor="license-type" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                License Type
+              </label>
+              <select
+                id="license-type"
+                value={selectedLicense}
+                onChange={(e) => setSelectedLicense(e.target.value as 'standard' | 'extended')}
+                className="w-full bg-background-dark border-border-dark rounded-lg text-slate-300 text-sm focus:ring-primary focus:border-primary px-4 py-3"
+              >
+                <option value="standard">Standard License ({formatPrice(product.priceRange.min)})</option>
+                <option value="extended">Extended License ({formatPrice(product.priceRange.max)})</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Add to Cart Button */}
         <button
