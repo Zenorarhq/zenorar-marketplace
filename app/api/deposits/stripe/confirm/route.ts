@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { getSiteSetting, executeQuery } from '@/lib/db-helpers'
+import { getServerApiUrl } from '@/lib/server-api-url'
 
 /**
  * POST /api/deposits/stripe/confirm
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Complete deposit and credit wallet via Railway backend
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+    const apiUrl = getServerApiUrl()
     const completeResponse = await fetch(`${apiUrl}/deposits/${depositId}/finalize`, {
       method: 'POST',
       headers: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { executeQuery } from '@/lib/db-helpers'
 import { verifyBlockchainPayment, getExplorerUrl } from '@/lib/blockchain/verify'
+import { getServerApiUrl } from '@/lib/server-api-url'
 
 /**
  * GET /api/deposits/crypto/check/[depositId]
@@ -101,7 +102,7 @@ export async function GET(
 
     if (verification.found && verification.txHash) {
       // Payment found! Complete deposit via Railway API
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      const apiUrl = getServerApiUrl()
       const authHeader = request.headers.get('authorization')
 
       try {

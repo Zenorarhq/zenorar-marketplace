@@ -74,9 +74,8 @@ function StripeCardForm({
       if (error) {
         onError(error.message || 'Payment failed')
       } else if (paymentIntent?.status === 'succeeded') {
-        // Confirm deposit via Railway API (credits wallet)
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
-        const confirmRes = await fetch(`${apiUrl}/deposits/${depositId}/stripe-complete`, {
+        // Confirm deposit via local API route (verifies with Stripe, then credits wallet via Railway)
+        const confirmRes = await fetch('/api/deposits/stripe/confirm', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -84,7 +83,7 @@ function StripeCardForm({
               Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
             }),
           },
-          body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
+          body: JSON.stringify({ depositId, paymentIntentId: paymentIntent.id }),
         })
         const confirmResult = await confirmRes.json()
         if (!confirmRes.ok || !confirmResult.success) {

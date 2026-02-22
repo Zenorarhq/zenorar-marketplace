@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { executeQuery, getSiteSetting } from '@/lib/db-helpers'
+import { getServerApiUrl } from '@/lib/server-api-url'
 
 /**
  * POST /api/deposits/paystack/verify
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Payment verified — credit wallet via Railway
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+    const apiUrl = getServerApiUrl()
     const authHeader = req.headers.get('authorization')
 
     const completeResponse = await fetch(`${apiUrl}/deposits/${depositId}/finalize`, {
