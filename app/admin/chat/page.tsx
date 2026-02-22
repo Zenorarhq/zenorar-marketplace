@@ -48,6 +48,9 @@ export default function AdminChatPage() {
   // Customer info sidebar
   const [showCustomerInfo, setShowCustomerInfo] = useState(false)
 
+  // Mobile view state - 'list' shows conversation list, 'chat' shows active chat
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
+
   // Internal notes
   const [isNoteMode, setIsNoteMode] = useState(false)
 
@@ -160,6 +163,7 @@ export default function AdminChatPage() {
   // Select a conversation
   const selectConversation = async (id: string) => {
     setActiveId(id)
+    setMobileView('chat') // Switch to chat view on mobile
     const res = await chatApi.getConversation(id)
     if (res.success && res.data) {
       setActiveConv(res.data)
@@ -422,26 +426,36 @@ export default function AdminChatPage() {
     <AdminLayout>
       <div className="h-[calc(100vh-7rem)] flex flex-col">
         {/* Top Bar */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-white">Live Chat</h1>
-            <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          {/* Left Side: Title & Stats */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <div className="flex items-center justify-between sm:justify-start gap-3">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">Live Chat</h1>
+              <Link
+                href="/admin/chat/analytics"
+                className="px-3 py-1.5 bg-[#1a1a1a] text-slate-400 hover:text-white text-xs font-medium rounded-lg transition-colors sm:hidden"
+              >
+                Analytics
+              </Link>
+            </div>
+            <div className="flex items-center gap-3 text-xs sm:text-sm">
               <span className="text-slate-400">Active: <span className="text-white font-medium">{stats.active}</span></span>
               <span className="text-slate-400">Unassigned: <span className="text-yellow-400 font-medium">{stats.unassigned}</span></span>
               <span className="text-slate-400">Unread: <span className="text-red-400 font-medium">{stats.totalUnread}</span></span>
             </div>
             <Link
               href="/admin/chat/analytics"
-              className="px-3 py-1.5 bg-[#1a1a1a] text-slate-400 hover:text-white text-xs font-medium rounded-lg transition-colors"
+              className="hidden sm:block px-3 py-1.5 bg-[#1a1a1a] text-slate-400 hover:text-white text-xs font-medium rounded-lg transition-colors"
             >
               Analytics
             </Link>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Right Side: Controls */}
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Auto-close setting */}
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 text-xs">Auto-close:</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-slate-500 text-[10px] sm:text-xs hidden sm:inline">Auto-close:</span>
               <select
                 value={autoCloseHours}
                 onChange={async (e) => {
@@ -449,9 +463,9 @@ export default function AdminChatPage() {
                   setAutoCloseHours(val)
                   await chatApi.updateSettings({ autoCloseHours: val })
                 }}
-                className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg py-1.5 px-2 text-white text-xs focus:ring-1 focus:ring-primary"
+                className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg py-1.5 px-2 text-white text-[10px] sm:text-xs focus:ring-1 focus:ring-primary"
               >
-                <option value={0}>Disabled</option>
+                <option value={0}>Auto-close: Off</option>
                 <option value={6}>6 hours</option>
                 <option value={12}>12 hours</option>
                 <option value={24}>24 hours</option>
@@ -463,7 +477,7 @@ export default function AdminChatPage() {
             <button
               onClick={toggleOnline}
               disabled={togglingOnline}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 isOnline
                   ? 'bg-primary/20 text-primary hover:bg-primary/30'
                   : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
@@ -476,9 +490,11 @@ export default function AdminChatPage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex gap-4 min-h-0">
+        <div className="flex-1 flex gap-0 md:gap-4 min-h-0">
           {/* Left Panel — Conversation List */}
-          <div className="w-80 flex-shrink-0 bg-[#111111] border border-[#1f1f1f] rounded-xl flex flex-col overflow-hidden">
+          <div className={`${
+            mobileView === 'list' ? 'flex' : 'hidden'
+          } md:flex w-full md:w-80 flex-shrink-0 bg-[#111111] border border-[#1f1f1f] rounded-xl flex-col overflow-hidden`}>
             {/* Search */}
             <div className="px-3 pt-3 pb-2">
               <div className="relative">
@@ -594,7 +610,9 @@ export default function AdminChatPage() {
           </div>
 
           {/* Right Panel — Chat Thread */}
-          <div className="flex-1 bg-[#111111] border border-[#1f1f1f] rounded-xl flex flex-col overflow-hidden">
+          <div className={`${
+            mobileView === 'chat' ? 'flex' : 'hidden'
+          } md:flex flex-1 bg-[#111111] border border-[#1f1f1f] rounded-xl flex-col overflow-hidden`}>
             {!activeConv ? (
               <div className="flex-1 flex items-center justify-center text-slate-500">
                 <div className="text-center">
@@ -605,38 +623,48 @@ export default function AdminChatPage() {
             ) : (
               <>
                 {/* Chat Header */}
-                <div className="px-6 py-4 border-b border-[#1f1f1f] flex items-center justify-between">
-                  <div>
-                    <h3 className="text-white font-semibold">
-                      {activeConv.user?.name || activeConv.guestName || activeConv.guestEmail || 'Guest'}
-                    </h3>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[activeConv.status]}`}>
-                        {activeConv.status}
-                      </span>
-                      {activeConv.assignedTo && (
-                        <span className="text-slate-500 text-xs">Assigned to {activeConv.assignedTo.name}</span>
-                      )}
-                      {activeConv.guestEmail && (
-                        <span className="text-slate-500 text-xs">{activeConv.guestEmail}</span>
-                      )}
+                <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-[#1f1f1f] flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    {/* Mobile Back Button */}
+                    <button
+                      onClick={() => setMobileView('list')}
+                      className="md:hidden p-1.5 -ml-1 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
+                    >
+                      <Icon name="chevron-left" size={20} className="text-slate-400" />
+                    </button>
+                    <div className="min-w-0">
+                      <h3 className="text-white font-semibold text-sm sm:text-base truncate">
+                        {activeConv.user?.name || activeConv.guestName || activeConv.guestEmail || 'Guest'}
+                      </h3>
+                      <div className="flex items-center gap-2 sm:gap-3 mt-0.5 flex-wrap">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[activeConv.status]}`}>
+                          {activeConv.status}
+                        </span>
+                        {activeConv.assignedTo && (
+                          <span className="text-slate-500 text-[10px] sm:text-xs hidden sm:inline">Assigned to {activeConv.assignedTo.name}</span>
+                        )}
+                        {activeConv.guestEmail && (
+                          <span className="text-slate-500 text-[10px] sm:text-xs hidden lg:inline">{activeConv.guestEmail}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     {!activeConv.assignedTo && (activeConv.status === 'OPEN' || activeConv.status === 'ASSIGNED') && (
                       <button
                         onClick={handlePickUp}
-                        className="px-3 py-1.5 bg-primary/20 text-primary text-xs font-medium rounded-lg hover:bg-primary/30 transition-colors"
+                        className="px-2 sm:px-3 py-1.5 bg-primary/20 text-primary text-[10px] sm:text-xs font-medium rounded-lg hover:bg-primary/30 transition-colors"
                       >
-                        Pick Up
+                        <span className="hidden sm:inline">Pick Up</span>
+                        <Icon name="hand" size={14} className="sm:hidden" />
                       </button>
                     )}
                     {activeConv.assignedTo && (activeConv.status === 'OPEN' || activeConv.status === 'ASSIGNED') && (
                       <button
                         onClick={handleUnassign}
-                        className="px-3 py-1.5 bg-orange-500/20 text-orange-400 text-xs font-medium rounded-lg hover:bg-orange-500/30 transition-colors"
+                        className="hidden sm:block px-3 py-1.5 bg-orange-500/20 text-orange-400 text-xs font-medium rounded-lg hover:bg-orange-500/30 transition-colors"
                       >
                         Unassign
                       </button>
@@ -644,15 +672,16 @@ export default function AdminChatPage() {
                     {(activeConv.status === 'OPEN' || activeConv.status === 'ASSIGNED') && (
                       <button
                         onClick={() => handleUpdateStatus('RESOLVED')}
-                        className="px-3 py-1.5 bg-green-500/20 text-green-400 text-xs font-medium rounded-lg hover:bg-green-500/30 transition-colors"
+                        className="px-2 sm:px-3 py-1.5 bg-green-500/20 text-green-400 text-[10px] sm:text-xs font-medium rounded-lg hover:bg-green-500/30 transition-colors"
                       >
-                        Resolve
+                        <span className="hidden sm:inline">Resolve</span>
+                        <Icon name="check" size={14} className="sm:hidden" />
                       </button>
                     )}
                     {(activeConv.status === 'RESOLVED' || activeConv.status === 'ASSIGNED') && (
                       <button
                         onClick={() => handleUpdateStatus('CLOSED')}
-                        className="px-3 py-1.5 bg-slate-500/20 text-slate-400 text-xs font-medium rounded-lg hover:bg-slate-500/30 transition-colors"
+                        className="hidden sm:block px-3 py-1.5 bg-slate-500/20 text-slate-400 text-xs font-medium rounded-lg hover:bg-slate-500/30 transition-colors"
                       >
                         Close
                       </button>
@@ -660,14 +689,15 @@ export default function AdminChatPage() {
                     {(activeConv.status === 'RESOLVED' || activeConv.status === 'CLOSED') && (
                       <button
                         onClick={() => handleUpdateStatus('OPEN')}
-                        className="px-3 py-1.5 bg-blue-500/20 text-blue-400 text-xs font-medium rounded-lg hover:bg-blue-500/30 transition-colors"
+                        className="px-2 sm:px-3 py-1.5 bg-blue-500/20 text-blue-400 text-[10px] sm:text-xs font-medium rounded-lg hover:bg-blue-500/30 transition-colors"
                       >
-                        Reopen
+                        <span className="hidden sm:inline">Reopen</span>
+                        <Icon name="refresh" size={14} className="sm:hidden" />
                       </button>
                     )}
-                    {/* Transfer */}
+                    {/* Transfer - hidden on mobile */}
                     {(activeConv.status === 'OPEN' || activeConv.status === 'ASSIGNED') && (
-                      <div className="relative">
+                      <div className="relative hidden sm:block">
                         <button
                           onClick={() => setShowTransfer(!showTransfer)}
                           className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
@@ -697,7 +727,7 @@ export default function AdminChatPage() {
                     )}
                     <button
                       onClick={() => setShowCustomerInfo(!showCustomerInfo)}
-                      className={`p-2 rounded-lg transition-colors ${showCustomerInfo ? 'bg-primary/20 text-primary' : 'text-slate-400 hover:text-white hover:bg-[#1a1a1a]'}`}
+                      className={`p-1.5 sm:p-2 rounded-lg transition-colors ${showCustomerInfo ? 'bg-primary/20 text-primary' : 'text-slate-400 hover:text-white hover:bg-[#1a1a1a]'}`}
                       title="Customer info"
                     >
                       <Icon name="user" size={16} />
@@ -710,13 +740,13 @@ export default function AdminChatPage() {
 
                 {/* Warning if assigned to another agent */}
                 {activeConv.assignedTo && user && activeConv.assignedTo.id !== user.id && (
-                  <div className="px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20">
-                    <p className="text-yellow-400 text-xs">This conversation is handled by {activeConv.assignedTo.name}</p>
+                  <div className="px-3 sm:px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20">
+                    <p className="text-yellow-400 text-[10px] sm:text-xs">This conversation is handled by {activeConv.assignedTo.name}</p>
                   </div>
                 )}
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
                   {activeConv.messages.map((msg, idx) => {
                     const prevMsg = idx > 0 ? activeConv.messages[idx - 1] : null
                     const showDate = !prevMsg || new Date(msg.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString()
@@ -734,7 +764,7 @@ export default function AdminChatPage() {
                       ) : (
                         <div className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}>
                           <div
-                            className={`max-w-[70%] rounded-2xl px-4 py-3 ${
+                            className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 ${
                               msg.isInternal
                                 ? 'bg-amber-500/15 border border-amber-500/30 text-amber-100 rounded-br-none'
                                 : msg.senderId === user?.id
@@ -768,8 +798,8 @@ export default function AdminChatPage() {
 
                 {/* Typing Indicator */}
                 {userTyping && (
-                  <div className="px-4 py-1.5">
-                    <span className="text-slate-400 text-xs italic flex items-center gap-1">
+                  <div className="px-3 sm:px-4 py-1.5">
+                    <span className="text-slate-400 text-[10px] sm:text-xs italic flex items-center gap-1">
                       <span className="flex gap-0.5">
                         <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                         <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -782,7 +812,7 @@ export default function AdminChatPage() {
 
                 {/* Canned Replies Dropdown */}
                 {showCannedReplies && !showCannedEditor && (
-                  <div className="mx-4 mb-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg overflow-hidden max-h-[240px] overflow-y-auto">
+                  <div className="mx-2 sm:mx-4 mb-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg overflow-hidden max-h-[200px] sm:max-h-[240px] overflow-y-auto">
                     <div className="flex items-center justify-between px-3 py-2 border-b border-[#1f1f1f]">
                       <span className="text-slate-400 text-[10px] uppercase tracking-wider font-medium">Quick Replies</span>
                       <button
@@ -815,7 +845,7 @@ export default function AdminChatPage() {
 
                 {/* Canned Replies Editor */}
                 {showCannedEditor && (
-                  <div className="mx-4 mb-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg overflow-hidden max-h-[320px] overflow-y-auto">
+                  <div className="mx-2 sm:mx-4 mb-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg overflow-hidden max-h-[280px] sm:max-h-[320px] overflow-y-auto">
                     <div className="flex items-center justify-between px-3 py-2 border-b border-[#1f1f1f]">
                       <span className="text-white text-xs font-medium">Manage Quick Replies</span>
                       <button
@@ -891,8 +921,8 @@ export default function AdminChatPage() {
 
                 {/* Reply Input */}
                 {activeConv.status !== 'CLOSED' && (
-                  <form onSubmit={handleSendReply} className="p-4 border-t border-[#1f1f1f]">
-                    <div className="flex gap-2 items-end">
+                  <form onSubmit={handleSendReply} className="p-2 sm:p-4 border-t border-[#1f1f1f]">
+                    <div className="flex gap-1 sm:gap-2 items-end">
                       <input
                         type="file"
                         ref={fileInputRef}
@@ -903,7 +933,7 @@ export default function AdminChatPage() {
                       <button
                         type="button"
                         onClick={() => setIsNoteMode(!isNoteMode)}
-                        className={`text-xs font-medium px-2 py-1 rounded-lg transition-colors ${
+                        className={`text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-1 rounded-lg transition-colors flex-shrink-0 ${
                           isNoteMode
                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                             : 'text-slate-400 hover:text-white hover:bg-[#1a1a1a]'
@@ -915,20 +945,20 @@ export default function AdminChatPage() {
                       <button
                         type="button"
                         onClick={() => setShowCannedReplies(!showCannedReplies)}
-                        className={`text-slate-400 hover:text-primary transition-colors p-2 ${showCannedReplies ? 'text-primary' : ''}`}
+                        className={`text-slate-400 hover:text-primary transition-colors p-1.5 sm:p-2 flex-shrink-0 hidden sm:block ${showCannedReplies ? 'text-primary' : ''}`}
                         aria-label="Quick replies"
                         title="Quick replies"
                       >
-                        <Icon name="bolt" size={20} />
+                        <Icon name="bolt" size={18} />
                       </button>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
-                        className="text-slate-400 hover:text-primary transition-colors p-2 disabled:opacity-50"
+                        className="text-slate-400 hover:text-primary transition-colors p-1.5 sm:p-2 disabled:opacity-50 flex-shrink-0"
                         aria-label="Attach file"
                       >
-                        <Icon name={uploading ? 'loading' : 'upload'} size={20} className={uploading ? 'animate-spin' : ''} />
+                        <Icon name={uploading ? 'loading' : 'upload'} size={18} className={uploading ? 'animate-spin' : ''} />
                       </button>
                       <textarea
                         ref={textareaRef}
@@ -952,7 +982,7 @@ export default function AdminChatPage() {
                         placeholder={isNoteMode ? 'Write an internal note...' : 'Type your reply...'}
                         disabled={sending}
                         rows={1}
-                        className={`flex-1 bg-[#0a0a0a] border rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 transition-all text-sm resize-none overflow-hidden ${
+                        className={`flex-1 bg-[#0a0a0a] border rounded-xl py-2 sm:py-3 px-3 sm:px-4 text-white placeholder:text-slate-500 focus:ring-1 transition-all text-xs sm:text-sm resize-none overflow-hidden ${
                           isNoteMode
                             ? 'border-amber-500/30 focus:ring-amber-500/50 focus:border-amber-500/50'
                             : 'border-[#2a2a2a] focus:ring-primary focus:border-primary'
@@ -961,10 +991,10 @@ export default function AdminChatPage() {
                       <button
                         type="submit"
                         disabled={!replyInput.trim() || sending}
-                        className="bg-primary text-black w-12 h-12 rounded-xl flex items-center justify-center hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-primary text-black w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                         aria-label="Send reply"
                       >
-                        <Icon name="send" size={20} />
+                        <Icon name="send" size={18} />
                       </button>
                     </div>
                   </form>
@@ -972,11 +1002,27 @@ export default function AdminChatPage() {
 
                 </div>{/* end chat column */}
 
-                {/* Customer Info Sidebar */}
+                {/* Customer Info Sidebar - Slide-out on mobile, inline on desktop */}
                 {showCustomerInfo && (
-                  <div className="w-[280px] border-l border-[#1f1f1f] bg-[#0d0d0d] overflow-y-auto flex-shrink-0">
-                    <div className="p-4 space-y-4">
-                      <h4 className="text-white font-semibold text-sm">Customer Info</h4>
+                  <>
+                    {/* Mobile backdrop */}
+                    <div
+                      className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                      onClick={() => setShowCustomerInfo(false)}
+                    />
+                    <div className="fixed right-0 top-0 h-full w-[280px] sm:w-[320px] lg:relative lg:w-[280px] border-l border-[#1f1f1f] bg-[#0d0d0d] overflow-y-auto flex-shrink-0 z-50 lg:z-auto shadow-2xl lg:shadow-none">
+                      <div className="p-4 space-y-4">
+                        {/* Mobile close button */}
+                        <div className="flex items-center justify-between lg:hidden">
+                          <h4 className="text-white font-semibold text-sm">Customer Info</h4>
+                          <button
+                            onClick={() => setShowCustomerInfo(false)}
+                            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            <Icon name="close" size={16} className="text-slate-400" />
+                          </button>
+                        </div>
+                        <h4 className="text-white font-semibold text-sm hidden lg:block">Customer Info</h4>
 
                       {/* Avatar & Name */}
                       <div className="flex items-center gap-3">
@@ -1065,6 +1111,7 @@ export default function AdminChatPage() {
                       </div>
                     </div>
                   </div>
+                  </>
                 )}
 
                 </div>{/* end flex row */}
