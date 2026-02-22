@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import { Product } from '@/lib/types'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -86,6 +85,7 @@ export default function AddToCartPopup({
   if (!isOpen || !product) return null
 
   const displayPrice = price ?? product.price
+  const imageUrl = product.image || product.images?.[0]?.url
 
   return (
     <div
@@ -113,12 +113,10 @@ export default function AddToCartPopup({
         {/* Product Info */}
         <div className="flex gap-4 p-4 bg-surface-dark rounded-xl mb-6">
           <div className="w-16 h-16 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
-            {product.image ? (
-              <Image
-                src={product.image}
+            {imageUrl ? (
+              <img
+                src={imageUrl}
                 alt={product.name}
-                width={64}
-                height={64}
                 className="w-full h-full object-cover"
               />
             ) : (
