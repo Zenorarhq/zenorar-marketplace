@@ -29,6 +29,14 @@ export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Auto-clear message after 4 seconds
+  useEffect(() => {
+    if (!message) return
+    const timer = setTimeout(() => setMessage(null), 4000)
+    return () => clearTimeout(timer)
+  }, [message])
+
   const tabsRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
@@ -54,6 +62,7 @@ export default function AdminSettingsPage() {
 
   const handleTabClick = (tabId: SettingsTab, index: number) => {
     setActiveTab(tabId)
+    setMessage(null)
     // Scroll the clicked tab into view within the container
     if (tabsRef.current) {
       const container = tabsRef.current
@@ -369,6 +378,12 @@ export default function AdminSettingsPage() {
         setExchangeRateKeys((prev) => ({
           exchangerate_api_key: d.exchangerate_api_key ?? prev.exchangerate_api_key,
           coingecko_api_key: d.coingecko_api_key ?? prev.coingecko_api_key,
+        }))
+        setApiSettings((prev) => ({
+          ...prev,
+          apiEnabled: d.apiEnabled ?? prev.apiEnabled,
+          rateLimit: d.rateLimit ?? prev.rateLimit,
+          webhookUrl: d.webhookUrl ?? prev.webhookUrl,
         }))
       }
     })
@@ -705,6 +720,10 @@ export default function AdminSettingsPage() {
       // Exchange Rate API keys
       { key: 'exchangerate_api_key', value: exchangeRateKeys.exchangerate_api_key, group: 'api', isPublic: false },
       { key: 'coingecko_api_key', value: exchangeRateKeys.coingecko_api_key, group: 'api', isPublic: false },
+      // API access settings
+      { key: 'apiEnabled', value: apiSettings.apiEnabled, group: 'api', isPublic: false },
+      { key: 'rateLimit', value: apiSettings.rateLimit, group: 'api', isPublic: false },
+      { key: 'webhookUrl', value: apiSettings.webhookUrl, group: 'api', isPublic: false },
       // Payment settings - Web3 Wallet
       { key: 'walletEnabled', value: paymentSettings.walletEnabled, group: 'payments', isPublic: true },
       // Payment settings - Stripe
@@ -2764,7 +2783,10 @@ export default function AdminSettingsPage() {
 
         {/* Save Button */}
         <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6">
-          <button className="px-4 sm:px-6 py-2.5 sm:py-3 text-slate-400 hover:text-white transition-colors text-sm sm:text-base order-2 sm:order-1">
+          <button
+            onClick={() => { setMessage(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+            className="px-4 sm:px-6 py-2.5 sm:py-3 text-slate-400 hover:text-white transition-colors text-sm sm:text-base order-2 sm:order-1"
+          >
             Cancel
           </button>
           <button

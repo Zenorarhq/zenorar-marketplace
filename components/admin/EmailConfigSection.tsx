@@ -14,6 +14,7 @@ export default function EmailConfigSection() {
   const [activeProvider, setActiveProvider] = useState<string | null>(null)
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [testEmail, setTestEmail] = useState('')
   const [testStatus, setTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
@@ -34,6 +35,12 @@ export default function EmailConfigSection() {
           }),
         },
       })
+
+      if (!res.ok) {
+        setError('Failed to load email settings. The email_settings table may not exist — run migration 020.')
+        return
+      }
+
       const data = await res.json()
 
       if (data.success && data.data) {
@@ -41,9 +48,12 @@ export default function EmailConfigSection() {
         const active = data.data.find((p: EmailProvider) => p.is_active)
         setActiveProvider(active?.provider || null)
         setExpandedProvider(active?.provider || null)
+      } else {
+        setError(data.error || 'Failed to load email settings')
       }
-    } catch (error) {
-      console.error('Failed to load email settings:', error)
+    } catch (err) {
+      console.error('Failed to load email settings:', err)
+      setError('Failed to connect to the email settings API')
     } finally {
       setLoading(false)
     }
@@ -140,6 +150,20 @@ export default function EmailConfigSection() {
       <div className="text-center py-12">
         <Icon name="loading" size={32} className="text-primary animate-spin mx-auto mb-4" />
         <p className="text-slate-400">Loading email settings...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6">
+        <div className="flex items-start gap-3">
+          <Icon name="alert" size={24} className="text-red-400 flex-shrink-0" />
+          <div>
+            <h3 className="text-red-400 font-bold mb-1">Email Settings Error</h3>
+            <p className="text-red-400/80 text-sm">{error}</p>
+          </div>
+        </div>
       </div>
     )
   }
