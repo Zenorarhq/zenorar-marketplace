@@ -171,6 +171,7 @@ function WalletPageContent() {
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'CREDIT': return { icon: 'arrow-down-circle', color: 'text-green-500' }
+      case 'DEPOSIT': return { icon: 'arrow-down-circle', color: 'text-green-500' }
       case 'DEBIT': return { icon: 'arrow-up-circle', color: 'text-red-500' }
       case 'REFUND': return { icon: 'refresh', color: 'text-blue-500' }
       case 'ADJUSTMENT': return { icon: 'adjustments', color: 'text-yellow-500' }
@@ -181,6 +182,7 @@ function WalletPageContent() {
   const getTransactionBadge = (type: string) => {
     const configs: Record<string, { label: string; color: string }> = {
       CREDIT: { label: 'Credit', color: 'text-green-500 bg-green-500/10 border-green-500/20' },
+      DEPOSIT: { label: 'Deposit', color: 'text-green-500 bg-green-500/10 border-green-500/20' },
       DEBIT: { label: 'Debit', color: 'text-red-500 bg-red-500/10 border-red-500/20' },
       REFUND: { label: 'Refund', color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
       ADJUSTMENT: { label: 'Adjustment', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
@@ -348,7 +350,7 @@ function WalletPageContent() {
             <div className="space-y-3">
               {transactionsData.transactions.map((transaction) => {
                 const { icon, color } = getTransactionIcon(transaction.type)
-                const isCredit = transaction.type === 'CREDIT' || transaction.type === 'REFUND'
+                const isCredit = transaction.type === 'CREDIT' || transaction.type === 'DEPOSIT' || transaction.type === 'REFUND'
 
                 return (
                   <div
