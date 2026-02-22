@@ -37,6 +37,7 @@ next-env.d.ts
 
 # Claude
 .claude/
+CLAUDE.local.md
 
 # Misc
 nul
