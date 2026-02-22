@@ -26,7 +26,8 @@ export async function GET(request: Request) {
         c.slug as category,
         c.icon as category_icon,
         MIN(oi."createdAt") as purchase_date,
-        COUNT(DISTINCT o.id) as purchase_count
+        COUNT(DISTINCT o.id) as purchase_count,
+        MIN(o.id) as order_id
       FROM orders o
       JOIN order_items oi ON o.id = oi."orderId"
       JOIN products p ON oi."productId" = p.id
@@ -64,9 +65,11 @@ export async function GET(request: Request) {
       return {
         id: row.id,
         name: row.name,
+        slug: row.slug,
         description: row.description || `${row.name} - Digital product`,
         category: category,
         icon: icon,
+        orderId: row.order_id,
         purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',

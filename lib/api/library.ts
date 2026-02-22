@@ -28,6 +28,7 @@ async function localApiFetch<T>(endpoint: string, options: RequestInit = {}): Pr
 export interface LibraryItem {
   id: string
   name: string
+  slug?: string
   description: string
   category: 'scripts' | 'esims' | 'tools' | 'api'
   icon: string
@@ -36,6 +37,7 @@ export interface LibraryItem {
   version?: string
   downloadCount?: number
   expiresAt?: string
+  orderId?: string
 }
 
 export interface DownloadLink {

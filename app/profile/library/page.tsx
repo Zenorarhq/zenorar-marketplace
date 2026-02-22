@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import ProfileLayout from '@/components/profile/ProfileLayout'
@@ -14,6 +14,21 @@ export default function LibraryPage() {
   const [activeFilter, setActiveFilter] = useState<LibraryFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    if (openMenuId) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openMenuId])
 
   // Fetch library data from API
   const {
@@ -350,9 +365,39 @@ export default function LibraryPage() {
                           )}
                         </button>
                       )}
-                      <button className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors">
-                        <Icon name="more-horizontal" size={18} />
-                      </button>
+                      <div className="relative" ref={openMenuId === item.id ? menuRef : undefined}>
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                          className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
+                        >
+                          <Icon name="more-horizontal" size={18} />
+                        </button>
+                        {openMenuId === item.id && (
+                          <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
+                            <button
+                              onClick={() => { setOpenMenuId(null); router.push(`/p/${item.slug}`) }}
+                              className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                            >
+                              <Icon name="eye" size={16} />
+                              View Product Page
+                            </button>
+                            <button
+                              onClick={() => { setOpenMenuId(null); router.push(`/profile/orders/${item.orderId}`) }}
+                              className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                            >
+                              <Icon name="receipt" size={16} />
+                              View Order
+                            </button>
+                            <button
+                              onClick={() => { setOpenMenuId(null); router.push('/profile/tickets') }}
+                              className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                            >
+                              <Icon name="alert" size={16} />
+                              Report Issue
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
