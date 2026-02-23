@@ -21,7 +21,6 @@ export interface FinanceOverview {
   pendingBalance: number
   currency: string
   revenueByPaymentMethod: { method: string; amount: number; count: number }[]
-  depositsByMethod: { method: string; amount: number; count: number }[]
 }
 
 export interface AdminExpense {

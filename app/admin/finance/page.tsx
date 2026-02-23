@@ -124,45 +124,24 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Revenue Breakdown + Deposit Inflow */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 mb-6">
-        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
-          <h3 className="text-white font-semibold mb-4">Revenue by Payment Channel</h3>
-          {overview?.revenueByPaymentMethod?.length ? (
-            <div className="space-y-3">
-              {overview.revenueByPaymentMethod.map((item) => (
-                <div key={item.method} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-300 text-sm capitalize">{item.method.replace(/_/g, ' ')}</span>
-                    <span className="text-slate-500 text-xs">({item.count} orders)</span>
-                  </div>
-                  <span className="text-white font-medium text-sm">{formatCurrency(item.amount)}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
+      {/* Revenue by Payment Channel */}
+      <div className="mb-6">
+        <h3 className="text-white font-semibold mb-3">Revenue by Payment Channel</h3>
+        {overview?.revenueByPaymentMethod?.length ? (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
+            {overview.revenueByPaymentMethod.map((item) => (
+              <div key={item.method} className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+                <p className="text-slate-400 text-xs lg:text-sm capitalize mb-2">{item.method.replace(/_/g, ' ')}</p>
+                <p className="text-white text-lg lg:text-xl font-bold mb-1">{formatCurrency(item.amount)}</p>
+                <p className="text-slate-500 text-xs">{item.count} order{item.count !== 1 ? 's' : ''}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
             <p className="text-slate-500 text-sm">No revenue data</p>
-          )}
-        </div>
-
-        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
-          <h3 className="text-white font-semibold mb-4">Wallet Deposit Inflow</h3>
-          {overview?.depositsByMethod?.length ? (
-            <div className="space-y-3">
-              {overview.depositsByMethod.map((item) => (
-                <div key={item.method} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-300 text-sm capitalize">{item.method.replace(/_/g, ' ')}</span>
-                    <span className="text-slate-500 text-xs">({item.count} deposits)</span>
-                  </div>
-                  <span className="text-white font-medium text-sm">{formatCurrency(item.amount)}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-slate-500 text-sm">No deposit data</p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Record Expense Section */}
