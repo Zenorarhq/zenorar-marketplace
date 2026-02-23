@@ -288,7 +288,7 @@ export default function ReferralsPage() {
                   <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Referred User</th>
                   <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Date</th>
                   <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold text-center">Status</th>
-                  <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold text-right">Purchase</th>
+                  <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold text-right">You Earned</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-dark bg-black/20">
@@ -305,11 +305,12 @@ export default function ReferralsPage() {
                       {getStatusBadge(referral.status)}
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4 text-right">
-                      {referral.firstOrder ? (
-                        <div>
-                          <div className="text-white font-mono">{formatCurrency(Number(referral.firstOrder.total))}</div>
-                          <div className="text-xs text-slate-500">#{referral.firstOrder.orderNumber}</div>
+                      {referral.status === 'REWARDED' || referral.status === 'COMPLETED' ? (
+                        <div className="text-primary font-bold font-mono">
+                          +{formatCurrency(referrerRewardAmount)}
                         </div>
+                      ) : referral.status === 'PENDING' ? (
+                        <span className="text-yellow-500 text-sm">Pending purchase</span>
                       ) : (
                         <span className="text-slate-500 text-sm">-</span>
                       )}
