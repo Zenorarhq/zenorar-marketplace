@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
+import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import { validateReferralCode } from '@/lib/api/referrals'
 import { formatCurrency } from '@/lib/currency'
+import { settingsApi } from '@/lib/api/settings'
 
 export default function ReferralLandingPage() {
   const router = useRouter()
@@ -17,6 +20,19 @@ export default function ReferralLandingPage() {
     message?: string
   } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  // Fetch branding settings for logo
+  const { data: brandingData } = useQuery({
+    queryKey: ['settings', 'branding'],
+    queryFn: async () => {
+      const result = await settingsApi.getSettingsByGroup('branding')
+      return result.success ? result.data : null
+    },
+    staleTime: 5 * 60 * 1000
+  })
+
+  const logoUrl = brandingData?.logoUrl as string | undefined
+  const siteName = (brandingData?.siteName as string) || 'Marketplace'
 
   useEffect(() => {
     const validate = async () => {
@@ -80,12 +96,22 @@ export default function ReferralLandingPage() {
     <div className="min-h-screen bg-background-dark">
       {/* Header */}
       <header className="border-b border-border-dark">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link href="/" className="flex items-center gap-3 font-bold text-xl text-white w-fit">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black">
-              <Icon name="grid-view" size={24} />
-            </div>
-            Marketplace
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-center">
+          <Link href="/" className="flex items-center gap-3 font-bold text-xl text-white">
+            {logoUrl ? (
+              <Image
+                src={logoUrl}
+                alt={siteName}
+                width={40}
+                height={40}
+                className="h-10 w-auto object-contain"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black">
+                <Icon name="grid-view" size={24} />
+              </div>
+            )}
+            {siteName}
           </Link>
         </div>
       </header>
