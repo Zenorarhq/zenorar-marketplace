@@ -54,11 +54,27 @@ export interface ReferralCodeValidation {
   message?: string
 }
 
+export interface MyReferrerInfo {
+  referrerId: string
+  referrerName: string
+  status: 'PENDING' | 'COMPLETED' | 'REWARDED' | 'CANCELLED'
+  isRewarded: boolean
+  rewardedAt: string | null
+  createdAt: string
+}
+
 /**
  * Get my referral stats and code
  */
 export async function getMyReferrals(): Promise<ApiResponse<ReferralStats>> {
   return apiFetch<ReferralStats>('/referrals/my')
+}
+
+/**
+ * Get who referred me (if I was referred)
+ */
+export async function getMyReferrer(): Promise<ApiResponse<MyReferrerInfo | null>> {
+  return apiFetch<MyReferrerInfo | null>('/referrals/my-referrer')
 }
 
 /**

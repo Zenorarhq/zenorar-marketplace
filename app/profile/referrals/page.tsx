@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
-import { getMyReferrals, getReferralHistory } from '@/lib/api/referrals'
+import { getMyReferrals, getReferralHistory, getMyReferrer } from '@/lib/api/referrals'
 import { formatCurrency } from '@/lib/currency'
 import { apiFetch } from '@/lib/api/client'
 
@@ -47,6 +47,15 @@ export default function ReferralsPage() {
         throw new Error(result.error || 'Failed to load referral history')
       }
       return result.data
+    }
+  })
+
+  // Fetch my referrer info (if I was referred by someone)
+  const { data: myReferrerData } = useQuery({
+    queryKey: ['referrals', 'my-referrer'],
+    queryFn: async () => {
+      const result = await getMyReferrer()
+      return result.success ? result.data : null
     }
   })
 
@@ -280,45 +289,87 @@ export default function ReferralsPage() {
               <div key={i} className="h-16 bg-surface-dark animate-pulse rounded-xl" />
             ))}
           </div>
-        ) : historyData?.referrals && historyData.referrals.length > 0 ? (
-          <div className="overflow-x-auto rounded-2xl border border-border-dark">
-            <table className="w-full text-left text-sm text-slate-400">
-              <thead className="text-xs uppercase bg-black text-slate-200">
-                <tr>
-                  <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Referred User</th>
-                  <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Date</th>
-                  <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold text-center">Status</th>
-                  <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold text-right">You Earned</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-dark bg-black/20">
-                {historyData.referrals.map((referral) => (
-                  <tr key={referral.id} className="hover:bg-black/40 transition-colors">
-                    <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <div>
-                        <div className="text-white font-medium">{referral.referee.name}</div>
-                        <div className="text-xs text-slate-500">{referral.referee.email}</div>
+        ) : (historyData?.referrals && historyData.referrals.length > 0) || myReferrerData ? (
+          <div className="space-y-6">
+            {/* Incoming referral - Welcome bonus (if user was referred) */}
+            {myReferrerData && (filter === 'all' || filter.toUpperCase() === myReferrerData.status) && (
+              <div className="bg-black border border-border-dark rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 bg-primary/10 border-b border-border-dark">
+                  <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                    <Icon name="gift" size={16} />
+                    Your Welcome Bonus
+                  </h4>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Icon name="gift" size={20} className="text-primary" />
                       </div>
-                    </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4">{formatDate(referral.createdAt)}</td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-center">
-                      {getStatusBadge(referral.status)}
-                    </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-right">
-                      {referral.status === 'REWARDED' || referral.status === 'COMPLETED' ? (
-                        <div className="text-primary font-bold font-mono">
-                          +{formatCurrency(referrerRewardAmount)}
+                      <div>
+                        <div className="text-white font-medium">Welcome bonus for joining via referral</div>
+                        <div className="text-xs text-slate-500">
+                          Referred by: {myReferrerData.referrerName} • {formatDate(myReferrerData.createdAt)}
                         </div>
-                      ) : referral.status === 'PENDING' ? (
-                        <span className="text-yellow-500 text-sm">Pending purchase</span>
+                      </div>
+                    </div>
+                    <div className="text-right flex items-center gap-4">
+                      {getStatusBadge(myReferrerData.status)}
+                      {myReferrerData.isRewarded ? (
+                        <div className="text-primary font-bold font-mono">
+                          +{formatCurrency(refereeRewardAmount)}
+                        </div>
                       ) : (
-                        <span className="text-slate-500 text-sm">-</span>
+                        <span className="text-yellow-500 text-sm">Make first purchase</span>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Outgoing referrals - People you referred */}
+            {historyData?.referrals && historyData.referrals.length > 0 && (
+              <div className="overflow-x-auto rounded-2xl border border-border-dark">
+                <table className="w-full text-left text-sm text-slate-400">
+                  <thead className="text-xs uppercase bg-black text-slate-200">
+                    <tr>
+                      <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Referred User</th>
+                      <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold">Date</th>
+                      <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold text-center">Status</th>
+                      <th className="px-3 py-3 sm:px-6 sm:py-4 font-bold text-right">You Earned</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-dark bg-black/20">
+                    {historyData.referrals.map((referral) => (
+                      <tr key={referral.id} className="hover:bg-black/40 transition-colors">
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
+                          <div>
+                            <div className="text-white font-medium">{referral.referee.name}</div>
+                            <div className="text-xs text-slate-500">{referral.referee.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">{formatDate(referral.createdAt)}</td>
+                        <td className="px-3 py-3 sm:px-6 sm:py-4 text-center">
+                          {getStatusBadge(referral.status)}
+                        </td>
+                        <td className="px-3 py-3 sm:px-6 sm:py-4 text-right">
+                          {referral.status === 'REWARDED' || referral.status === 'COMPLETED' ? (
+                            <div className="text-primary font-bold font-mono">
+                              +{formatCurrency(referrerRewardAmount)}
+                            </div>
+                          ) : referral.status === 'PENDING' ? (
+                            <span className="text-yellow-500 text-sm">Pending purchase</span>
+                          ) : (
+                            <span className="text-slate-500 text-sm">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         ) : (
           <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
