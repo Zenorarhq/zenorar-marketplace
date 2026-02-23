@@ -6,10 +6,24 @@ import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { getMyReferrals, getReferralHistory } from '@/lib/api/referrals'
 import { formatCurrency } from '@/lib/currency'
+import { apiFetch } from '@/lib/api/client'
 
 export default function ReferralsPage() {
   const [copied, setCopied] = useState(false)
   const [filter, setFilter] = useState<string>('all')
+
+  // Fetch public settings for reward amounts
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: async () => {
+      const res = await apiFetch<any>('/settings/public')
+      return res.success ? res.data : null
+    },
+    staleTime: 5 * 60 * 1000
+  })
+
+  const referrerRewardAmount = publicSettings?.referrerRewardAmount ? Number(publicSettings.referrerRewardAmount) : 10
+  const refereeRewardAmount = publicSettings?.refereeRewardAmount ? Number(publicSettings.refereeRewardAmount) : 10
 
   // Fetch referral stats
   const { data: statsData, isLoading: statsLoading } = useQuery({
@@ -91,7 +105,7 @@ export default function ReferralsPage() {
       <div className="mb-10 pb-6 border-b border-border-dark">
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Referral Program</h1>
         <p className="text-slate-400">
-          Invite friends and earn rewards. Get $10 for each successful referral.
+          Invite friends and earn rewards. Get {formatCurrency(referrerRewardAmount)} for each successful referral.
         </p>
       </div>
 
@@ -228,7 +242,7 @@ export default function ReferralsPage() {
             </div>
             <h4 className="font-bold text-white mb-2">Earn Rewards</h4>
             <p className="text-slate-500 text-sm">
-              You both get $10 credit to spend on any product in the marketplace.
+              You get {formatCurrency(referrerRewardAmount)} and they get {formatCurrency(refereeRewardAmount)} credit to spend.
             </p>
           </div>
         </div>

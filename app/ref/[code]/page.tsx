@@ -33,6 +33,8 @@ export default function ReferralLandingPage() {
 
   const logoUrl = brandingData?.logoUrl || null
   const siteName = brandingData?.siteName || 'Marketplace'
+  const refereeRewardAmount = brandingData?.refereeRewardAmount ? Number(brandingData.refereeRewardAmount) : 10
+  const referrerRewardAmount = brandingData?.referrerRewardAmount ? Number(brandingData.referrerRewardAmount) : 10
 
   useEffect(() => {
     const validate = async () => {
@@ -143,7 +145,7 @@ export default function ReferralLandingPage() {
           <div className="text-center mb-8">
             <p className="text-slate-300 mb-4">When you sign up and make your first purchase, you'll receive:</p>
             <div className="inline-block bg-black/40 border border-primary/40 rounded-2xl px-8 py-6">
-              <p className="text-5xl font-bold text-primary mb-2">{formatCurrency(10)}</p>
+              <p className="text-5xl font-bold text-primary mb-2">{formatCurrency(refereeRewardAmount)}</p>
               <p className="text-slate-400 text-sm">Credit to your wallet</p>
             </div>
           </div>
@@ -168,7 +170,7 @@ export default function ReferralLandingPage() {
                 <span className="text-xl font-bold text-primary">3</span>
               </div>
               <p className="text-white font-semibold mb-1">Get Rewarded</p>
-              <p className="text-slate-400 text-sm">Receive {formatCurrency(10)} in your wallet</p>
+              <p className="text-slate-400 text-sm">Receive {formatCurrency(refereeRewardAmount)} in your wallet</p>
             </div>
           </div>
 
@@ -227,7 +229,7 @@ export default function ReferralLandingPage() {
                 How do I get my welcome bonus?
               </h4>
               <p className="text-slate-400 text-sm">
-                Simply sign up using this referral link and make your first purchase. Your {formatCurrency(10)} bonus will be automatically credited to your wallet after your purchase is complete.
+                Simply sign up using this referral link and make your first purchase. Your {formatCurrency(refereeRewardAmount)} bonus will be automatically credited to your wallet after your purchase is complete.
               </p>
             </div>
 
@@ -247,7 +249,7 @@ export default function ReferralLandingPage() {
                 Can I refer my own friends?
               </h4>
               <p className="text-slate-400 text-sm">
-                Yes! Once you sign up, you'll get your own referral code. Share it with friends and earn {formatCurrency(10)} for each person who makes a purchase using your code.
+                Yes! Once you sign up, you'll get your own referral code. Share it with friends and earn {formatCurrency(referrerRewardAmount)} for each person who makes a purchase using your code.
               </p>
             </div>
           </div>

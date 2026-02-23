@@ -778,9 +778,9 @@ export default function AdminSettingsPage() {
       { key: 'bankInstructions', value: paymentSettings.bankInstructions, group: 'payments', isPublic: true },
       // Referral Program settings
       { key: 'referralProgramEnabled', value: referralSettings.referralProgramEnabled, group: 'referral', isPublic: true },
-      { key: 'referrerRewardAmount', value: referralSettings.referrerRewardAmount, group: 'referral', isPublic: false },
-      { key: 'refereeRewardAmount', value: referralSettings.refereeRewardAmount, group: 'referral', isPublic: false },
-      { key: 'minFirstPurchase', value: referralSettings.minFirstPurchase, group: 'referral', isPublic: false },
+      { key: 'referrerRewardAmount', value: referralSettings.referrerRewardAmount, group: 'referral', isPublic: true },
+      { key: 'refereeRewardAmount', value: referralSettings.refereeRewardAmount, group: 'referral', isPublic: true },
+      { key: 'minFirstPurchase', value: referralSettings.minFirstPurchase, group: 'referral', isPublic: true },
       // Marketing settings
       { key: 'facebookPixelId', value: marketingSettings.facebookPixelId, group: 'marketing', isPublic: true },
       { key: 'ga4MeasurementId', value: marketingSettings.ga4MeasurementId, group: 'marketing', isPublic: true },
