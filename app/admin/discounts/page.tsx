@@ -24,6 +24,7 @@ export default function DiscountsPage() {
     usageLimit: '',
     minOrderValue: '',
     maxDiscountValue: '',
+    startsAt: '',
     expiresAt: '',
     isActive: true,
   })
@@ -117,6 +118,7 @@ export default function DiscountsPage() {
       usageLimit: '',
       minOrderValue: '',
       maxDiscountValue: '',
+      startsAt: '',
       expiresAt: '',
       isActive: true,
     })
@@ -131,6 +133,7 @@ export default function DiscountsPage() {
       usageLimit: discount.usageLimit?.toString() || '',
       minOrderValue: discount.minOrderValue?.toString() || '',
       maxDiscountValue: discount.maxDiscountValue?.toString() || '',
+      startsAt: (discount as any).startsAt ? new Date((discount as any).startsAt).toISOString().split('T')[0] : '',
       expiresAt: discount.expiresAt ? new Date(discount.expiresAt).toISOString().split('T')[0] : '',
       isActive: discount.isActive,
     })

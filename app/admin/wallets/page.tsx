@@ -52,10 +52,11 @@ export default function AdminWalletsPage() {
   const [rejectDepositId, setRejectDepositId] = useState<string | null>(null)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null)
+  const [depositSort, setDepositSort] = useState<{ field: 'createdAt' | 'amount' | 'status'; order: 'asc' | 'desc' }>({ field: 'createdAt', order: 'desc' })
 
   // Transactions state
   const [txPage, setTxPage] = useState(1)
-  const [txFilter, setTxFilter] = useState<'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'>('all')
+  const [txFilter, setTxFilter] = useState<'all' | 'CREDIT' | 'DEBIT'>('all')
 
   const limit = 20
 
@@ -237,6 +238,10 @@ export default function AdminWalletsPage() {
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
   })
+
+  const toggleDepositSort = (field: 'createdAt' | 'amount' | 'status') => {
+    setDepositSort(prev => prev.field === field ? { field, order: prev.order === 'asc' ? 'desc' : 'asc' } : { field, order: 'asc' })
+  }
 
   return (
     <AdminLayout>
@@ -509,20 +514,30 @@ export default function AdminWalletsPage() {
             <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-surface-dark animate-pulse rounded-xl" />)}</div>
           ) : depositsData?.deposits && depositsData.deposits.length > 0 ? (
             <>
+              {(() => {
+                const sortedDeposits = [...depositsData.deposits].sort((a: any, b: any) => {
+                  const dir = depositSort.order === 'asc' ? 1 : -1
+                  if (depositSort.field === 'amount') return (Number(a.amount) - Number(b.amount)) * dir
+                  if (depositSort.field === 'status') return a.status.localeCompare(b.status) * dir
+                  return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir
+                })
+                const sortIcon = (field: 'createdAt' | 'amount' | 'status') =>
+                  depositSort.field === field ? (depositSort.order === 'asc' ? ' ↑' : ' ↓') : ' ↕'
+                return (
               <div className="overflow-x-auto rounded-2xl border border-border-dark">
                 <table className="w-full text-left text-sm text-slate-400">
                   <thead className="text-xs uppercase bg-black text-slate-200">
                     <tr>
                       <th className="px-6 py-4 font-bold">User</th>
                       <th className="px-6 py-4 font-bold">Method</th>
-                      <th className="px-6 py-4 font-bold text-right">Amount</th>
-                      <th className="px-6 py-4 font-bold text-center">Status</th>
-                      <th className="px-6 py-4 font-bold">Date</th>
+                      <th className="px-6 py-4 font-bold text-right cursor-pointer select-none hover:text-white" onClick={() => toggleDepositSort('amount')}>Amount{sortIcon('amount')}</th>
+                      <th className="px-6 py-4 font-bold text-center cursor-pointer select-none hover:text-white" onClick={() => toggleDepositSort('status')}>Status{sortIcon('status')}</th>
+                      <th className="px-6 py-4 font-bold cursor-pointer select-none hover:text-white" onClick={() => toggleDepositSort('createdAt')}>Date{sortIcon('createdAt')}</th>
                       <th className="px-6 py-4 font-bold text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-dark bg-black/20">
-                    {depositsData.deposits.map((deposit: any) => {
+                    {sortedDeposits.map((deposit: any) => {
                       const statusConfig = depositStatusConfig[deposit.status as DepositStatus] || depositStatusConfig.PENDING
                       const method = methodLabels[deposit.paymentMethod as DepositMethod] || deposit.paymentMethod
                       const needsApproval = (deposit.status === 'PENDING' || deposit.status === 'PROCESSING') &&
@@ -588,6 +603,8 @@ export default function AdminWalletsPage() {
                   </tbody>
                 </table>
               </div>
+                )
+              })()}
 
               {depositsData.pagination.totalPages > 1 && (
                 <div className="mt-6 flex items-center justify-between">
@@ -617,7 +634,7 @@ export default function AdminWalletsPage() {
       {activeTab === 'transactions' && (
         <div>
           <div className="flex gap-2 mb-6 flex-wrap">
-            {(['all', 'CREDIT', 'DEBIT', 'REFUND', 'ADJUSTMENT'] as const).map((t) => (
+            {(['all', 'CREDIT', 'DEBIT'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => { setTxFilter(t); setTxPage(1) }}
