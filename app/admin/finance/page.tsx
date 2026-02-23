@@ -14,6 +14,8 @@ export default function FinancePage() {
   const queryClient = useQueryClient()
   const [expenseForm, setExpenseForm] = useState({ amount: '', description: '', category: '' })
   const [expenseError, setExpenseError] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ amount: '', description: '', category: '' })
 
   // Fetch finance overview
   const { data: overview = null } = useQuery({
@@ -24,18 +26,6 @@ export default function FinancePage() {
         return result.data
       }
       return null
-    },
-  })
-
-  // Fetch transactions
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ['finance-transactions'],
-    queryFn: async () => {
-      const result = await financeApi.getTransactions({ limit: 10 })
-      if (result.success && result.data) {
-        return result.data
-      }
-      return []
     },
   })
 
@@ -68,6 +58,57 @@ export default function FinancePage() {
       setExpenseError(error.message)
     },
   })
+
+  // Update expense mutation
+  const updateExpenseMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { amount: number; description: string; category?: string } }) => {
+      const result = await financeApi.updateExpense(id, data)
+      if (!result.success) throw new Error(result.error || 'Failed to update expense')
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-expenses'] })
+      queryClient.invalidateQueries({ queryKey: ['finance-overview'] })
+      setEditingId(null)
+    },
+  })
+
+  // Delete expense mutation
+  const deleteExpenseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const result = await financeApi.deleteExpense(id)
+      if (!result.success) throw new Error(result.error || 'Failed to delete expense')
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-expenses'] })
+      queryClient.invalidateQueries({ queryKey: ['finance-overview'] })
+    },
+  })
+
+  const startEditing = (exp: AdminExpense) => {
+    setEditingId(exp.id)
+    setEditForm({
+      amount: String(exp.amount),
+      description: exp.description,
+      category: exp.category || '',
+    })
+  }
+
+  const saveEdit = () => {
+    if (!editingId) return
+    const amount = parseFloat(editForm.amount)
+    if (!amount || amount <= 0) return
+    if (!editForm.description.trim()) return
+    updateExpenseMutation.mutate({
+      id: editingId,
+      data: {
+        amount,
+        description: editForm.description.trim(),
+        category: editForm.category.trim() || undefined,
+      },
+    })
+  }
 
   return (
     <AdminLayout>
@@ -145,7 +186,7 @@ export default function FinancePage() {
       </div>
 
       {/* Record Expense Section */}
-      <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5 mb-6">
+      <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
         <h3 className="text-white font-semibold mb-4">Record Expense</h3>
         <form
           onSubmit={(e) => {
@@ -199,87 +240,80 @@ export default function FinancePage() {
           <div className="mt-4 space-y-2">
             <p className="text-slate-500 text-xs font-medium uppercase tracking-wide">Recent Expenses</p>
             {expenses.map((exp: AdminExpense) => (
-              <div key={exp.id} className="flex items-center justify-between text-sm py-1">
-                <div>
-                  <span className="text-slate-300">{exp.description}</span>
-                  {exp.category && <span className="text-slate-500 text-xs ml-2">({exp.category})</span>}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-red-400 font-medium">-{formatCurrency(Number(exp.amount))}</span>
-                  <span className="text-slate-500 text-xs">{formatDate(exp.createdAt, tz)}</span>
-                </div>
+              <div key={exp.id} className="flex items-center justify-between text-sm py-2 border-b border-[#1f1f1f] last:border-0">
+                {editingId === exp.id ? (
+                  <>
+                    <div className="flex items-center gap-2 flex-1 mr-3">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editForm.amount}
+                        onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                        className="bg-[#0a0a0a] border border-[#1f1f1f] rounded px-2 py-1 text-white text-sm w-24 focus:outline-none focus:border-primary"
+                      />
+                      <input
+                        type="text"
+                        value={editForm.description}
+                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                        className="bg-[#0a0a0a] border border-[#1f1f1f] rounded px-2 py-1 text-white text-sm flex-1 focus:outline-none focus:border-primary"
+                      />
+                      <input
+                        type="text"
+                        value={editForm.category}
+                        placeholder="Category"
+                        onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                        className="bg-[#0a0a0a] border border-[#1f1f1f] rounded px-2 py-1 text-white text-sm w-28 focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={saveEdit}
+                        disabled={updateExpenseMutation.isPending}
+                        className="text-primary hover:text-primary/80 text-xs font-medium disabled:opacity-50"
+                      >
+                        {updateExpenseMutation.isPending ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="text-slate-500 hover:text-slate-300 text-xs"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <span className="text-slate-300">{exp.description}</span>
+                      {exp.category && <span className="text-slate-500 text-xs ml-2">({exp.category})</span>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-red-400 font-medium">-{formatCurrency(Number(exp.amount))}</span>
+                      <span className="text-slate-500 text-xs">{formatDate(exp.createdAt, tz)}</span>
+                      <button
+                        onClick={() => startEditing(exp)}
+                        className="text-slate-500 hover:text-slate-300 transition-colors"
+                        title="Edit"
+                      >
+                        <Icon name="edit" size={14} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this expense?')) {
+                            deleteExpenseMutation.mutate(exp.id)
+                          }
+                        }}
+                        disabled={deleteExpenseMutation.isPending}
+                        className="text-slate-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                        title="Delete"
+                      >
+                        <Icon name="trash" size={14} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
-          </div>
-        )}
-      </div>
-
-      {/* Recent Transactions */}
-      <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
-        <div className="p-5 border-b border-[#1f1f1f]">
-          <h3 className="text-white font-semibold">Recent Transactions</h3>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-slate-400">Loading transactions...</p>
-            </div>
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="text-center py-12">
-            <Icon name="wallet" size={48} className="text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400">No transactions yet</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#1f1f1f]">
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Type</th>
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Order ID</th>
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Amount</th>
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Currency</th>
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Date</th>
-                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((transaction) => (
-                  <tr key={transaction.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
-                    <td className="px-5 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize ${
-                        transaction.type === 'PAYMENT' ? 'bg-primary/10 text-primary' :
-                        transaction.type === 'REFUND' ? 'bg-red-500/10 text-red-400' :
-                        'bg-blue-500/10 text-blue-400'
-                      }`}>
-                        {transaction.type}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-white text-sm font-mono">{transaction.orderId}</td>
-                    <td className="px-5 py-3 text-white font-medium">
-                      ${transaction.amount.toFixed(2)}
-                    </td>
-                    <td className="px-5 py-3 text-slate-400 text-sm uppercase">
-                      {transaction.currency}
-                    </td>
-                    <td className="px-5 py-3 text-slate-400 text-sm">
-                      {formatDate(transaction.createdAt, tz)}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                        transaction.status === 'COMPLETED' ? 'bg-primary/10 text-primary' :
-                        transaction.status === 'PENDING' ? 'bg-orange-500/10 text-orange-400' :
-                        'bg-red-500/10 text-red-400'
-                      }`}>
-                        {transaction.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
       </div>

@@ -105,4 +105,17 @@ export const financeApi = {
       body: JSON.stringify(data),
     })
   },
+
+  async updateExpense(id: string, data: { amount?: number; description?: string; category?: string }) {
+    return apiFetch<AdminExpense>(`/payments/finance/expenses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+
+  async deleteExpense(id: string) {
+    return apiFetch<void>(`/payments/finance/expenses/${id}`, {
+      method: 'DELETE',
+    })
+  },
 }
