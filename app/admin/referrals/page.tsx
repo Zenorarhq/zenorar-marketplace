@@ -108,7 +108,7 @@ export default function AdminReferralsPage() {
   }
 
   // Filter referrals by search query
-  const filteredReferrals = referralsData?.referrals.filter((referral) => {
+  const filteredReferrals = (referralsData?.referrals || []).filter((referral) => {
     if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
     return (
@@ -117,7 +117,7 @@ export default function AdminReferralsPage() {
       referral.referee.name.toLowerCase().includes(query) ||
       referral.referee.email.toLowerCase().includes(query)
     )
-  }) || []
+  })
 
   return (
     <AdminLayout>
