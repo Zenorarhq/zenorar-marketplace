@@ -27,6 +27,7 @@ const navItems = [
   { href: '/admin/tickets', label: 'Tickets', icon: 'ticket', permission: 'view_tickets' },
   { href: '/admin/reports', label: 'Reports', icon: 'chart', permission: 'view_analytics' },
   { href: '/admin/user-management', label: 'User Management', icon: 'people', permissions: ['view_users', 'view_staff', 'manage_roles'] },
+  { href: '/admin/referrals', label: 'Referrals', icon: 'user-group', permission: 'view_analytics' },
   { href: '/admin/settings', label: 'Settings', icon: 'settings', permission: 'manage_settings' },
 ]
 
