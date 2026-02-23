@@ -104,16 +104,13 @@ export default function ReferralLandingPage() {
               <Image
                 src={logoUrl}
                 alt={siteName}
-                width={40}
+                width={160}
                 height={40}
                 className="h-10 w-auto object-contain"
               />
             ) : (
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-black">
-                <Icon name="grid-view" size={24} />
-              </div>
+              <span>{siteName}</span>
             )}
-            {siteName}
           </Link>
         </div>
       </header>
