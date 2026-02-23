@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { requireAdmin, successResponse, errorResponse } from '@/lib/auth-middleware'
 import { executeQuery } from '@/lib/db-helpers'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/tickets/stats — Ticket statistics (admin only)
 export const GET = requireAdmin(async (request: NextRequest) => {
   try {

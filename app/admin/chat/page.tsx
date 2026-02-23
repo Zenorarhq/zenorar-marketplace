@@ -234,8 +234,9 @@ export default function AdminChatPage() {
         return { ...prev, messages: [...prev.messages, newMsg] }
       })
 
-      // Also refresh the conversation list (for updated last message / unread count)
+      // Also refresh the conversation list and stats (for updated last message / unread count)
       loadConversations()
+      loadStats()
     })
 
     const unsubStatus = onConversationStatus((data) => {
@@ -257,7 +258,7 @@ export default function AdminChatPage() {
       setUserTyping(data.isTyping)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
       if (data.isTyping) {
-        typingTimeoutRef.current = setTimeout(() => setUserTyping(false), 3000)
+        typingTimeoutRef.current = setTimeout(() => setUserTyping(false), 5000)
       }
     })
 
@@ -309,6 +310,14 @@ export default function AdminChatPage() {
       if (textareaRef.current) textareaRef.current.style.height = 'auto'
       if (activeId) emitTyping(activeId, false)
       if (emitTypingTimeoutRef.current) clearTimeout(emitTypingTimeoutRef.current)
+
+      // Optimistically update assignment if conversation was unassigned
+      if (!isNoteMode && user) {
+        setActiveConv(prev => {
+          if (!prev || prev.assignedTo) return prev
+          return { ...prev, status: 'ASSIGNED' as ChatStatus, assignedTo: { id: user.id, name: user.name || '', avatar: user.avatar || null } }
+        })
+      }
     }
   }
 

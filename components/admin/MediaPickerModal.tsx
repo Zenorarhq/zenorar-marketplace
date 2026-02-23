@@ -53,7 +53,12 @@ export default function MediaPickerModal({
     queryFn: async () => {
       const filters: any = {}
       if (activeFilter !== 'all') {
-        filters.type = activeFilter.slice(0, -1) as 'image' | 'video' | 'document'
+        const typeMap: Record<string, string> = {
+          'images': 'IMAGE',
+          'videos': 'VIDEO',
+          'documents': 'DOCUMENT'
+        }
+        filters.type = typeMap[activeFilter]
       }
       if (searchQuery) {
         filters.search = searchQuery
@@ -82,17 +87,21 @@ export default function MediaPickerModal({
   }
 
   const handleUpload = async () => {
-    for (const file of uploadingFiles) {
-      const result = await uploadMutation.mutateAsync(file)
-      if (result.success && result.data) {
-        // Auto-select the uploaded file
-        onSelect(result.data)
-        onClose()
-        return
+    try {
+      for (const file of uploadingFiles) {
+        const result = await uploadMutation.mutateAsync(file)
+        if (result.success && result.data) {
+          // Auto-select the uploaded file
+          onSelect(result.data)
+          onClose()
+          return
+        }
       }
+      setUploadingFiles([])
+      setActiveTab('library')
+    } catch {
+      alert('Upload failed. Please try again.')
     }
-    setUploadingFiles([])
-    setActiveTab('library')
   }
 
   const handleSelect = (file: MediaFile) => {
