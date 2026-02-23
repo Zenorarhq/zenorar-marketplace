@@ -15,9 +15,22 @@ export interface FinanceOverview {
   totalSales: number
   totalRefunds: number
   totalFees: number
+  totalExpenses: number
+  netRevenue: number
   availableBalance: number
   pendingBalance: number
   currency: string
+  revenueByPaymentMethod: { method: string; amount: number; count: number }[]
+  depositsByMethod: { method: string; amount: number; count: number }[]
+}
+
+export interface AdminExpense {
+  id: string
+  amount: number
+  description: string
+  category: string | null
+  createdBy: string
+  createdAt: string
 }
 
 export interface RevenueData {
@@ -75,5 +88,22 @@ export const financeApi = {
   async getPayments(filters: { page?: number; limit?: number } = {}) {
     const query = buildQueryString(filters)
     return apiFetch<any[]>(`/payments${query}`)
+  },
+
+  /**
+   * Get admin expenses list (admin only)
+   */
+  async getExpenses(limit: number = 50) {
+    return apiFetch<AdminExpense[]>(`/payments/finance/expenses?limit=${limit}`)
+  },
+
+  /**
+   * Create a new admin expense (admin only)
+   */
+  async createExpense(data: { amount: number; description: string; category?: string }) {
+    return apiFetch<AdminExpense>('/payments/finance/expenses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
   },
 }
