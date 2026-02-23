@@ -149,6 +149,7 @@ export default function DiscountsPage() {
       usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : undefined,
       minOrderValue: formData.minOrderValue ? parseFloat(formData.minOrderValue) : undefined,
       maxDiscountValue: formData.maxDiscountValue ? parseFloat(formData.maxDiscountValue) : undefined,
+      startsAt: formData.startsAt || undefined,
       expiresAt: formData.expiresAt || undefined,
       isActive: formData.isActive,
     }
@@ -485,6 +486,19 @@ export default function DiscountsPage() {
                     disabled={formData.type === 'FIXED'}
                   />
                   <p className="text-xs text-slate-500 mt-1">For percentage discounts only</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Starts On
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.startsAt}
+                    onChange={(e) => setFormData({ ...formData, startsAt: e.target.value })}
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-3 rounded-lg focus:outline-none focus:border-primary/50"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Leave empty to activate immediately</p>
                 </div>
 
                 <div>

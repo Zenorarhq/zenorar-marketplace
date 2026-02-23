@@ -10,6 +10,7 @@ const SELECT_COLUMNS = `
   "usageLimit",
   "usageCount",
   "isActive",
+  "startsAt",
   "expiresAt",
   "createdAt",
   "updatedAt"
@@ -86,8 +87,8 @@ export const POST = requireAdmin(async (request: NextRequest) => {
     const id = createId()
     const now = new Date().toISOString()
     const result = await executeQuery(
-      `INSERT INTO discounts (id, code, type, value, "minOrderValue", "maxDiscountValue", "usageLimit", "usageCount", "isActive", "expiresAt", "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      `INSERT INTO discounts (id, code, type, value, "minOrderValue", "maxDiscountValue", "usageLimit", "usageCount", "isActive", "startsAt", "expiresAt", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING ${SELECT_COLUMNS}`,
       [
         id,
@@ -99,6 +100,7 @@ export const POST = requireAdmin(async (request: NextRequest) => {
         body.usageLimit || null,
         0, // usageCount starts at 0
         body.isActive !== undefined ? body.isActive : true,
+        body.startsAt || null,
         body.expiresAt || null,
         now,
         now,

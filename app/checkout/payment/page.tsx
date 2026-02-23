@@ -1992,6 +1992,13 @@ function StripeCardForm({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orderId, paymentIntentId: paymentIntent.id }),
         })
+        // Increment discount usage counter
+        if (discountCode && discountAmount > 0) {
+          apiFetch('/discounts/use', {
+            method: 'POST',
+            body: JSON.stringify({ code: discountCode }),
+          }).catch(err => console.error('Failed to increment discount usage:', err))
+        }
         onSuccess(orderId, orderNumber)
       } else {
         throw new Error('Payment was not successful')
@@ -2179,6 +2186,13 @@ function PaystackCardForm({
           })
             .then(verifyResponse => {
               if (verifyResponse.ok) {
+                // Increment discount usage counter
+                if (discountCode && discountAmount > 0) {
+                  apiFetch('/discounts/use', {
+                    method: 'POST',
+                    body: JSON.stringify({ code: discountCode }),
+                  }).catch(err => console.error('Failed to increment discount usage:', err))
+                }
                 onSuccess(orderId, orderNumber)
               } else {
                 setError('Payment verification failed. Please contact support.')

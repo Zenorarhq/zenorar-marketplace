@@ -9,6 +9,7 @@ const SELECT_COLUMNS = `
   "usageLimit",
   "usageCount",
   "isActive",
+  "startsAt",
   "expiresAt",
   "createdAt",
   "updatedAt"
@@ -23,6 +24,7 @@ const FIELD_MAP: Record<string, string> = {
   maxDiscountValue: '"maxDiscountValue"',
   usageLimit: '"usageLimit"',
   isActive: '"isActive"',
+  startsAt: '"startsAt"',
   expiresAt: '"expiresAt"',
 }
 

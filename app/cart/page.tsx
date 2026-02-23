@@ -23,10 +23,8 @@ export default function CartPage() {
   const [promoError, setPromoError] = useState('')
   const [isValidating, setIsValidating] = useState(false)
 
-  // Tax and shipping settings
+  // Tax settings
   const [taxRate, setTaxRate] = useState(0)
-  const [shippingCost, setShippingCost] = useState(0)
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState(0)
 
   // Cart validation
   const [validationErrors, setValidationErrors] = useState<Array<{ productId: string; issue: string }>>([])
@@ -51,13 +49,11 @@ export default function CartPage() {
     }
   }, [])
 
-  // Load tax and shipping settings
+  // Load tax settings
   useEffect(() => {
     settingsApi.getPublicSettings().then((res) => {
       if (res.success && res.data) {
         setTaxRate(parseFloat(res.data.taxRate || '0'))
-        setShippingCost(parseFloat(res.data.shippingCost || '0'))
-        setFreeShippingThreshold(parseFloat(res.data.freeShippingThreshold || '0'))
       }
     })
   }, [])
@@ -111,7 +107,7 @@ export default function CartPage() {
     }
 
     // Save tax and shipping to session for checkout page
-    sessionStorage.setItem('shipping_amount', calculatedShipping.toFixed(2))
+    sessionStorage.setItem('shipping_amount', '0.00')
     sessionStorage.setItem('tax_amount', calculatedTax.toFixed(2))
     sessionStorage.setItem('tax_rate', taxRate.toString())
 
@@ -122,15 +118,11 @@ export default function CartPage() {
   const discountAmount = discount?.discountAmount ?? 0
   const subtotal = total - discountAmount
 
-  // Calculate shipping (free if subtotal exceeds threshold)
-  const calculatedShipping = (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) ? 0 : shippingCost
-
-  // Calculate tax on (subtotal + shipping)
-  const taxableAmount = subtotal + calculatedShipping
-  const calculatedTax = taxableAmount * (taxRate / 100)
+  // Calculate tax on subtotal (digital marketplace — no shipping)
+  const calculatedTax = subtotal * (taxRate / 100)
 
   // Final total
-  const finalTotal = subtotal + calculatedShipping + calculatedTax
+  const finalTotal = subtotal + calculatedTax
 
   if (!items || items.length === 0) {
     return (
@@ -279,14 +271,6 @@ export default function CartPage() {
                     <span className="text-primary font-medium">-{formatPrice(discountAmount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-slate-400">
-                  <span>Shipping</span>
-                  {calculatedShipping === 0 && freeShippingThreshold > 0 ? (
-                    <span className="text-primary font-medium">FREE</span>
-                  ) : (
-                    <span className="text-white font-medium">{formatPrice(calculatedShipping)}</span>
-                  )}
-                </div>
                 <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
                   <span className="text-white font-medium">{formatPrice(calculatedTax)}</span>

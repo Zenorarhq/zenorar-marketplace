@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
               "usageLimit",
               "usageCount",
               "isActive",
+              "startsAt",
               "expiresAt"
        FROM discounts
        WHERE code = $1`,
@@ -31,6 +32,10 @@ export async function POST(request: NextRequest) {
 
     if (!discount.isActive) {
       return NextResponse.json({ success: false, error: 'This discount code is no longer active' }, { status: 400 })
+    }
+
+    if (discount.startsAt && new Date(discount.startsAt) > new Date()) {
+      return NextResponse.json({ success: false, error: 'This discount code is not yet active' }, { status: 400 })
     }
 
     if (discount.expiresAt && new Date(discount.expiresAt) <= new Date()) {
