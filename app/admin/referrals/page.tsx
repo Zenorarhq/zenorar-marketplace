@@ -6,6 +6,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { getAllReferrals, getReferralAnalytics, cancelReferral, distributeRewards } from '@/lib/api/referrals'
 import { formatCurrency } from '@/lib/currency'
+import { apiFetch } from '@/lib/api/client'
 
 type StatusFilter = 'all' | 'PENDING' | 'COMPLETED' | 'REWARDED' | 'CANCELLED'
 
@@ -17,6 +18,19 @@ export default function AdminReferralsPage() {
   const [cancelReason, setCancelReason] = useState('')
   const [distributingId, setDistributingId] = useState<string | null>(null)
   const limit = 20
+
+  // Fetch public settings for reward amounts
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: async () => {
+      const res = await apiFetch<any>('/settings/public')
+      return res.success ? res.data : null
+    },
+    staleTime: 5 * 60 * 1000
+  })
+
+  const referrerRewardAmount = publicSettings?.referrerRewardAmount ? Number(publicSettings.referrerRewardAmount) : 10
+  const refereeRewardAmount = publicSettings?.refereeRewardAmount ? Number(publicSettings.refereeRewardAmount) : 10
 
   // Fetch analytics
   const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
@@ -109,7 +123,7 @@ export default function AdminReferralsPage() {
   }
 
   const handleDistributeRewards = async (referralId: string) => {
-    if (!confirm('Distribute $10 rewards to both the referrer and referee? This action cannot be undone.')) {
+    if (!confirm(`Distribute rewards (${formatCurrency(referrerRewardAmount)} to referrer, ${formatCurrency(refereeRewardAmount)} to referee)? This action cannot be undone.`)) {
       return
     }
 
@@ -117,7 +131,7 @@ export default function AdminReferralsPage() {
     try {
       const result = await distributeRewards(referralId)
       if (result.success) {
-        alert('Rewards distributed successfully! Both users received $10 wallet credit.')
+        alert(`Rewards distributed successfully! Referrer received ${formatCurrency(referrerRewardAmount)}, referee received ${formatCurrency(refereeRewardAmount)}.`)
         refetch()
       } else {
         alert(result.error || 'Failed to distribute rewards')
