@@ -8,11 +8,9 @@ import { ticketsApi, Ticket, TicketStatus, TicketPriority } from '@/lib/api/tick
 import NewTicketModal from '@/components/admin/NewTicketModal'
 import ViewTicketThreadModal from '@/components/admin/ViewTicketThreadModal'
 import ReplyTicketModal from '@/components/admin/ReplyTicketModal'
-import { useAuth } from '@/contexts/AuthContext'
 
 export default function TicketsPage() {
   const queryClient = useQueryClient()
-  const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -45,6 +43,7 @@ export default function TicketsPage() {
       }
       throw new Error(result.error || 'Failed to load tickets')
     },
+    refetchInterval: 15000,
   })
 
   // Fetch stats with React Query (cached)
@@ -57,6 +56,7 @@ export default function TicketsPage() {
       }
       return { total: 0, byStatus: [], byPriority: [] }
     },
+    refetchInterval: 15000,
   })
 
   const loading = ticketsLoading
@@ -81,15 +81,6 @@ export default function TicketsPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-tickets-stats'] })
     } else {
       alert(result.error || 'Failed to resolve ticket')
-    }
-  }
-
-  async function handleAssign(ticketId: string, assignedToId: string | null) {
-    const result = await ticketsApi.update(ticketId, { assignedToId })
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['admin-tickets'] })
-    } else {
-      alert(result.error || 'Failed to update assignment')
     }
   }
 
@@ -384,23 +375,9 @@ export default function TicketsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">{getPriorityBadge(ticket.priority)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {ticket.assignedTo ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-white font-medium">{ticket.assignedTo.name}</span>
-                          <button
-                            onClick={() => handleAssign(ticket.id, null)}
-                            className="text-xs text-slate-500 hover:text-red-400 transition-colors"
-                            title="Unassign"
-                          >
-                            <Icon name="x" size={14} />
-                          </button>
-                        </div>
+                        <span className="text-white font-medium">{ticket.assignedTo.name}</span>
                       ) : (
-                        <button
-                          onClick={() => user && handleAssign(ticket.id, user.id)}
-                          className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
-                        >
-                          Assign to me
-                        </button>
+                        <span className="text-slate-500">Unassigned</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">

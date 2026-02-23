@@ -76,6 +76,7 @@ export default function TicketsPage() {
       return null
     },
     enabled: !!selectedTicketId && showViewModal,
+    refetchInterval: showViewModal ? 10000 : false,
   })
 
   // Filter tickets
