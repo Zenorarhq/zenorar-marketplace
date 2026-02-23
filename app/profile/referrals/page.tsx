@@ -186,8 +186,8 @@ export default function ReferralsPage() {
                 className="px-4 py-3 sm:px-6 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center gap-2"
                 disabled={!referralLink}
               >
-                <Icon name="share" size={20} />
-                Share
+                <Icon name={copied ? 'check' : 'copy'} size={20} />
+                {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
           </div>

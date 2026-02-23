@@ -427,6 +427,19 @@ export default function AdminDashboard() {
                 <p className="text-slate-500 text-xs">{stats?.openTickets || 0} open</p>
               </div>
             </Link>
+
+            <Link
+              href="/admin/referrals"
+              className="flex items-center gap-3 p-3 bg-[#1a1a1a] hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <div className="w-10 h-10 rounded-lg bg-green-500/10 text-green-400 flex items-center justify-center">
+                <Icon name="user-group" size={20} />
+              </div>
+              <div className="flex-1">
+                <p className="text-white text-sm font-medium">Referrals</p>
+                <p className="text-slate-500 text-xs">Manage referral program</p>
+              </div>
+            </Link>
           </div>
         </div>
       </div>
