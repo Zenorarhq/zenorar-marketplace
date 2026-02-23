@@ -8,7 +8,7 @@ import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import { validateReferralCode } from '@/lib/api/referrals'
 import { formatCurrency } from '@/lib/currency'
-import { settingsApi } from '@/lib/api/settings'
+import { apiFetch } from '@/lib/api/client'
 
 export default function ReferralLandingPage() {
   const router = useRouter()
@@ -21,18 +21,18 @@ export default function ReferralLandingPage() {
   } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Fetch branding settings for logo
+  // Fetch branding settings for logo (using public endpoint like AdminLayout)
   const { data: brandingData } = useQuery({
-    queryKey: ['settings', 'branding'],
+    queryKey: ['branding-settings'],
     queryFn: async () => {
-      const result = await settingsApi.getSettingsByGroup('branding')
-      return result.success ? result.data : null
+      const res = await apiFetch<any>('/settings/public')
+      return res.success ? res.data : null
     },
     staleTime: 5 * 60 * 1000
   })
 
-  const logoUrl = brandingData?.logoUrl as string | undefined
-  const siteName = (brandingData?.siteName as string) || 'Marketplace'
+  const logoUrl = brandingData?.logoUrl || null
+  const siteName = brandingData?.siteName || 'Marketplace'
 
   useEffect(() => {
     const validate = async () => {

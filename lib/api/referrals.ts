@@ -137,3 +137,12 @@ export async function cancelReferral(
     body: JSON.stringify({ reason })
   })
 }
+
+/**
+ * Distribute rewards for a completed referral (admin)
+ */
+export async function distributeRewards(id: string): Promise<ApiResponse<void>> {
+  return apiFetch(`/referrals/${id}/distribute-rewards`, {
+    method: 'POST'
+  })
+}
