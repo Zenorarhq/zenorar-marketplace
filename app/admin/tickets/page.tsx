@@ -8,12 +8,19 @@ import { ticketsApi, Ticket, TicketStatus, TicketPriority } from '@/lib/api/tick
 import NewTicketModal from '@/components/admin/NewTicketModal'
 import ViewTicketThreadModal from '@/components/admin/ViewTicketThreadModal'
 import ReplyTicketModal from '@/components/admin/ReplyTicketModal'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function TicketsPage() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  // Filter states
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<TicketStatus | ''>('')
+  const [filterPriority, setFilterPriority] = useState<TicketPriority | ''>('')
 
   // Modal states
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false)
@@ -21,6 +28,12 @@ export default function TicketsPage() {
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false)
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const [selectedTicketNumber, setSelectedTicketNumber] = useState<string | null>(null)
+
+  // Resolve modal states
+  const [showResolveModal, setShowResolveModal] = useState(false)
+  const [resolveTicketId, setResolveTicketId] = useState<string | null>(null)
+  const [resolutionText, setResolutionText] = useState('')
+  const [isResolving, setIsResolving] = useState(false)
 
   // Fetch tickets with React Query (cached for 5 minutes)
   const { data: tickets = [], isLoading: ticketsLoading, error: ticketsError } = useQuery({
@@ -49,14 +62,34 @@ export default function TicketsPage() {
   const loading = ticketsLoading
   const error = ticketsError ? String(ticketsError) : ''
 
-  async function handleResolve(ticketId: string) {
-    const result = await ticketsApi.resolve(ticketId)
+  function handleOpenResolve(ticketId: string) {
+    setResolveTicketId(ticketId)
+    setResolutionText('')
+    setShowResolveModal(true)
+  }
+
+  async function handleResolveConfirm() {
+    if (!resolveTicketId) return
+    setIsResolving(true)
+    const result = await ticketsApi.resolve(resolveTicketId, resolutionText || undefined)
+    setIsResolving(false)
     if (result.success && result.data) {
-      // Invalidate cache to trigger refetch after CRUD operation
+      setShowResolveModal(false)
+      setResolveTicketId(null)
+      setResolutionText('')
       queryClient.invalidateQueries({ queryKey: ['admin-tickets'] })
       queryClient.invalidateQueries({ queryKey: ['admin-tickets-stats'] })
     } else {
       alert(result.error || 'Failed to resolve ticket')
+    }
+  }
+
+  async function handleAssign(ticketId: string, assignedToId: string | null) {
+    const result = await ticketsApi.update(ticketId, { assignedToId })
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-tickets'] })
+    } else {
+      alert(result.error || 'Failed to update assignment')
     }
   }
 
@@ -85,12 +118,16 @@ export default function TicketsPage() {
     loadData()
   }
 
-  const filteredTickets = tickets.filter(
-    (ticket) =>
+  const filteredTickets = tickets.filter((ticket) => {
+    const matchesSearch =
       ticket.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (ticket.user?.name || ticket.guestName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       ticket.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    const matchesUnassigned = !showUnassignedOnly || !ticket.assignedTo
+    const matchesStatus = !filterStatus || ticket.status === filterStatus
+    const matchesPriority = !filterPriority || ticket.priority === filterPriority
+    return matchesSearch && matchesUnassigned && matchesStatus && matchesPriority
+  })
 
   // Pagination
   const totalPages = Math.ceil(filteredTickets.length / itemsPerPage)
@@ -98,10 +135,10 @@ export default function TicketsPage() {
   const endIndex = startIndex + itemsPerPage
   const paginatedTickets = filteredTickets.slice(startIndex, endIndex)
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when search or filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery])
+  }, [searchQuery, showUnassignedOnly, filterStatus, filterPriority])
 
   const openTickets = tickets.filter((t) => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length
   const urgentTickets = tickets.filter((t) => t.priority === 'URGENT').length
@@ -227,7 +264,7 @@ export default function TicketsPage() {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-background-dark border border-border-dark rounded-xl mb-6 p-4">
+      <div className="bg-background-dark border border-border-dark rounded-xl mb-6 p-4 space-y-3">
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <Icon name="search-01" size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -239,11 +276,52 @@ export default function TicketsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <button className="flex items-center gap-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-bold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-all whitespace-nowrap flex-shrink-0">
+          <button
+            onClick={() => setShowUnassignedOnly(!showUnassignedOnly)}
+            className={`flex items-center gap-2 px-3 lg:px-4 py-2 text-xs lg:text-sm font-bold border rounded-lg transition-all whitespace-nowrap flex-shrink-0 ${
+              showUnassignedOnly
+                ? 'bg-primary text-black border-primary'
+                : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
+            }`}
+          >
             <Icon name="record" size={16} className="lg:w-[18px] lg:h-[18px]" />
             <span className="hidden sm:inline">Unassigned ({unassignedTickets})</span>
             <span className="sm:hidden">({unassignedTickets})</span>
           </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as TicketStatus | '')}
+            className="bg-charcoal border border-border-dark rounded-lg py-2 px-3 text-sm text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+          >
+            <option value="">All Statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="WAITING_CUSTOMER">Waiting Customer</option>
+            <option value="WAITING_INTERNAL">Waiting Internal</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="CLOSED">Closed</option>
+          </select>
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value as TicketPriority | '')}
+            className="bg-charcoal border border-border-dark rounded-lg py-2 px-3 text-sm text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+          >
+            <option value="">All Priorities</option>
+            <option value="URGENT">Urgent</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+          {(filterStatus || filterPriority || showUnassignedOnly) && (
+            <button
+              onClick={() => { setFilterStatus(''); setFilterPriority(''); setShowUnassignedOnly(false) }}
+              className="text-xs text-slate-400 hover:text-white transition-colors"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -288,8 +366,8 @@ export default function TicketsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className="size-8 rounded-full bg-charcoal overflow-hidden flex items-center justify-center">
-                          {ticket.user?.avatar || ticket.guestName ? (
-                            <Icon name="user" size={20} className="text-slate-500" />
+                          {ticket.user?.avatar ? (
+                            <img src={ticket.user.avatar} alt="" className="size-8 rounded-full object-cover" />
                           ) : (
                             <Icon name="user" size={20} className="text-slate-500" />
                           )}
@@ -306,43 +384,50 @@ export default function TicketsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">{getPriorityBadge(ticket.priority)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {ticket.assignedTo ? (
-                        <span className="text-white font-medium">{ticket.assignedTo.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">{ticket.assignedTo.name}</span>
+                          <button
+                            onClick={() => handleAssign(ticket.id, null)}
+                            className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+                            title="Unassign"
+                          >
+                            <Icon name="x" size={14} />
+                          </button>
+                        </div>
                       ) : (
-                        <span className="text-slate-500">Unassigned</span>
+                        <button
+                          onClick={() => user && handleAssign(ticket.id, user.id)}
+                          className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                        >
+                          Assign to me
+                        </button>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleOpenViewThread(ticket.id, ticket.ticketNumber)}
+                          className="border border-border-dark text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-white/5"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleOpenReply(ticket.id, ticket.ticketNumber)}
+                          className="border border-primary text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/10"
+                        >
+                          Reply
+                        </button>
                         {ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED' ? (
-                          <>
-                            <button
-                              onClick={() => handleResolve(ticket.id)}
-                              className="bg-primary text-background-dark px-3 py-1.5 rounded-lg text-xs font-bold hover:brightness-110"
-                            >
-                              Resolve
-                            </button>
-                            <button
-                              onClick={() => handleOpenReply(ticket.id, ticket.ticketNumber)}
-                              className="border border-primary text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/10"
-                            >
-                              Reply
-                            </button>
-                          </>
+                          <button
+                            onClick={() => handleOpenResolve(ticket.id)}
+                            className="bg-primary text-background-dark px-3 py-1.5 rounded-lg text-xs font-bold hover:brightness-110"
+                          >
+                            Resolve
+                          </button>
                         ) : (
-                          <>
-                            <button
-                              className="bg-slate-700 text-slate-400 px-3 py-1.5 rounded-lg text-xs font-bold cursor-not-allowed"
-                              disabled
-                            >
-                              {ticket.status === 'RESOLVED' ? 'Resolved' : 'Closed'}
-                            </button>
-                            <button
-                              onClick={() => handleOpenViewThread(ticket.id, ticket.ticketNumber)}
-                              className="border border-primary text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/10"
-                            >
-                              View Thread
-                            </button>
-                          </>
+                          <span className="bg-slate-700 text-slate-400 px-3 py-1.5 rounded-lg text-xs font-bold">
+                            {ticket.status === 'RESOLVED' ? 'Resolved' : 'Closed'}
+                          </span>
                         )}
                       </div>
                     </td>
@@ -428,6 +513,7 @@ export default function TicketsPage() {
         isOpen={isViewThreadModalOpen}
         onClose={() => setIsViewThreadModalOpen(false)}
         ticketId={selectedTicketId}
+        onSuccess={handleModalSuccess}
       />
 
       <ReplyTicketModal
@@ -437,6 +523,50 @@ export default function TicketsPage() {
         ticketId={selectedTicketId}
         ticketNumber={selectedTicketNumber}
       />
+
+      {/* Resolve Modal */}
+      {showResolveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-background-dark border border-border-dark rounded-xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-border-dark">
+              <h2 className="text-lg font-bold text-white">Resolve Ticket</h2>
+              <button
+                onClick={() => setShowResolveModal(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <Icon name="x" size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Resolution Notes (optional)
+              </label>
+              <textarea
+                rows={4}
+                value={resolutionText}
+                onChange={(e) => setResolutionText(e.target.value)}
+                className="w-full bg-charcoal border border-border-dark rounded-lg py-2 px-3 text-sm text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none resize-none"
+                placeholder="Describe how the issue was resolved..."
+              />
+            </div>
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-border-dark">
+              <button
+                onClick={() => setShowResolveModal(false)}
+                className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResolveConfirm}
+                disabled={isResolving}
+                className="bg-primary text-background-dark px-4 py-2 rounded-lg text-sm font-bold hover:brightness-110 disabled:opacity-50"
+              >
+                {isResolving ? 'Resolving...' : 'Resolve Ticket'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }
