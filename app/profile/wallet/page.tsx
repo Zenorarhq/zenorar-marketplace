@@ -398,7 +398,10 @@ function WalletPageContent() {
 
                           {transaction.referral && (
                             <p className="text-slate-500 text-sm">
-                              Referral: {transaction.referral.referee.name}
+                              {transaction.description.toLowerCase().includes('welcome bonus')
+                                ? `Referred by: ${transaction.referral.referrer?.name || transaction.referral.referrer?.email || 'Unknown'}`
+                                : `Referral: ${transaction.referral.referee?.name || transaction.referral.referee?.email || 'Unknown'}`
+                              }
                             </p>
                           )}
                         </div>
