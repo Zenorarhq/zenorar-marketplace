@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
-import { getAllReferrals, getReferralAnalytics, cancelReferral } from '@/lib/api/referrals'
+import { getAllReferrals, getReferralAnalytics, cancelReferral, distributeRewards } from '@/lib/api/referrals'
 import { formatCurrency } from '@/lib/currency'
 
 type StatusFilter = 'all' | 'PENDING' | 'COMPLETED' | 'REWARDED' | 'CANCELLED'
@@ -15,6 +15,7 @@ export default function AdminReferralsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelReason, setCancelReason] = useState('')
+  const [distributingId, setDistributingId] = useState<string | null>(null)
   const limit = 20
 
   // Fetch analytics
@@ -104,6 +105,27 @@ export default function AdminReferralsPage() {
       }
     } catch (error) {
       alert('Failed to cancel referral')
+    }
+  }
+
+  const handleDistributeRewards = async (referralId: string) => {
+    if (!confirm('Distribute $10 rewards to both the referrer and referee? This action cannot be undone.')) {
+      return
+    }
+
+    setDistributingId(referralId)
+    try {
+      const result = await distributeRewards(referralId)
+      if (result.success) {
+        alert('Rewards distributed successfully! Both users received $10 wallet credit.')
+        refetch()
+      } else {
+        alert(result.error || 'Failed to distribute rewards')
+      }
+    } catch (error) {
+      alert('Failed to distribute rewards')
+    } finally {
+      setDistributingId(null)
     }
   }
 
@@ -297,7 +319,51 @@ export default function AdminReferralsPage() {
                         )}
                       </td>
                       <td className="px-3 sm:px-4 py-3 text-center">
-                        {referral.status === 'PENDING' || referral.status === 'COMPLETED' ? (
+                        {referral.status === 'COMPLETED' ? (
+                          cancellingId === referral.id ? (
+                            <div className="flex gap-2 items-center justify-center">
+                              <input
+                                type="text"
+                                placeholder="Reason..."
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs w-20 sm:w-24"
+                              />
+                              <button
+                                onClick={() => handleCancelReferral(referral.id)}
+                                className="text-red-500 hover:text-red-400"
+                              >
+                                <Icon name="check" size={14} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setCancellingId(null)
+                                  setCancelReason('')
+                                }}
+                                className="text-slate-500 hover:text-slate-400"
+                              >
+                                <Icon name="close" size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2 items-center justify-center">
+                              <button
+                                onClick={() => handleDistributeRewards(referral.id)}
+                                disabled={distributingId === referral.id}
+                                className="text-primary hover:text-primary/80 text-xs font-medium disabled:opacity-50"
+                              >
+                                {distributingId === referral.id ? 'Processing...' : 'Distribute'}
+                              </button>
+                              <span className="text-slate-600">|</span>
+                              <button
+                                onClick={() => setCancellingId(referral.id)}
+                                className="text-red-500 hover:text-red-400 text-xs font-medium"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )
+                        ) : referral.status === 'PENDING' ? (
                           cancellingId === referral.id ? (
                             <div className="flex gap-2 items-center justify-center">
                               <input
