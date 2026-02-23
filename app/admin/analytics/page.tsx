@@ -640,7 +640,7 @@ export default function AnalyticsPage() {
                             </div>
                             {item.detail && (
                               <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
-                                item.detail === 'PAID' || item.detail === 'DELIVERED' ? 'bg-primary/10 text-primary'
+                                item.detail === 'PAID' || item.detail === 'DELIVERED' || item.detail === 'CONFIRMED' ? 'bg-primary/10 text-primary'
                                 : item.detail === 'PENDING' ? 'bg-orange-500/10 text-orange-400'
                                 : item.detail === 'URGENT' || item.detail === 'HIGH' ? 'bg-red-500/10 text-red-400'
                                 : 'bg-slate-500/10 text-slate-400'
@@ -824,10 +824,10 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <p className="text-white text-lg lg:text-2xl font-bold mb-1">
-                  {recentOrders.filter((o: any) => o.status === 'DELIVERED').length}
+                  {recentOrders.filter((o: any) => o.status === 'CONFIRMED').length}
                 </p>
                 <p className="text-xs">
-                  <span className="text-slate-500">successful deliveries</span>
+                  <span className="text-slate-500">orders completed</span>
                 </p>
               </div>
             </div>

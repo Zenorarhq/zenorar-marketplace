@@ -200,7 +200,7 @@ export default function AdminChatPage() {
     if (res.success && res.data) {
       setActiveConv(res.data)
       // Mark messages as read
-      chatApi.markAsRead(id).then(() => loadStats())
+      chatApi.markAsRead(id).then(() => { loadStats(); loadConversations() })
     }
   }
 
