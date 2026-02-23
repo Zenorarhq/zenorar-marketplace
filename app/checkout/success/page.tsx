@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
@@ -44,6 +45,8 @@ interface OrderData {
 
 function SuccessPageContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const queryClient = useQueryClient()
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null)
   const [orderData, setOrderData] = useState<OrderData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -96,6 +99,12 @@ function SuccessPageContent() {
 
   const txHashParam = searchParams.get('txHash')
   const orderNumberParam = searchParams.get('orderNumber')
+
+  // Invalidate stale caches on payment success so library and orders show fresh data
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['user-library'] })
+    router.refresh()
+  }, [])
 
   // Fetch order data from backend
   useEffect(() => {
