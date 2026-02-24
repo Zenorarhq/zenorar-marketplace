@@ -566,14 +566,27 @@ export default function TicketsPage() {
                     <div className="pt-4 border-t border-border-dark text-center text-slate-500 text-sm">
                       This ticket is {mapStatus(ticketDetail.status)}.
                       <button
-                        onClick={async () => {
-                          const result = await ticketsApi.reopen(ticketDetail.id)
-                          if (result.success) {
-                            queryClient.invalidateQueries({ queryKey: ['ticket-detail', selectedTicketId] })
-                            queryClient.invalidateQueries({ queryKey: ['my-tickets'] })
+                        onClick={async (e) => {
+                          const btn = e.currentTarget
+                          const originalText = btn.textContent
+                          btn.textContent = 'Reopening...'
+                          btn.disabled = true
+                          try {
+                            const result = await ticketsApi.reopen(ticketDetail.id)
+                            if (result.success) {
+                              queryClient.invalidateQueries({ queryKey: ['ticket-detail', selectedTicketId] })
+                              queryClient.invalidateQueries({ queryKey: ['my-tickets'] })
+                            } else {
+                              alert(result.error || 'Failed to reopen ticket')
+                            }
+                          } catch {
+                            alert('Failed to reopen ticket. Please try again.')
+                          } finally {
+                            btn.textContent = originalText
+                            btn.disabled = false
                           }
                         }}
-                        className="ml-2 text-primary hover:text-primary/80 font-medium"
+                        className="ml-2 text-primary hover:text-primary/80 font-medium disabled:opacity-50"
                       >
                         Reopen ticket
                       </button>

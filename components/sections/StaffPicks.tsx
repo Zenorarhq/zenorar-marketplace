@@ -22,6 +22,8 @@ interface StaffPickProduct {
 
 export default function StaffPicks({ config }: { config?: { title?: string; columns?: string; style?: Record<string, any> } } = {}) {
   const [products, setProducts] = useState<StaffPickProduct[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     fetch('/api/products/staff-picks')
@@ -31,10 +33,11 @@ export default function StaffPicks({ config }: { config?: { title?: string; colu
           setProducts(data.data)
         }
       })
-      .catch(() => {})
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
   }, [])
 
-  if (products.length === 0) return null
+  if (!loading && !error && products.length === 0) return null
 
   return (
     <section className="mb-12">
@@ -51,7 +54,19 @@ export default function StaffPicks({ config }: { config?: { title?: string; colu
         </Link>
       </div>
 
-      <div
+      {loading && (
+        <div className={`grid grid-cols-2 ${({ '4': 'md:grid-cols-4', '5': 'md:grid-cols-5', '6': 'md:grid-cols-6' } as Record<string, string>)[config?.columns || '6'] || 'md:grid-cols-6'} gap-4`}>
+          {Array.from({ length: Number(config?.columns || 6) }).map((_, i) => (
+            <div key={i} className="bg-[#1a1a1a] rounded-xl h-64 animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <p className="text-slate-500 text-sm text-center py-8">Unable to load products. Please refresh the page.</p>
+      )}
+
+      {!loading && !error && <div
         className={`grid grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 ${({ '4': 'md:grid-cols-4', '5': 'md:grid-cols-5', '6': 'md:grid-cols-6' } as Record<string, string>)[config?.columns || '6'] || 'md:grid-cols-6'} md:grid-flow-row md:auto-cols-auto md:overflow-visible`}
         style={{ scrollbarWidth: 'none' }}
       >
@@ -81,7 +96,7 @@ export default function StaffPicks({ config }: { config?: { title?: string; colu
             />
           )
         })}
-      </div>
+      </div>}
     </section>
   )
 }

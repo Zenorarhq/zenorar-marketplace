@@ -15,6 +15,12 @@ interface SiteSettings {
   facebookPixelId: string
   ga4MeasurementId: string
   defaultOgImage: string
+  sessionTimeout: number
+  customHeadCode: string
+  customBodyCode: string
+  metaTitleTemplate: string
+  globalMetaDescription: string
+  googleVerificationId: string
 }
 
 const CACHE_KEY = 'site_settings'
@@ -47,6 +53,12 @@ const DEFAULTS: SiteSettings = {
   facebookPixelId: '',
   ga4MeasurementId: '',
   defaultOgImage: '',
+  sessionTimeout: 30,
+  customHeadCode: '',
+  customBodyCode: '',
+  metaTitleTemplate: '',
+  globalMetaDescription: '',
+  googleVerificationId: '',
 }
 
 function loadCached(): SiteSettings {
@@ -110,6 +122,12 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
           facebookPixelId: 'facebookPixelId' in d ? extractValue(d, 'facebookPixelId') : (cached.facebookPixelId || ''),
           ga4MeasurementId: 'ga4MeasurementId' in d ? extractValue(d, 'ga4MeasurementId') : (cached.ga4MeasurementId || ''),
           defaultOgImage: 'defaultOgImage' in d ? extractValue(d, 'defaultOgImage') : (cached.defaultOgImage || ''),
+          sessionTimeout: 'sessionTimeout' in d ? Number(d.sessionTimeout) || 30 : (cached.sessionTimeout || 30),
+          customHeadCode: 'customHeadCode' in d ? extractValue(d, 'customHeadCode') : (cached.customHeadCode || ''),
+          customBodyCode: 'customBodyCode' in d ? extractValue(d, 'customBodyCode') : (cached.customBodyCode || ''),
+          metaTitleTemplate: 'metaTitleTemplate' in d ? extractValue(d, 'metaTitleTemplate') : (cached.metaTitleTemplate || ''),
+          globalMetaDescription: 'globalMetaDescription' in d ? extractValue(d, 'globalMetaDescription') : (cached.globalMetaDescription || ''),
+          googleVerificationId: 'googleVerificationId' in d ? extractValue(d, 'googleVerificationId') : (cached.googleVerificationId || ''),
         }
         setSettings(fresh)
         saveCache(fresh)

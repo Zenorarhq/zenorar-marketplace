@@ -339,9 +339,6 @@ export default function TicketsPage() {
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Priority
                 </th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Assigned To
-                </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">
                   Actions
                 </th>
@@ -373,13 +370,6 @@ export default function TicketsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(ticket.status)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{getPriorityBadge(ticket.priority)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {ticket.assignedTo ? (
-                        <span className="text-white font-medium">{ticket.assignedTo.name}</span>
-                      ) : (
-                        <span className="text-slate-500">Unassigned</span>
-                      )}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end gap-2">
                         <button
@@ -412,7 +402,7 @@ export default function TicketsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <Icon name="ticket" size={48} className="text-slate-600 mx-auto mb-4" />
                     <p className="text-slate-400">No tickets found</p>
                   </td>

@@ -10,7 +10,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import EmailConfigSection from '@/components/admin/EmailConfigSection'
 
-type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'email' | 'marketing'
+type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'email' | 'marketing' | 'seo'
 
 const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'profile', label: 'Profile', icon: 'user' },
@@ -22,6 +22,7 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'api', label: 'API Keys', icon: 'key' },
   { id: 'email', label: 'Email Service', icon: 'mail' },
   { id: 'marketing', label: 'Marketing', icon: 'campaign' },
+  { id: 'seo', label: 'SEO', icon: 'search' },
 ]
 
 export default function AdminSettingsPage() {
@@ -203,11 +204,11 @@ export default function AdminSettingsPage() {
     apiEnabled: true,
     rateLimit: '1000',
     webhookUrl: '',
-    apiKeys: [
-      { id: '1', name: 'Production API Key', key: 'sk_live_xxxx...xxxx', created: '2024-01-15', lastUsed: '2 hours ago' },
-      { id: '2', name: 'Development Key', key: 'sk_test_xxxx...xxxx', created: '2024-02-01', lastUsed: '5 days ago' },
-    ],
   })
+  const [apiKeys, setApiKeys] = useState<any[]>([])
+  const [newKeyName, setNewKeyName] = useState('')
+  const [generatingKey, setGeneratingKey] = useState(false)
+  const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null)
 
   // Twilio Settings State
   const [twilioSettings, setTwilioSettings] = useState({
@@ -236,7 +237,37 @@ export default function AdminSettingsPage() {
     facebookPixelId: '',
     ga4MeasurementId: '',
     defaultOgImage: '',
+    customHeadCode: '',
+    customBodyCode: '',
   })
+
+  // SEO Settings State
+  const [seoSettings, setSeoSettings] = useState({
+    globalMetaTitleTemplate: '{{title}} | Zenorar',
+    globalMetaDescription: '',
+    canonicalUrlPrefix: '',
+    googleSiteVerification: '',
+    defaultOgTitle: '',
+    defaultOgDescription: '',
+    defaultOgType: 'website',
+    twitterCardType: 'summary_large_image',
+    structuredDataOrgName: '',
+    structuredDataOrgLogo: '',
+    structuredDataOrgUrl: '',
+    structuredDataSocialProfiles: '',
+    robotsTxtContent: '',
+  })
+
+  // Audit log state
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [showAuditLog, setShowAuditLog] = useState(false)
+
+  // Export/Import state
+  const [importing, setImporting] = useState(false)
+
+  // Payment test state
+  const [testingPayment, setTestingPayment] = useState<string | null>(null)
+  const [paymentTestResult, setPaymentTestResult] = useState<{ provider: string; success: boolean; message: string } | null>(null)
 
   // Load general settings from API on mount
   useEffect(() => {
@@ -404,17 +435,138 @@ export default function AdminSettingsPage() {
       if (res.success && res.data) {
         const d = res.data
         setMarketingSettings((prev) => ({
+          ...prev,
           facebookPixelId: d.facebookPixelId ?? prev.facebookPixelId,
           ga4MeasurementId: d.ga4MeasurementId ?? prev.ga4MeasurementId,
           defaultOgImage: d.defaultOgImage ?? prev.defaultOgImage,
+          customHeadCode: d.customHeadCode ?? prev.customHeadCode,
+          customBodyCode: d.customBodyCode ?? prev.customBodyCode,
         }))
       }
     })
   }, [])
 
-  // Fetch sent notifications (endpoint not yet available on backend)
+  // Load SEO settings on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('seo').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setSeoSettings((prev) => {
+          const updated = { ...prev }
+          for (const key of Object.keys(prev)) {
+            if (d[key] !== undefined && d[key] !== null) (updated as any)[key] = d[key]
+          }
+          return updated
+        })
+      }
+    }).catch(() => {})
+  }, [])
+
+  // Load API keys on mount
+  useEffect(() => {
+    apiFetch<any[]>('/apikeys').then((res) => {
+      if (res.success) setApiKeys(res.data || [])
+    }).catch(() => {})
+  }, [])
+
+  // Generate new API key
+  const handleGenerateKey = async () => {
+    if (!newKeyName.trim()) return
+    setGeneratingKey(true)
+    try {
+      const res = await apiFetch<any>('/apikeys', { method: 'POST', body: JSON.stringify({ name: newKeyName }) })
+      if (res.success) {
+        setNewlyCreatedKey(res.data.key)
+        setNewKeyName('')
+        // Refresh list
+        const list = await apiFetch<any[]>('/apikeys')
+        if (list.success) setApiKeys(list.data || [])
+      }
+    } catch (error) {
+      console.error('Failed to generate key:', error)
+    }
+    setGeneratingKey(false)
+  }
+
+  // Delete API key
+  const handleDeleteKey = async (id: string) => {
+    try {
+      await apiFetch(`/apikeys/${id}`, { method: 'DELETE' })
+      setApiKeys((prev) => prev.filter((k) => k.id !== id))
+    } catch (error) {
+      console.error('Failed to delete key:', error)
+    }
+  }
+
+  // Export settings as JSON download
+  const handleExportSettings = async () => {
+    try {
+      const res = await settingsApi.exportSettings()
+      if (res.success && res.data) {
+        const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `zenorar-settings-${new Date().toISOString().split('T')[0]}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    } catch (error) {
+      console.error('Failed to export settings:', error)
+    }
+  }
+
+  // Import settings from JSON file
+  const handleImportSettings = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    try {
+      const text = await file.text()
+      const settings = JSON.parse(text)
+      await settingsApi.importSettings(settings)
+      setMessage({ type: 'success', text: 'Settings imported successfully! Reloading...' })
+      setTimeout(() => window.location.reload(), 1500)
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to import settings. Check the file format.' })
+    }
+    setImporting(false)
+    e.target.value = ''
+  }
+
+  // Test payment provider connection
+  const handleTestPayment = async (provider: string) => {
+    setTestingPayment(provider)
+    setPaymentTestResult(null)
+    try {
+      const res = await settingsApi.testPaymentConnection(provider)
+      setPaymentTestResult({ provider, success: res.success, message: res.data?.message || 'Connection successful' })
+    } catch (error: any) {
+      setPaymentTestResult({ provider, success: false, message: error?.message || 'Connection failed' })
+    }
+    setTestingPayment(null)
+  }
+
+  // Fetch audit log
+  const handleFetchAuditLog = async () => {
+    try {
+      const res = await settingsApi.getAuditLog()
+      if (res.success) setAuditLogs(res.data?.logs || [])
+    } catch (error) {
+      console.error('Failed to fetch audit log:', error)
+    }
+  }
+
+  // Fetch sent notifications from backend
   const fetchSentNotifications = async () => {
-    setSentNotifications([])
+    try {
+      const data = await apiFetch<any[]>('/notifications/sent')
+      if (data.success) {
+        setSentNotifications(data.data || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch sent notifications:', error)
+    }
   }
 
   // Fetch recipients for a batch
@@ -785,6 +937,22 @@ export default function AdminSettingsPage() {
       { key: 'facebookPixelId', value: marketingSettings.facebookPixelId, group: 'marketing', isPublic: true },
       { key: 'ga4MeasurementId', value: marketingSettings.ga4MeasurementId, group: 'marketing', isPublic: true },
       { key: 'defaultOgImage', value: marketingSettings.defaultOgImage, group: 'marketing', isPublic: true },
+      { key: 'customHeadCode', value: marketingSettings.customHeadCode, group: 'marketing', isPublic: true },
+      { key: 'customBodyCode', value: marketingSettings.customBodyCode, group: 'marketing', isPublic: true },
+      // SEO settings
+      { key: 'globalMetaTitleTemplate', value: seoSettings.globalMetaTitleTemplate, group: 'seo', isPublic: true },
+      { key: 'globalMetaDescription', value: seoSettings.globalMetaDescription, group: 'seo', isPublic: true },
+      { key: 'canonicalUrlPrefix', value: seoSettings.canonicalUrlPrefix, group: 'seo', isPublic: true },
+      { key: 'googleSiteVerification', value: seoSettings.googleSiteVerification, group: 'seo', isPublic: true },
+      { key: 'defaultOgTitle', value: seoSettings.defaultOgTitle, group: 'seo', isPublic: true },
+      { key: 'defaultOgDescription', value: seoSettings.defaultOgDescription, group: 'seo', isPublic: true },
+      { key: 'defaultOgType', value: seoSettings.defaultOgType, group: 'seo', isPublic: true },
+      { key: 'twitterCardType', value: seoSettings.twitterCardType, group: 'seo', isPublic: true },
+      { key: 'structuredDataOrgName', value: seoSettings.structuredDataOrgName, group: 'seo', isPublic: true },
+      { key: 'structuredDataOrgLogo', value: seoSettings.structuredDataOrgLogo, group: 'seo', isPublic: true },
+      { key: 'structuredDataOrgUrl', value: seoSettings.structuredDataOrgUrl, group: 'seo', isPublic: true },
+      { key: 'structuredDataSocialProfiles', value: seoSettings.structuredDataSocialProfiles, group: 'seo', isPublic: true },
+      { key: 'robotsTxtContent', value: seoSettings.robotsTxtContent, group: 'seo', isPublic: true },
     ]
 
     const result = await settingsApi.updateSettings(settingsToSave)
@@ -802,9 +970,18 @@ export default function AdminSettingsPage() {
     <AdminLayout>
       <div className="max-w-full overflow-hidden">
         {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">Settings</h1>
-          <p className="text-slate-500 text-xs sm:text-sm">Manage your marketplace configuration and preferences</p>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">Settings</h1>
+            <p className="text-slate-500 text-xs sm:text-sm">Manage your marketplace configuration and preferences</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handleExportSettings} className="text-xs sm:text-sm px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors">Export</button>
+            <label className="text-xs sm:text-sm px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors cursor-pointer">
+              {importing ? 'Importing...' : 'Import'}
+              <input type="file" accept=".json" onChange={handleImportSettings} className="hidden" />
+            </label>
+          </div>
         </div>
 
         {/* Tabs Navigation - Pill style like Reports page */}
@@ -1166,6 +1343,16 @@ export default function AdminSettingsPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+              {/* Legal Pages Links */}
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Legal Pages</h3>
+                <p className="text-sm text-slate-400 mb-4">Manage your legal pages using the Page Builder.</p>
+                <div className="space-y-2">
+                  <a href="/admin/frontend?slug=terms" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Terms of Service</a>
+                  <a href="/admin/frontend?slug=privacy" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Privacy Policy</a>
+                  <a href="/admin/frontend?slug=cookies" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Cookie Policy</a>
                 </div>
               </div>
             </div>
@@ -1572,6 +1759,48 @@ export default function AdminSettingsPage() {
           {/* Payment Settings */}
           {activeTab === 'payments' && (
             <div className="space-y-6">
+              {/* Test Connections */}
+              {(paymentSettings.stripeEnabled || paymentSettings.paystackEnabled || paymentSettings.paypalEnabled) && (
+                <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                  <h3 className="text-white font-medium mb-3">Test Connections</h3>
+                  <p className="text-slate-500 text-sm mb-4">Verify your payment provider credentials are working correctly.</p>
+                  <div className="flex flex-wrap gap-3">
+                    {paymentSettings.stripeEnabled && (
+                      <button
+                        onClick={() => handleTestPayment('stripe')}
+                        disabled={testingPayment === 'stripe'}
+                        className="px-4 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+                      >
+                        {testingPayment === 'stripe' ? 'Testing...' : 'Test Stripe'}
+                      </button>
+                    )}
+                    {paymentSettings.paystackEnabled && (
+                      <button
+                        onClick={() => handleTestPayment('paystack')}
+                        disabled={testingPayment === 'paystack'}
+                        className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                      >
+                        {testingPayment === 'paystack' ? 'Testing...' : 'Test Paystack'}
+                      </button>
+                    )}
+                    {paymentSettings.paypalEnabled && (
+                      <button
+                        onClick={() => handleTestPayment('paypal')}
+                        disabled={testingPayment === 'paypal'}
+                        className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                      >
+                        {testingPayment === 'paypal' ? 'Testing...' : 'Test PayPal'}
+                      </button>
+                    )}
+                  </div>
+                  {paymentTestResult && (
+                    <div className={`mt-3 p-3 rounded-lg text-sm ${paymentTestResult.success ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
+                      <strong>{paymentTestResult.provider}:</strong> {paymentTestResult.message}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Web3 Wallet */}
               <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
                 <div className="flex items-center justify-between">
@@ -2531,11 +2760,39 @@ export default function AdminSettingsPage() {
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-white font-medium">API Keys</h3>
-                      <button className="bg-primary hover:bg-primary/90 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
-                        <Icon name="add" size={16} />
-                        Generate New Key
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={newKeyName}
+                          onChange={(e) => setNewKeyName(e.target.value)}
+                          placeholder="Key name..."
+                          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                        <button
+                          onClick={handleGenerateKey}
+                          disabled={generatingKey || !newKeyName.trim()}
+                          className="bg-primary hover:bg-primary/90 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <Icon name="add" size={16} />
+                          {generatingKey ? 'Generating...' : 'Generate New Key'}
+                        </button>
+                      </div>
                     </div>
+
+                    {newlyCreatedKey && (
+                      <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4">
+                        <p className="text-green-400 text-sm font-medium mb-2">New API key created! Copy it now — it won&apos;t be shown again.</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-green-300 text-sm bg-[#141414] px-3 py-2 rounded flex-1 break-all">{newlyCreatedKey}</code>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(newlyCreatedKey); setNewlyCreatedKey(null) }}
+                            className="p-2 rounded-lg text-green-400 hover:bg-green-500/20 transition-colors"
+                          >
+                            <Icon name="copy" size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                       <table className="w-full min-w-[500px]">
@@ -2549,23 +2806,24 @@ export default function AdminSettingsPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {apiSettings.apiKeys.map((apiKey) => (
+                          {apiKeys.length === 0 && (
+                            <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-500 text-sm">No API keys yet. Generate one above.</td></tr>
+                          )}
+                          {apiKeys.map((apiKey) => (
                             <tr key={apiKey.id} className="border-b border-[#2a2a2a] last:border-0 hover:bg-white/5">
                               <td className="px-5 py-4 text-white text-sm">{apiKey.name}</td>
                               <td className="px-5 py-4">
                                 <code className="text-slate-400 text-sm bg-[#141414] px-2 py-1 rounded">{apiKey.key}</code>
                               </td>
-                              <td className="px-5 py-4 text-slate-400 text-sm">{apiKey.created}</td>
-                              <td className="px-5 py-4 text-slate-500 text-sm">{apiKey.lastUsed}</td>
+                              <td className="px-5 py-4 text-slate-400 text-sm">{new Date(apiKey.createdAt).toLocaleDateString()}</td>
+                              <td className="px-5 py-4 text-slate-500 text-sm">{apiKey.lastUsedAt ? new Date(apiKey.lastUsedAt).toLocaleDateString() : 'Never'}</td>
                               <td className="px-5 py-4 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
-                                    <Icon name="copy" size={16} />
-                                  </button>
-                                  <button className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                                    <Icon name="trash" size={16} />
-                                  </button>
-                                </div>
+                                <button
+                                  onClick={() => handleDeleteKey(apiKey.id)}
+                                  className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                >
+                                  <Icon name="trash" size={16} />
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -2758,6 +3016,35 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Custom Code Injection</h3>
+                <p className="text-sm text-slate-400 mb-4">Add custom scripts, meta tags, or tracking codes. These are injected directly into the page HTML.</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Custom Head Code</label>
+                    <textarea
+                      value={marketingSettings.customHeadCode}
+                      onChange={(e) => setMarketingSettings({ ...marketingSettings, customHeadCode: e.target.value })}
+                      placeholder="<!-- Scripts, meta tags, or styles for <head> -->"
+                      rows={4}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Injected before &lt;/head&gt;. Use for TikTok Pixel, Hotjar, Crisp, etc.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Custom Body Code</label>
+                    <textarea
+                      value={marketingSettings.customBodyCode}
+                      onChange={(e) => setMarketingSettings({ ...marketingSettings, customBodyCode: e.target.value })}
+                      placeholder="<!-- Scripts for end of <body> -->"
+                      rows={4}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Injected before &lt;/body&gt;.</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
                 <h4 className="text-sm font-medium text-blue-400 mb-2">Conversion Events</h4>
                 <p className="text-xs text-slate-400">When tracking IDs are configured, the following events fire automatically:</p>
@@ -2771,6 +3058,148 @@ export default function AdminSettingsPage() {
               </div>
             </div>
           )}
+
+          {activeTab === 'seo' && (
+            <div className="space-y-6">
+              {/* Meta Tags */}
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Global Meta Tags</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Title Template</label>
+                    <input type="text" value={seoSettings.globalMetaTitleTemplate} onChange={(e) => setSeoSettings({ ...seoSettings, globalMetaTitleTemplate: e.target.value })} placeholder="{{title}} | Zenorar" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    <p className="text-xs text-slate-500 mt-1">Use {'{{title}}'} as placeholder for page title. Example: {'{{title}}'} | My Store</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Default Meta Description</label>
+                    <textarea value={seoSettings.globalMetaDescription} onChange={(e) => setSeoSettings({ ...seoSettings, globalMetaDescription: e.target.value })} placeholder="Your marketplace description for search engines..." rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Canonical URL Prefix</label>
+                    <input type="text" value={seoSettings.canonicalUrlPrefix} onChange={(e) => setSeoSettings({ ...seoSettings, canonicalUrlPrefix: e.target.value })} placeholder="https://zenorar.com" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Search Console */}
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Search Engine Verification</h3>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Google Search Console Verification</label>
+                  <input type="text" value={seoSettings.googleSiteVerification} onChange={(e) => setSeoSettings({ ...seoSettings, googleSiteVerification: e.target.value })} placeholder="Google verification code" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  <p className="text-xs text-slate-500 mt-1">The content value from the meta tag Google gives you.</p>
+                </div>
+              </div>
+
+              {/* Open Graph */}
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Open Graph / Social Sharing Defaults</h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Title</label>
+                      <input type="text" value={seoSettings.defaultOgTitle} onChange={(e) => setSeoSettings({ ...seoSettings, defaultOgTitle: e.target.value })} placeholder="Zenorar Marketplace" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Type</label>
+                      <select value={seoSettings.defaultOgType} onChange={(e) => setSeoSettings({ ...seoSettings, defaultOgType: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <option value="website">website</option>
+                        <option value="article">article</option>
+                        <option value="product">product</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Description</label>
+                    <textarea value={seoSettings.defaultOgDescription} onChange={(e) => setSeoSettings({ ...seoSettings, defaultOgDescription: e.target.value })} placeholder="Description shown when shared on social media..." rows={2} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Twitter Card Type</label>
+                    <select value={seoSettings.twitterCardType} onChange={(e) => setSeoSettings({ ...seoSettings, twitterCardType: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary/50">
+                      <option value="summary_large_image">Summary Large Image</option>
+                      <option value="summary">Summary</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Structured Data */}
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Structured Data (JSON-LD)</h3>
+                <p className="text-sm text-slate-400 mb-4">Used for rich snippets in Google search results.</p>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Organization Name</label>
+                      <input type="text" value={seoSettings.structuredDataOrgName} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataOrgName: e.target.value })} placeholder="Zenorar" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Organization URL</label>
+                      <input type="text" value={seoSettings.structuredDataOrgUrl} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataOrgUrl: e.target.value })} placeholder="https://zenorar.com" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Organization Logo URL</label>
+                    <input type="text" value={seoSettings.structuredDataOrgLogo} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataOrgLogo: e.target.value })} placeholder="https://zenorar.com/logo.png" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Social Profiles</label>
+                    <textarea value={seoSettings.structuredDataSocialProfiles} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataSocialProfiles: e.target.value })} placeholder="https://twitter.com/zenorar&#10;https://facebook.com/zenorar&#10;https://instagram.com/zenorar" rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    <p className="text-xs text-slate-500 mt-1">One URL per line.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Robots.txt */}
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Robots.txt</h3>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Custom Robots.txt Content</label>
+                  <textarea value={seoSettings.robotsTxtContent} onChange={(e) => setSeoSettings({ ...seoSettings, robotsTxtContent: e.target.value })} placeholder="User-agent: *&#10;Allow: /&#10;Disallow: /admin/&#10;Disallow: /api/&#10;Sitemap: https://zenorar.com/sitemap.xml" rows={6} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm" />
+                  <p className="text-xs text-slate-500 mt-1">Leave empty to use defaults. Controls which pages search engines can crawl.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {/* Recent Changes (Audit Log) */}
+        <div className="mt-6">
+          <button
+            onClick={() => { setShowAuditLog(!showAuditLog); if (!showAuditLog && auditLogs.length === 0) handleFetchAuditLog() }}
+            className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            <Icon name={showAuditLog ? 'chevron-down' : 'chevron-right'} size={16} />
+            Recent Changes
+          </button>
+          {showAuditLog && (
+            <div className="mt-3 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] overflow-hidden">
+              {auditLogs.length === 0 ? (
+                <p className="p-4 text-slate-500 text-sm">No recent changes recorded.</p>
+              ) : (
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#141414] sticky top-0">
+                      <tr>
+                        <th className="text-left p-3 text-slate-400 font-medium">Setting</th>
+                        <th className="text-left p-3 text-slate-400 font-medium">Action</th>
+                        <th className="text-left p-3 text-slate-400 font-medium">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditLogs.map((log: any, i: number) => (
+                        <tr key={log.id || i} className="border-t border-[#2a2a2a]">
+                          <td className="p-3 text-white font-mono text-xs">{log.settingKey}</td>
+                          <td className="p-3 text-slate-300">{log.action}</td>
+                          <td className="p-3 text-slate-500">{new Date(log.createdAt).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Save Button */}
         <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6">

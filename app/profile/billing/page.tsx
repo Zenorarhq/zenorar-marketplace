@@ -267,8 +267,8 @@ export default function BillingPage() {
         )}
       </div>
 
-      {/* Billing Address */}
-      <div className="mb-12">
+      {/* Billing Address — commented out for future use */}
+      {/* <div className="mb-12">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
             <Icon name="location" size={20} className="text-primary" />
@@ -295,7 +295,7 @@ export default function BillingPage() {
             Edit Address
           </button>
         </div>
-      </div>
+      </div> */}
 
       {/* Transaction History */}
       <div>

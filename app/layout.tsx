@@ -32,6 +32,19 @@ async function getSiteSettings() {
       siteDescription: getValue('siteDescription') || DEFAULTS.description,
       faviconUrl: getValue('faviconUrl') || null,
       defaultOgImage: getValue('defaultOgImage') || null,
+      metaTitleTemplate: getValue('metaTitleTemplate') || null,
+      globalMetaDescription: getValue('globalMetaDescription') || null,
+      googleVerificationId: getValue('googleVerificationId') || null,
+      defaultOgTitle: getValue('defaultOgTitle') || null,
+      defaultOgDescription: getValue('defaultOgDescription') || null,
+      defaultOgType: getValue('defaultOgType') || null,
+      twitterCardType: getValue('twitterCardType') || null,
+      structuredDataOrgName: getValue('structuredDataOrgName') || null,
+      structuredDataOrgUrl: getValue('structuredDataOrgUrl') || null,
+      structuredDataOrgLogo: getValue('structuredDataOrgLogo') || null,
+      structuredDataSocialProfiles: getValue('structuredDataSocialProfiles') || null,
+      customHeadCode: getValue('customHeadCode') || null,
+      customBodyCode: getValue('customBodyCode') || null,
     }
   } catch {
     return null
@@ -41,24 +54,30 @@ async function getSiteSettings() {
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings()
   const siteName = settings?.siteName || DEFAULTS.siteName
-  const description = settings?.siteDescription || DEFAULTS.description
+  const description = settings?.globalMetaDescription || settings?.siteDescription || DEFAULTS.description
+  const titleTemplate = settings?.metaTitleTemplate || `%s | ${siteName}`
 
   return {
     metadataBase: new URL(SITE_URL),
     title: {
       default: DEFAULTS.title,
-      template: `%s | ${siteName}`,
+      template: titleTemplate,
     },
     description,
     openGraph: {
-      type: 'website',
+      type: (settings?.defaultOgType as any) || 'website',
       siteName,
       locale: 'en_US',
+      ...(settings?.defaultOgTitle ? { title: settings.defaultOgTitle } : {}),
+      ...(settings?.defaultOgDescription ? { description: settings.defaultOgDescription } : {}),
       ...(settings?.defaultOgImage ? { images: [{ url: settings.defaultOgImage, width: 1200, height: 630 }] } : {}),
     },
     twitter: {
-      card: 'summary_large_image',
+      card: (settings?.twitterCardType as any) || 'summary_large_image',
     },
+    ...(settings?.googleVerificationId ? {
+      verification: { google: settings.googleVerificationId },
+    } : {}),
     ...(settings?.faviconUrl ? {
       icons: {
         icon: settings.faviconUrl,
@@ -67,11 +86,25 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const settings = await getSiteSettings()
+
+  // Build JSON-LD structured data if org info is configured
+  const jsonLd = settings?.structuredDataOrgName ? {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: settings.structuredDataOrgName,
+    ...(settings.structuredDataOrgUrl ? { url: settings.structuredDataOrgUrl } : {}),
+    ...(settings.structuredDataOrgLogo ? { logo: settings.structuredDataOrgLogo } : {}),
+    ...(settings.structuredDataSocialProfiles ? {
+      sameAs: settings.structuredDataSocialProfiles.split('\n').map((s: string) => s.trim()).filter(Boolean),
+    } : {}),
+  } : null
+
   return (
     <html lang="en" className="dark">
       <head>
@@ -79,9 +112,21 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-25..0&display=swap"
           rel="stylesheet"
         />
+        {jsonLd && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+        )}
+        {settings?.customHeadCode && (
+          <script dangerouslySetInnerHTML={{ __html: settings.customHeadCode }} />
+        )}
       </head>
       <body className={`${inter.className} bg-background-dark text-slate-100 transition-colors duration-200`}>
         <Providers>{children}</Providers>
+        {settings?.customBodyCode && (
+          <script dangerouslySetInnerHTML={{ __html: settings.customBodyCode }} />
+        )}
       </body>
     </html>
   )

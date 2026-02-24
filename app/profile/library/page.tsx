@@ -16,6 +16,9 @@ export default function LibraryPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [qrModal, setQrModal] = useState<{ qrData: string; activationCode: string; expiresAt: string } | null>(null)
+  const [apiKeyModal, setApiKeyModal] = useState<{ key: string; productName: string } | null>(null)
+  const [copied, setCopied] = useState(false)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -73,11 +76,11 @@ export default function LibraryPage() {
       const result = await libraryApi.getQRCode(productId)
 
       if (result.success && result.data) {
-        // Show QR code in modal or alert (can be enhanced with a modal component)
-        const qrData = result.data.qrCodeData
-        const activationCode = result.data.activationCode
-        alert(`eSIM Activation\n\nScan this QR code:\n${qrData}\n\nActivation Code:\n${activationCode}\n\nExpires: ${result.data.expiresAt}`)
-        // TODO: Show in a proper modal with actual QR code image
+        setQrModal({
+          qrData: result.data.qrCodeData,
+          activationCode: result.data.activationCode,
+          expiresAt: result.data.expiresAt,
+        })
       } else {
         alert(result.error || 'Failed to generate QR code')
       }
@@ -95,10 +98,7 @@ export default function LibraryPage() {
       const result = await libraryApi.getApiKey(productId)
 
       if (result.success && result.data) {
-        // Copy to clipboard and show
-        await navigator.clipboard.writeText(result.data.key)
-        alert(`API Key copied to clipboard!\n\nKey: ${result.data.key}\n\nProduct: ${productName}`)
-        // TODO: Show in a proper modal with copy button
+        setApiKeyModal({ key: result.data.key, productName })
       } else {
         alert(result.error || 'Failed to get API key')
       }
@@ -178,12 +178,13 @@ export default function LibraryPage() {
             <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">My Library</h1>
             <p className="text-slate-400">Access and manage all your purchased digital products.</p>
           </div>
-          <div className="flex gap-3">
+          {/* Download All — commented out until bulk download is implemented */}
+          {/* <div className="flex gap-3">
             <button className="flex items-center gap-2 px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:bg-[#262626] transition-colors">
               <Icon name="download" size={18} />
               Download All
             </button>
-          </div>
+          </div> */}
         </div>
 
         {/* Search and Filter Tabs */}
@@ -444,6 +445,83 @@ export default function LibraryPage() {
           </p>
         </div>
       </div>
+      {/* QR Code Modal */}
+      {qrModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-dark rounded-2xl p-5 sm:p-8 max-w-md w-full border border-border-dark">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">eSIM Activation</h3>
+              <button onClick={() => { setQrModal(null); setCopied(false) }} className="text-slate-400 hover:text-white">
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">QR Code Data</label>
+                <div className="mt-1 bg-black border border-border-dark rounded-xl px-4 py-3 text-white font-mono text-sm break-all">
+                  {qrModal.qrData}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Activation Code</label>
+                <div className="mt-1 bg-black border border-border-dark rounded-xl px-4 py-3 text-white font-mono text-sm break-all">
+                  {qrModal.activationCode}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Expires</label>
+                <div className="mt-1 text-slate-300 text-sm">{qrModal.expiresAt}</div>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(qrModal.activationCode)
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }}
+                className="w-full py-3 rounded-xl bg-primary text-black font-bold hover:bg-green-400 transition-colors"
+              >
+                {copied ? 'Copied!' : 'Copy Activation Code'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* API Key Modal */}
+      {apiKeyModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-dark rounded-2xl p-5 sm:p-8 max-w-md w-full border border-border-dark">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">API Key</h3>
+              <button onClick={() => { setApiKeyModal(null); setCopied(false) }} className="text-slate-400 hover:text-white">
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Product</label>
+                <div className="mt-1 text-white font-medium">{apiKeyModal.productName}</div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">API Key</label>
+                <div className="mt-1 bg-black border border-border-dark rounded-xl px-4 py-3 text-white font-mono text-sm break-all">
+                  {apiKeyModal.key}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(apiKeyModal.key)
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }}
+                className="w-full py-3 rounded-xl bg-primary text-black font-bold hover:bg-green-400 transition-colors"
+              >
+                {copied ? 'Copied!' : 'Copy API Key'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProfileLayout>
   )
 }

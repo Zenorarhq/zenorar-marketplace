@@ -11,6 +11,8 @@ import { apiFetch } from '@/lib/api/client'
 export default function ReferralsPage() {
   const [copied, setCopied] = useState(false)
   const [filter, setFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
+  const pageSize = 20
 
   // Fetch public settings for reward amounts
   const { data: publicSettings } = useQuery({
@@ -39,10 +41,10 @@ export default function ReferralsPage() {
 
   // Fetch referral history
   const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ['referrals', 'history', filter],
+    queryKey: ['referrals', 'history', filter, page],
     queryFn: async () => {
       const status = filter === 'all' ? undefined : filter.toUpperCase()
-      const result = await getReferralHistory(1, 50, status)
+      const result = await getReferralHistory(page, pageSize, status)
       if (!result.success || !result.data || !Array.isArray(result.data.referrals)) {
         throw new Error(result.error || 'Failed to load referral history')
       }
@@ -270,7 +272,7 @@ export default function ReferralsPage() {
             {['all', 'pending', 'completed', 'rewarded'].map((status) => (
               <button
                 key={status}
-                onClick={() => setFilter(status)}
+                onClick={() => { setFilter(status); setPage(1) }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   filter === status
                     ? 'bg-primary text-black'
@@ -368,6 +370,29 @@ export default function ReferralsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {historyData?.pagination && historyData.pagination.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-6">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="px-4 py-2 rounded-lg border border-border-dark text-slate-300 font-medium hover:bg-surface-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                >
+                  Previous
+                </button>
+                <span className="text-slate-400 text-sm">
+                  Page {page} of {historyData.pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(historyData.pagination.totalPages, p + 1))}
+                  disabled={page >= historyData.pagination.totalPages}
+                  className="px-4 py-2 rounded-lg border border-border-dark text-slate-300 font-medium hover:bg-surface-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                >
+                  Next
+                </button>
               </div>
             )}
           </div>
