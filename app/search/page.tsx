@@ -65,7 +65,7 @@ function SearchContent() {
     }
 
     const result = await searchApi.searchProducts({
-      query: searchQuery || undefined,
+      q: searchQuery || undefined,
       categories: activeFilters.categories.length > 0 ? activeFilters.categories : undefined,
       maxPrice: activeFilters.priceRange < 1000 ? activeFilters.priceRange : undefined,
       minRating: activeFilters.minRating > 0 ? activeFilters.minRating : undefined,
