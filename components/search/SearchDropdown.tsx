@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 import { searchApi, AutocompleteResult, TrendingProduct, PopularCategory } from '@/lib/api'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -265,16 +264,18 @@ export default function SearchDropdown({
                 </h5>
                 <div className="space-y-1">
                   {recentSearches.map((search, idx) => (
-                    <Link
+                    <button
                       key={idx}
-                      href={`/search?q=${encodeURIComponent(search)}`}
-                      prefetch={true}
-                      onClick={onClose}
-                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        router.push(`/search?q=${encodeURIComponent(search)}`)
+                      }}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
                       <Icon name="history" size={18} className="text-slate-500 group-hover:text-primary" />
                       {search}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -288,19 +289,21 @@ export default function SearchDropdown({
                 </h5>
                 <div className="space-y-1">
                   {trendingProducts.map((product) => (
-                    <Link
+                    <button
                       key={product.id}
-                      href={`/products/${product.slug}`}
-                      prefetch={true}
-                      onClick={onClose}
-                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        router.push(`/products/${product.slug}`)
+                      }}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
                       <Icon name="fire" size={18} className="text-orange-500" />
                       <div className="flex-1 min-w-0">
                         <div className="truncate">{product.name}</div>
                         <div className="text-xs text-slate-500">{formatPrice(Number(product.price))}</div>
                       </div>
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -314,15 +317,17 @@ export default function SearchDropdown({
                 </h5>
                 <div className="flex flex-wrap gap-2 px-2">
                   {popularCategories.map((category) => (
-                    <Link
+                    <button
                       key={category.id}
-                      href={`/search?category=${category.slug}`}
-                      prefetch={true}
-                      onClick={onClose}
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        router.push(`/search?category=${category.slug}`)
+                      }}
                       className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
                     >
                       {category.name}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
