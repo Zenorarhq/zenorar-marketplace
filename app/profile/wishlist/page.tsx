@@ -116,7 +116,7 @@ export default function WishlistPage() {
           <h2 className="text-xl font-bold text-white mb-2">Your wishlist is empty</h2>
           <p className="text-slate-400 mb-6">Browse products and click the heart icon to save them here.</p>
           <Link
-            href="/products"
+            href="/scripts"
             className="inline-flex items-center gap-2 bg-primary text-black font-bold px-6 py-3 rounded-xl hover:brightness-105 transition-all"
           >
             <Icon name="compass" size={20} />

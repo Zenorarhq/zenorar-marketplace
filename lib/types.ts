@@ -27,6 +27,16 @@ export interface Review {
   adminReplyAt?: string | null
 }
 
+export interface ProductFile {
+  id: string
+  fileName: string
+  fileSize: string | null
+  fileType: string | null
+  version: string | null
+  isLatest: boolean | null
+  createdAt: string | null
+}
+
 export interface Product {
   id: string
   name: string
@@ -47,10 +57,12 @@ export interface Product {
   features?: Feature[]
   specs?: Spec[]
   reviews?: Review[]
+  files?: ProductFile[]
   badge?: string
   videoUrl?: string
   demoUrl?: string
   demoInfo?: string
+  purchaseCount?: number
 }
 
 export interface CartItem {

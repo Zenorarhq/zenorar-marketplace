@@ -139,7 +139,7 @@ export default function CartPage() {
               Looks like you haven&apos;t added anything to your cart yet. Start browsing our products to find something you&apos;ll love.
             </p>
             <Link
-              href="/products"
+              href="/scripts"
               className="bg-primary text-black font-bold px-8 py-4 rounded-xl hover:brightness-105 transition-all inline-flex items-center gap-2"
             >
               <Icon name="compass" size={24} />
@@ -360,7 +360,7 @@ export default function CartPage() {
               </button>
 
               <Link
-                href="/products"
+                href="/scripts"
                 className="block text-center text-primary text-sm font-bold mt-4 hover:underline"
               >
                 Continue Shopping

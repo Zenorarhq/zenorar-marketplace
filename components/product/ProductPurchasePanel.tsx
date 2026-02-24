@@ -41,6 +41,14 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
     <div className="sticky top-24">
       {/* Main Purchase Card */}
       <div className="bg-charcoal p-6 rounded-2xl border border-border-dark shadow-xl">
+        {/* Purchase Count */}
+        {product.purchaseCount != null && product.purchaseCount > 0 && (
+          <div className="flex items-center gap-1.5 mb-2 text-sm text-slate-400">
+            <Icon name="people" size={14} />
+            <span>{product.purchaseCount.toLocaleString()} purchased</span>
+          </div>
+        )}
+
         {/* Price */}
         <div className="flex items-baseline gap-2 mb-6">
           <span className="text-3xl font-extrabold text-white">

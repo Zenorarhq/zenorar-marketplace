@@ -51,6 +51,17 @@ export default function ProductTabs({ product }: ProductTabsProps) {
     }
   }
 
+  const latestFile = product.files?.find(f => f.isLatest) || product.files?.[0]
+
+  const formatFileSize = (bytes: string | null) => {
+    if (!bytes) return null
+    const num = Number(bytes)
+    if (num < 1024) return `${num} B`
+    if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`
+    if (num < 1024 * 1024 * 1024) return `${(num / (1024 * 1024)).toFixed(1)} MB`
+    return `${(num / (1024 * 1024 * 1024)).toFixed(1)} GB`
+  }
+
   const tabs: { id: TabId; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'specs', label: 'Technical Specifications' },
@@ -158,6 +169,53 @@ export default function ProductTabs({ product }: ProductTabsProps) {
                 </div>
               </div>
             )}
+
+            {/* Version History */}
+            {product.files && product.files.length > 1 && (
+              <div>
+                <h2 className="text-xl font-bold text-white mb-4">Version History</h2>
+                <div className="space-y-3">
+                  {product.files.slice(0, 5).map((file) => (
+                    <div key={file.id} className="flex items-center justify-between py-2 border-b border-border-dark text-sm">
+                      <div className="flex items-center gap-3">
+                        <Icon name="code" size={16} className="text-primary" />
+                        <span className="text-white font-medium">{file.version || 'v1.0'}</span>
+                        {file.isLatest && (
+                          <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">LATEST</span>
+                        )}
+                      </div>
+                      {file.createdAt && (
+                        <span className="text-slate-500 text-xs">
+                          {new Date(file.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Documentation Link Card */}
+            {product.demoUrl && (
+              <div className="bg-surface-dark/50 border border-border-dark rounded-xl p-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <Icon name="document" size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-bold text-sm">Documentation Available</h4>
+                    <p className="text-slate-500 text-xs">View setup guides, API reference, and more</p>
+                  </div>
+                </div>
+                <a
+                  href={`/products/${product.slug}/docs`}
+                  className="px-4 py-2 rounded-lg border border-border-dark text-slate-300 hover:text-white hover:bg-surface-dark transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  View Docs
+                  <Icon name="arrow-right" size={16} />
+                </a>
+              </div>
+            )}
           </div>
         )}
 
@@ -165,6 +223,42 @@ export default function ProductTabs({ product }: ProductTabsProps) {
         {activeTab === 'specs' && (
           <div>
             <h2 className="text-xl font-bold text-white mb-6">Technical Specifications</h2>
+
+            {/* File Details */}
+            {latestFile && (
+              <div className="mb-8">
+                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4">Product Details</h3>
+                <div className="space-y-4">
+                  {latestFile.version && (
+                    <div className="flex justify-between py-3 border-b border-border-dark text-sm">
+                      <span className="text-slate-500">Current Version</span>
+                      <span className="text-white font-medium">{latestFile.version}</span>
+                    </div>
+                  )}
+                  {formatFileSize(latestFile.fileSize) && (
+                    <div className="flex justify-between py-3 border-b border-border-dark text-sm">
+                      <span className="text-slate-500">File Size</span>
+                      <span className="text-white font-medium">{formatFileSize(latestFile.fileSize)}</span>
+                    </div>
+                  )}
+                  {latestFile.fileType && (
+                    <div className="flex justify-between py-3 border-b border-border-dark text-sm">
+                      <span className="text-slate-500">File Type</span>
+                      <span className="text-white font-medium uppercase">{latestFile.fileType}</span>
+                    </div>
+                  )}
+                  {latestFile.createdAt && (
+                    <div className="flex justify-between py-3 border-b border-border-dark text-sm">
+                      <span className="text-slate-500">Last Updated</span>
+                      <span className="text-white font-medium">
+                        {new Date(latestFile.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {product.specs && product.specs.length > 0 ? (
               <div className="space-y-4">
                 {product.specs.map((spec, index) => (
@@ -177,9 +271,9 @@ export default function ProductTabs({ product }: ProductTabsProps) {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : !latestFile ? (
               <p className="text-slate-500 text-sm">No specifications available yet.</p>
-            )}
+            ) : null}
           </div>
         )}
 

@@ -47,7 +47,7 @@ export default function MostPopular({ config }: { config?: { title?: string; col
           {config?.title || 'Most Popular'}
         </h2>
         <Link
-          href="/products"
+          href="/scripts/popular"
           className="text-sm text-slate-400 hover:text-primary transition-colors"
         >
           See all

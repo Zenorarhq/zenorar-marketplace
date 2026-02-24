@@ -26,6 +26,7 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
         p."categoryId" as category_id, c.name as category_name,
         COALESCE(AVG(r.rating), 0) as average_rating,
         COUNT(DISTINCT r.id) as review_count,
+        COALESCE(SUM(oi.quantity), 0) as total_purchased,
         (
           SELECT json_agg(json_build_object('url', pi.url, 'isPrimary', pi."isPrimary") ORDER BY pi."isPrimary" DESC)
           FROM product_images pi WHERE pi."productId" = p.id
@@ -33,6 +34,7 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
       FROM products p
       LEFT JOIN categories c ON p."categoryId" = c.id
       LEFT JOIN reviews r ON r."productId" = p.id
+      LEFT JOIN order_items oi ON oi."productId" = p.id
       WHERE p.slug = $1 AND p.status = 'ACTIVE'
       GROUP BY p.id, c.name
     `, [slug])
@@ -63,6 +65,24 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
       adminReplyAt: r.admin_reply_at ? new Date(r.admin_reply_at).toISOString().split('T')[0] : null,
     }))
 
+    // Fetch product files (version history, file size)
+    const filesResult = await executeQuery(`
+      SELECT id, file_name, file_size, file_type, version, is_latest, created_at
+      FROM product_files
+      WHERE product_id = $1
+      ORDER BY created_at DESC
+    `, [row.id])
+
+    const files = filesResult.rows.map((f: any) => ({
+      id: f.id,
+      fileName: f.file_name,
+      fileSize: f.file_size ? String(f.file_size) : null,
+      fileType: f.file_type || null,
+      version: f.version || null,
+      isLatest: f.is_latest || null,
+      createdAt: f.created_at ? new Date(f.created_at).toISOString() : null,
+    }))
+
     // Get primary image URL
     const imagesList = row.images || []
     const primaryImage = imagesList.find((img: any) => img.isPrimary)?.url || imagesList[0]?.url || undefined
@@ -90,6 +110,8 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
       features: row.features || undefined,
       specs: row.specs || undefined,
       reviews,
+      files,
+      purchaseCount: Number(row.total_purchased) || 0,
     }
   } catch (error) {
     console.error('Failed to fetch product by slug:', error)
