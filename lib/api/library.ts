@@ -30,14 +30,20 @@ export interface LibraryItem {
   name: string
   slug?: string
   description: string
-  category: 'scripts' | 'esims' | 'tools' | 'api'
+  category: 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers'
   icon: string
   purchaseDate: string
-  status: 'active' | 'expired' | 'update-available'
+  status: 'active' | 'expired' | 'update-available' | 'suspended'
   version?: string
   downloadCount?: number
   expiresAt?: string
   orderId?: string
+  // Virtual number specific fields
+  phoneNumber?: string
+  phoneNumberDisplay?: string
+  unreadCount?: number
+  smsUsed?: number
+  smsIncluded?: number
 }
 
 export interface DownloadLink {
