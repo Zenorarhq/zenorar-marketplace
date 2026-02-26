@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { libraryApi, LibraryItem } from '@/lib/api/library'
+import EsimDetailModal from '@/components/library/EsimDetailModal'
 
 type LibraryFilter = 'all' | 'scripts' | 'esims' | 'tools' | 'api'
 
@@ -15,6 +16,7 @@ export default function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [selectedEsimId, setSelectedEsimId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -66,26 +68,9 @@ export default function LibraryPage() {
     }
   }
 
-  // Handler for View QR button (eSIMs)
-  const handleViewQR = async (productId: string, productName: string) => {
-    try {
-      setLoadingAction(`qr-${productId}`)
-      const result = await libraryApi.getQRCode(productId)
-
-      if (result.success && result.data) {
-        // Show QR code in modal or alert (can be enhanced with a modal component)
-        const qrData = result.data.qrCodeData
-        const activationCode = result.data.activationCode
-        alert(`eSIM Activation\n\nScan this QR code:\n${qrData}\n\nActivation Code:\n${activationCode}\n\nExpires: ${result.data.expiresAt}`)
-        // TODO: Show in a proper modal with actual QR code image
-      } else {
-        alert(result.error || 'Failed to generate QR code')
-      }
-    } catch (error: any) {
-      alert(error.message || 'Failed to view QR code')
-    } finally {
-      setLoadingAction(null)
-    }
+  // Handler for View QR button (eSIMs) - opens the detail modal
+  const handleViewQR = (esimId: string) => {
+    setSelectedEsimId(esimId)
   }
 
   // Handler for API Key button
@@ -329,21 +314,11 @@ export default function LibraryPage() {
                       )}
                       {item.category === 'esims' && (
                         <button
-                          onClick={() => handleViewQR(item.id, item.name)}
-                          disabled={loadingAction === `qr-${item.id}`}
-                          className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleViewQR(item.id)}
+                          className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
                         >
-                          {loadingAction === `qr-${item.id}` ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
-                              Loading...
-                            </>
-                          ) : (
-                            <>
-                              <Icon name="qr" size={18} />
-                              View QR
-                            </>
-                          )}
+                          <Icon name="qr" size={18} />
+                          View Details
                         </button>
                       )}
                       {item.category === 'api' && (
@@ -444,6 +419,13 @@ export default function LibraryPage() {
           </p>
         </div>
       </div>
+
+      {/* eSIM Detail Modal */}
+      <EsimDetailModal
+        esimId={selectedEsimId || ''}
+        isOpen={!!selectedEsimId}
+        onClose={() => setSelectedEsimId(null)}
+      />
     </ProfileLayout>
   )
 }

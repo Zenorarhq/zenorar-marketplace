@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { executeQuery } from '@/lib/db-helpers'
 import { getExplorerUrl } from '@/lib/blockchain/verify'
+import { fulfillOrder } from '@/lib/order-fulfillment'
 
 /**
  * POST /api/admin/orders/[id]/mark-paid
@@ -94,6 +95,17 @@ export async function POST(
       )
     }
 
+    // Fulfill digital products (eSIMs, scripts, etc.)
+    let fulfillmentResult = null
+    try {
+      fulfillmentResult = await fulfillOrder(orderId)
+      if (!fulfillmentResult.success) {
+        console.warn('Order fulfillment had issues:', fulfillmentResult)
+      }
+    } catch (fulfillmentError) {
+      console.error('Order fulfillment error:', fulfillmentError)
+    }
+
     // Fetch updated order
     const updatedOrderResult = await executeQuery(
       `SELECT id, order_number, "paymentStatus", status, "paidAt" FROM orders WHERE id = $1`,
@@ -129,6 +141,11 @@ export async function POST(
         status: updatedOrder.status,
         paidAt: updatedOrder.paidAt,
         cryptoPayment,
+        fulfillment: fulfillmentResult ? {
+          itemsProcessed: fulfillmentResult.itemsProcessed,
+          itemsFailed: fulfillmentResult.itemsFailed,
+          success: fulfillmentResult.success
+        } : null,
         message: 'Order marked as paid successfully'
       }
     })

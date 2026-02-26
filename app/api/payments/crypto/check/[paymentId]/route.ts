@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db-helpers'
 import { verifyBlockchainPayment, getExplorerUrl } from '@/lib/blockchain/verify'
+import { fulfillOrder } from '@/lib/order-fulfillment'
 
 /**
  * GET /api/payments/crypto/check/[paymentId]
@@ -116,6 +117,17 @@ export async function GET(
          WHERE id = $1`,
         [payment.order_id]
       )
+
+      // Fulfill digital products (eSIMs, scripts, etc.)
+      try {
+        const fulfillmentResult = await fulfillOrder(payment.order_id)
+        if (!fulfillmentResult.success) {
+          console.warn('Order fulfillment had issues:', fulfillmentResult)
+        }
+      } catch (fulfillmentError) {
+        // Log but don't fail the payment confirmation
+        console.error('Order fulfillment error:', fulfillmentError)
+      }
 
       return NextResponse.json({
         success: true,

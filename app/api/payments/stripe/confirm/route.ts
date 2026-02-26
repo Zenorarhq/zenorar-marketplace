@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSiteSetting } from '@/lib/db-helpers'
 import { executeQuery } from '@/lib/db-helpers'
+import { fulfillOrder } from '@/lib/order-fulfillment'
 
 // POST /api/payments/stripe/confirm
 // Confirms a Stripe payment succeeded and updates the order status
@@ -46,6 +47,17 @@ export async function POST(req: NextRequest) {
       `UPDATE orders SET "paymentStatus" = 'PAID', status = 'CONFIRMED', "paidAt" = NOW(), "updatedAt" = NOW() WHERE id = $1`,
       [orderId]
     )
+
+    // Fulfill digital products (eSIMs, scripts, etc.)
+    try {
+      const fulfillmentResult = await fulfillOrder(orderId)
+      if (!fulfillmentResult.success) {
+        console.warn('Order fulfillment had issues:', fulfillmentResult)
+      }
+    } catch (fulfillmentError) {
+      // Log but don't fail the payment confirmation
+      console.error('Order fulfillment error:', fulfillmentError)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

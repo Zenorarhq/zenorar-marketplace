@@ -27,7 +27,7 @@ export async function GET(
       FROM orders o
       JOIN order_items oi ON o.id = oi.order_id
       JOIN products p ON oi.product_id = p.id
-      WHERE o."userId" = $1
+      WHERE o.user_id = $1
         AND oi.product_id = $2
         AND o.payment_status = 'PAID'
       LIMIT 1
