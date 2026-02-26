@@ -9,7 +9,7 @@ import Icon from '@/components/ui/Icon'
 import { usersApi, UsersListResponse } from '@/lib/api/users'
 import { staffApi, StaffListResponse } from '@/lib/api/staff'
 import { rolesApi, Role } from '@/lib/api/roles'
-import { getAccessToken } from '@/lib/api/client'
+import { apiFetch } from '@/lib/api/client'
 
 type Tab = 'users' | 'staff' | 'roles' | 'guest-purchases' | 'newsletter'
 
@@ -450,6 +450,7 @@ function StaffTab() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState<any>(null)
+  const [editStaffForm, setEditStaffForm] = useState({ name: '', bio: '' })
   const [newStaff, setNewStaff] = useState({ name: '', email: '', password: '', roleId: '' })
   const limit = 20
 
@@ -499,7 +500,34 @@ function StaffTab() {
 
   function handleEdit(member: any) {
     setSelectedStaff(member)
+    setEditStaffForm({ name: member.name || '', bio: member.bio || '' })
     setShowEditModal(true)
+  }
+
+  async function handleUpdateStaff() {
+    if (!selectedStaff || !editStaffForm.name) return alert('Name is required')
+    const result = await staffApi.update(selectedStaff.id, { name: editStaffForm.name, bio: editStaffForm.bio })
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
+      setSelectedStaff({ ...selectedStaff, name: editStaffForm.name, bio: editStaffForm.bio })
+      alert('Staff details updated')
+    } else {
+      alert(result.error || 'Failed to update staff')
+    }
+  }
+
+  async function handleRemoveAccess() {
+    if (!selectedStaff) return
+    if (!confirm(`Remove staff access for "${selectedStaff.name}"? They will become a regular user.`)) return
+    const result = await staffApi.removeAccess(selectedStaff.id)
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-staff-stats'] })
+      setShowEditModal(false)
+      alert(`${selectedStaff.name} has been converted to a regular user`)
+    } else {
+      alert(result.error || 'Failed to remove staff access')
+    }
   }
 
   async function handleAssignRole(roleId: string | null) {
@@ -678,6 +706,16 @@ function StaffTab() {
             <h2 className="text-xl font-bold text-white mb-4">Edit Staff: {selectedStaff.name}</h2>
             <div className="space-y-4">
               <div>
+                <label className="block text-sm text-slate-400 mb-2">Name</label>
+                <input type="text" value={editStaffForm.name} onChange={(e) => setEditStaffForm({ ...editStaffForm, name: e.target.value })} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50" />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Bio</label>
+                <textarea value={editStaffForm.bio} onChange={(e) => setEditStaffForm({ ...editStaffForm, bio: e.target.value })} rows={2} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50" />
+              </div>
+              <button onClick={handleUpdateStaff} className="w-full px-4 py-2 bg-primary text-black rounded-lg font-medium hover:bg-primary/90">Save Details</button>
+
+              <div className="border-t border-[#2a2a2a] pt-4">
                 <label className="block text-sm text-slate-400 mb-2">Staff Role</label>
                 <select
                   defaultValue={selectedStaff.staffRole?.id || ''}
@@ -717,6 +755,15 @@ function StaffTab() {
                 </p>
               </div>
 
+              <div className="border-t border-[#2a2a2a] pt-4">
+                <label className="block text-sm text-slate-400 mb-3">Remove Staff Access</label>
+                <button onClick={handleRemoveAccess} className="w-full px-4 py-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 rounded-lg font-medium hover:bg-orange-500/20 flex items-center justify-center gap-2">
+                  <Icon name="user" size={16} />
+                  Convert to Regular User
+                </button>
+                <p className="text-xs text-slate-500 mt-1">This will remove all staff privileges and convert them to a regular customer</p>
+              </div>
+
               <div className="flex gap-3 pt-4 border-t border-[#2a2a2a]">
                 <button onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-2 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">Close</button>
               </div>
@@ -733,6 +780,8 @@ function RolesTab() {
   const queryClient = useQueryClient()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newRole, setNewRole] = useState({ name: '', description: '', permissionIds: [] as string[] })
+  const [editingRole, setEditingRole] = useState<Role | null>(null)
+  const [editRole, setEditRole] = useState({ name: '', description: '', permissionIds: [] as string[] })
 
   const { data: roles = [], isLoading } = useQuery<Role[]>({
     queryKey: ['admin-roles'],
@@ -769,6 +818,26 @@ function RolesTab() {
     else alert(result.error || 'Failed to delete')
   }
 
+  function openEditRole(role: Role) {
+    setEditingRole(role)
+    setEditRole({
+      name: role.name,
+      description: role.description || '',
+      permissionIds: role.permissions?.map(rp => rp.permissionId || rp.permission?.id).filter(Boolean) as string[] || [],
+    })
+  }
+
+  async function handleEditRole() {
+    if (!editingRole || !editRole.name) return alert('Enter role name')
+    const updateResult = await rolesApi.update(editingRole.id, { name: editRole.name, description: editRole.description })
+    if (!updateResult.success) return alert(updateResult.error || 'Failed to update role')
+    const permResult = await rolesApi.updatePermissions(editingRole.id, editRole.permissionIds)
+    if (!permResult.success) return alert(permResult.error || 'Failed to update permissions')
+    queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
+    setEditingRole(null)
+    alert('Role updated successfully')
+  }
+
   const permissionsByCategory = permissionsData?.byCategory || {}
 
   return (
@@ -790,7 +859,10 @@ function RolesTab() {
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Icon name="shield" size={20} className="text-primary" /></div>
                 <div><h3 className="text-white font-semibold">{role.name}</h3><p className="text-xs text-slate-400">{role._count?.users || 0} users</p></div>
               </div>
-              <button onClick={() => handleDelete(role.id, role.name)} className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete"><Icon name="delete" size={16} /></button>
+              <div className="flex gap-1">
+                <button onClick={() => openEditRole(role)} className="p-1.5 rounded hover:bg-primary/10 text-slate-400 hover:text-primary" title="Edit"><Icon name="edit" size={16} /></button>
+                <button onClick={() => handleDelete(role.id, role.name)} className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete"><Icon name="delete" size={16} /></button>
+              </div>
             </div>
             {role.description && <p className="text-sm text-slate-400 mb-3">{role.description}</p>}
             <div className="flex items-center gap-2 text-xs text-slate-500"><Icon name="key" size={14} /><span>{role.permissions?.length || 0} permissions</span></div>
@@ -825,6 +897,39 @@ function RolesTab() {
               <div className="flex gap-3 pt-4">
                 <button onClick={handleCreate} className="flex-1 px-4 py-2 bg-primary text-black rounded-lg font-medium hover:bg-primary/90">Create</button>
                 <button onClick={() => { setShowCreateModal(false); setNewRole({ name: '', description: '', permissionIds: [] }) }} className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingRole && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setEditingRole(null)}>
+          <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-white mb-4">Edit Role: {editingRole.name}</h2>
+            <div className="space-y-4">
+              <div><label className="block text-sm text-slate-400 mb-2">Name *</label><input type="text" value={editRole.name} onChange={(e) => setEditRole({ ...editRole, name: e.target.value })} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50" /></div>
+              <div><label className="block text-sm text-slate-400 mb-2">Description</label><textarea value={editRole.description} onChange={(e) => setEditRole({ ...editRole, description: e.target.value })} rows={2} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50" /></div>
+              <div><label className="block text-sm text-slate-400 mb-3">Permissions</label>
+                <div className="space-y-4">
+                  {Object.entries(permissionsByCategory).map(([category, perms]) => (
+                    <div key={category} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+                      <h4 className="text-white font-medium mb-2 capitalize">{category}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {perms.map((permission: any) => (
+                          <label key={permission.id} className="flex items-start gap-2 cursor-pointer hover:bg-[#2a2a2a] p-2 rounded">
+                            <input type="checkbox" checked={editRole.permissionIds.includes(permission.id)} onChange={() => setEditRole(prev => ({ ...prev, permissionIds: prev.permissionIds.includes(permission.id) ? prev.permissionIds.filter(id => id !== permission.id) : [...prev.permissionIds, permission.id] }))} className="mt-0.5" />
+                            <div><p className="text-white text-sm">{permission.name}</p>{permission.description && <p className="text-xs text-slate-500">{permission.description}</p>}</div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button onClick={handleEditRole} className="flex-1 px-4 py-2 bg-primary text-black rounded-lg font-medium hover:bg-primary/90">Save Changes</button>
+                <button onClick={() => setEditingRole(null)} className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">Cancel</button>
               </div>
             </div>
           </div>
@@ -963,16 +1068,15 @@ function NewsletterTab() {
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(currentPage) })
       if (searchQuery) params.set('search', searchQuery)
-      const res = await fetch(`/api/admin/newsletter?${params}`, {
-        headers: { Authorization: `Bearer ${getAccessToken()}` },
-      })
-      return res.json()
+      const result = await apiFetch<any>(`/newsletter?${params}`)
+      if (result.success) return result as any
+      throw new Error(result.error || 'Failed to load subscribers')
     },
   })
 
   const subscribers: { id: string; email: string; createdAt: string }[] = data?.data || []
-  const total: number = data?.total || 0
-  const totalPages: number = data?.totalPages || 1
+  const total: number = (data as any)?.total || 0
+  const totalPages: number = (data as any)?.totalPages || 1
 
   return (
     <div className="space-y-6">
