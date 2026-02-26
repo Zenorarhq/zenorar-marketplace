@@ -62,13 +62,15 @@ export default function VirtualNumbersPage() {
   const [loadingPlans, setLoadingPlans] = useState(true)
   const [loadingNumbers, setLoadingNumbers] = useState(false)
 
-  // Fetch countries on mount
+  // Fetch countries on mount and auto-select first one
   useEffect(() => {
     async function fetchCountries() {
       try {
         const result = await virtualNumbersApi.getCountries()
-        if (result.success && result.data) {
+        if (result.success && result.data && result.data.length > 0) {
           setCountries(result.data)
+          // Auto-select the first country (usually US) so numbers show immediately
+          setSelectedCountry(result.data[0])
         }
       } catch (error) {
         console.error('Error fetching countries:', error)
