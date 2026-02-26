@@ -8,7 +8,7 @@ import Icon from '@/components/ui/Icon'
 import { libraryApi, LibraryItem } from '@/lib/api/library'
 import EsimDetailModal from '@/components/library/EsimDetailModal'
 
-type LibraryFilter = 'all' | 'scripts' | 'esims' | 'tools' | 'api'
+type LibraryFilter = 'all' | 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers'
 
 export default function LibraryPage() {
   const router = useRouter()
@@ -140,6 +140,12 @@ export default function LibraryPage() {
             <Icon name="alert" size={12} /> Expired
           </div>
         )
+      case 'suspended':
+        return (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-yellow-900/30 text-yellow-500 border border-yellow-500/20">
+            <Icon name="alert" size={12} /> Suspended
+          </div>
+        )
       default:
         return null
     }
@@ -149,6 +155,7 @@ export default function LibraryPage() {
     { key: 'all', label: 'All Items', icon: 'grid-view' },
     { key: 'scripts', label: 'Scripts', icon: 'code' },
     { key: 'esims', label: 'eSIMs', icon: 'sim-card' },
+    { key: 'virtual-numbers', label: 'Numbers', icon: 'phone' },
     { key: 'tools', label: 'Tools', icon: 'terminal' },
     { key: 'api', label: 'API', icon: 'api' },
   ]
@@ -246,6 +253,12 @@ export default function LibraryPage() {
                   </div>
                   <p className="text-slate-400 text-sm mb-3">{item.description}</p>
                   <div className="flex flex-wrap gap-4 text-xs text-slate-500">
+                    {item.category === 'virtual-numbers' && item.phoneNumberDisplay && (
+                      <span className="flex items-center gap-1 text-primary font-mono">
+                        <Icon name="phone" size={14} />
+                        {item.phoneNumberDisplay}
+                      </span>
+                    )}
                     <span className="flex items-center gap-1">
                       <Icon name="calendar" size={14} />
                       Purchased: {item.purchaseDate}
@@ -266,6 +279,12 @@ export default function LibraryPage() {
                       <span className="flex items-center gap-1">
                         <Icon name="download" size={14} />
                         {item.downloadCount} downloads
+                      </span>
+                    )}
+                    {item.category === 'virtual-numbers' && item.smsUsed !== undefined && (
+                      <span className="flex items-center gap-1">
+                        <Icon name="message" size={14} />
+                        SMS: {item.smsUsed} / {item.smsIncluded === 0 ? '∞' : item.smsIncluded}
                       </span>
                     )}
                   </div>
@@ -319,6 +338,24 @@ export default function LibraryPage() {
                         >
                           <Icon name="qr" size={18} />
                           View Details
+                        </button>
+                      )}
+                      {item.category === 'virtual-numbers' && (
+                        <button
+                          onClick={() => router.push(`/profile/numbers/${item.id}`)}
+                          className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+                        >
+                          <Icon name="inbox" size={18} />
+                          {item.unreadCount && item.unreadCount > 0 ? (
+                            <span className="flex items-center gap-1">
+                              Inbox
+                              <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                                {item.unreadCount}
+                              </span>
+                            </span>
+                          ) : (
+                            'Manage'
+                          )}
                         </button>
                       )}
                       {item.category === 'api' && (
