@@ -17,6 +17,8 @@ export interface Referral {
   completedAt: string | null
   rewardedAt: string | null
   createdAt: string
+  signupIp?: string | null
+  cancelReason?: string | null
   referrer: {
     id: string
     name: string
@@ -29,12 +31,22 @@ export interface Referral {
     email: string
     createdAt: string
   }
+  referralCode?: {
+    code: string
+  }
   firstOrder?: {
     id: string
     orderNumber: string
     total: number
     createdAt: string
   }
+  rewardGrants?: {
+    referralId: string
+    userId: string
+    amount: number
+    reason: string
+    createdAt: string
+  }[]
 }
 
 export interface ReferralHistoryResponse {

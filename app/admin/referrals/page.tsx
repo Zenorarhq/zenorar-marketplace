@@ -7,6 +7,7 @@ import Icon from '@/components/ui/Icon'
 import { getAllReferrals, getReferralAnalytics, cancelReferral, distributeRewards } from '@/lib/api/referrals'
 import { formatCurrency } from '@/lib/currency'
 import { apiFetch } from '@/lib/api/client'
+import Link from 'next/link'
 
 type StatusFilter = 'all' | 'PENDING' | 'COMPLETED' | 'REWARDED' | 'CANCELLED'
 
@@ -67,7 +68,7 @@ export default function AdminReferralsPage() {
     })
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, cancelReason?: string) => {
     switch (status) {
       case 'COMPLETED':
       case 'REWARDED':
@@ -84,9 +85,16 @@ export default function AdminReferralsPage() {
         )
       case 'CANCELLED':
         return (
-          <span className="text-red-500 bg-red-500/10 px-2 py-1 rounded text-xs font-bold border border-red-500/20">
-            Cancelled
-          </span>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-red-500 bg-red-500/10 px-2 py-1 rounded text-xs font-bold border border-red-500/20">
+              Cancelled
+            </span>
+            {cancelReason && (
+              <span className="text-red-400/70 text-[10px] max-w-[120px] truncate" title={cancelReason}>
+                {cancelReason}
+              </span>
+            )}
+          </div>
         )
       default:
         return (
@@ -297,6 +305,7 @@ export default function AdminReferralsPage() {
                   <tr>
                     <th className="px-3 sm:px-4 py-3 font-medium">Referrer</th>
                     <th className="px-3 sm:px-4 py-3 font-medium">Referee</th>
+                    <th className="px-3 sm:px-4 py-3 font-medium hidden lg:table-cell">Code</th>
                     <th className="px-3 sm:px-4 py-3 font-medium hidden md:table-cell">Signup Date</th>
                     <th className="px-3 sm:px-4 py-3 font-medium text-center">Status</th>
                     <th className="px-3 sm:px-4 py-3 font-medium text-right hidden sm:table-cell">First Order</th>
@@ -318,15 +327,23 @@ export default function AdminReferralsPage() {
                           <div className="text-xs text-slate-500 truncate max-w-[120px] sm:max-w-none">{referral.referee.email}</div>
                         </div>
                       </td>
-                      <td className="px-3 sm:px-4 py-3 text-slate-400 text-xs hidden md:table-cell">{formatDate(referral.createdAt)}</td>
+                      <td className="px-3 sm:px-4 py-3 hidden lg:table-cell">
+                        <span className="text-primary text-xs font-mono bg-primary/10 px-1.5 py-0.5 rounded">{referral.referralCode?.code || '-'}</span>
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
+                        <div className="text-slate-400 text-xs">{formatDate(referral.createdAt)}</div>
+                        {referral.signupIp && (
+                          <div className="text-slate-600 text-[10px] font-mono mt-0.5">IP: {referral.signupIp}</div>
+                        )}
+                      </td>
                       <td className="px-3 sm:px-4 py-3 text-center">
-                        {getStatusBadge(referral.status)}
+                        {getStatusBadge(referral.status, referral.cancelReason ?? undefined)}
                       </td>
                       <td className="px-3 sm:px-4 py-3 text-right hidden sm:table-cell">
                         {referral.firstOrder ? (
                           <div>
                             <div className="text-white text-sm font-mono">{formatCurrency(Number(referral.firstOrder.total))}</div>
-                            <div className="text-xs text-slate-500">#{referral.firstOrder.orderNumber}</div>
+                            <Link href={`/admin/purchases`} className="text-xs text-primary hover:underline">#{referral.firstOrder.orderNumber}</Link>
                           </div>
                         ) : (
                           <span className="text-slate-500 text-xs">-</span>
@@ -411,6 +428,14 @@ export default function AdminReferralsPage() {
                               Cancel
                             </button>
                           )
+                        ) : referral.status === 'REWARDED' && (referral.rewardGrants?.length ?? 0) > 0 ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            {referral.rewardGrants!.map((rg: any, i: number) => (
+                              <span key={i} className="text-[10px] text-slate-400">
+                                {formatCurrency(Number(rg.amount))} — {rg.reason?.includes('Welcome') ? 'Referee' : 'Referrer'}
+                              </span>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-slate-600 text-xs">-</span>
                         )}
