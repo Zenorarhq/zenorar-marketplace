@@ -216,13 +216,63 @@ export default function AdminSettingsPage() {
   const [generatingKey, setGeneratingKey] = useState(false)
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null)
 
-  // Twilio Settings State
+  // Twilio Settings State (for 2FA SMS)
   const [twilioSettings, setTwilioSettings] = useState({
     twilio_account_sid: '',
     twilio_auth_token: '',
     twilio_phone_number: '',
   })
   const [twilioSaving, setTwilioSaving] = useState(false)
+
+  // Data eSIM Provider Settings State (travel data only)
+  const [esimSettings, setEsimSettings] = useState({
+    esimDefaultProvider: 'esimgo' as 'esimgo' | 'airalo' | 'mobimatter',
+    // eSIM Go
+    esimGoEnabled: false,
+    esimGoApiKey: '',
+    // Airalo
+    airaloEnabled: false,
+    airaloMode: 'sandbox' as 'sandbox' | 'production',
+    airaloSandboxClientId: '',
+    airaloSandboxClientSecret: '',
+    airaloProductionClientId: '',
+    airaloProductionClientSecret: '',
+    // MobiMatter
+    mobimatterEnabled: false,
+    mobimatterMerchantId: '',
+    mobimatterApiKey: '',
+  })
+
+  // Voice eSIM Provider Settings State (with phone number, calls, SMS)
+  const [voiceEsimSettings, setVoiceEsimSettings] = useState({
+    voiceEsimDefaultProvider: 'telnyx' as 'telnyx' | 'alosim' | 'twise',
+    // Telnyx
+    telnyxEnabled: false,
+    telnyxApiKey: '',
+    // aloSIM
+    alosimEnabled: false,
+    alosimApiKey: '',
+    // Twise
+    twiseEnabled: false,
+    twiseApiKey: '',
+  })
+
+  // Virtual Numbers Settings State
+  const [virtualNumberSettings, setVirtualNumberSettings] = useState({
+    virtualNumbersEnabled: false,
+    virtualNumbersProvider: 'twilio' as 'twilio' | 'plivo' | 'vonage',
+    // Plivo
+    plivoEnabled: false,
+    plivoAuthId: '',
+    plivoAuthToken: '',
+    // Vonage
+    vonageEnabled: false,
+    vonageApiKey: '',
+    vonageApiSecret: '',
+  })
+
+  // Show/hide secrets for services
+  const [showServiceSecrets, setShowServiceSecrets] = useState<Record<string, boolean>>({})
 
   // Exchange Rate API Keys State
   const [exchangeRateKeys, setExchangeRateKeys] = useState({
@@ -403,7 +453,7 @@ export default function AdminSettingsPage() {
         }))
       }
     })
-    // Load Twilio settings
+    // Load API settings (Twilio, Exchange Rates, eSIM, Virtual Numbers)
     settingsApi.getSettingsByGroup('api').then((res) => {
       if (res.success && res.data) {
         const d = res.data
@@ -421,6 +471,42 @@ export default function AdminSettingsPage() {
           apiEnabled: d.apiEnabled ?? prev.apiEnabled,
           rateLimit: d.rateLimit ?? prev.rateLimit,
           webhookUrl: d.webhookUrl ?? prev.webhookUrl,
+        }))
+        // Data eSIM Provider settings
+        setEsimSettings((prev) => ({
+          esimDefaultProvider: d.esimDefaultProvider ?? prev.esimDefaultProvider,
+          esimGoEnabled: d.esimGoEnabled ?? prev.esimGoEnabled,
+          esimGoApiKey: d.esimGoApiKey ?? prev.esimGoApiKey,
+          airaloEnabled: d.airaloEnabled ?? prev.airaloEnabled,
+          airaloMode: d.airaloMode ?? prev.airaloMode,
+          airaloSandboxClientId: d.airaloSandboxClientId ?? prev.airaloSandboxClientId,
+          airaloSandboxClientSecret: d.airaloSandboxClientSecret ?? prev.airaloSandboxClientSecret,
+          airaloProductionClientId: d.airaloProductionClientId ?? prev.airaloProductionClientId,
+          airaloProductionClientSecret: d.airaloProductionClientSecret ?? prev.airaloProductionClientSecret,
+          mobimatterEnabled: d.mobimatterEnabled ?? prev.mobimatterEnabled,
+          mobimatterMerchantId: d.mobimatterMerchantId ?? prev.mobimatterMerchantId,
+          mobimatterApiKey: d.mobimatterApiKey ?? prev.mobimatterApiKey,
+        }))
+        // Voice eSIM Provider settings
+        setVoiceEsimSettings((prev) => ({
+          voiceEsimDefaultProvider: d.voiceEsimDefaultProvider ?? prev.voiceEsimDefaultProvider,
+          telnyxEnabled: d.telnyxEnabled ?? prev.telnyxEnabled,
+          telnyxApiKey: d.telnyxApiKey ?? prev.telnyxApiKey,
+          alosimEnabled: d.alosimEnabled ?? prev.alosimEnabled,
+          alosimApiKey: d.alosimApiKey ?? prev.alosimApiKey,
+          twiseEnabled: d.twiseEnabled ?? prev.twiseEnabled,
+          twiseApiKey: d.twiseApiKey ?? prev.twiseApiKey,
+        }))
+        // Virtual Numbers settings
+        setVirtualNumberSettings((prev) => ({
+          virtualNumbersEnabled: d.virtualNumbersEnabled ?? prev.virtualNumbersEnabled,
+          virtualNumbersProvider: d.virtualNumbersProvider ?? prev.virtualNumbersProvider,
+          plivoEnabled: d.plivoEnabled ?? prev.plivoEnabled,
+          plivoAuthId: d.plivoAuthId ?? prev.plivoAuthId,
+          plivoAuthToken: d.plivoAuthToken ?? prev.plivoAuthToken,
+          vonageEnabled: d.vonageEnabled ?? prev.vonageEnabled,
+          vonageApiKey: d.vonageApiKey ?? prev.vonageApiKey,
+          vonageApiSecret: d.vonageApiSecret ?? prev.vonageApiSecret,
         }))
       }
     })
@@ -959,6 +1045,37 @@ export default function AdminSettingsPage() {
       { key: 'structuredDataOrgUrl', value: seoSettings.structuredDataOrgUrl, group: 'seo', isPublic: true },
       { key: 'structuredDataSocialProfiles', value: seoSettings.structuredDataSocialProfiles, group: 'seo', isPublic: true },
       { key: 'robotsTxtContent', value: seoSettings.robotsTxtContent, group: 'seo', isPublic: true },
+      // eSIM Providers
+      { key: 'esimDefaultProvider', value: esimSettings.esimDefaultProvider, group: 'api', isPublic: false },
+      { key: 'esimGoEnabled', value: esimSettings.esimGoEnabled, group: 'api', isPublic: true },
+      { key: 'esimGoApiKey', value: esimSettings.esimGoApiKey, group: 'api', isPublic: false },
+      { key: 'airaloEnabled', value: esimSettings.airaloEnabled, group: 'api', isPublic: true },
+      { key: 'airaloMode', value: esimSettings.airaloMode, group: 'api', isPublic: false },
+      { key: 'airaloSandboxClientId', value: esimSettings.airaloSandboxClientId, group: 'api', isPublic: false },
+      { key: 'airaloSandboxClientSecret', value: esimSettings.airaloSandboxClientSecret, group: 'api', isPublic: false },
+      { key: 'airaloProductionClientId', value: esimSettings.airaloProductionClientId, group: 'api', isPublic: false },
+      { key: 'airaloProductionClientSecret', value: esimSettings.airaloProductionClientSecret, group: 'api', isPublic: false },
+      // MobiMatter
+      { key: 'mobimatterEnabled', value: esimSettings.mobimatterEnabled, group: 'api', isPublic: true },
+      { key: 'mobimatterMerchantId', value: esimSettings.mobimatterMerchantId, group: 'api', isPublic: false },
+      { key: 'mobimatterApiKey', value: esimSettings.mobimatterApiKey, group: 'api', isPublic: false },
+      // Voice eSIM Providers (with phone number, calls, SMS)
+      { key: 'voiceEsimDefaultProvider', value: voiceEsimSettings.voiceEsimDefaultProvider, group: 'api', isPublic: false },
+      { key: 'telnyxEnabled', value: voiceEsimSettings.telnyxEnabled, group: 'api', isPublic: true },
+      { key: 'telnyxApiKey', value: voiceEsimSettings.telnyxApiKey, group: 'api', isPublic: false },
+      { key: 'alosimEnabled', value: voiceEsimSettings.alosimEnabled, group: 'api', isPublic: true },
+      { key: 'alosimApiKey', value: voiceEsimSettings.alosimApiKey, group: 'api', isPublic: false },
+      { key: 'twiseEnabled', value: voiceEsimSettings.twiseEnabled, group: 'api', isPublic: true },
+      { key: 'twiseApiKey', value: voiceEsimSettings.twiseApiKey, group: 'api', isPublic: false },
+      // Virtual Numbers
+      { key: 'virtualNumbersEnabled', value: virtualNumberSettings.virtualNumbersEnabled, group: 'api', isPublic: true },
+      { key: 'virtualNumbersProvider', value: virtualNumberSettings.virtualNumbersProvider, group: 'api', isPublic: false },
+      { key: 'plivoEnabled', value: virtualNumberSettings.plivoEnabled, group: 'api', isPublic: true },
+      { key: 'plivoAuthId', value: virtualNumberSettings.plivoAuthId, group: 'api', isPublic: false },
+      { key: 'plivoAuthToken', value: virtualNumberSettings.plivoAuthToken, group: 'api', isPublic: false },
+      { key: 'vonageEnabled', value: virtualNumberSettings.vonageEnabled, group: 'api', isPublic: true },
+      { key: 'vonageApiKey', value: virtualNumberSettings.vonageApiKey, group: 'api', isPublic: false },
+      { key: 'vonageApiSecret', value: virtualNumberSettings.vonageApiSecret, group: 'api', isPublic: false },
     ]
 
     const result = await settingsApi.updateSettings(settingsToSave)
@@ -2866,6 +2983,549 @@ export default function AdminSettingsPage() {
                         />
                         <p className="text-xs text-slate-600">For crypto rates (BTC, ETH, BNB, SOL, USDT)</p>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* eSIM Providers Configuration */}
+                  <div className="border-t border-[#2a2a2a] pt-6">
+                    <h3 className="text-white font-medium mb-4">eSIM Providers</h3>
+                    <p className="text-slate-500 text-sm mb-4">Configure providers for selling travel eSIM data plans. Enable at least one provider to offer eSIMs.</p>
+
+                    {/* Default Provider */}
+                    <div className="mb-6">
+                      <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
+                      <select
+                        value={esimSettings.esimDefaultProvider}
+                        onChange={(e) => setEsimSettings({ ...esimSettings, esimDefaultProvider: e.target.value as 'esimgo' | 'airalo' | 'mobimatter' })}
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      >
+                        <option value="esimgo">eSIM Go</option>
+                        <option value="airalo">Airalo</option>
+                        <option value="mobimatter">MobiMatter</option>
+                      </select>
+                    </div>
+
+                    {/* eSIM Go */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <Icon name="sim-card" size={20} className="text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">eSIM Go</p>
+                            <p className="text-slate-500 text-sm">No minimum order, good for testing</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEsimSettings({ ...esimSettings, esimGoEnabled: !esimSettings.esimGoEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${esimSettings.esimGoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${esimSettings.esimGoEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {esimSettings.esimGoEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a]">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">API Key</label>
+                            <div className="relative">
+                              <input
+                                type={showServiceSecrets.esimGoApiKey ? 'text' : 'password'}
+                                value={esimSettings.esimGoApiKey}
+                                onChange={(e) => setEsimSettings({ ...esimSettings, esimGoApiKey: e.target.value })}
+                                placeholder="Your eSIM Go API key"
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowServiceSecrets(prev => ({ ...prev, esimGoApiKey: !prev.esimGoApiKey }))}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                              >
+                                <Icon name={showServiceSecrets.esimGoApiKey ? 'eye-off' : 'eye'} size={16} />
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-600">Get your API key at <a href="https://esimgo.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">esimgo.com</a></p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Airalo */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                            <Icon name="globe" size={20} className="text-green-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Airalo</p>
+                            <p className="text-slate-500 text-sm">Best coverage, recommended for production</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEsimSettings({ ...esimSettings, airaloEnabled: !esimSettings.airaloEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${esimSettings.airaloEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${esimSettings.airaloEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {esimSettings.airaloEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
+                          {/* Mode Toggle */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
+                              <button
+                                type="button"
+                                onClick={() => setEsimSettings({ ...esimSettings, airaloMode: 'sandbox' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${esimSettings.airaloMode === 'sandbox' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Sandbox
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEsimSettings({ ...esimSettings, airaloMode: 'production' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${esimSettings.airaloMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Production
+                              </button>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${esimSettings.airaloMode === 'sandbox' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                              {esimSettings.airaloMode === 'sandbox' ? 'SANDBOX' : 'PRODUCTION'}
+                            </span>
+                          </div>
+
+                          {/* Credentials based on mode */}
+                          {(() => {
+                            const prefix = esimSettings.airaloMode === 'sandbox' ? 'airaloSandbox' : 'airaloProduction'
+                            return (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <label className="text-sm font-medium text-slate-300">Client ID</label>
+                                  <input
+                                    type="text"
+                                    value={esimSettings[`${prefix}ClientId` as keyof typeof esimSettings] as string}
+                                    onChange={(e) => setEsimSettings({ ...esimSettings, [`${prefix}ClientId`]: e.target.value })}
+                                    placeholder="Your Airalo Client ID"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-sm font-medium text-slate-300">Client Secret</label>
+                                  <div className="relative">
+                                    <input
+                                      type={showServiceSecrets[`${prefix}ClientSecret`] ? 'text' : 'password'}
+                                      value={esimSettings[`${prefix}ClientSecret` as keyof typeof esimSettings] as string}
+                                      onChange={(e) => setEsimSettings({ ...esimSettings, [`${prefix}ClientSecret`]: e.target.value })}
+                                      placeholder="Your Airalo Client Secret"
+                                      className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowServiceSecrets(prev => ({ ...prev, [`${prefix}ClientSecret`]: !prev[`${prefix}ClientSecret`] }))}
+                                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                    >
+                                      <Icon name={showServiceSecrets[`${prefix}ClientSecret`] ? 'eye-off' : 'eye'} size={16} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })()}
+                          <p className="text-xs text-slate-600">Apply at <a href="https://partners.airalo.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">partners.airalo.com</a></p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* MobiMatter */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mt-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                            <Icon name="globe" size={20} className="text-purple-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">MobiMatter</p>
+                            <p className="text-slate-500 text-sm">150+ countries, REST API integration</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEsimSettings({ ...esimSettings, mobimatterEnabled: !esimSettings.mobimatterEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${esimSettings.mobimatterEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${esimSettings.mobimatterEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {esimSettings.mobimatterEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">Merchant ID</label>
+                              <input
+                                type="text"
+                                value={esimSettings.mobimatterMerchantId}
+                                onChange={(e) => setEsimSettings({ ...esimSettings, mobimatterMerchantId: e.target.value })}
+                                placeholder="Your MobiMatter Merchant ID"
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">API Key</label>
+                              <div className="relative">
+                                <input
+                                  type={showServiceSecrets.mobimatterApiKey ? 'text' : 'password'}
+                                  value={esimSettings.mobimatterApiKey}
+                                  onChange={(e) => setEsimSettings({ ...esimSettings, mobimatterApiKey: e.target.value })}
+                                  placeholder="Your MobiMatter API Key"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, mobimatterApiKey: !prev.mobimatterApiKey }))}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                  <Icon name={showServiceSecrets.mobimatterApiKey ? 'eye-off' : 'eye'} size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600">Get your credentials at <a href="https://mobimatter.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mobimatter.com</a> ($250 minimum wallet top-up required)</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Voice eSIM Providers Configuration */}
+                  <div className="border-t border-[#2a2a2a] pt-6">
+                    <h3 className="text-white font-medium mb-4">Voice eSIM Providers</h3>
+                    <p className="text-slate-500 text-sm mb-4">Configure providers for eSIMs with phone numbers, calls, and SMS capability (for bank verification, etc.).</p>
+
+                    {/* Default Voice eSIM Provider */}
+                    <div className="mb-6">
+                      <label className="text-sm font-medium text-slate-300 mb-2 block">Default Voice eSIM Provider</label>
+                      <select
+                        value={voiceEsimSettings.voiceEsimDefaultProvider}
+                        onChange={(e) => setVoiceEsimSettings({ ...voiceEsimSettings, voiceEsimDefaultProvider: e.target.value as 'telnyx' | 'alosim' | 'twise' })}
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      >
+                        <option value="telnyx">Telnyx</option>
+                        <option value="alosim">aloSIM</option>
+                        <option value="twise">Twise</option>
+                      </select>
+                    </div>
+
+                    {/* Telnyx */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
+                            <Icon name="phone-call" size={20} className="text-teal-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Telnyx</p>
+                            <p className="text-slate-500 text-sm">eSIMs with phone numbers for calls & SMS</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setVoiceEsimSettings({ ...voiceEsimSettings, telnyxEnabled: !voiceEsimSettings.telnyxEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${voiceEsimSettings.telnyxEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${voiceEsimSettings.telnyxEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {voiceEsimSettings.telnyxEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a]">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">API Key</label>
+                            <div className="relative">
+                              <input
+                                type={showServiceSecrets.telnyxApiKey ? 'text' : 'password'}
+                                value={voiceEsimSettings.telnyxApiKey}
+                                onChange={(e) => setVoiceEsimSettings({ ...voiceEsimSettings, telnyxApiKey: e.target.value })}
+                                placeholder="Your Telnyx API key"
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowServiceSecrets(prev => ({ ...prev, telnyxApiKey: !prev.telnyxApiKey }))}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                              >
+                                <Icon name={showServiceSecrets.telnyxApiKey ? 'eye-off' : 'eye'} size={16} />
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-600">Get your API key at <a href="https://telnyx.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">telnyx.com</a></p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* aloSIM */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                            <Icon name="phone-call" size={20} className="text-cyan-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">aloSIM</p>
+                            <p className="text-slate-500 text-sm">Voice-enabled eSIMs for travel</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setVoiceEsimSettings({ ...voiceEsimSettings, alosimEnabled: !voiceEsimSettings.alosimEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${voiceEsimSettings.alosimEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${voiceEsimSettings.alosimEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {voiceEsimSettings.alosimEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a]">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">API Key</label>
+                            <div className="relative">
+                              <input
+                                type={showServiceSecrets.alosimApiKey ? 'text' : 'password'}
+                                value={voiceEsimSettings.alosimApiKey}
+                                onChange={(e) => setVoiceEsimSettings({ ...voiceEsimSettings, alosimApiKey: e.target.value })}
+                                placeholder="Your aloSIM API key"
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowServiceSecrets(prev => ({ ...prev, alosimApiKey: !prev.alosimApiKey }))}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                              >
+                                <Icon name={showServiceSecrets.alosimApiKey ? 'eye-off' : 'eye'} size={16} />
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-600">Get your API key at <a href="https://alosim.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">alosim.com</a></p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Twise */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                            <Icon name="phone-call" size={20} className="text-indigo-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Twise</p>
+                            <p className="text-slate-500 text-sm">Global voice eSIMs with verification support</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setVoiceEsimSettings({ ...voiceEsimSettings, twiseEnabled: !voiceEsimSettings.twiseEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${voiceEsimSettings.twiseEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${voiceEsimSettings.twiseEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {voiceEsimSettings.twiseEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a]">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">API Key</label>
+                            <div className="relative">
+                              <input
+                                type={showServiceSecrets.twiseApiKey ? 'text' : 'password'}
+                                value={voiceEsimSettings.twiseApiKey}
+                                onChange={(e) => setVoiceEsimSettings({ ...voiceEsimSettings, twiseApiKey: e.target.value })}
+                                placeholder="Your Twise API key"
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowServiceSecrets(prev => ({ ...prev, twiseApiKey: !prev.twiseApiKey }))}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                              >
+                                <Icon name={showServiceSecrets.twiseApiKey ? 'eye-off' : 'eye'} size={16} />
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-600">Get your API key at <a href="https://twise.io" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">twise.io</a></p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Virtual Numbers Configuration */}
+                  <div className="border-t border-[#2a2a2a] pt-6">
+                    <h3 className="text-white font-medium mb-4">Virtual Phone Numbers</h3>
+                    <p className="text-slate-500 text-sm mb-4">Configure providers for virtual phone number services. Enable at least one provider.</p>
+
+                    {/* Default VN Provider */}
+                    <div className="mb-6">
+                      <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
+                      <select
+                        value={virtualNumberSettings.virtualNumbersProvider}
+                        onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, virtualNumbersProvider: e.target.value as 'twilio' | 'plivo' | 'vonage' })}
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      >
+                        <option value="twilio">Twilio</option>
+                        <option value="plivo">Plivo</option>
+                        <option value="vonage">Vonage</option>
+                      </select>
+                    </div>
+
+                    {/* Twilio */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                            <Icon name="phone" size={20} className="text-red-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Twilio</p>
+                            <p className="text-slate-500 text-sm">100+ countries, best documentation</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, virtualNumbersEnabled: !virtualNumberSettings.virtualNumbersEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${virtualNumberSettings.virtualNumbersEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualNumberSettings.virtualNumbersEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {virtualNumberSettings.virtualNumbersEnabled && !twilioSettings.twilio_account_sid && (
+                        <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                          <p className="text-yellow-400 text-sm flex items-center gap-2">
+                            <Icon name="alert" size={16} />
+                            Configure Twilio credentials in the SMS section above.
+                          </p>
+                        </div>
+                      )}
+                      {virtualNumberSettings.virtualNumbersEnabled && twilioSettings.twilio_account_sid && (
+                        <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <p className="text-green-400 text-sm flex items-center gap-2">
+                            <Icon name="check" size={16} />
+                            Using Twilio credentials from SMS configuration.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Plivo */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                            <Icon name="phone" size={20} className="text-green-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Plivo</p>
+                            <p className="text-slate-500 text-sm">65+ countries, 30-40% cheaper than Twilio</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, plivoEnabled: !virtualNumberSettings.plivoEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${virtualNumberSettings.plivoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualNumberSettings.plivoEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {virtualNumberSettings.plivoEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a]">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">Auth ID</label>
+                              <input
+                                type="text"
+                                value={virtualNumberSettings.plivoAuthId}
+                                onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, plivoAuthId: e.target.value })}
+                                placeholder="Your Plivo Auth ID"
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">Auth Token</label>
+                              <div className="relative">
+                                <input
+                                  type={showServiceSecrets.plivoAuthToken ? 'text' : 'password'}
+                                  value={virtualNumberSettings.plivoAuthToken}
+                                  onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, plivoAuthToken: e.target.value })}
+                                  placeholder="Your Plivo Auth Token"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, plivoAuthToken: !prev.plivoAuthToken }))}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                  <Icon name={showServiceSecrets.plivoAuthToken ? 'eye-off' : 'eye'} size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600 mt-3">Get your credentials at <a href="https://console.plivo.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">console.plivo.com</a></p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Vonage */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                            <Icon name="phone" size={20} className="text-orange-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Vonage</p>
+                            <p className="text-slate-500 text-sm">65+ countries, multi-channel communication</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, vonageEnabled: !virtualNumberSettings.vonageEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${virtualNumberSettings.vonageEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualNumberSettings.vonageEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {virtualNumberSettings.vonageEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a]">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">API Key</label>
+                              <input
+                                type="text"
+                                value={virtualNumberSettings.vonageApiKey}
+                                onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, vonageApiKey: e.target.value })}
+                                placeholder="Your Vonage API Key"
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">API Secret</label>
+                              <div className="relative">
+                                <input
+                                  type={showServiceSecrets.vonageApiSecret ? 'text' : 'password'}
+                                  value={virtualNumberSettings.vonageApiSecret}
+                                  onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, vonageApiSecret: e.target.value })}
+                                  placeholder="Your Vonage API Secret"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, vonageApiSecret: !prev.vonageApiSecret }))}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                  <Icon name={showServiceSecrets.vonageApiSecret ? 'eye-off' : 'eye'} size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600 mt-3">Get your credentials at <a href="https://dashboard.vonage.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">dashboard.vonage.com</a></p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
