@@ -138,10 +138,10 @@ CREATE TABLE IF NOT EXISTS esim_inventory (
   -- Status
   status VARCHAR(20) DEFAULT 'available', -- 'available', 'reserved', 'sold', 'expired'
 
-  -- Purchase tracking
-  order_id UUID REFERENCES orders(id),
-  order_item_id UUID,
-  sold_to_user_id UUID REFERENCES users(id),
+  -- Purchase tracking (TEXT to match orders.id type)
+  order_id TEXT REFERENCES orders(id),
+  order_item_id TEXT,
+  sold_to_user_id TEXT REFERENCES users(id),
   reserved_at TIMESTAMP,
   sold_at TIMESTAMP,
 
@@ -174,10 +174,10 @@ CREATE INDEX IF NOT EXISTS idx_esim_inventory_order ON esim_inventory(order_id);
 -- =====================================================
 CREATE TABLE IF NOT EXISTS user_esims (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   plan_id UUID NOT NULL REFERENCES esim_plans(id),
-  order_id UUID NOT NULL REFERENCES orders(id),
-  order_item_id UUID,
+  order_id TEXT NOT NULL REFERENCES orders(id),
+  order_item_id TEXT,
 
   -- Source tracking
   source_type VARCHAR(20) NOT NULL,      -- 'api' or 'bulk'
@@ -238,8 +238,8 @@ CREATE INDEX IF NOT EXISTS idx_user_esims_plan ON user_esims(plan_id);
 CREATE TABLE IF NOT EXISTS esim_topups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_esim_id UUID NOT NULL REFERENCES user_esims(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id),
-  order_id UUID REFERENCES orders(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  order_id TEXT REFERENCES orders(id),
 
   -- Top-up details
   data_amount_gb DECIMAL(10,2) NOT NULL,
@@ -265,9 +265,9 @@ CREATE INDEX IF NOT EXISTS idx_esim_topups_user ON esim_topups(user_id);
 CREATE TABLE IF NOT EXISTS esim_provision_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   plan_id UUID NOT NULL REFERENCES esim_plans(id),
-  order_id UUID NOT NULL REFERENCES orders(id),
-  order_item_id UUID,
-  user_id UUID NOT NULL REFERENCES users(id),
+  order_id TEXT NOT NULL REFERENCES orders(id),
+  order_item_id TEXT,
+  user_id TEXT NOT NULL REFERENCES users(id),
 
   -- Provisioning attempt
   provider_id UUID REFERENCES esim_providers(id),
