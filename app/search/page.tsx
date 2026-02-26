@@ -8,6 +8,7 @@ import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
+import FilterSidebar, { FilterState } from '@/components/filters/FilterSidebar'
 import { searchApi, SearchResult, categoriesApi } from '@/lib/api'
 import { useCart } from '@/lib/cart-context'
 import { formatPrice } from '@/lib/currency'
@@ -28,9 +29,12 @@ function SearchContent() {
   const { addItem, showAddedToCartPopup } = useCart()
 
   const [sortBy, setSortBy] = useState<SortOption>('popular')
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(categoryParam ? [categoryParam] : [])
-  const [priceRange, setPriceRange] = useState(1000)
-  const [minRating, setMinRating] = useState(0)
+  const [activeFilters, setActiveFilters] = useState<FilterState>({
+    categories: categoryParam ? [categoryParam] : [],
+    tags: [],
+    priceRange: 1000,
+    minRating: 0,
+  })
   const [products, setProducts] = useState<SearchResult[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -61,10 +65,10 @@ function SearchContent() {
     }
 
     const result = await searchApi.searchProducts({
-      query: searchQuery || undefined,
-      categories: selectedCategories.length > 0 ? selectedCategories : undefined,
-      maxPrice: priceRange < 1000 ? priceRange : undefined,
-      minRating: minRating > 0 ? minRating : undefined,
+      q: searchQuery || undefined,
+      categories: activeFilters.categories.length > 0 ? activeFilters.categories : undefined,
+      maxPrice: activeFilters.priceRange < 1000 ? activeFilters.priceRange : undefined,
+      minRating: activeFilters.minRating > 0 ? activeFilters.minRating : undefined,
       sortBy: sortMap[sortBy],
       page,
       limit: 12,
@@ -85,7 +89,7 @@ function SearchContent() {
     }
 
     setIsLoading(false)
-  }, [searchQuery, selectedCategories, priceRange, minRating, sortBy, page])
+  }, [searchQuery, activeFilters, sortBy, page])
 
   useEffect(() => {
     fetchResults()
@@ -122,14 +126,10 @@ function SearchContent() {
     }, Number(product.price))
   }
 
-  const toggleCategory = (categorySlug: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(categorySlug)
-        ? prev.filter((c) => c !== categorySlug)
-        : [...prev, categorySlug]
-    )
+  // Reset page when filters change
+  useEffect(() => {
     setPage(1)
-  }
+  }, [activeFilters])
 
   const handleSortChange = (newSort: SortOption) => {
     setSortBy(newSort)
@@ -148,107 +148,25 @@ function SearchContent() {
         />
       </div>
 
+      {/* Mobile Filter Pills */}
+      <div className="lg:hidden mb-6">
+        <FilterSidebar
+          variant="inline"
+          onFilterChange={setActiveFilters}
+          categories={categories.map(c => ({ id: c.id, name: c.name, slug: c.slug }))}
+          sortBy={sortBy}
+          onSortChange={(v) => handleSortChange(v as SortOption)}
+        />
+      </div>
+
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Filter Sidebar */}
-        <aside className="w-full lg:w-72 flex-shrink-0 space-y-6">
-          <div className="bg-charcoal border border-border-dark rounded-xl p-6">
-            <h3 className="font-bold text-sm mb-6 uppercase tracking-wider text-slate-400">
-              Filters
-            </h3>
-
-            {/* Category Filter */}
-            <div className="mb-8">
-              <h4 className="text-sm font-semibold mb-4">Category</h4>
-              <div className="space-y-3">
-                {categories.map((category) => (
-                  <label key={category.id} className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedCategories.includes(category.slug)}
-                      onChange={() => toggleCategory(category.slug)}
-                      className="w-4 h-4 rounded border-border-dark bg-transparent text-primary focus:ring-primary focus:ring-offset-0"
-                    />
-                    <span className="text-sm text-slate-300 group-hover:text-white">
-                      {category.name}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Price Range */}
-            <div className="mb-8">
-              <h4 className="text-sm font-semibold mb-4">Price Range</h4>
-              <input
-                type="range"
-                min="0"
-                max="1000"
-                value={priceRange}
-                onChange={(e) => {
-                  setPriceRange(Number(e.target.value))
-                  setPage(1)
-                }}
-                className="w-full h-1.5 bg-border-dark rounded-lg appearance-none cursor-pointer accent-primary"
-              />
-              <div className="flex justify-between mt-3 text-xs text-slate-400">
-                <span>$0</span>
-                <span>{priceRange >= 1000 ? 'Any' : `$${priceRange}`}</span>
-              </div>
-            </div>
-
-            {/* Rating Filter */}
-            <div className="mb-8">
-              <h4 className="text-sm font-semibold mb-4">Rating</h4>
-              <div className="space-y-3">
-                {[4, 3, 2, 0].map((rating) => (
-                  <label
-                    key={rating}
-                    className="flex items-center gap-3 cursor-pointer group"
-                  >
-                    <input
-                      type="radio"
-                      name="rating"
-                      checked={minRating === rating}
-                      onChange={() => {
-                        setMinRating(rating)
-                        setPage(1)
-                      }}
-                      className="w-4 h-4 border-border-dark bg-transparent text-primary focus:ring-primary focus:ring-offset-0"
-                    />
-                    {rating > 0 ? (
-                      <div className="flex items-center gap-1 text-yellow-500">
-                        {[...Array(5)].map((_, i) => (
-                          <Icon
-                            key={i}
-                            name="star"
-                            size={12}
-                            className={i < rating ? 'text-yellow-500' : 'text-slate-600'}
-                          />
-                        ))}
-                        <span className="text-xs text-slate-300 ml-1">& Up</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-slate-300">Any Rating</span>
-                    )}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Clear Filters */}
-            <button
-              onClick={() => {
-                setSelectedCategories([])
-                setPriceRange(1000)
-                setMinRating(0)
-                setPage(1)
-              }}
-              className="w-full text-sm text-slate-400 hover:text-primary transition-colors"
-            >
-              Clear all filters
-            </button>
-          </div>
-        </aside>
+        {/* Desktop Filter Sidebar */}
+        <div className="hidden lg:block">
+          <FilterSidebar
+            onFilterChange={setActiveFilters}
+            categories={categories.map(c => ({ id: c.id, name: c.name, slug: c.slug }))}
+          />
+        </div>
 
         {/* Results Section */}
         <section className="flex-1">
@@ -345,7 +263,7 @@ function SearchContent() {
                 Try adjusting your search or filters to find what you&apos;re looking for.
               </p>
               <Link
-                href="/products"
+                href="/scripts"
                 className="inline-flex items-center gap-2 bg-primary text-black font-bold px-6 py-3 rounded-xl hover:brightness-105 transition-all"
               >
                 Browse All Products

@@ -9,6 +9,7 @@ import Icon from '@/components/ui/Icon'
 import { usersApi, UsersListResponse } from '@/lib/api/users'
 import { staffApi, StaffListResponse } from '@/lib/api/staff'
 import { rolesApi, Role } from '@/lib/api/roles'
+import { getAccessToken } from '@/lib/api/client'
 
 type Tab = 'users' | 'staff' | 'roles' | 'guest-purchases' | 'newsletter'
 
@@ -963,7 +964,7 @@ function NewsletterTab() {
       const params = new URLSearchParams({ page: String(currentPage) })
       if (searchQuery) params.set('search', searchQuery)
       const res = await fetch(`/api/admin/newsletter?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` },
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
       })
       return res.json()
     },

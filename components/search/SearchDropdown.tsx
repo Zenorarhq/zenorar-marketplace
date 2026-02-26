@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
-import { searchApi, AutocompleteResult } from '@/lib/api'
+import { searchApi, AutocompleteResult, TrendingProduct, PopularCategory } from '@/lib/api'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface SearchDropdownProps {
@@ -14,13 +14,6 @@ interface SearchDropdownProps {
   inputRef?: React.RefObject<HTMLInputElement>
 }
 
-const popularCategories = [
-  { label: 'Scripts', href: '/scripts' },
-  { label: 'eSIMs', href: '/esim' },
-  { label: 'Virtual Numbers', href: '/virtual-numbers' },
-  { label: 'Gift Cards', href: '/gift-cards' },
-]
-
 export default function SearchDropdown({
   isOpen,
   onClose,
@@ -28,11 +21,13 @@ export default function SearchDropdown({
   onViewAllResults,
   inputRef,
 }: SearchDropdownProps) {
+  const router = useRouter()
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { formatPrice } = usePreferences()
   const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteResult | null>(null)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
-  const [trendingProducts, setTrendingProducts] = useState<string[]>([])
+  const [trendingProducts, setTrendingProducts] = useState<TrendingProduct[]>([])
+  const [popularCategories, setPopularCategories] = useState<PopularCategory[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   // Load recent searches from localStorage
@@ -49,15 +44,22 @@ export default function SearchDropdown({
     }
   }, [])
 
-  // Fetch trending products on mount
+  // Fetch trending products and popular categories on mount
   useEffect(() => {
     const fetchTrending = async () => {
-      const result = await searchApi.getTrending()
+      const result = await searchApi.getTrending(5)
       if (result.success && result.data) {
-        setTrendingProducts(result.data.slice(0, 5))
+        setTrendingProducts(result.data)
+      }
+    }
+    const fetchCategories = async () => {
+      const result = await searchApi.getPopularCategories(6)
+      if (result.success && result.data) {
+        setPopularCategories(result.data)
       }
     }
     fetchTrending()
+    fetchCategories()
   }, [])
 
   // Debounced autocomplete
@@ -177,22 +179,22 @@ export default function SearchDropdown({
                 </h5>
                 <div className="space-y-1">
                   {autocompleteResults.products.map((product) => (
-                    <Link
+                    <button
                       key={product.id}
-                      href={`/products/${product.slug}`}
-                      prefetch={true}
+                      type="button"
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
+                        router.push(`/products/${product.slug}`)
                       }}
-                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
                       <Icon name="package" size={18} className="text-slate-500 group-hover:text-primary" />
                       <div className="flex-1 min-w-0">
                         <div className="truncate">{product.name}</div>
                         <div className="text-xs text-slate-500">{formatPrice(Number(product.price))}</div>
                       </div>
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -206,18 +208,18 @@ export default function SearchDropdown({
                 </h5>
                 <div className="flex flex-wrap gap-2 px-2">
                   {autocompleteResults.categories.map((category) => (
-                    <Link
+                    <button
                       key={category.id}
-                      href={`/search?category=${category.slug}`}
-                      prefetch={true}
+                      type="button"
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
+                        router.push(`/search?category=${category.slug}`)
                       }}
                       className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
                     >
                       {category.name}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -231,19 +233,19 @@ export default function SearchDropdown({
                 </h5>
                 <div className="space-y-1">
                   {autocompleteResults.suggestions.map((suggestion, idx) => (
-                    <Link
+                    <button
                       key={idx}
-                      href={`/search?q=${encodeURIComponent(suggestion)}`}
-                      prefetch={true}
+                      type="button"
                       onClick={() => {
                         saveRecentSearch(suggestion)
                         onClose()
+                        router.push(`/search?q=${encodeURIComponent(suggestion)}`)
                       }}
-                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
                       <Icon name="search" size={18} className="text-slate-500 group-hover:text-primary" />
                       {suggestion}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -262,16 +264,18 @@ export default function SearchDropdown({
                 </h5>
                 <div className="space-y-1">
                   {recentSearches.map((search, idx) => (
-                    <Link
+                    <button
                       key={idx}
-                      href={`/search?q=${encodeURIComponent(search)}`}
-                      prefetch={true}
-                      onClick={onClose}
-                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        router.push(`/search?q=${encodeURIComponent(search)}`)
+                      }}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
                       <Icon name="history" size={18} className="text-slate-500 group-hover:text-primary" />
                       {search}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -281,47 +285,53 @@ export default function SearchDropdown({
             {trendingProducts.length > 0 && (
               <div className="p-4 border-b border-white/5">
                 <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
-                  Trending Searches
+                  Trending Products
                 </h5>
                 <div className="space-y-1">
-                  {trendingProducts.map((product, idx) => (
-                    <Link
-                      key={idx}
-                      href={`/search?q=${encodeURIComponent(product)}`}
-                      prefetch={true}
+                  {trendingProducts.map((product) => (
+                    <button
+                      key={product.id}
+                      type="button"
                       onClick={() => {
-                        saveRecentSearch(product)
                         onClose()
+                        router.push(`/products/${product.slug}`)
                       }}
-                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group"
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
                       <Icon name="fire" size={18} className="text-orange-500" />
-                      {product}
-                    </Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate">{product.name}</div>
+                        <div className="text-xs text-slate-500">{formatPrice(Number(product.price))}</div>
+                      </div>
+                    </button>
                   ))}
                 </div>
               </div>
             )}
 
             {/* Popular Categories */}
-            <div className="p-4">
-              <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
-                Popular Categories
-              </h5>
-              <div className="flex flex-wrap gap-2 px-2">
-                {popularCategories.map((category) => (
-                  <Link
-                    key={category.label}
-                    href={category.href}
-                    prefetch={true}
-                    onClick={onClose}
-                    className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
-                  >
-                    {category.label}
-                  </Link>
-                ))}
+            {popularCategories.length > 0 && (
+              <div className="p-4">
+                <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                  Popular Categories
+                </h5>
+                <div className="flex flex-wrap gap-2 px-2">
+                  {popularCategories.map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        router.push(`/search?category=${category.slug}`)
+                      }}
+                      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
 

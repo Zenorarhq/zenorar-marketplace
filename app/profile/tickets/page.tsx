@@ -53,6 +53,7 @@ export default function TicketsPage() {
   // Reply state
   const [replyContent, setReplyContent] = useState('')
   const [isReplying, setIsReplying] = useState(false)
+  const [replyError, setReplyError] = useState('')
 
   // Fetch user's tickets from Railway API
   const { data: tickets = [], isLoading } = useQuery({
@@ -75,6 +76,7 @@ export default function TicketsPage() {
       return null
     },
     enabled: !!selectedTicketId && showViewModal,
+    refetchInterval: showViewModal ? 10000 : false,
   })
 
   // Filter tickets
@@ -121,15 +123,18 @@ export default function TicketsPage() {
   async function handleReply() {
     if (!replyContent.trim() || !selectedTicketId) return
     setIsReplying(true)
+    setReplyError('')
     try {
       const result = await ticketsApi.addResponse(selectedTicketId, replyContent, false)
       if (result.success) {
         setReplyContent('')
         queryClient.invalidateQueries({ queryKey: ['ticket-detail', selectedTicketId] })
         queryClient.invalidateQueries({ queryKey: ['my-tickets'] })
+      } else {
+        setReplyError(result.error || 'Failed to send reply')
       }
     } catch {
-      // silent fail
+      setReplyError('Failed to send reply. Please try again.')
     } finally {
       setIsReplying(false)
     }
@@ -140,6 +145,7 @@ export default function TicketsPage() {
     setSelectedTicketId(ticketId)
     setShowViewModal(true)
     setReplyContent('')
+    setReplyError('')
   }
 
   const getStatusBadge = (status: string) => {
@@ -444,14 +450,6 @@ export default function TicketsPage() {
                   placeholder="Describe your issue in detail..."
                 ></textarea>
               </div>
-              <div>
-                <label className="text-sm font-semibold text-slate-300 mb-2 block">Attachments (optional)</label>
-                <div className="border-2 border-dashed border-border-dark rounded-xl p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                  <Icon name="upload" size={32} className="text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400 text-sm">Click to upload or drag and drop</p>
-                  <p className="text-slate-600 text-xs mt-1">PNG, JPG, PDF up to 10MB</p>
-                </div>
-              </div>
             </div>
             <div className="p-4 sm:p-6 border-t border-border-dark flex gap-3 justify-end">
               <button
@@ -540,8 +538,13 @@ export default function TicketsPage() {
                   )}
 
                   {/* Reply Form (only for open/in-progress tickets) */}
-                  {mapStatus(ticketDetail.status) !== 'closed' && mapStatus(ticketDetail.status) !== 'resolved' && (
+                  {mapStatus(ticketDetail.status) !== 'closed' && mapStatus(ticketDetail.status) !== 'resolved' ? (
                     <div className="pt-4 border-t border-border-dark">
+                      {replyError && (
+                        <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-red-400 text-sm mb-3">
+                          {replyError}
+                        </div>
+                      )}
                       <textarea
                         rows={3}
                         value={replyContent}
@@ -558,6 +561,35 @@ export default function TicketsPage() {
                           {isReplying ? 'Sending...' : 'Send Reply'}
                         </button>
                       </div>
+                    </div>
+                  ) : (
+                    <div className="pt-4 border-t border-border-dark text-center text-slate-500 text-sm">
+                      This ticket is {mapStatus(ticketDetail.status)}.
+                      <button
+                        onClick={async (e) => {
+                          const btn = e.currentTarget
+                          const originalText = btn.textContent
+                          btn.textContent = 'Reopening...'
+                          btn.disabled = true
+                          try {
+                            const result = await ticketsApi.reopen(ticketDetail.id)
+                            if (result.success) {
+                              queryClient.invalidateQueries({ queryKey: ['ticket-detail', selectedTicketId] })
+                              queryClient.invalidateQueries({ queryKey: ['my-tickets'] })
+                            } else {
+                              alert(result.error || 'Failed to reopen ticket')
+                            }
+                          } catch {
+                            alert('Failed to reopen ticket. Please try again.')
+                          } finally {
+                            btn.textContent = originalText
+                            btn.disabled = false
+                          }
+                        }}
+                        className="ml-2 text-primary hover:text-primary/80 font-medium disabled:opacity-50"
+                      >
+                        Reopen ticket
+                      </button>
                     </div>
                   )}
                 </div>

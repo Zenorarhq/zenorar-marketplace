@@ -10,12 +10,14 @@ interface ViewTicketThreadModalProps {
   isOpen: boolean
   onClose: () => void
   ticketId: string | null
+  onSuccess?: () => void
 }
 
-export default function ViewTicketThreadModal({ isOpen, onClose, ticketId }: ViewTicketThreadModalProps) {
+export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuccess }: ViewTicketThreadModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [ticket, setTicket] = useState<TicketDetail | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
     if (isOpen && ticketId) {
@@ -238,7 +240,43 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId }: Vie
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-border-dark">
+        <div className="flex items-center justify-between p-6 border-t border-border-dark">
+          <div className="flex gap-2">
+            {ticket && (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') && (
+              <button
+                onClick={async () => {
+                  setActionLoading(true)
+                  const result = await ticketsApi.reopen(ticket.id)
+                  setActionLoading(false)
+                  if (result.success) {
+                    onSuccess?.()
+                    loadTicket()
+                  }
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2 text-sm font-semibold text-primary border border-primary/30 rounded-lg hover:bg-primary/10 transition-colors disabled:opacity-50"
+              >
+                Reopen
+              </button>
+            )}
+            {ticket && ticket.status === 'RESOLVED' && (
+              <button
+                onClick={async () => {
+                  setActionLoading(true)
+                  const result = await ticketsApi.close(ticket.id)
+                  setActionLoading(false)
+                  if (result.success) {
+                    onSuccess?.()
+                    loadTicket()
+                  }
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2 text-sm font-semibold text-slate-300 border border-border-dark rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
+              >
+                Close Ticket
+              </button>
+            )}
+          </div>
           <button
             onClick={handleClose}
             className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors"

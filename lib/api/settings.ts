@@ -83,4 +83,25 @@ export const settingsApi = {
       method: 'POST',
     })
   },
+
+  async getAuditLog(page = 1, limit = 50) {
+    return apiFetch<any>(`/settings/audit-log?page=${page}&limit=${limit}`)
+  },
+
+  async exportSettings() {
+    return apiFetch<any[]>('/settings/export')
+  },
+
+  async importSettings(settings: any[]) {
+    return apiFetch<void>('/settings/import', {
+      method: 'POST',
+      body: JSON.stringify({ settings }),
+    })
+  },
+
+  async testPaymentConnection(provider: string) {
+    return apiFetch<{ message: string }>(`/settings/test-payment/${provider}`, {
+      method: 'POST',
+    })
+  },
 }

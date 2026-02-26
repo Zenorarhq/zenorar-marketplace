@@ -21,7 +21,6 @@ interface Upload {
   size: string
   uploadedBy: string
   uploadedAt: string
-  usedIn: number
 }
 
 const filterTabs: { id: UploadType; label: string; icon: string }[] = [
@@ -54,6 +53,7 @@ export default function AdminLibraryPage() {
   const tz = useTimezone()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<UploadType>('all')
+  const [currentPage, setCurrentPage] = useState(1)
   const [editingUpload, setEditingUpload] = useState<MediaFile | null>(null)
   const [editForm, setEditForm] = useState({ title: '', alt: '', description: '' })
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -62,10 +62,10 @@ export default function AdminLibraryPage() {
   const [previewingUpload, setPreviewingUpload] = React.useState<MediaFile | null>(null)
 
   // Fetch media files
-  const { data: mediaFiles = [], isLoading } = useQuery({
-    queryKey: ['media-files', activeFilter, searchQuery],
+  const { data: mediaData, isLoading } = useQuery({
+    queryKey: ['media-files', activeFilter, searchQuery, currentPage],
     queryFn: async () => {
-      const filters: any = {}
+      const filters: any = { page: currentPage, limit: 50 }
       if (activeFilter !== 'all') {
         // Convert plural lowercase to singular uppercase (images -> IMAGE)
         const typeMap: Record<string, string> = {
@@ -80,11 +80,13 @@ export default function AdminLibraryPage() {
       }
       const result = await mediaApi.list(filters)
       if (result.success && result.data) {
-        return result.data
+        return { files: result.data, pagination: result.pagination }
       }
-      return []
+      return { files: [], pagination: undefined }
     },
   })
+  const mediaFiles = mediaData?.files ?? []
+  const pagination = mediaData?.pagination
 
   // Fetch media stats
   const { data: stats = null } = useQuery({
@@ -143,7 +145,7 @@ export default function AdminLibraryPage() {
   const handleEditClick = (file: MediaFile) => {
     setEditingUpload(file)
     setEditForm({
-      title: file.title || '',
+      title: file.name || '',
       alt: file.alt || '',
       description: file.description || '',
     })
@@ -179,7 +181,6 @@ export default function AdminLibraryPage() {
     size: formatFileSize(file.size),
     uploadedBy: file.uploadedBy?.name || 'Unknown',
     uploadedAt: formatDateShort(file.createdAt, tz),
-    usedIn: 0, // TODO: Track usage count in backend
   }))
 
   const filteredUploads = uploads
@@ -288,7 +289,7 @@ export default function AdminLibraryPage() {
               {filterTabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveFilter(tab.id)}
+                  onClick={() => { setActiveFilter(tab.id); setCurrentPage(1) }}
                   className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                     activeFilter === tab.id
                       ? 'bg-primary text-black'
@@ -312,7 +313,7 @@ export default function AdminLibraryPage() {
                 type="text"
                 placeholder="Search files..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
                 className="w-full sm:w-64 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
               />
             </div>
@@ -389,7 +390,7 @@ export default function AdminLibraryPage() {
                       </p>
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-500">{upload.size}</span>
-                        <span className="text-slate-500">{upload.usedIn} uses</span>
+                        <span className="text-slate-500 capitalize">{upload.type}</span>
                       </div>
                     </div>
                   </div>
@@ -399,23 +400,28 @@ export default function AdminLibraryPage() {
           </div>
 
           {/* Pagination */}
-          {filteredUploads.length > 0 && (
+          {filteredUploads.length > 0 && pagination && (
             <div className="px-6 py-4 bg-charcoal border-t border-[#1f1f1f] flex items-center justify-between">
               <p className="text-xs text-slate-500">
-                Showing <span className="font-bold">1-{filteredUploads.length}</span> of{' '}
-                <span className="font-bold">{uploads.length}</span> files
+                Showing <span className="font-bold">{(currentPage - 1) * pagination.limit + 1}-{Math.min(currentPage * pagination.limit, pagination.total)}</span> of{' '}
+                <span className="font-bold">{pagination.total}</span> files
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   className="p-2 rounded bg-charcoal border border-border-dark text-white hover:bg-slate-700 disabled:opacity-50"
-                  disabled
+                  disabled={currentPage <= 1}
                 >
                   <Icon name="chevron-left" size={18} />
                 </button>
-                <button className="px-3 py-1 rounded bg-primary text-background-dark font-bold text-xs">
-                  1
-                </button>
-                <button className="p-2 rounded bg-charcoal border border-border-dark text-white hover:bg-slate-700">
+                <span className="px-3 py-1 text-white text-xs font-bold">
+                  {currentPage} / {pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+                  className="p-2 rounded bg-charcoal border border-border-dark text-white hover:bg-slate-700 disabled:opacity-50"
+                  disabled={currentPage >= pagination.totalPages}
+                >
                   <Icon name="chevron-right" size={18} />
                 </button>
               </div>

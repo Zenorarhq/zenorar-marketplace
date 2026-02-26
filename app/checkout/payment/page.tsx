@@ -674,16 +674,13 @@ export default function PaymentPage() {
     }).catch(() => {})
 
     // Record discount usage if a discount was applied
+    // Note: discount is now applied and usage incremented server-side during order creation.
+    // This is a fallback in case the discount wasn't linked to the order for any reason.
     if (discountCode && discountAmount > 0) {
-      apiFetch('/orders/apply-discount', {
+      apiFetch('/discounts/apply-to-order', {
         method: 'POST',
         body: JSON.stringify({ orderId: orderResult.data.id, discountCode, discountAmount }),
       }).catch(err => console.error('Failed to save discount to order:', err))
-
-      apiFetch('/discounts/use', {
-        method: 'POST',
-        body: JSON.stringify({ code: discountCode }),
-      }).catch(err => console.error('Failed to increment discount usage:', err))
     }
 
     return orderResult.data

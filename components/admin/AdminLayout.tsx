@@ -25,7 +25,6 @@ const navItems = [
   { href: '/admin/library', label: 'Upload Library', icon: 'upload', permission: 'manage_content' },
   { href: '/admin/chat', label: 'Live Chat', icon: 'chat', permission: 'view_chat' },
   { href: '/admin/tickets', label: 'Tickets', icon: 'ticket', permission: 'view_tickets' },
-  { href: '/admin/reports', label: 'Reports', icon: 'chart', permission: 'view_analytics' },
   { href: '/admin/user-management', label: 'User Management', icon: 'people', permissions: ['view_users', 'view_staff', 'manage_roles'] },
   { href: '/admin/referrals', label: 'Referrals', icon: 'user-group', permission: 'view_analytics' },
   { href: '/admin/settings', label: 'Settings', icon: 'settings', permission: 'manage_settings' },

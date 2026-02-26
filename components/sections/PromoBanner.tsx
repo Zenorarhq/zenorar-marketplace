@@ -16,8 +16,6 @@ export default function PromoBanner({ config }: { config?: Record<string, any> }
 
   const hasPromoCode = !!promoBannerCode
 
-  if (!isLoaded) return null
-
   // Validate the promo code on mount to get real discount info
   useEffect(() => {
     if (!promoBannerCode) return
@@ -27,6 +25,8 @@ export default function PromoBanner({ config }: { config?: Record<string, any> }
       }
     }).catch(() => {})
   }, [promoBannerCode])
+
+  if (!isLoaded || !hasPromoCode) return null
 
   const discountLabel = discount
     ? discount.type === 'PERCENTAGE'

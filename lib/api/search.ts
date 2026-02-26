@@ -61,6 +61,21 @@ export interface AutocompleteResult {
   suggestions: string[]
 }
 
+export interface TrendingProduct {
+  id: string
+  name: string
+  slug: string
+  price: number
+  image: string | null
+}
+
+export interface PopularCategory {
+  id: string
+  name: string
+  slug: string
+  productCount: number
+}
+
 export interface GlobalSearchResult {
   products: Array<{
     type: 'product'
@@ -98,7 +113,11 @@ export const searchApi = {
   },
 
   async getTrending(limit = 10) {
-    return apiFetch<string[]>(`/search/trending?limit=${limit}`)
+    return apiFetch<TrendingProduct[]>(`/search/trending?limit=${limit}`)
+  },
+
+  async getPopularCategories(limit = 6) {
+    return apiFetch<PopularCategory[]>(`/search/popular-categories?limit=${limit}`)
   },
 
   async getCategorySuggestions(categorySlug: string, limit = 10) {

@@ -25,6 +25,7 @@ export default function ProfileSettingsPage() {
   const [publicProfile, setPublicProfile] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
   // Initialize form data from user when available
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function ProfileSettingsPage() {
       if (result.success && result.data) {
         setEmailNotifications(result.data.emailNotifications)
         setSavedEmailNotifications(result.data.emailNotifications)
+        setPublicProfile(result.data.profilePublic)
       }
     }).catch(() => {})
   }, [])
@@ -152,6 +154,7 @@ export default function ProfileSettingsPage() {
     e.preventDefault()
     setIsLoading(true)
 
+    setError('')
     try {
       const [profileResult] = await Promise.all([
         profileApi.update({
@@ -160,6 +163,7 @@ export default function ProfileSettingsPage() {
         }),
         profileApi.updatePreferences({
           emailNotifications,
+          profilePublic: publicProfile,
         }),
       ])
 
@@ -169,7 +173,7 @@ export default function ProfileSettingsPage() {
         setSaved(true)
       }
     } catch {
-      // Handle error
+      setError('Failed to save changes. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -353,6 +357,12 @@ export default function ProfileSettingsPage() {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="pt-4 flex flex-col-reverse sm:flex-row items-center justify-end gap-3 sm:gap-4">

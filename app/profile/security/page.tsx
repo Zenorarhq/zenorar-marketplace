@@ -70,6 +70,7 @@ export default function SecurityPage() {
     setIsLoading(false)
     if (res.success) {
       setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -584,6 +585,14 @@ export default function SecurityPage() {
         )}
         <button
           type="button"
+          onClick={() => {
+            setCurrentPassword('')
+            setNewPassword('')
+            setConfirmPassword('')
+            setSaved(false)
+            setPasswordError(null)
+            setShowPasswords({ current: false, new: false, confirm: false })
+          }}
           className="text-slate-400 font-bold px-4 py-3 sm:px-6 sm:py-3.5 rounded-xl hover:text-white transition-colors"
         >
           Cancel

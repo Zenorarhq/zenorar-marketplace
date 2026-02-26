@@ -32,6 +32,12 @@ export default function AdminChatPage() {
 
   // Search
   const [searchQuery, setSearchQuery] = useState('')
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Pagination
+  const [convPage, setConvPage] = useState(1)
+  const [convTotal, setConvTotal] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   // Chat
   const [replyInput, setReplyInput] = useState('')
@@ -44,6 +50,8 @@ export default function AdminChatPage() {
   const [showCannedEditor, setShowCannedEditor] = useState(false)
   const [newCannedReply, setNewCannedReply] = useState('')
   const [savingCanned, setSavingCanned] = useState(false)
+  const cannedSnapshotRef = useRef<string[]>([])
+
 
   // Customer info sidebar
   const [showCustomerInfo, setShowCustomerInfo] = useState(false)
@@ -70,6 +78,7 @@ export default function AdminChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const notifSoundRef = useRef<HTMLAudioElement | null>(null)
+  const transferRef = useRef<HTMLDivElement>(null)
 
   const { joinConversation, leaveConversation, joinAdmin, emitTyping, onNewMessage, onConversationNew, onConversationStatus, onConversationAssigned, onTyping } = useChatSocket()
 
@@ -103,10 +112,21 @@ export default function AdminChatPage() {
     loadAgents()
   }, [])
 
-  // Reload conversations when filter changes
+  // Reload conversations when filter or search changes
   useEffect(() => {
-    loadConversations()
+    setConvPage(1)
+    loadConversations(1)
   }, [filterTab])
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = setTimeout(() => {
+      setConvPage(1)
+      loadConversations(1)
+    }, 300)
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current) }
+  }, [searchQuery])
 
   const loadSettings = async () => {
     const res = await chatApi.getSettings()
@@ -134,21 +154,33 @@ export default function AdminChatPage() {
     }
   }
 
-  const loadConversations = async () => {
-    const filters: any = {}
+  const loadConversations = async (page = 1, append = false) => {
+    const filters: any = { page }
     if (filterTab === 'unassigned') filters.unassigned = true
     if (filterTab === 'mine' && user) filters.assignedToId = user.id
     if (filterTab === 'resolved') filters.status = 'RESOLVED'
-    if (filterTab === 'all') {
-      // Show non-closed conversations
-    }
+    if (filterTab === 'all') filters.excludeStatus = 'CLOSED'
+    if (searchQuery.trim()) filters.search = searchQuery.trim()
 
     const res = await chatApi.getConversations(filters)
     if (res.success && res.data) {
-      // "All" tab: exclude closed conversations
-      const data = filterTab === 'all' ? res.data.filter((c: any) => c.status !== 'CLOSED') : res.data
-      setConversations(data)
+      if (append) {
+        setConversations(prev => [...prev, ...res.data!])
+      } else {
+        setConversations(res.data)
+      }
+      if ((res as any).pagination) {
+        setConvTotal((res as any).pagination.total)
+      }
     }
+  }
+
+  const loadMoreConversations = async () => {
+    const nextPage = convPage + 1
+    setLoadingMore(true)
+    await loadConversations(nextPage, true)
+    setConvPage(nextPage)
+    setLoadingMore(false)
   }
 
   const toggleOnline = async () => {
@@ -168,7 +200,7 @@ export default function AdminChatPage() {
     if (res.success && res.data) {
       setActiveConv(res.data)
       // Mark messages as read
-      chatApi.markAsRead(id).then(() => loadStats())
+      chatApi.markAsRead(id).then(() => { loadStats(); loadConversations() })
     }
   }
 
@@ -193,12 +225,26 @@ export default function AdminChatPage() {
       loadStats()
     })
 
+    // Notify for new messages in conversations other than the active one
+    const unsubGlobalMsg = onNewMessage((msg: ChatSocketMessage) => {
+      if (msg.senderType === 'USER') {
+        loadConversations()
+        loadStats()
+        // Only notify if message is not in the currently viewed conversation
+        if (msg.conversationId !== activeId) {
+          playNotifSound()
+          showBrowserNotif('New message', `${msg.senderName || 'Customer'}: ${msg.content}`)
+        }
+      }
+    })
+
     return () => {
       unsubNewConv()
       unsubStatus()
       unsubAssigned()
+      unsubGlobalMsg()
     }
-  }, [joinAdmin, onConversationNew, onConversationStatus, onConversationAssigned])
+  }, [joinAdmin, onConversationNew, onConversationStatus, onConversationAssigned, onNewMessage])
 
   // Socket.IO: listen for messages in the active conversation
   useEffect(() => {
@@ -234,8 +280,9 @@ export default function AdminChatPage() {
         return { ...prev, messages: [...prev.messages, newMsg] }
       })
 
-      // Also refresh the conversation list (for updated last message / unread count)
+      // Also refresh the conversation list and stats (for updated last message / unread count)
       loadConversations()
+      loadStats()
     })
 
     const unsubStatus = onConversationStatus((data) => {
@@ -257,7 +304,7 @@ export default function AdminChatPage() {
       setUserTyping(data.isTyping)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
       if (data.isTyping) {
-        typingTimeoutRef.current = setTimeout(() => setUserTyping(false), 3000)
+        typingTimeoutRef.current = setTimeout(() => setUserTyping(false), 5000)
       }
     })
 
@@ -270,6 +317,18 @@ export default function AdminChatPage() {
       setUserTyping(false)
     }
   }, [activeId, joinConversation, leaveConversation, onNewMessage, onConversationStatus, onConversationAssigned, onTyping])
+
+  // Close transfer dropdown on outside click
+  useEffect(() => {
+    if (!showTransfer) return
+    const handleClick = (e: MouseEvent) => {
+      if (transferRef.current && !transferRef.current.contains(e.target as Node)) {
+        setShowTransfer(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showTransfer])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -309,6 +368,14 @@ export default function AdminChatPage() {
       if (textareaRef.current) textareaRef.current.style.height = 'auto'
       if (activeId) emitTyping(activeId, false)
       if (emitTypingTimeoutRef.current) clearTimeout(emitTypingTimeoutRef.current)
+
+      // Optimistically update assignment if conversation was unassigned
+      if (!isNoteMode && user) {
+        setActiveConv(prev => {
+          if (!prev || prev.assignedTo) return prev
+          return { ...prev, status: 'ASSIGNED' as ChatStatus, assignedTo: { id: user.id, name: user.name || '', avatar: user.avatar || null } }
+        })
+      }
     }
   }
 
@@ -543,23 +610,12 @@ export default function AdminChatPage() {
             {/* Conversation List */}
             <div className="flex-1 overflow-y-auto">
               {(() => {
-                const filtered = searchQuery
-                  ? conversations.filter(conv => {
-                      const q = searchQuery.toLowerCase()
-                      return (
-                        conv.user?.name?.toLowerCase().includes(q) ||
-                        conv.user?.email?.toLowerCase().includes(q) ||
-                        conv.guestName?.toLowerCase().includes(q) ||
-                        conv.guestEmail?.toLowerCase().includes(q) ||
-                        conv.lastMessage?.toLowerCase().includes(q)
-                      )
-                    })
-                  : conversations
-                return filtered.length === 0 ? (
+                return conversations.length === 0 ? (
                   <div className="text-center text-slate-500 text-sm py-8">
                     {searchQuery ? 'No matching conversations' : 'No conversations'}
                   </div>
-                ) : filtered.map(conv => (
+                ) : (<>
+                {conversations.map(conv => (
                 <button
                   key={conv.id}
                   onClick={() => selectConversation(conv.id)}
@@ -604,7 +660,17 @@ export default function AdminChatPage() {
                     </div>
                   )}
                 </button>
-                ))
+                ))}
+                {conversations.length < convTotal && (
+                  <button
+                    onClick={loadMoreConversations}
+                    disabled={loadingMore}
+                    className="w-full py-3 text-xs text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {loadingMore ? 'Loading...' : 'Load More'}
+                  </button>
+                )}
+                </>)
               })()}
             </div>
           </div>
@@ -697,7 +763,7 @@ export default function AdminChatPage() {
                     )}
                     {/* Transfer - hidden on mobile */}
                     {(activeConv.status === 'OPEN' || activeConv.status === 'ASSIGNED') && (
-                      <div className="relative hidden sm:block">
+                      <div className="relative hidden sm:block" ref={transferRef}>
                         <button
                           onClick={() => setShowTransfer(!showTransfer)}
                           className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
@@ -817,7 +883,7 @@ export default function AdminChatPage() {
                       <span className="text-slate-400 text-[10px] uppercase tracking-wider font-medium">Quick Replies</span>
                       <button
                         type="button"
-                        onClick={() => setShowCannedEditor(true)}
+                        onClick={() => { cannedSnapshotRef.current = [...cannedReplies]; setShowCannedEditor(true) }}
                         className="text-primary text-[10px] hover:underline"
                       >
                         Manage
@@ -826,7 +892,7 @@ export default function AdminChatPage() {
                     {cannedReplies.length === 0 ? (
                       <div className="px-3 py-4 text-center">
                         <p className="text-slate-500 text-xs">No quick replies configured</p>
-                        <button type="button" onClick={() => setShowCannedEditor(true)} className="text-primary text-xs mt-1 hover:underline">
+                        <button type="button" onClick={() => { cannedSnapshotRef.current = [...cannedReplies]; setShowCannedEditor(true) }} className="text-primary text-xs mt-1 hover:underline">
                           Add replies
                         </button>
                       </div>
@@ -850,7 +916,7 @@ export default function AdminChatPage() {
                       <span className="text-white text-xs font-medium">Manage Quick Replies</span>
                       <button
                         type="button"
-                        onClick={() => setShowCannedEditor(false)}
+                        onClick={() => { setCannedReplies(cannedSnapshotRef.current); setShowCannedEditor(false) }}
                         className="text-slate-400 hover:text-white"
                       >
                         <Icon name="close" size={14} />

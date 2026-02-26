@@ -70,7 +70,9 @@ export interface ChatStats {
 
 export interface ChatFilters {
   status?: ChatStatus
-  assignedTo?: string
+  excludeStatus?: ChatStatus
+  search?: string
+  assignedToId?: string
   unassigned?: boolean
   page?: number
   limit?: number
