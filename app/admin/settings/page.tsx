@@ -6,6 +6,7 @@ import { profileApi } from '@/lib/api/profile'
 import { settingsApi } from '@/lib/api/settings'
 import { mediaApi } from '@/lib/api/media'
 import { apiFetch } from '@/lib/api/client'
+import { usersApi } from '@/lib/api/users'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import EmailConfigSection from '@/components/admin/EmailConfigSection'
@@ -115,6 +116,11 @@ export default function AdminSettingsPage() {
   // Send Notification State
   const [sendNotif, setSendNotif] = useState({ type: 'SYSTEM' as 'SYSTEM' | 'PROMOTIONAL', title: '', message: '' })
   const [sendingNotif, setSendingNotif] = useState(false)
+  const [sendMode, setSendMode] = useState<'all' | 'targeted'>('all')
+  const [targetUserSearch, setTargetUserSearch] = useState('')
+  const [targetUsers, setTargetUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [targetSearchResults, setTargetSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [searchingUsers, setSearchingUsers] = useState(false)
 
   // Sent Notifications State
   const [sentNotifications, setSentNotifications] = useState<any[]>([])
@@ -1507,6 +1513,91 @@ export default function AdminSettingsPage() {
               <div className="pt-4 border-t border-[#2a2a2a]">
                 <h3 className="text-white font-medium mb-4">Send Notification</h3>
                 <div className="space-y-4">
+                  {/* Send Mode Toggle */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSendMode('all')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        sendMode === 'all' ? 'bg-primary text-black' : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'
+                      }`}
+                    >
+                      All Users
+                    </button>
+                    <button
+                      onClick={() => setSendMode('targeted')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        sendMode === 'targeted' ? 'bg-primary text-black' : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'
+                      }`}
+                    >
+                      Targeted
+                    </button>
+                  </div>
+
+                  {/* Targeted User Selection */}
+                  {sendMode === 'targeted' && (
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-slate-300">Select Users</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={targetUserSearch}
+                          onChange={async (e) => {
+                            const q = e.target.value
+                            setTargetUserSearch(q)
+                            if (q.length < 2) { setTargetSearchResults([]); return }
+                            setSearchingUsers(true)
+                            try {
+                              const res = await usersApi.list({ search: q, limit: 10 })
+                              if (res.success && res.data) {
+                                setTargetSearchResults(
+                                  res.data.users
+                                    .filter((u: any) => !targetUsers.some(t => t.id === u.id))
+                                    .map((u: any) => ({ id: u.id, name: u.name || 'Unnamed', email: u.email }))
+                                )
+                              }
+                            } catch {}
+                            setSearchingUsers(false)
+                          }}
+                          placeholder="Search users by name or email..."
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                        {targetSearchResults.length > 0 && (
+                          <div className="absolute z-10 mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg max-h-48 overflow-y-auto">
+                            {targetSearchResults.map(u => (
+                              <button
+                                key={u.id}
+                                onClick={() => {
+                                  setTargetUsers(prev => [...prev, u])
+                                  setTargetSearchResults([])
+                                  setTargetUserSearch('')
+                                }}
+                                className="w-full text-left px-4 py-2 hover:bg-[#2a2a2a] transition-colors"
+                              >
+                                <span className="text-white text-sm">{u.name}</span>
+                                <span className="text-slate-500 text-xs ml-2">{u.email}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {targetUsers.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {targetUsers.map(u => (
+                            <span key={u.id} className="inline-flex items-center gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-full px-3 py-1 text-sm">
+                              <span className="text-white">{u.name}</span>
+                              <button
+                                onClick={() => setTargetUsers(prev => prev.filter(t => t.id !== u.id))}
+                                className="text-slate-500 hover:text-red-400 ml-1"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">Type</label>
                     <select
@@ -1544,19 +1635,41 @@ export default function AdminSettingsPage() {
                         setMessage({ type: 'error', text: 'Title and message are required' })
                         return
                       }
+                      if (sendMode === 'targeted' && targetUsers.length === 0) {
+                        setMessage({ type: 'error', text: 'Select at least one user for targeted notification' })
+                        return
+                      }
                       setSendingNotif(true)
                       setMessage(null)
                       try {
-                        const data = await apiFetch<{ message: string }>('/notifications/broadcast', {
-                          method: 'POST',
-                          body: JSON.stringify(sendNotif),
-                        })
-                        if (data.success) {
-                          setMessage({ type: 'success', text: data.data?.message || 'Notification sent!' })
-                          setSendNotif({ type: 'SYSTEM', title: '', message: '' })
-                          fetchSentNotifications() // Refresh sent notifications list
+                        if (sendMode === 'targeted') {
+                          const data = await apiFetch<{ message: string }>('/notifications/promotional', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                              userIds: targetUsers.map(u => u.id),
+                              title: sendNotif.title,
+                              message: sendNotif.message,
+                            }),
+                          })
+                          if (data.success) {
+                            setMessage({ type: 'success', text: `Notification sent to ${targetUsers.length} user(s)` })
+                            setSendNotif({ type: 'SYSTEM', title: '', message: '' })
+                            setTargetUsers([])
+                          } else {
+                            setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
+                          }
                         } else {
-                          setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
+                          const data = await apiFetch<{ message: string }>('/notifications/broadcast', {
+                            method: 'POST',
+                            body: JSON.stringify(sendNotif),
+                          })
+                          if (data.success) {
+                            setMessage({ type: 'success', text: data.data?.message || 'Notification sent!' })
+                            setSendNotif({ type: 'SYSTEM', title: '', message: '' })
+                            fetchSentNotifications()
+                          } else {
+                            setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
+                          }
                         }
                       } catch {
                         setMessage({ type: 'error', text: 'Failed to send notification' })
@@ -1566,7 +1679,7 @@ export default function AdminSettingsPage() {
                     disabled={sendingNotif}
                     className="w-full bg-primary hover:bg-primary/90 text-black font-medium py-3 rounded-lg transition-colors disabled:opacity-50"
                   >
-                    {sendingNotif ? 'Sending...' : 'Send to All Users'}
+                    {sendingNotif ? 'Sending...' : sendMode === 'targeted' ? `Send to ${targetUsers.length} User(s)` : 'Send to All Users'}
                   </button>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CartProvider } from '@/lib/cart-context'
@@ -21,6 +21,13 @@ interface ProvidersProps {
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
 
 export default function Providers({ children }: ProvidersProps) {
+  // Register service worker for push notifications
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    }
+  }, [])
+
   // Create query client with default options for better performance
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {

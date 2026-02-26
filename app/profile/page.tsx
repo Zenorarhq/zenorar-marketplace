@@ -6,9 +6,11 @@ import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { useAuth } from '@/contexts/AuthContext'
 import { profileApi } from '@/lib/api/profile'
+import { usePushNotifications } from '@/hooks/use-push-notifications'
 
 export default function ProfileSettingsPage() {
   const { user, updateUser } = useAuth()
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     fullName: '',
@@ -334,6 +336,40 @@ export default function ProfileSettingsPage() {
                 <div className="w-12 h-7 bg-surface-dark peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border-dark peer-checked:border-primary"></div>
               </label>
             </div>
+            {pushSupported && (
+              <>
+                <div className="w-full h-px bg-border-dark/50"></div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-white text-sm">Push Notifications</h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Receive real-time browser alerts for orders and updates.
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (pushSubscribed) {
+                        await pushUnsubscribe()
+                      } else {
+                        await pushSubscribe()
+                      }
+                    }}
+                    disabled={pushLoading}
+                    className={`relative w-12 h-7 rounded-full transition-colors border shrink-0 ${
+                      pushSubscribed
+                        ? 'bg-primary border-primary'
+                        : 'bg-surface-dark border-border-dark'
+                    } ${pushLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <div
+                      className={`absolute top-[3px] w-5 h-5 bg-white rounded-full transition-all ${
+                        pushSubscribed ? 'left-[22px]' : 'left-[3px]'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </>
+            )}
             <div className="w-full h-px bg-border-dark/50"></div>
             <div className="flex items-center justify-between">
               <div>

@@ -87,4 +87,23 @@ export const notificationsApi = {
       body: JSON.stringify({ type, title, message }),
     })
   },
+
+  // Push notification methods
+  async getVapidKey() {
+    return apiFetch<{ publicKey: string }>('/push/vapid-key')
+  },
+
+  async subscribePush(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+    return apiFetch<{ message: string }>('/push/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ subscription }),
+    })
+  },
+
+  async unsubscribePush(endpoint: string) {
+    return apiFetch<{ message: string }>('/push/unsubscribe', {
+      method: 'POST',
+      body: JSON.stringify({ endpoint }),
+    })
+  },
 }

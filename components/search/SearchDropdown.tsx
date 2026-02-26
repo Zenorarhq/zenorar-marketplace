@@ -123,12 +123,12 @@ export default function SearchDropdown({
     }
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('click', handleClickOutside)
       document.addEventListener('keydown', handleEscape)
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('click', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
     }
   }, [isOpen, onClose, inputRef])
