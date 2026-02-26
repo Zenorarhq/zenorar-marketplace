@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ticketsApi, TicketDetail } from '@/lib/api/tickets'
+import { ticketsApi, TicketDetail, TicketStatus, TicketPriority, TicketCategory } from '@/lib/api/tickets'
+import { staffApi } from '@/lib/api/staff'
 import Icon from '@/components/ui/Icon'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDate } from '@/lib/date-utils'
@@ -18,10 +19,13 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
   const [error, setError] = useState('')
   const [ticket, setTicket] = useState<TicketDetail | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([])
 
   useEffect(() => {
     if (isOpen && ticketId) {
       loadTicket()
+      loadStaff()
     }
   }, [isOpen, ticketId])
 
@@ -43,6 +47,33 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
       setError(err instanceof Error ? err.message : 'Failed to load ticket')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadStaff() {
+    try {
+      const result = await staffApi.list({ limit: 100 })
+      if (result.success && result.data) {
+        setStaffList(result.data.staff.map((s) => ({ id: s.id, name: s.name })))
+      }
+    } catch {
+      // Staff list is non-critical — dropdown will just show current assignment
+    }
+  }
+
+  async function handleUpdate(data: { status?: TicketStatus; priority?: TicketPriority; category?: TicketCategory; assignedToId?: string | null }) {
+    if (!ticket) return
+    setUpdating(true)
+    try {
+      const result = await ticketsApi.update(ticket.id, data)
+      if (result.success) {
+        onSuccess?.()
+        await loadTicket()
+      }
+    } catch {
+      // Silent fail — ticket reloads to show actual state
+    } finally {
+      setUpdating(false)
     }
   }
 
@@ -102,8 +133,32 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
               </h2>
               {ticket && (
                 <>
-                  {getStatusBadge(ticket.status)}
-                  {getPriorityBadge(ticket.priority)}
+                  {ticket.status === 'RESOLVED' || ticket.status === 'CLOSED' ? (
+                    getStatusBadge(ticket.status)
+                  ) : (
+                    <select
+                      value={ticket.status}
+                      disabled={updating}
+                      onChange={(e) => handleUpdate({ status: e.target.value as TicketStatus })}
+                      className="bg-charcoal border border-border-dark rounded-lg px-2 py-1 text-xs font-medium text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
+                    >
+                      <option value="OPEN">Open</option>
+                      <option value="IN_PROGRESS">In Progress</option>
+                      <option value="WAITING_CUSTOMER">Waiting Customer</option>
+                      <option value="WAITING_INTERNAL">Waiting Internal</option>
+                    </select>
+                  )}
+                  <select
+                    value={ticket.priority}
+                    disabled={updating}
+                    onChange={(e) => handleUpdate({ priority: e.target.value as TicketPriority })}
+                    className="bg-charcoal border border-border-dark rounded-lg px-2 py-1 text-xs font-medium text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
+                  >
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="URGENT">Urgent</option>
+                  </select>
                 </>
               )}
             </div>
@@ -158,13 +213,36 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
                     <p className="text-xs text-slate-500 mb-1">Category</p>
-                    <p className="text-sm text-white font-medium">{ticket.category}</p>
+                    <select
+                      value={ticket.category}
+                      disabled={updating}
+                      onChange={(e) => handleUpdate({ category: e.target.value as TicketCategory })}
+                      className="bg-background-dark border border-border-dark rounded-lg px-2 py-1 text-sm font-medium text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none disabled:opacity-50 w-full"
+                    >
+                      <option value="GENERAL">General</option>
+                      <option value="ORDER">Order</option>
+                      <option value="SHIPPING">Shipping</option>
+                      <option value="PAYMENT">Payment</option>
+                      <option value="REFUND">Refund</option>
+                      <option value="PRODUCT">Product</option>
+                      <option value="ACCOUNT">Account</option>
+                      <option value="TECHNICAL">Technical</option>
+                      <option value="OTHER">Other</option>
+                    </select>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 mb-1">Assigned To</p>
-                    <p className="text-sm text-white font-medium">
-                      {ticket.assignedTo?.name || 'Unassigned'}
-                    </p>
+                    <select
+                      value={ticket.assignedTo?.id || ''}
+                      disabled={updating}
+                      onChange={(e) => handleUpdate({ assignedToId: e.target.value || null })}
+                      className="bg-background-dark border border-border-dark rounded-lg px-2 py-1 text-sm font-medium text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none disabled:opacity-50 w-full"
+                    >
+                      <option value="">Unassigned</option>
+                      {staffList.map((staff) => (
+                        <option key={staff.id} value={staff.id}>{staff.name}</option>
+                      ))}
+                    </select>
                   </div>
                   {ticket.orderId && (
                     <div>
