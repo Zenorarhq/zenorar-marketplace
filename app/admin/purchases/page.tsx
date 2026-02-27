@@ -6,7 +6,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, localApiFetch } from '@/lib/api/client'
 
 // Crypto payment data interface
 interface CryptoPayment {
@@ -196,7 +196,7 @@ export default function PurchasesPage() {
     }).finally(() => setDetailLoading(false))
 
     // Fetch crypto payment details
-    apiFetch<CryptoPayment | null>(`/admin/orders/${selectedOrderId}/crypto-payment`)
+    localApiFetch<CryptoPayment | null>(`/admin/orders/${selectedOrderId}/crypto-payment`)
       .then((result) => {
         if (result.success && result.data) {
           setCryptoPayment(result.data)
@@ -309,7 +309,7 @@ export default function PurchasesPage() {
     if (!detailOrder) return
     setMarkingPaid(true)
     try {
-      const result = await apiFetch<{ data: any }>(`/admin/orders/${detailOrder.id}/mark-paid`, {
+      const result = await localApiFetch<{ data: any }>(`/admin/orders/${detailOrder.id}/mark-paid`, {
         method: 'POST',
         body: JSON.stringify({
           txHash: adminTxHash || null,
