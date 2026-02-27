@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authenticateRequest } from '@/lib/auth-middleware'
 import { virtualNumberService } from '@/lib/virtual-numbers/service'
 import { query } from '@/lib/db'
 
@@ -12,11 +11,11 @@ import { query } from '@/lib/db'
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await authenticateRequest(request)
 
     // Only allow in development or for admin users
     const isDevMode = process.env.NODE_ENV === 'development'
-    const isAdmin = session?.user?.role === 'ADMIN'
+    const isAdmin = user?.role === 'ADMIN'
 
     if (!isDevMode && !isAdmin) {
       return NextResponse.json(
