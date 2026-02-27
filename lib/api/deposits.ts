@@ -1,7 +1,6 @@
 import { apiFetch, localApiFetch, ApiResponse } from './client'
 
-// Updated deposit methods - STRIPE instead of CARD, crypto networks
-export type DepositMethod = 'STRIPE' | 'PAYSTACK' | 'PAYPAL' | 'BANK_TRANSFER' | 'CRYPTO'
+export type DepositMethod = 'CARD' | 'PAYSTACK' | 'PAYPAL' | 'BANK_TRANSFER' | 'CRYPTO_BTC' | 'CRYPTO_ETH' | 'CRYPTO_USDT'
 export type CryptoNetwork = 'BTC' | 'ETH' | 'USDT' | 'SOL' | 'BNB' | 'TRON'
 export type DepositStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'EXPIRED'
 

@@ -209,7 +209,7 @@ export default function AdminLibraryPage() {
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*,video/*"
+            accept="image/*,video/*,application/pdf,.doc,.docx"
             onChange={handleFileSelect}
             className="hidden"
           />
@@ -369,6 +369,13 @@ export default function AdminLibraryPage() {
                           title="View"
                         >
                           <Icon name="eye" size={16} />
+                        </button>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(upload.url)}
+                          className="p-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                          title="Copy URL"
+                        >
+                          <Icon name="copy" size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(upload.id)}

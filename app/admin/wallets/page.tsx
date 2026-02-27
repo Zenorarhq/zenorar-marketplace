@@ -21,11 +21,13 @@ const depositStatusConfig: Record<DepositStatus, { label: string; color: string 
 }
 
 const methodLabels: Record<DepositMethod, string> = {
-  STRIPE: 'Stripe',
+  CARD: 'Card',
   PAYSTACK: 'Paystack',
   PAYPAL: 'PayPal',
   BANK_TRANSFER: 'Bank Transfer',
-  CRYPTO: 'Crypto',
+  CRYPTO_BTC: 'Bitcoin (BTC)',
+  CRYPTO_ETH: 'Ethereum (ETH)',
+  CRYPTO_USDT: 'USDT',
 }
 
 export default function AdminWalletsPage() {

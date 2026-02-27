@@ -31,8 +31,8 @@ export async function POST(
 
     const result = await executeQuery(
       `UPDATE deposits
-       SET status = 'PENDING', updated_at = NOW()
-       WHERE id = $1 AND status = 'PROCESSING' AND payment_method = 'BANK_TRANSFER'
+       SET status = 'PENDING', "updatedAt" = NOW()
+       WHERE id = $1 AND status = 'PROCESSING' AND "paymentMethod" = 'BANK_TRANSFER'
        RETURNING id`,
       [depositId]
     )
