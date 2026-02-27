@@ -28,6 +28,9 @@ function mapCategory(value: string): TicketCategory {
     case 'esim': return 'PRODUCT'
     case 'billing': return 'PAYMENT'
     case 'account': return 'ACCOUNT'
+    case 'order': return 'ORDER'
+    case 'shipping': return 'SHIPPING'
+    case 'refund': return 'REFUND'
     case 'other': return 'GENERAL'
     default: return 'GENERAL'
   }
@@ -423,6 +426,9 @@ export default function TicketsPage() {
                   <option value="scripts">Scripts & Tools</option>
                   <option value="esim">eSIM & Connectivity</option>
                   <option value="billing">Billing & Payments</option>
+                  <option value="order">Order Issues</option>
+                  <option value="shipping">Shipping & Delivery</option>
+                  <option value="refund">Refunds</option>
                   <option value="account">Account & Security</option>
                   <option value="other">Other</option>
                 </select>

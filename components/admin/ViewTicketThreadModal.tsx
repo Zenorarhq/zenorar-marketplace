@@ -71,7 +71,7 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
         await loadTicket()
       }
     } catch {
-      // Silent fail — ticket reloads to show actual state
+      setError('Failed to update. Please try again.')
     } finally {
       setUpdating(false)
     }
@@ -329,6 +329,8 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
                   if (result.success) {
                     onSuccess?.()
                     loadTicket()
+                  } else {
+                    setError('Failed to reopen ticket. Please try again.')
                   }
                 }}
                 disabled={actionLoading}
@@ -346,6 +348,8 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
                   if (result.success) {
                     onSuccess?.()
                     loadTicket()
+                  } else {
+                    setError('Failed to close ticket. Please try again.')
                   }
                 }}
                 disabled={actionLoading}
