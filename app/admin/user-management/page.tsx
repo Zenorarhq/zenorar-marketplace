@@ -10,6 +10,7 @@ import { usersApi, UsersListResponse } from '@/lib/api/users'
 import { staffApi, StaffListResponse } from '@/lib/api/staff'
 import { rolesApi, Role } from '@/lib/api/roles'
 import { apiFetch } from '@/lib/api/client'
+import { newsletterApi } from '@/lib/api/newsletter'
 
 type Tab = 'users' | 'staff' | 'roles' | 'guest-purchases' | 'newsletter'
 
@@ -1066,17 +1067,15 @@ function NewsletterTab() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-newsletter', currentPage, searchQuery],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(currentPage) })
-      if (searchQuery) params.set('search', searchQuery)
-      const result = await apiFetch<any>(`/newsletter?${params}`)
-      if (result.success) return result as any
+      const result = await newsletterApi.getSubscribers({ page: currentPage, search: searchQuery || undefined })
+      if (result.success && result.data) return result.data
       throw new Error(result.error || 'Failed to load subscribers')
     },
   })
 
-  const subscribers: { id: string; email: string; createdAt: string }[] = data?.data || []
-  const total: number = (data as any)?.total || 0
-  const totalPages: number = (data as any)?.totalPages || 1
+  const subscribers = data?.data || []
+  const total = data?.total || 0
+  const totalPages = data?.totalPages || 1
 
   return (
     <div className="space-y-6">
