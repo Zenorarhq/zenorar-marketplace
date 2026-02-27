@@ -51,6 +51,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Log webhook data for debugging
+    console.log('📨 Twilio SMS Webhook received:', {
+      messageSid,
+      from,
+      to,
+      bodyLength: body?.length || 0,
+      numMedia
+    })
+
     // Process the incoming SMS
     const result = await virtualNumberService.handleIncomingSms(
       to,
@@ -60,8 +69,10 @@ export async function POST(request: NextRequest) {
       mediaUrls.length > 0 ? mediaUrls : undefined
     )
 
+    console.log('📨 SMS processing result:', { success: result.success, forwarded: result.forwarded })
+
     if (!result.success) {
-      console.warn('Failed to process incoming SMS:', { to, from, messageSid })
+      console.warn('❌ Failed to process incoming SMS:', { to, from, messageSid })
     }
 
     // Return TwiML response (empty response acknowledges receipt)

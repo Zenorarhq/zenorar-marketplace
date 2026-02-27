@@ -176,6 +176,8 @@ class VirtualNumberService {
     mediaUrls?: string[]
   ): Promise<{ success: boolean; forwarded?: boolean }> {
     try {
+      console.log('📱 handleIncomingSms called:', { to, from, messageSid })
+
       // Find the virtual number
       const numberResult = await query(
         `SELECT uvn.*, u.email as user_email
@@ -185,8 +187,19 @@ class VirtualNumberService {
         [to]
       )
 
+      console.log('📱 Virtual number lookup result:', {
+        searchedFor: to,
+        found: numberResult.rows.length,
+        row: numberResult.rows[0] ? { id: numberResult.rows[0].id, phone_number: numberResult.rows[0].phone_number, status: numberResult.rows[0].status } : null
+      })
+
       if (numberResult.rows.length === 0) {
-        console.warn('Received SMS for unknown number:', to)
+        // Also check without status filter to see if number exists but is inactive
+        const anyResult = await query(
+          `SELECT id, phone_number, status FROM user_virtual_numbers WHERE phone_number = $1`,
+          [to]
+        )
+        console.warn('Received SMS for unknown/inactive number:', { to, existingRecords: anyResult.rows })
         return { success: false }
       }
 
