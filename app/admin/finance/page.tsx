@@ -235,85 +235,122 @@ export default function FinancePage() {
         </form>
         {expenseError && <p className="text-red-400 text-xs mt-2">{expenseError}</p>}
 
-        {/* Recent expenses list */}
-        {expenses.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <p className="text-slate-500 text-xs font-medium uppercase tracking-wide">Recent Expenses</p>
-            {expenses.map((exp: AdminExpense) => (
-              <div key={exp.id} className="flex items-center justify-between text-sm py-2 border-b border-[#1f1f1f] last:border-0">
-                {editingId === exp.id ? (
-                  <>
-                    <div className="flex items-center gap-2 flex-1 mr-3">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editForm.amount}
-                        onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
-                        className="bg-[#0a0a0a] border border-[#1f1f1f] rounded px-2 py-1 text-white text-sm w-24 focus:outline-none focus:border-primary"
-                      />
-                      <input
-                        type="text"
-                        value={editForm.description}
-                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                        className="bg-[#0a0a0a] border border-[#1f1f1f] rounded px-2 py-1 text-white text-sm flex-1 focus:outline-none focus:border-primary"
-                      />
-                      <input
-                        type="text"
-                        value={editForm.category}
-                        placeholder="Category"
-                        onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                        className="bg-[#0a0a0a] border border-[#1f1f1f] rounded px-2 py-1 text-white text-sm w-28 focus:outline-none focus:border-primary"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={saveEdit}
-                        disabled={updateExpenseMutation.isPending}
-                        className="text-primary hover:text-primary/80 text-xs font-medium disabled:opacity-50"
-                      >
-                        {updateExpenseMutation.isPending ? 'Saving...' : 'Save'}
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-slate-500 hover:text-slate-300 text-xs"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <span className="text-slate-300">{exp.description}</span>
-                      {exp.category && <span className="text-slate-500 text-xs ml-2">({exp.category})</span>}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-red-400 font-medium">-{formatCurrency(Number(exp.amount))}</span>
-                      <span className="text-slate-500 text-xs">{formatDate(exp.createdAt, tz)}</span>
-                      <button
-                        onClick={() => startEditing(exp)}
-                        className="text-slate-500 hover:text-slate-300 transition-colors"
-                        title="Edit"
-                      >
-                        <Icon name="edit" size={14} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm('Delete this expense?')) {
-                            deleteExpenseMutation.mutate(exp.id)
-                          }
-                        }}
-                        disabled={deleteExpenseMutation.isPending}
-                        className="text-slate-500 hover:text-red-400 transition-colors disabled:opacity-50"
-                        title="Delete"
-                      >
-                        <Icon name="trash" size={14} />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+      </div>
+
+      {/* Expenses Table */}
+      <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden mt-6">
+        <div className="p-5 border-b border-[#1f1f1f]">
+          <h3 className="text-white font-semibold">Expenses</h3>
+        </div>
+        {expenses.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-slate-500 text-sm">No expenses recorded yet</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#1f1f1f]">
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Description</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Category</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Amount</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Date</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenses.map((exp: AdminExpense) => (
+                  <tr key={exp.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                    {editingId === exp.id ? (
+                      <>
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={editForm.description}
+                            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                            className="bg-[#0a0a0a] border border-[#1f1f1f] rounded px-2 py-1 text-white text-sm w-full focus:outline-none focus:border-primary"
+                          />
+                        </td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="text"
+                            value={editForm.category}
+                            placeholder="Category"
+                            onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                            className="bg-[#0a0a0a] border border-[#1f1f1f] rounded px-2 py-1 text-white text-sm w-28 focus:outline-none focus:border-primary"
+                          />
+                        </td>
+                        <td className="px-5 py-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editForm.amount}
+                            onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                            className="bg-[#0a0a0a] border border-[#1f1f1f] rounded px-2 py-1 text-white text-sm w-24 focus:outline-none focus:border-primary"
+                          />
+                        </td>
+                        <td className="px-5 py-3 text-slate-500 text-sm">{formatDate(exp.createdAt, tz)}</td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={saveEdit}
+                              disabled={updateExpenseMutation.isPending}
+                              className="text-primary hover:text-primary/80 text-xs font-medium disabled:opacity-50"
+                            >
+                              {updateExpenseMutation.isPending ? 'Saving...' : 'Save'}
+                            </button>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="text-slate-500 hover:text-slate-300 text-xs"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-5 py-3 text-white text-sm">{exp.description}</td>
+                        <td className="px-5 py-3">
+                          {exp.category ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                              {exp.category}
+                            </span>
+                          ) : (
+                            <span className="text-slate-600 text-sm">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-red-400 font-medium text-sm">-{formatCurrency(Number(exp.amount))}</td>
+                        <td className="px-5 py-3 text-slate-500 text-sm">{formatDate(exp.createdAt, tz)}</td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => startEditing(exp)}
+                              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-500 hover:text-slate-300"
+                              title="Edit"
+                            >
+                              <Icon name="edit" size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm('Delete this expense?')) {
+                                  deleteExpenseMutation.mutate(exp.id)
+                                }
+                              }}
+                              disabled={deleteExpenseMutation.isPending}
+                              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-500 hover:text-red-400 disabled:opacity-50"
+                              title="Delete"
+                            >
+                              <Icon name="trash" size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
