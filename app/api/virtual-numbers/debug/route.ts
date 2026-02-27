@@ -12,10 +12,19 @@ export async function GET(request: NextRequest) {
   try {
     const user = await authenticateRequest(request)
 
-    // Only allow admin users
-    if (user?.role !== 'ADMIN') {
+    // Debug: Show what we got from auth
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Admin access required' },
+        { success: false, error: 'Not authenticated - no valid token', debug: { user: null } },
+        { status: 401 }
+      )
+    }
+
+    // Check for admin role (case-insensitive)
+    const isAdmin = user.role?.toUpperCase() === 'ADMIN' || user.role?.toUpperCase() === 'EDITOR'
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Admin access required', debug: { userId: user.id, role: user.role, email: user.email } },
         { status: 403 }
       )
     }
