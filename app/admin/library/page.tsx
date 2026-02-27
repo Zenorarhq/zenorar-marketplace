@@ -371,13 +371,6 @@ export default function AdminLibraryPage() {
                           <Icon name="eye" size={16} />
                         </button>
                         <button
-                          onClick={() => navigator.clipboard.writeText(upload.url)}
-                          className="p-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
-                          title="Copy URL"
-                        >
-                          <Icon name="copy" size={16} />
-                        </button>
-                        <button
                           onClick={() => handleDelete(upload.id)}
                           className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                           title="Delete"
@@ -542,7 +535,14 @@ export default function AdminLibraryPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 p-5 border-t border-[#1f1f1f]">
+            <div className="flex items-center gap-3 p-5 border-t border-[#1f1f1f]">
+              <button
+                onClick={() => navigator.clipboard.writeText(editingUpload.url)}
+                className="mr-auto inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium text-sm hover:bg-[#222] transition-colors"
+              >
+                <Icon name="copy" size={16} />
+                Copy URL
+              </button>
               <button
                 onClick={() => setEditingUpload(null)}
                 className="px-5 py-2.5 bg-[#1a1a1a] text-white rounded-lg font-medium text-sm hover:bg-[#222] transition-colors"

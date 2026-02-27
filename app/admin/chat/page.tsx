@@ -280,9 +280,16 @@ export default function AdminChatPage() {
         return { ...prev, messages: [...prev.messages, newMsg] }
       })
 
-      // Also refresh the conversation list and stats (for updated last message / unread count)
-      loadConversations()
-      loadStats()
+      // Mark as read immediately if admin is viewing this conversation, then refresh
+      if (msg.senderType === 'USER') {
+        chatApi.markAsRead(activeId).then(() => {
+          loadConversations()
+          loadStats()
+        })
+      } else {
+        loadConversations()
+        loadStats()
+      }
     })
 
     const unsubStatus = onConversationStatus((data) => {
@@ -640,7 +647,7 @@ export default function AdminChatPage() {
                           ★{conv.rating}
                         </span>
                       )}
-                      {conv.unreadCount > 0 && (
+                      {conv.unreadCount > 0 && (conv.status === 'OPEN' || conv.status === 'ASSIGNED') && (
                         <span className="bg-primary text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                           {conv.unreadCount}
                         </span>
@@ -775,16 +782,15 @@ export default function AdminChatPage() {
                         {showTransfer && (
                           <div className="absolute right-0 top-full mt-1 w-48 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg shadow-xl z-10 overflow-hidden">
                             <p className="px-3 py-2 text-[10px] text-slate-500 uppercase tracking-wider border-b border-[#1f1f1f]">Transfer to</p>
-                            {agents.filter(a => a.id !== user?.id).length === 0 ? (
+                            {agents.filter(a => a.id !== user?.id && a.role === 'EDITOR').length === 0 ? (
                               <p className="px-3 py-3 text-xs text-slate-500 text-center">No other agents</p>
-                            ) : agents.filter(a => a.id !== user?.id).map(agent => (
+                            ) : agents.filter(a => a.id !== user?.id && a.role === 'EDITOR').map(agent => (
                               <button
                                 key={agent.id}
                                 onClick={() => handleTransfer(agent.id)}
                                 className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-[#1a1a1a] hover:text-white transition-colors"
                               >
                                 {agent.name}
-                                <span className="text-slate-600 ml-1">({agent.role})</span>
                               </button>
                             ))}
                           </div>
