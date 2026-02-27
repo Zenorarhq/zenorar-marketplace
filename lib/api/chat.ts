@@ -119,7 +119,7 @@ export const chatApi = {
   async createConversation(data: {
     guestEmail?: string
     guestName?: string
-    initialMessage: string
+    initialMessage?: string
   }) {
     // sessionId is automatically sent via X-Session-ID header by apiFetch
     return apiFetch<{ id: string; status: string; isOnline: boolean; createdAt: string }>('/chat', {

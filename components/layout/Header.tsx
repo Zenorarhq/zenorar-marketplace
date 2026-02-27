@@ -348,6 +348,22 @@ export default function Header() {
                       Wallet & Credit
                     </Link>
                     <Link
+                      href="/profile/library?tab=esims"
+                      onClick={() => setShowMobileUserMenu(false)}
+                      className="flex items-center gap-2 pl-8 pr-4 py-3 text-sm text-slate-400 hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="sim-card" size={16} />
+                      eSIMs
+                    </Link>
+                    <Link
+                      href="/profile/library?tab=virtual-numbers"
+                      onClick={() => setShowMobileUserMenu(false)}
+                      className="flex items-center gap-2 pl-8 pr-4 py-3 text-sm text-slate-400 hover:bg-white/5 transition-colors"
+                    >
+                      <Icon name="phone" size={16} />
+                      Numbers
+                    </Link>
+                    <Link
                       href="/profile"
                       onClick={() => setShowMobileUserMenu(false)}
                       className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
@@ -498,6 +514,22 @@ export default function Header() {
                       >
                         <Icon name="wallet" size={16} />
                         Wallet & Credit
+                      </Link>
+                      <Link
+                        href="/profile/library?tab=esims"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 pl-8 pr-4 py-3 text-sm text-slate-400 hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="sim-card" size={16} />
+                        eSIMs
+                      </Link>
+                      <Link
+                        href="/profile/library?tab=virtual-numbers"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-2 pl-8 pr-4 py-3 text-sm text-slate-400 hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="phone" size={16} />
+                        Numbers
                       </Link>
                       <Link
                         href="/profile"

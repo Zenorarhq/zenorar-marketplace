@@ -13,6 +13,13 @@ type LibraryFilter = 'all' | 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-nu
 export default function LibraryPage() {
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<LibraryFilter>('all')
+
+  // Read ?tab= from URL on mount (client-only, avoids useSearchParams Suspense requirement)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tab = params.get('tab') as LibraryFilter
+    if (tab) setActiveFilter(tab)
+  }, [])
   const [searchQuery, setSearchQuery] = useState('')
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)

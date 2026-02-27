@@ -339,16 +339,16 @@ export default function LiveChat() {
     const attachment = uploadRes.data
 
     if (!conversationId) {
-      // Create conversation with attachment
+      // Create conversation then send the real attachment as a message
       setIsLoading(true)
       const res = await chatApi.createConversation({
         guestEmail: user ? undefined : guestEmail,
         guestName: user ? undefined : guestName,
-        initialMessage: `Sent a file: ${attachment.name}`,
       })
       setIsLoading(false)
       if (res.success && res.data) {
         setConversationId(res.data.id)
+        await chatApi.sendMessage(res.data.id, '', [attachment])
         setTimeout(() => loadMessages(res.data!.id), 500)
       }
       return
