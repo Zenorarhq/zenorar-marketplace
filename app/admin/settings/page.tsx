@@ -216,14 +216,6 @@ export default function AdminSettingsPage() {
   const [generatingKey, setGeneratingKey] = useState(false)
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null)
 
-  // Twilio Settings State (for 2FA SMS)
-  const [twilioSettings, setTwilioSettings] = useState({
-    twilio_account_sid: '',
-    twilio_auth_token: '',
-    twilio_phone_number: '',
-  })
-  const [twilioSaving, setTwilioSaving] = useState(false)
-
   // Data eSIM Provider Settings State (travel data only)
   const [esimSettings, setEsimSettings] = useState({
     esimDefaultProvider: 'esimgo' as 'esimgo' | 'airalo' | 'mobimatter',
@@ -261,6 +253,15 @@ export default function AdminSettingsPage() {
   const [virtualNumberSettings, setVirtualNumberSettings] = useState({
     virtualNumbersEnabled: false,
     virtualNumbersProvider: 'twilio' as 'twilio' | 'plivo' | 'vonage',
+    // Twilio
+    twilioEnabled: false,
+    twilioMode: 'test' as 'test' | 'live',
+    twilioTestAccountSid: '',
+    twilioTestAuthToken: '',
+    twilioTestPhoneNumber: '',
+    twilioLiveAccountSid: '',
+    twilioLiveAuthToken: '',
+    twilioLivePhoneNumber: '',
     // Plivo
     plivoEnabled: false,
     plivoAuthId: '',
@@ -453,15 +454,10 @@ export default function AdminSettingsPage() {
         }))
       }
     })
-    // Load API settings (Twilio, Exchange Rates, eSIM, Virtual Numbers)
+    // Load API settings (Exchange Rates, eSIM, Virtual Numbers)
     settingsApi.getSettingsByGroup('api').then((res) => {
       if (res.success && res.data) {
         const d = res.data
-        setTwilioSettings((prev) => ({
-          twilio_account_sid: d.twilio_account_sid ?? prev.twilio_account_sid,
-          twilio_auth_token: d.twilio_auth_token ?? prev.twilio_auth_token,
-          twilio_phone_number: d.twilio_phone_number ?? prev.twilio_phone_number,
-        }))
         setExchangeRateKeys((prev) => ({
           exchangerate_api_key: d.exchangerate_api_key ?? prev.exchangerate_api_key,
           coingecko_api_key: d.coingecko_api_key ?? prev.coingecko_api_key,
@@ -501,9 +497,20 @@ export default function AdminSettingsPage() {
         setVirtualNumberSettings((prev) => ({
           virtualNumbersEnabled: d.virtualNumbersEnabled ?? prev.virtualNumbersEnabled,
           virtualNumbersProvider: d.virtualNumbersProvider ?? prev.virtualNumbersProvider,
+          // Twilio
+          twilioEnabled: d.twilioEnabled ?? prev.twilioEnabled,
+          twilioMode: d.twilioMode ?? prev.twilioMode,
+          twilioTestAccountSid: d.twilioTestAccountSid ?? prev.twilioTestAccountSid,
+          twilioTestAuthToken: d.twilioTestAuthToken ?? prev.twilioTestAuthToken,
+          twilioTestPhoneNumber: d.twilioTestPhoneNumber ?? prev.twilioTestPhoneNumber,
+          twilioLiveAccountSid: d.twilioLiveAccountSid ?? prev.twilioLiveAccountSid,
+          twilioLiveAuthToken: d.twilioLiveAuthToken ?? prev.twilioLiveAuthToken,
+          twilioLivePhoneNumber: d.twilioLivePhoneNumber ?? prev.twilioLivePhoneNumber,
+          // Plivo
           plivoEnabled: d.plivoEnabled ?? prev.plivoEnabled,
           plivoAuthId: d.plivoAuthId ?? prev.plivoAuthId,
           plivoAuthToken: d.plivoAuthToken ?? prev.plivoAuthToken,
+          // Vonage
           vonageEnabled: d.vonageEnabled ?? prev.vonageEnabled,
           vonageApiKey: d.vonageApiKey ?? prev.vonageApiKey,
           vonageApiSecret: d.vonageApiSecret ?? prev.vonageApiSecret,
@@ -948,10 +955,6 @@ export default function AdminSettingsPage() {
       { key: 'emailTicket', value: notificationSettings.emailTicket, group: 'notifications', isPublic: false },
       { key: 'pushEnabled', value: notificationSettings.pushEnabled, group: 'notifications', isPublic: false },
       { key: 'slackWebhook', value: notificationSettings.slackWebhook, group: 'notifications', isPublic: false },
-      // Twilio API settings
-      { key: 'twilio_account_sid', value: twilioSettings.twilio_account_sid, group: 'api', isPublic: false },
-      { key: 'twilio_auth_token', value: twilioSettings.twilio_auth_token, group: 'api', isPublic: false },
-      { key: 'twilio_phone_number', value: twilioSettings.twilio_phone_number, group: 'api', isPublic: false },
       // Exchange Rate API keys
       { key: 'exchangerate_api_key', value: exchangeRateKeys.exchangerate_api_key, group: 'api', isPublic: false },
       { key: 'coingecko_api_key', value: exchangeRateKeys.coingecko_api_key, group: 'api', isPublic: false },
@@ -1070,9 +1073,20 @@ export default function AdminSettingsPage() {
       // Virtual Numbers
       { key: 'virtualNumbersEnabled', value: virtualNumberSettings.virtualNumbersEnabled, group: 'api', isPublic: true },
       { key: 'virtualNumbersProvider', value: virtualNumberSettings.virtualNumbersProvider, group: 'api', isPublic: false },
+      // Twilio
+      { key: 'twilioEnabled', value: virtualNumberSettings.twilioEnabled, group: 'api', isPublic: true },
+      { key: 'twilioMode', value: virtualNumberSettings.twilioMode, group: 'api', isPublic: false },
+      { key: 'twilioTestAccountSid', value: virtualNumberSettings.twilioTestAccountSid, group: 'api', isPublic: false },
+      { key: 'twilioTestAuthToken', value: virtualNumberSettings.twilioTestAuthToken, group: 'api', isPublic: false },
+      { key: 'twilioTestPhoneNumber', value: virtualNumberSettings.twilioTestPhoneNumber, group: 'api', isPublic: false },
+      { key: 'twilioLiveAccountSid', value: virtualNumberSettings.twilioLiveAccountSid, group: 'api', isPublic: false },
+      { key: 'twilioLiveAuthToken', value: virtualNumberSettings.twilioLiveAuthToken, group: 'api', isPublic: false },
+      { key: 'twilioLivePhoneNumber', value: virtualNumberSettings.twilioLivePhoneNumber, group: 'api', isPublic: false },
+      // Plivo
       { key: 'plivoEnabled', value: virtualNumberSettings.plivoEnabled, group: 'api', isPublic: true },
       { key: 'plivoAuthId', value: virtualNumberSettings.plivoAuthId, group: 'api', isPublic: false },
       { key: 'plivoAuthToken', value: virtualNumberSettings.plivoAuthToken, group: 'api', isPublic: false },
+      // Vonage
       { key: 'vonageEnabled', value: virtualNumberSettings.vonageEnabled, group: 'api', isPublic: true },
       { key: 'vonageApiKey', value: virtualNumberSettings.vonageApiKey, group: 'api', isPublic: false },
       { key: 'vonageApiSecret', value: virtualNumberSettings.vonageApiSecret, group: 'api', isPublic: false },
@@ -2918,44 +2932,6 @@ export default function AdminSettingsPage() {
                     </div>
                   </div>
 
-                  {/* Twilio SMS Configuration */}
-                  <div className="border-t border-[#2a2a2a] pt-6">
-                    <h3 className="text-white font-medium mb-4">Twilio SMS Configuration</h3>
-                    <p className="text-slate-500 text-sm mb-4">Required for SMS-based two-factor authentication. Get your credentials from your Twilio dashboard.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Account SID</label>
-                        <input
-                          type="text"
-                          value={twilioSettings.twilio_account_sid}
-                          onChange={(e) => setTwilioSettings({ ...twilioSettings, twilio_account_sid: e.target.value })}
-                          placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Auth Token</label>
-                        <input
-                          type="password"
-                          value={twilioSettings.twilio_auth_token}
-                          onChange={(e) => setTwilioSettings({ ...twilioSettings, twilio_auth_token: e.target.value })}
-                          placeholder="Your Twilio Auth Token"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Phone Number</label>
-                        <input
-                          type="text"
-                          value={twilioSettings.twilio_phone_number}
-                          onChange={(e) => setTwilioSettings({ ...twilioSettings, twilio_phone_number: e.target.value })}
-                          placeholder="+1234567890"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Exchange Rate API Configuration */}
                   <div className="border-t border-[#2a2a2a] pt-6">
                     <h3 className="text-white font-medium mb-4">Exchange Rate APIs</h3>
@@ -3376,38 +3352,153 @@ export default function AdminSettingsPage() {
 
                     {/* Twilio */}
                     <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
                             <Icon name="phone" size={20} className="text-red-400" />
                           </div>
                           <div>
                             <p className="text-white font-medium">Twilio</p>
-                            <p className="text-slate-500 text-sm">100+ countries, best documentation</p>
+                            <p className="text-slate-500 text-sm">100+ countries, best documentation, supports 2FA SMS</p>
                           </div>
                         </div>
                         <button
                           type="button"
-                          onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, virtualNumbersEnabled: !virtualNumberSettings.virtualNumbersEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${virtualNumberSettings.virtualNumbersEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, twilioEnabled: !virtualNumberSettings.twilioEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${virtualNumberSettings.twilioEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
-                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualNumberSettings.virtualNumbersEnabled ? 'left-7' : 'left-1'}`} />
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualNumberSettings.twilioEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
                       </div>
-                      {virtualNumberSettings.virtualNumbersEnabled && !twilioSettings.twilio_account_sid && (
-                        <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                          <p className="text-yellow-400 text-sm flex items-center gap-2">
-                            <Icon name="alert" size={16} />
-                            Configure Twilio credentials in the SMS section above.
-                          </p>
-                        </div>
-                      )}
-                      {virtualNumberSettings.virtualNumbersEnabled && twilioSettings.twilio_account_sid && (
-                        <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                          <p className="text-green-400 text-sm flex items-center gap-2">
-                            <Icon name="check" size={16} />
-                            Using Twilio credentials from SMS configuration.
-                          </p>
+                      {virtualNumberSettings.twilioEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a]">
+                          {/* Test/Live Mode Toggle */}
+                          <div className="flex items-center gap-4 mb-4">
+                            <span className="text-sm font-medium text-slate-300">Mode:</span>
+                            <div className="flex bg-[#141414] rounded-lg p-1">
+                              <button
+                                type="button"
+                                onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, twilioMode: 'test' })}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                  virtualNumberSettings.twilioMode === 'test'
+                                    ? 'bg-yellow-500/20 text-yellow-400'
+                                    : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                Test
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, twilioMode: 'live' })}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                  virtualNumberSettings.twilioMode === 'live'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                Live
+                              </button>
+                            </div>
+                            <span className={`text-xs font-medium px-2 py-1 rounded ${
+                              virtualNumberSettings.twilioMode === 'test'
+                                ? 'bg-yellow-500/10 text-yellow-400'
+                                : 'bg-green-500/10 text-green-400'
+                            }`}>
+                              {virtualNumberSettings.twilioMode === 'test' ? '⚠️ TEST MODE' : '✓ LIVE'}
+                            </span>
+                          </div>
+
+                          {/* Test Mode Credentials */}
+                          {virtualNumberSettings.twilioMode === 'test' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Test Account SID</label>
+                                <input
+                                  type="text"
+                                  value={virtualNumberSettings.twilioTestAccountSid}
+                                  onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, twilioTestAccountSid: e.target.value })}
+                                  placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Test Auth Token</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.twilioTestAuthToken ? 'text' : 'password'}
+                                    value={virtualNumberSettings.twilioTestAuthToken}
+                                    onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, twilioTestAuthToken: e.target.value })}
+                                    placeholder="Your Twilio Test Auth Token"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, twilioTestAuthToken: !prev.twilioTestAuthToken }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.twilioTestAuthToken ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Test Phone Number</label>
+                                <input
+                                  type="text"
+                                  value={virtualNumberSettings.twilioTestPhoneNumber}
+                                  onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, twilioTestPhoneNumber: e.target.value })}
+                                  placeholder="+15005550006"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Live Mode Credentials */}
+                          {virtualNumberSettings.twilioMode === 'live' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Live Account SID</label>
+                                <input
+                                  type="text"
+                                  value={virtualNumberSettings.twilioLiveAccountSid}
+                                  onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, twilioLiveAccountSid: e.target.value })}
+                                  placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Live Auth Token</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.twilioLiveAuthToken ? 'text' : 'password'}
+                                    value={virtualNumberSettings.twilioLiveAuthToken}
+                                    onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, twilioLiveAuthToken: e.target.value })}
+                                    placeholder="Your Twilio Live Auth Token"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, twilioLiveAuthToken: !prev.twilioLiveAuthToken }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.twilioLiveAuthToken ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Live Phone Number</label>
+                                <input
+                                  type="text"
+                                  value={virtualNumberSettings.twilioLivePhoneNumber}
+                                  onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, twilioLivePhoneNumber: e.target.value })}
+                                  placeholder="+1234567890"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <p className="text-xs text-slate-600 mt-3">Get your credentials at <a href="https://console.twilio.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">console.twilio.com</a>. Twilio is also used for 2FA SMS verification.</p>
                         </div>
                       )}
                     </div>

@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zenorar Script Licensing System - Complete Implementation Guide</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.6;
+      color: #1a1a1a;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #fff;
+    }
+
+    @media print {
+      body {
+        padding: 20px;
+        font-size: 11pt;
+      }
+      .no-print {
+        display: none;
+      }
+      h1, h2, h3 {
+        page-break-after: avoid;
+      }
+      table, pre {
+        page-break-inside: avoid;
+      }
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #10b981;
+      margin-bottom: 10px;
+      border-bottom: 4px solid #10b981;
+      padding-bottom: 15px;
+    }
+
+    h2 {
+      font-size: 1.8em;
+      color: #059669;
+      margin-top: 40px;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 10px;
+    }
+
+    h3 {
+      font-size: 1.3em;
+      color: #374151;
+      margin-top: 25px;
+      margin-bottom: 10px;
+    }
+
+    h4 {
+      font-size: 1.1em;
+      color: #4b5563;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin-bottom: 15px;
+    }
+
+    .subtitle {
+      font-size: 1.2em;
+      color: #6b7280;
+      margin-bottom: 30px;
+    }
+
+    .meta {
+      background: #f3f4f6;
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+
+    .meta p {
+      margin: 5px 0;
+      font-size: 0.9em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.9em;
+    }
+
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 12px;
+      text-align: left;
+    }
+
+    th {
+      background: #10b981;
+      color: white;
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) {
+      background: #f9fafb;
+    }
+
+    pre {
+      background: #1f2937;
+      color: #e5e7eb;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 15px 0;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.85em;
+      line-height: 1.5;
+    }
+
+    code {
+      background: #e5e7eb;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.9em;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+    }
+
+    ul, ol {
+      margin: 15px 0 15px 25px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    .highlight {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px 20px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .info {
+      background: #dbeafe;
+      border-left: 4px solid #3b82f6;
+      padding: 15px 20px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .success {
+      background: #d1fae5;
+      border-left: 4px solid #10b981;
+      padding: 15px 20px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .toc {
+      background: #f9fafb;
+      padding: 25px 30px;
+      border-radius: 8px;
+      margin: 30px 0;
+    }
+
+    .toc h3 {
+      margin-top: 0;
+      color: #10b981;
+    }
+
+    .toc ol {
+      margin: 15px 0 0 20px;
+    }
+
+    .toc a {
+      color: #374151;
+      text-decoration: none;
+    }
+
+    .toc a:hover {
+      color: #10b981;
+    }
+
+    .flow-diagram {
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: monospace;
+      white-space: pre;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+
+    .badge-green {
+      background: #d1fae5;
+      color: #059669;
+    }
+
+    .badge-yellow {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .badge-blue {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 40px 0;
+    }
+
+    .print-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 15px 25px;
+      border-radius: 8px;
+      font-size: 1em;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .print-btn:hover {
+      background: #059669;
+    }
+
+    footer {
+      margin-top: 60px;
+      padding-top: 30px;
+      border-top: 2px solid #e5e7eb;
+      text-align: center;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+
+  <h1>Zenorar Script Licensing System</h1>
+  <p class="subtitle">Complete Implementation Guide</p>
+
+  <div class="meta">
+    <p><strong>Document Version:</strong> 1.0</p>
+    <p><strong>Date:</strong> February 2026</p>
+    <p><strong>Prepared for:</strong> Zenorar Marketplace</p>
+  </div>
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#license-types">License Types</a></li>
+      <li><a href="#anti-piracy">Anti-Piracy & Protection</a></li>
+      <li><a href="#validation">License Validation</a></li>
+      <li><a href="#binding">Domain/Identifier Binding</a></li>
+      <li><a href="#storage">Secure Storage & Delivery</a>
+        <ul style="margin-top: 8px; font-size: 0.9em;">
+          <li>6.1 Storage Solution Comparison</li>
+          <li>6.2 Recommended: Cloudflare R2</li>
+          <li>6.3 R2 Storage Architecture</li>
+          <li>6.4 File Size Limits by Type</li>
+          <li>6.5 Security Measures</li>
+          <li>6.6 Download Flow</li>
+          <li>6.7 R2 Setup Guide</li>
+          <li>6.8 Verification Checklist</li>
+        </ul>
+      </li>
+      <li><a href="#support">Support System Integration</a></li>
+      <li><a href="#database">Database Schema</a></li>
+      <li><a href="#api">API Endpoints</a></li>
+      <li><a href="#phases">Implementation Phases</a></li>
+      <li><a href="#comparison">Comparison with ThemeForest</a></li>
+      <li><a href="#gift-cards">Gift Card Storage System</a>
+        <ul style="margin-top: 8px; font-size: 0.9em;">
+          <li>12.1 Overview & Architecture</li>
+          <li>12.2 Database Schema</li>
+          <li>12.3 Sourcing - Bulk Suppliers</li>
+          <li>12.4 Encryption & Security</li>
+          <li>12.5 Purchase Flow</li>
+          <li>12.6 Store Credit Cards</li>
+          <li>12.7 Inventory Acquisition</li>
+          <li>12.8 <strong>API Integration (Tillo, Reloadly)</strong></li>
+          <li>12.9 Admin Dashboard</li>
+        </ul>
+      </li>
+      <li><a href="#esim">eSIM System</a>
+        <ul style="margin-top: 8px; font-size: 0.9em;">
+          <li>13.1 Overview & Business Model</li>
+          <li>13.2 Provider Comparison</li>
+          <li>13.3 Database Schema</li>
+          <li>13.4 Purchase & Delivery Flow</li>
+          <li>13.5 API Integration</li>
+          <li>13.6 Security</li>
+        </ul>
+      </li>
+      <li><a href="#virtual-numbers">Virtual Numbers System</a>
+        <ul style="margin-top: 8px; font-size: 0.9em;">
+          <li>14.1 Overview & Business Model</li>
+          <li>14.2 Provider Comparison</li>
+          <li>14.3 Database Schema</li>
+          <li>14.4 Purchase Flow</li>
+          <li>14.5 Webhook Handling</li>
+          <li>14.6 Security & Compliance</li>
+        </ul>
+      </li>
+      <li><a href="#product-matrix">Full Product Comparison Matrix</a></li>
+    </ol>
+  </div>
+
+  <hr>
+
+  <h2 id="overview">1. Overview</h2>
+
+  <p>This document outlines the complete licensing system for selling scripts on Zenorar Marketplace.</p>
+
+  <h3>Product Types Covered</h3>
+  <ul>
+    <li>Web Scripts (PHP, Node.js, Python, etc.)</li>
+    <li>Browser Extensions (Chrome, Firefox, etc.)</li>
+    <li>Mobile Apps (iOS, Android, React Native, Flutter)</li>
+    <li>Desktop Apps (Electron, native apps)</li>
+  </ul>
+
+  <h3>Core Principles</h3>
+  <ul>
+    <li>License validation without requiring constant internet</li>
+    <li>Tamper-proof license verification</li>
+    <li>Support duration tracking</li>
+    <li>Domain/identifier binding</li>
+    <li>Anti-piracy measures</li>
+  </ul>
+
+  <hr>
+
+  <h2 id="license-types">2. License Types</h2>
+
+  <h3>License Comparison Table</h3>
+  <table>
+    <tr>
+      <th>Feature</th>
+      <th>Normal License</th>
+      <th>Extended License</th>
+      <th>Pro License</th>
+    </tr>
+    <tr>
+      <td><strong>Price</strong></td>
+      <td>Base price</td>
+      <td>~1.5x base</td>
+      <td>~3x base</td>
+    </tr>
+    <tr>
+      <td><strong>Domains/Identifiers</strong></td>
+      <td>1</td>
+      <td>1</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <td><strong>Support Duration</strong></td>
+      <td>6 months</td>
+      <td>12 months</td>
+      <td>36 months</td>
+    </tr>
+    <tr>
+      <td><strong>Updates</strong></td>
+      <td>Lifetime</td>
+      <td>Lifetime</td>
+      <td>Lifetime</td>
+    </tr>
+    <tr>
+      <td><strong>Download Access</strong></td>
+      <td>Lifetime</td>
+      <td>Lifetime</td>
+      <td>Lifetime</td>
+    </tr>
+    <tr>
+      <td><strong>Use Case</strong></td>
+      <td>Single project</td>
+      <td>Single project</td>
+      <td>Multiple projects / Agency</td>
+    </tr>
+  </table>
+
+  <h3>License Restrictions</h3>
+  <div class="info">
+    <p><strong>Normal & Extended License:</strong></p>
+    <ul>
+      <li>Script can only be installed on ONE domain/machine/identifier</li>
+      <li>Cannot be resold or redistributed</li>
+      <li>Cannot be used in SaaS products (unless explicitly allowed)</li>
+    </ul>
+  </div>
+
+  <div class="success">
+    <p><strong>Pro License:</strong></p>
+    <ul>
+      <li>Script can be installed on up to THREE domains/machines/identifiers</li>
+      <li>Suitable for agencies managing multiple client sites</li>
+      <li>Cannot be resold or redistributed</li>
+    </ul>
+  </div>
+
+  <hr>
+
+  <h2 id="anti-piracy">3. Anti-Piracy & Protection</h2>
+
+  <h3>3.1 Code Obfuscation</h3>
+  <p>Before storing scripts, apply obfuscation to make reverse engineering difficult:</p>
+
+  <pre><code>// Tools for different languages:
+// JavaScript: javascript-obfuscator, terser
+// PHP: IonCube, Zend Guard, SourceGuardian
+// Python: PyArmor, Cython
+// .NET: ConfuserEx, Dotfuscator</code></pre>
+
+  <h3>3.2 License Key System</h3>
+  <p><strong>Format:</strong> <code>ZNRSCR-XXXX-XXXX-XXXX-XXXX</code></p>
+
+  <pre><code>function generateLicenseKey(orderId, productId) {
+  const prefix = 'ZNRSCR';
+  const data = `${orderId}-${productId}-${Date.now()}`;
+  const hash = crypto.createHash('sha256').update(data).digest('hex');
+
+  // Format: ZNRSCR-XXXX-XXXX-XXXX-XXXX
+  const segments = [];
+  for (let i = 0; i < 4; i++) {
+    segments.push(hash.substring(i * 4, (i + 1) * 4).toUpperCase());
+  }
+
+  return `${prefix}-${segments.join('-')}`;
+}</code></pre>
+
+  <h3>3.3 Watermarking (Buyer Identification)</h3>
+  <p>Inject unique buyer identifiers into downloaded code:</p>
+
+  <pre><code>/*
+ * Licensed to: john@example.com
+ * License Key: ZNRSCR-A1B2-C3D4-E5F6-G7H8
+ * Purchase Date: 2026-02-24
+ *
+ * Unauthorized distribution is prohibited.
+ * Trace ID: 8f4a2b1c-9d3e-4f5a-b6c7-d8e9f0a1b2c3
+ */</code></pre>
+
+  <div class="highlight">
+    <p><strong>Note:</strong> If a pirated copy is found, the trace ID can identify the source buyer.</p>
+  </div>
+
+  <hr>
+
+  <h2 id="validation">4. License Validation</h2>
+
+  <h3>4.1 Online Validation (Phone-Home)</h3>
+  <p>Best for web apps that have internet access:</p>
+
+  <pre><code>const LICENSE = {
+  key: "ZNRSCR-XXXX-XXXX-XXXX-XXXX",
+  purchaseDate: "2026-02-24",
+  supportExpires: "2026-08-24"
+};
+
+async function verifyLicense() {
+  try {
+    const response = await fetch('https://api.zenorar.com/licenses/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: LICENSE.key,
+        domain: window.location.hostname
+      })
+    });
+
+    const data = await response.json();
+
+    if (!data.valid) {
+      handleInvalidLicense(data.reason);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    // Network error - use offline validation
+    return verifyOffline();
+  }
+}
+
+// Run on startup
+verifyLicense();
+
+// Run periodically (every 24 hours)
+setInterval(verifyLicense, 24 * 60 * 60 * 1000);</code></pre>
+
+  <h3>4.2 Offline Validation (Signed License)</h3>
+  <p>For scripts that may not have internet access, use cryptographically signed licenses:</p>
+
+  <div class="info">
+    <p><strong>How it works:</strong></p>
+    <ol>
+      <li>Server signs license data with a <strong>private key</strong></li>
+      <li>Script contains the <strong>public key</strong> (safe to expose)</li>
+      <li>Script verifies the signature - if data was tampered, signature fails</li>
+      <li>User cannot change expiration date without invalidating signature</li>
+    </ol>
+  </div>
+
+  <h3>4.3 Hybrid Validation (Recommended)</h3>
+  <p>Combine online and offline methods with a grace period:</p>
+
+  <pre><code>async function validateLicense() {
+  // Try online validation first
+  try {
+    const online = await onlineValidation();
+    if (online.valid) {
+      localStorage.setItem('lastVerified', new Date().toISOString());
+      return true;
+    }
+    return false;
+  } catch (networkError) {
+    // Fallback to offline validation with grace period
+    const lastVerified = localStorage.getItem('lastVerified');
+    const daysSince = daysBetween(new Date(lastVerified), new Date());
+
+    if (daysSince < LICENSE.gracePeriod) {
+      return verifySignedLicense(LICENSE);
+    }
+
+    showError('Please connect to internet to verify license');
+    return false;
+  }
+}</code></pre>
+
+  <hr>
+
+  <h2 id="binding">5. Domain/Identifier Binding</h2>
+
+  <h3>5.1 Web Applications (Domain Binding)</h3>
+  <pre><code>POST /api/licenses/activate
+{
+  "license_key": "ZNRSCR-XXXX-XXXX-XXXX-XXXX",
+  "domain": "example.com"
+}
+
+Response:
+{
+  "success": true,
+  "registered_domain": "example.com",
+  "domains_used": 1,
+  "domains_allowed": 1
+}</code></pre>
+
+  <h3>5.2 Desktop Applications (Machine Binding)</h3>
+  <p>Use a combination of hardware identifiers:</p>
+
+  <table>
+    <tr>
+      <th>Identifier Type</th>
+      <th>Source</th>
+      <th>Stability</th>
+    </tr>
+    <tr>
+      <td>Machine ID</td>
+      <td>node-machine-id</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td>CPU Model</td>
+      <td>os.cpus()</td>
+      <td>Medium</td>
+    </tr>
+    <tr>
+      <td>Hostname</td>
+      <td>os.hostname()</td>
+      <td>Low (can change)</td>
+    </tr>
+  </table>
+
+  <h3>5.3 Mobile Applications (Device Binding)</h3>
+  <p>Use device unique identifiers from react-native-device-info or similar libraries.</p>
+
+  <hr>
+
+  <h2 id="storage">6. Secure Storage & Delivery</h2>
+
+  <h3>6.1 Storage Solution Comparison</h3>
+  <p>We evaluated three major storage solutions for script files:</p>
+
+  <table>
+    <tr>
+      <th>Feature</th>
+      <th>Cloudflare R2</th>
+      <th>AWS S3</th>
+      <th>Cloudinary</th>
+    </tr>
+    <tr>
+      <td><strong>Storage Cost</strong></td>
+      <td>$0.015/GB/month</td>
+      <td>$0.023/GB/month</td>
+      <td>$0.02-0.05/GB</td>
+    </tr>
+    <tr>
+      <td><strong>Egress (Download) Cost</strong></td>
+      <td><span class="badge badge-green">$0 (FREE)</span></td>
+      <td>$0.09/GB</td>
+      <td>$0.05-0.15/GB</td>
+    </tr>
+    <tr>
+      <td><strong>Signed URLs</strong></td>
+      <td>✅ Yes</td>
+      <td>✅ Yes</td>
+      <td>✅ Yes</td>
+    </tr>
+    <tr>
+      <td><strong>S3 Compatible API</strong></td>
+      <td>✅ Yes</td>
+      <td>✅ Native</td>
+      <td>❌ No</td>
+    </tr>
+    <tr>
+      <td><strong>Private Buckets</strong></td>
+      <td>✅ Yes</td>
+      <td>✅ Yes</td>
+      <td>✅ Yes</td>
+    </tr>
+    <tr>
+      <td><strong>Global CDN</strong></td>
+      <td>✅ Built-in</td>
+      <td>CloudFront (extra)</td>
+      <td>✅ Built-in</td>
+    </tr>
+    <tr>
+      <td><strong>Large File Support</strong></td>
+      <td>Up to 5TB</td>
+      <td>Up to 5TB</td>
+      <td>100MB max</td>
+    </tr>
+    <tr>
+      <td><strong>Free Tier</strong></td>
+      <td>10GB storage</td>
+      <td>5GB (12 months)</td>
+      <td>25GB</td>
+    </tr>
+  </table>
+
+  <h4>Cost Analysis (100GB storage, 500GB downloads/month)</h4>
+  <table>
+    <tr>
+      <th>Provider</th>
+      <th>Storage</th>
+      <th>Egress</th>
+      <th>Total/Month</th>
+    </tr>
+    <tr>
+      <td><strong>Cloudflare R2</strong></td>
+      <td>$1.50</td>
+      <td>$0</td>
+      <td><span class="badge badge-green">$1.50</span></td>
+    </tr>
+    <tr>
+      <td>AWS S3</td>
+      <td>$2.30</td>
+      <td>$45.00</td>
+      <td>$47.30</td>
+    </tr>
+    <tr>
+      <td>Cloudinary</td>
+      <td>$5.00</td>
+      <td>$25-75</td>
+      <td>$30-80</td>
+    </tr>
+  </table>
+
+  <h3>6.2 Recommended: Cloudflare R2</h3>
+  <div class="success">
+    <p><strong>Why Cloudflare R2 is the best choice:</strong></p>
+    <ol>
+      <li><strong>Zero Egress Fees</strong> - Downloads are free, regardless of file size or frequency</li>
+      <li><strong>S3-Compatible API</strong> - Uses standard AWS SDK, easy migration if needed</li>
+      <li><strong>Built-in CDN</strong> - Fast global delivery without extra configuration</li>
+      <li><strong>Cost Predictable</strong> - Only pay for storage, not usage patterns</li>
+      <li><strong>Generous Free Tier</strong> - 10GB free storage, 1M requests/month</li>
+      <li><strong>Strong Security</strong> - Private buckets, signed URLs, access controls</li>
+    </ol>
+  </div>
+
+  <h3>6.3 R2 Storage Architecture</h3>
+  <pre><code>Cloudflare R2 Bucket: zenorar-scripts (PRIVATE)
+├── scripts/
+│   └── {product_id}/
+│       └── {version}/
+│           └── {hash}-{filename}
+│               Example: scripts/prod_abc123/1.0.0/a1b2c3d4-myapp.zip
+└── licenses/
+    └── {order_id}/
+        └── license.json (signed)</code></pre>
+
+  <h3>6.4 File Size Limits by Type</h3>
+  <p>Different file types have different maximum size limits:</p>
+
+  <table>
+    <tr>
+      <th>File Type</th>
+      <th>Extensions</th>
+      <th>Max Size</th>
+      <th>Rationale</th>
+    </tr>
+    <tr>
+      <td><strong>Archives</strong></td>
+      <td>.zip, .rar, .7z, .tar, .tar.gz</td>
+      <td>500 MB</td>
+      <td>Standard script bundles</td>
+    </tr>
+    <tr>
+      <td><strong>Desktop Installers</strong></td>
+      <td>.exe, .dmg</td>
+      <td>1 GB</td>
+      <td>Desktop applications</td>
+    </tr>
+    <tr>
+      <td><strong>Mobile Installers</strong></td>
+      <td>.msi, .apk, .ipa</td>
+      <td>500 MB</td>
+      <td>Mobile apps</td>
+    </tr>
+    <tr>
+      <td><strong>Source Code</strong></td>
+      <td>.js, .ts, .php, .py, .java, .swift, etc.</td>
+      <td>10 MB</td>
+      <td>Individual source files</td>
+    </tr>
+    <tr>
+      <td><strong>Default</strong></td>
+      <td>Other allowed types</td>
+      <td>100 MB</td>
+      <td>Safety default</td>
+    </tr>
+  </table>
+
+  <h3>6.5 Security Measures</h3>
+  <div class="flow-diagram">
+┌─────────────────────────────────────────────────────────┐
+│                   SECURITY LAYERS                        │
+├─────────────────────────────────────────────────────────┤
+│  Layer 1: Storage Security                               │
+│  ├── Private R2 bucket (no public access)               │
+│  ├── Access keys in environment variables               │
+│  └── Bucket-level access controls                       │
+├─────────────────────────────────────────────────────────┤
+│  Layer 2: Access Control                                 │
+│  ├── Authentication required (JWT token)                │
+│  ├── Ownership verification (user must own product)     │
+│  └── Admin-only upload permissions                      │
+├─────────────────────────────────────────────────────────┤
+│  Layer 3: Download Security                              │
+│  ├── Signed URLs with 1-hour expiry                     │
+│  ├── One-time download tokens (optional)                │
+│  └── Rate limiting per user                             │
+├─────────────────────────────────────────────────────────┤
+│  Layer 4: File Integrity                                 │
+│  ├── SHA-256 hash stored on upload                      │
+│  ├── Hash verification on download                      │
+│  └── Version tracking and changelog                     │
+├─────────────────────────────────────────────────────────┤
+│  Layer 5: Audit & Monitoring                             │
+│  ├── All downloads logged (IP, user agent, timestamp)   │
+│  ├── Failed access attempts recorded                    │
+│  └── Anomaly detection (unusual patterns)               │
+└─────────────────────────────────────────────────────────┘
+  </div>
+
+  <h4>Signed URL Security</h4>
+  <div class="info">
+    <p><strong>Signed URLs ensure:</strong></p>
+    <ul>
+      <li><strong>Time-Limited Access</strong> - URLs expire after 1 hour</li>
+      <li><strong>Tamper-Proof</strong> - URL signature verified by R2</li>
+      <li><strong>No Direct File Access</strong> - Files cannot be accessed without valid signature</li>
+      <li><strong>Revocable</strong> - URLs can be invalidated by changing signing keys</li>
+    </ul>
+  </div>
+
+  <h3>6.6 Download Flow</h3>
+  <div class="flow-diagram">
+1. User clicks "Download"
+          │
+          ▼
+2. Server verifies ownership
+   - Check order exists and is paid
+   - Check user matches order
+          │
+          ▼
+3. Generate personalized package
+   - Inject license.json
+   - Inject buyer watermarks
+          │
+          ▼
+4. Generate signed URL from R2 (1 hour expiry)
+          │
+          ▼
+5. Log download (IP, user agent, timestamp)
+          │
+          ▼
+6. Return signed download URL
+  </div>
+
+  <h3>6.7 R2 Setup Guide</h3>
+  <div class="info">
+    <p><strong>Step 1: Create R2 Bucket</strong></p>
+    <ol>
+      <li>Log into Cloudflare Dashboard</li>
+      <li>Navigate to R2 → Create Bucket</li>
+      <li>Bucket name: <code>zenorar-scripts</code></li>
+      <li>Location: Auto (or nearest region)</li>
+      <li><strong>Important:</strong> Leave public access disabled</li>
+    </ol>
+  </div>
+
+  <div class="info">
+    <p><strong>Step 2: Create API Token</strong></p>
+    <ol>
+      <li>Go to R2 → Manage R2 API Tokens</li>
+      <li>Click Create API Token</li>
+      <li>Permissions: Object Read & Write</li>
+      <li>Bucket: <code>zenorar-scripts</code></li>
+      <li>Save Access Key ID and Secret Access Key</li>
+    </ol>
+  </div>
+
+  <h4>Environment Variables</h4>
+  <pre><code># Add to .env file
+R2_ACCOUNT_ID=your_cloudflare_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key
+R2_SECRET_ACCESS_KEY=your_r2_secret_key
+R2_BUCKET_NAME=zenorar-scripts</code></pre>
+
+  <h4>Required Dependencies</h4>
+  <pre><code>npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner</code></pre>
+
+  <h3>6.8 Verification Checklist</h3>
+  <ul>
+    <li>☐ R2 bucket is private (no public access URLs work)</li>
+    <li>☐ Files upload successfully via admin panel</li>
+    <li>☐ Version management works (latest flag toggles)</li>
+    <li>☐ Signed URLs expire after 1 hour</li>
+    <li>☐ File type restrictions are enforced</li>
+    <li>☐ Size limits are enforced per file type</li>
+    <li>☐ Downloads require authentication</li>
+    <li>☐ Downloads require product ownership</li>
+    <li>☐ All downloads are logged with IP and timestamp</li>
+    <li>☐ File integrity hashes are stored and verifiable</li>
+  </ul>
+
+  <hr>
+
+  <h2 id="support">7. Support System Integration</h2>
+
+  <h3>Support Ticket Validation</h3>
+  <p>When a user creates a support ticket:</p>
+  <ol>
+    <li>Check if they own the product (valid license)</li>
+    <li>Check if support period has expired</li>
+    <li>If expired, show renewal options</li>
+    <li>If active, allow ticket submission</li>
+  </ol>
+
+  <h3>Support Renewal Pricing</h3>
+  <table>
+    <tr>
+      <th>Duration</th>
+      <th>Price (% of original)</th>
+    </tr>
+    <tr>
+      <td>6 months</td>
+      <td>25%</td>
+    </tr>
+    <tr>
+      <td>12 months</td>
+      <td>40%</td>
+    </tr>
+    <tr>
+      <td>36 months</td>
+      <td>80% (best value)</td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <h2 id="database">8. Database Schema</h2>
+
+  <h3>Licenses Table</h3>
+  <pre><code>CREATE TABLE licenses (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  product_id UUID NOT NULL,
+  order_id UUID NOT NULL,
+
+  license_key VARCHAR(50) UNIQUE NOT NULL,
+  license_type VARCHAR(20) NOT NULL,  -- 'normal', 'extended', 'pro'
+
+  domains_allowed INT DEFAULT 1,
+  registered_domains JSONB DEFAULT '[]',
+
+  support_expires_at TIMESTAMP NOT NULL,
+  status VARCHAR(20) DEFAULT 'active',
+
+  created_at TIMESTAMP DEFAULT NOW()
+);</code></pre>
+
+  <h3>License Activations Table</h3>
+  <pre><code>CREATE TABLE license_activations (
+  id UUID PRIMARY KEY,
+  license_id UUID NOT NULL,
+
+  identifier VARCHAR(255) NOT NULL,  -- domain or machine_id
+  identifier_type VARCHAR(50) NOT NULL,
+
+  ip_address VARCHAR(45),
+  activated_at TIMESTAMP DEFAULT NOW(),
+  is_active BOOLEAN DEFAULT true
+);</code></pre>
+
+  <hr>
+
+  <h2 id="api">9. API Endpoints</h2>
+
+  <h3>License Verification (Public)</h3>
+  <pre><code>POST /api/licenses/verify
+
+Request:
+{
+  "key": "ZNRSCR-XXXX-XXXX-XXXX-XXXX",
+  "domain": "example.com"
+}
+
+Response (Success):
+{
+  "valid": true,
+  "license_type": "normal",
+  "support_active": true,
+  "support_expires": "2026-08-24",
+  "days_remaining": 180
+}
+
+Response (Failure):
+{
+  "valid": false,
+  "reason": "domain_mismatch",
+  "message": "License registered to different domain"
+}</code></pre>
+
+  <h3>License Activation</h3>
+  <pre><code>POST /api/licenses/activate
+Authorization: Bearer {token}
+
+Request:
+{
+  "license_key": "ZNRSCR-XXXX-XXXX-XXXX-XXXX",
+  "identifier": "example.com",
+  "identifier_type": "domain"
+}
+
+Response:
+{
+  "success": true,
+  "slots_used": 1,
+  "slots_available": 0
+}</code></pre>
+
+  <hr>
+
+  <h2 id="phases">10. Implementation Phases</h2>
+
+  <table>
+    <tr>
+      <th>Phase</th>
+      <th>Tasks</th>
+      <th>Duration</th>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">Phase 1</span></td>
+      <td>Database schema, license key generation, basic verification</td>
+      <td>Week 1-2</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">Phase 2</span></td>
+      <td>Secure file storage, license injection, signed URLs</td>
+      <td>Week 2-3</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">Phase 3</span></td>
+      <td>Domain activation, machine binding, management UI</td>
+      <td>Week 3-4</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">Phase 4</span></td>
+      <td>Public verification API, rate limiting, abuse detection</td>
+      <td>Week 4-5</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">Phase 5</span></td>
+      <td>Support ticket integration, renewal flow</td>
+      <td>Week 5-6</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">Phase 6</span></td>
+      <td>Code obfuscation, watermarking, signed licenses</td>
+      <td>Week 6-7</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">Phase 7</span></td>
+      <td>Admin tools, analytics, revocation system</td>
+      <td>Week 7-8</td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <h2 id="comparison">11. Comparison with ThemeForest</h2>
+
+  <table>
+    <tr>
+      <th>Feature</th>
+      <th>ThemeForest/Envato</th>
+      <th>Zenorar (Proposed)</th>
+    </tr>
+    <tr>
+      <td>License Key</td>
+      <td>Purchase code</td>
+      <td>ZNRSCR-XXXX-XXXX-XXXX</td>
+    </tr>
+    <tr>
+      <td>Verification API</td>
+      <td>api.envato.com</td>
+      <td>api.zenorar.com</td>
+    </tr>
+    <tr>
+      <td>Domain Binding</td>
+      <td>Via plugin/theme</td>
+      <td>Built-in activation</td>
+    </tr>
+    <tr>
+      <td>Support Duration</td>
+      <td>6 months (extendable)</td>
+      <td>6/12/36 months</td>
+    </tr>
+    <tr>
+      <td>Multi-domain</td>
+      <td>Requires multiple purchases</td>
+      <td>Pro license (3 domains)</td>
+    </tr>
+    <tr>
+      <td>Offline Support</td>
+      <td>No</td>
+      <td><span class="badge badge-green">Yes (signed licenses)</span></td>
+    </tr>
+    <tr>
+      <td>Watermarking</td>
+      <td>Author-dependent</td>
+      <td><span class="badge badge-green">Built-in</span></td>
+    </tr>
+    <tr>
+      <td>Machine Binding</td>
+      <td>Not available</td>
+      <td><span class="badge badge-green">Available</span></td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <div class="highlight">
+    <h3>Security Reminders</h3>
+    <ul>
+      <li>Never trust client-side validation alone - always validate on server</li>
+      <li>Never expose private signing keys</li>
+      <li>Rate limit verification requests (100/hour per key)</li>
+      <li>Have a DMCA takedown process ready</li>
+    </ul>
+  </div>
+
+  <hr>
+
+  <h2 id="gift-cards">12. Gift Card Storage & Management System</h2>
+
+  <h3>12.1 Overview</h3>
+  <p>The gift card system handles two types of cards:</p>
+  <ul>
+    <li><strong>Third-Party Cards</strong> - Steam, PlayStation, iTunes, Amazon, etc. (reselling actual codes)</li>
+    <li><strong>Store Credit Cards</strong> - Zenorar gift cards that add wallet balance</li>
+  </ul>
+
+  <div class="info">
+    <p><strong>Key Difference from Scripts:</strong></p>
+    <p>Scripts are <strong>files stored in R2</strong> and delivered via signed URLs. Gift cards are <strong>encrypted code strings</strong> stored in the database.</p>
+  </div>
+
+  <h3>12.2 System Architecture</h3>
+
+  <h4>Third-Party Cards Flow</h4>
+  <div class="flow-diagram">
+IMPORT:   Admin → CSV Upload → Validate → Encrypt → Database
+PURCHASE: User → Pay → Reserve Code → Complete → Decrypt → Deliver
+DELIVERY: Email + Library Page + Copy Button
+  </div>
+
+  <h4>Store Credit Cards Flow</h4>
+  <div class="flow-diagram">
+PURCHASE: User → Pay → Generate Code → Store in DB
+GIFT:     Buyer → Pay → Send to Recipient → Recipient Redeems
+REDEEM:   User → Enter Code → Add to Wallet Balance
+  </div>
+
+  <h3>12.3 Database Schema</h3>
+
+  <h4>Gift Card Brands Table</h4>
+  <pre><code>CREATE TABLE gift_card_brands (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,           -- "Steam"
+  slug VARCHAR(255) UNIQUE NOT NULL,    -- "steam"
+  category VARCHAR(100) NOT NULL,       -- "gaming", "shopping"
+  image_url VARCHAR(500),
+  denominations JSONB DEFAULT '[]',     -- [10, 25, 50, 100]
+  discount_percent DECIMAL(5,2),        -- 3% = customer pays $97 for $100
+  is_active BOOLEAN DEFAULT true,
+  redemption_url VARCHAR(500),
+  region VARCHAR(50) DEFAULT 'global'
+);</code></pre>
+
+  <h4>Gift Card Codes Table (Encrypted)</h4>
+  <pre><code>CREATE TABLE gift_card_codes (
+  id UUID PRIMARY KEY,
+  brand_id UUID REFERENCES gift_card_brands(id),
+  code_encrypted TEXT NOT NULL,         -- AES-256-GCM encrypted
+  code_hash VARCHAR(64) NOT NULL,       -- SHA-256 for duplicates
+  denomination DECIMAL(10,2) NOT NULL,
+  status VARCHAR(20) DEFAULT 'available', -- 'available', 'reserved', 'sold'
+  order_id UUID,
+  sold_to_user_id UUID,
+  sold_at TIMESTAMP,
+  batch_id VARCHAR(100),                -- Import tracking
+  expires_at TIMESTAMP
+);
+
+CREATE UNIQUE INDEX ON gift_card_codes(code_hash); -- No duplicates</code></pre>
+
+  <h4>Store Credit Cards Table</h4>
+  <pre><code>CREATE TABLE store_gift_cards (
+  id UUID PRIMARY KEY,
+  code VARCHAR(20) UNIQUE NOT NULL,     -- "ZNR-XXXX-XXXX-XXXX"
+  amount DECIMAL(10,2) NOT NULL,
+  status VARCHAR(20) DEFAULT 'active',  -- 'active', 'redeemed', 'expired'
+  purchased_by UUID,
+  recipient_email VARCHAR(255),         -- For gifts
+  recipient_name VARCHAR(255),
+  gift_message TEXT,
+  redeemed_by UUID,
+  redeemed_at TIMESTAMP,
+  expires_at TIMESTAMP
+);</code></pre>
+
+  <h3>12.4 Encryption System</h3>
+
+  <div class="success">
+    <p><strong>AES-256-GCM Encryption:</strong></p>
+    <ul>
+      <li>All third-party gift card codes encrypted at rest</li>
+      <li>Unique IV (initialization vector) per code</li>
+      <li>Authentication tag ensures integrity</li>
+      <li>Only decrypted when delivered to buyer</li>
+    </ul>
+  </div>
+
+  <pre><code>// Encryption format: iv:authTag:encryptedData (all base64)
+encrypt("STEAM-XXXX-YYYY") → "abc123...:def456...:ghi789..."
+
+// Environment variable (64 hex characters = 32 bytes)
+GIFT_CARD_ENCRYPTION_KEY=a1b2c3d4e5f6...</code></pre>
+
+  <h3>12.5 Security Architecture</h3>
+
+  <div class="flow-diagram">
+┌─────────────────────────────────────────────────────┐
+│              GIFT CARD SECURITY LAYERS               │
+├─────────────────────────────────────────────────────┤
+│ Layer 1: Encryption                                  │
+│ ├── AES-256-GCM at rest                             │
+│ ├── Unique IV per code                              │
+│ └── Key in environment variable                     │
+├─────────────────────────────────────────────────────┤
+│ Layer 2: Access Control                              │
+│ ├── Only code owner can reveal                      │
+│ ├── Admin-only import                               │
+│ └── JWT authentication required                     │
+├─────────────────────────────────────────────────────┤
+│ Layer 3: Duplicate Prevention                        │
+│ ├── SHA-256 hash per code                           │
+│ └── Unique constraint on hash                       │
+├─────────────────────────────────────────────────────┤
+│ Layer 4: Audit Trail                                 │
+│ ├── Every reveal logged (IP, timestamp)             │
+│ └── Partial code in logs (****ABCD)                │
+├─────────────────────────────────────────────────────┤
+│ Layer 5: Fraud Prevention                            │
+│ ├── Rate limiting (5 reveals/minute)                │
+│ ├── Reservation timeout (15 min)                    │
+│ └── Stock check before checkout                     │
+└─────────────────────────────────────────────────────┘
+  </div>
+
+  <h3>12.6 Purchase Flow</h3>
+
+  <h4>Third-Party Card Purchase</h4>
+  <table>
+    <tr>
+      <th>Step</th>
+      <th>Action</th>
+      <th>Status Change</th>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>User adds gift card to cart</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>At checkout: Reserve code (database transaction)</td>
+      <td>available → reserved</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>User completes payment</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>On success: Mark sold, decrypt, email code</td>
+      <td>reserved → sold</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>If payment fails (15 min timeout): Release</td>
+      <td>reserved → available</td>
+    </tr>
+  </table>
+
+  <h4>Gift-Sending Flow (Store Credit)</h4>
+  <ol>
+    <li>Buyer selects "Send as Gift"</li>
+    <li>Enters recipient email, name, optional message</li>
+    <li>Completes payment</li>
+    <li>System generates code: <code>ZNR-XXXX-XXXX-XXXX</code></li>
+    <li>Email sent to recipient with redemption link</li>
+    <li>Recipient logs in/creates account and redeems</li>
+    <li>Balance added to recipient's wallet</li>
+  </ol>
+
+  <h3>12.7 Inventory Acquisition Guide</h3>
+
+  <h4>Sourcing Options</h4>
+  <table>
+    <tr>
+      <th>Method</th>
+      <th>Pros</th>
+      <th>Cons</th>
+      <th>Best For</th>
+    </tr>
+    <tr>
+      <td><strong>Bulk Suppliers</strong></td>
+      <td>5-15% discount, no API fees</td>
+      <td>Upfront investment</td>
+      <td>Established business</td>
+    </tr>
+    <tr>
+      <td><strong>API Providers</strong></td>
+      <td>On-demand, no inventory risk</td>
+      <td>Higher cost per card</td>
+      <td>Starting out</td>
+    </tr>
+    <tr>
+      <td><strong>Direct from Brands</strong></td>
+      <td>Best pricing</td>
+      <td>High minimums</td>
+      <td>Large volume</td>
+    </tr>
+    <tr>
+      <td><strong>Manual Purchase</strong></td>
+      <td>No minimums</td>
+      <td>Highest cost</td>
+      <td>Testing demand</td>
+    </tr>
+  </table>
+
+  <h4>Profit Model Example</h4>
+  <div class="info">
+    <p><strong>Example with Steam Cards:</strong></p>
+    <ul>
+      <li>Buy $10,000 cards at 10% bulk discount = Pay <strong>$9,000</strong></li>
+      <li>Sell at 3% discount to customers = Receive <strong>$9,700</strong></li>
+      <li>Gross profit = <strong>$700 (7%)</strong></li>
+    </ul>
+  </div>
+
+  <h4>Recommended Suppliers</h4>
+  <p><strong>Bulk Suppliers:</strong> Raise.com, CardCash, Card Kangaroo, NGC, InComm</p>
+  <p><strong>API Providers:</strong> Tillo, Reloadly, Tremendous, Runa</p>
+
+  <h3>12.8 API Integration - Detailed Provider Comparison</h3>
+
+  <p>Unlike bulk purchasing where you manage inventory, API integration allows <strong>on-demand provisioning</strong> - codes are fetched instantly when a customer purchases.</p>
+
+  <h4>Gift Card API Provider Comparison</h4>
+  <table>
+    <tr>
+      <th>Provider</th>
+      <th>Coverage</th>
+      <th>API Quality</th>
+      <th>Min Order</th>
+      <th>Best For</th>
+    </tr>
+    <tr>
+      <td><strong>Tillo</strong></td>
+      <td>2000+ brands, 35+ countries</td>
+      <td>Excellent REST API</td>
+      <td>No minimum</td>
+      <td>Best overall, enterprise</td>
+    </tr>
+    <tr>
+      <td><strong>Reloadly</strong></td>
+      <td>800+ brands, 150+ countries</td>
+      <td>Good REST API</td>
+      <td>$5 prepaid</td>
+      <td>International, mobile top-up</td>
+    </tr>
+    <tr>
+      <td><strong>Tremendous</strong></td>
+      <td>1000+ brands, US focus</td>
+      <td>Simple REST API</td>
+      <td>No minimum</td>
+      <td>Business rewards, US market</td>
+    </tr>
+    <tr>
+      <td><strong>Runa</strong></td>
+      <td>1500+ brands, global</td>
+      <td>REST + Webhooks</td>
+      <td>$100/mo</td>
+      <td>Large catalog, Europe</td>
+    </tr>
+    <tr>
+      <td><strong>Prezzee Business</strong></td>
+      <td>300+ brands, AU/NZ/UK</td>
+      <td>REST API</td>
+      <td>Contact sales</td>
+      <td>Australia/NZ focus</td>
+    </tr>
+  </table>
+
+  <div class="success">
+    <p><strong>Recommended: Tillo</strong></p>
+    <ul>
+      <li>Largest brand catalog (2000+)</li>
+      <li>Well-documented REST API</li>
+      <li>Real-time inventory checks</li>
+      <li>Instant code delivery</li>
+      <li>Sandbox environment for testing</li>
+      <li>No monthly minimum</li>
+    </ul>
+  </div>
+
+  <h4>Tillo API Integration</h4>
+  <pre><code># Environment Variables
+TILLO_API_KEY=your_api_key
+TILLO_API_SECRET=your_api_secret
+TILLO_API_URL=https://api.tillo.io/v2</code></pre>
+
+  <pre><code>// Tillo API - Order Gift Card
+async orderGiftCard(brandId: string, denomination: number, orderId: string) {
+  const response = await this.request('POST', '/orders', {
+    brand: brandId,
+    face_value: denomination,
+    delivery_method: 'code',     // Get code directly
+    client_order_id: orderId,    // Your internal reference
+    currency: 'USD'
+  })
+
+  return {
+    success: true,
+    providerOrderId: response.data.order_id,
+    code: response.data.code,           // The gift card code
+    pin: response.data.pin,             // Some cards have PIN
+    expirationDate: response.data.expiration_date
+  }
+}</code></pre>
+
+  <h4>Reloadly API Integration</h4>
+  <pre><code># Environment Variables (OAuth2)
+RELOADLY_CLIENT_ID=your_client_id
+RELOADLY_CLIENT_SECRET=your_client_secret
+RELOADLY_API_URL=https://giftcards.reloadly.com</code></pre>
+
+  <pre><code>// Reloadly API - OAuth2 Authentication
+const response = await axios.post('https://auth.reloadly.com/oauth/token', {
+  client_id: this.clientId,
+  client_secret: this.clientSecret,
+  grant_type: 'client_credentials',
+  audience: 'https://giftcards.reloadly.com'
+})
+
+// Order Gift Card
+const order = await this.request('POST', '/orders', {
+  productId: parseInt(productId),
+  quantity: 1,
+  unitPrice: denomination,
+  customIdentifier: orderId
+})
+
+// Response includes: redeemCode.cardNumber, redeemCode.pinCode</code></pre>
+
+  <h4>Hybrid Strategy: Bulk + API</h4>
+  <table>
+    <tr>
+      <th>Scenario</th>
+      <th>Use Bulk</th>
+      <th>Use API</th>
+    </tr>
+    <tr>
+      <td>High-volume brands (Steam, Amazon)</td>
+      <td>✅ Better margins</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Long-tail brands (niche)</td>
+      <td></td>
+      <td>✅ No inventory risk</td>
+    </tr>
+    <tr>
+      <td>Testing new brands</td>
+      <td></td>
+      <td>✅ No upfront investment</td>
+    </tr>
+    <tr>
+      <td>Out of stock (bulk)</td>
+      <td></td>
+      <td>✅ Fallback option</td>
+    </tr>
+    <tr>
+      <td>Predictable demand</td>
+      <td>✅ Lower cost</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Unpredictable demand</td>
+      <td></td>
+      <td>✅ On-demand</td>
+    </tr>
+  </table>
+
+  <div class="info">
+    <p><strong>Recommended Hybrid Implementation:</strong></p>
+    <pre><code>async purchaseGiftCard(brandId, denomination, orderId) {
+  // 1. Check bulk inventory first (higher margin)
+  const availableCode = await db.giftCardCode.findFirst({
+    where: { brandId, denomination, status: 'available' }
+  })
+
+  if (availableCode) {
+    return fulfillFromInventory(availableCode, orderId)
+  }
+
+  // 2. Fall back to API provider (no inventory risk)
+  const brand = await db.giftCardBrand.findUnique({ where: { id: brandId } })
+  if (brand.provider && brand.provisionMethod === 'api') {
+    return giftCardOnDemandService.provisionGiftCard(...)
+  }
+
+  throw new Error('Out of stock')
+}</code></pre>
+  </div>
+
+  <h3>12.9 Admin Stock Dashboard</h3>
+
+  <div class="flow-diagram">
+┌─────────────────────────────────────────────────────┐
+│  Gift Card Inventory Dashboard                       │
+├─────────────────────────────────────────────────────┤
+│  Brand         │ $10  │ $25  │ $50  │ $100 │ Total │
+├─────────────────────────────────────────────────────┤
+│  Steam         │  45  │  32  │  18  │   5  │  100  │
+│  PlayStation   │  20  │  15  │  10  │   8  │   53  │
+│  Xbox          │  30  │  25  │  12  │   3  │   70  │
+│  iTunes        │  50  │  40  │  20  │  10  │  120  │
+│  Amazon        │  ⚠️ 2│  15  │  ⚠️ 5│  20  │   42  │
+├─────────────────────────────────────────────────────┤
+│  ⚠️ = Low stock (< 10)                              │
+└─────────────────────────────────────────────────────┘
+  </div>
+
+  <h4>CSV Import Format</h4>
+  <pre><code>code,denomination
+STEAM-XXXX-YYYY-ZZZZ,10
+STEAM-AAAA-BBBB-CCCC,25
+STEAM-1111-2222-3333,50</code></pre>
+
+  <h3>12.10 Comparison: Scripts vs Gift Cards</h3>
+
+  <table>
+    <tr>
+      <th>Aspect</th>
+      <th>Scripts</th>
+      <th>Gift Cards</th>
+    </tr>
+    <tr>
+      <td><strong>Storage</strong></td>
+      <td>R2 files</td>
+      <td>Database (encrypted)</td>
+    </tr>
+    <tr>
+      <td><strong>Delivery</strong></td>
+      <td>Signed URL download</td>
+      <td>Code reveal + email</td>
+    </tr>
+    <tr>
+      <td><strong>Inventory</strong></td>
+      <td>Unlimited (same file)</td>
+      <td>Limited (unique codes)</td>
+    </tr>
+    <tr>
+      <td><strong>Expiration</strong></td>
+      <td>Never</td>
+      <td>Some cards expire</td>
+    </tr>
+    <tr>
+      <td><strong>Security</strong></td>
+      <td>Signed URLs, 1hr expiry</td>
+      <td>AES-256 encryption</td>
+    </tr>
+    <tr>
+      <td><strong>Size</strong></td>
+      <td>Up to 1GB</td>
+      <td>~50 characters</td>
+    </tr>
+    <tr>
+      <td><strong>Reuse</strong></td>
+      <td>Same file for all</td>
+      <td>One code per buyer</td>
+    </tr>
+  </table>
+
+  <h3>12.11 Implementation Checklist</h3>
+
+  <div class="success">
+    <p><strong>Third-Party Cards:</strong></p>
+    <ul>
+      <li>☐ Database migration for gift card tables</li>
+      <li>☐ Encryption service (AES-256-GCM)</li>
+      <li>☐ Gift card service (add, reserve, complete)</li>
+      <li>☐ Admin bulk import UI</li>
+      <li>☐ User library integration</li>
+      <li>☐ Email delivery templates</li>
+    </ul>
+  </div>
+
+  <div class="info">
+    <p><strong>Store Credit Cards:</strong></p>
+    <ul>
+      <li>☐ Store credit table migration</li>
+      <li>☐ Code generation service</li>
+      <li>☐ Redemption page</li>
+      <li>☐ Wallet integration</li>
+      <li>☐ Gift-sending flow</li>
+    </ul>
+  </div>
+
+  <div class="highlight">
+    <p><strong>Security:</strong></p>
+    <ul>
+      <li>☐ Encryption key is 64 hex characters</li>
+      <li>☐ Codes encrypted in database</li>
+      <li>☐ Duplicate codes rejected</li>
+      <li>☐ Only owner can reveal code</li>
+      <li>☐ All reveals logged with IP</li>
+      <li>☐ Rate limiting (5/minute)</li>
+    </ul>
+  </div>
+
+  <hr>
+
+  <!-- eSIM System Section -->
+  <h2 id="esim">13. eSIM System - Sourcing, Integration & Delivery</h2>
+
+  <h3>13.1 Overview</h3>
+  <p>An eSIM (embedded SIM) is a digital SIM that allows users to activate a mobile data plan without a physical SIM card. Users scan a QR code to install the eSIM profile on their device.</p>
+
+  <h4>Business Model</h4>
+  <div class="flow-diagram">
+WHOLESALE PROVIDER (Airalo, eSIM Go, etc.)
+       │
+       │ Bulk pricing: $5 for 5GB plan
+       ▼
+YOUR PLATFORM (Zenorar)
+       │
+       │ Retail price: $8 for 5GB plan (60% markup)
+       ▼
+CUSTOMER
+       │
+       │ Receives: QR code + activation instructions
+       ▼
+DEVICE (iPhone/Android)
+       Scans QR → Installs eSIM → Has mobile data
+  </div>
+
+  <div class="highlight">
+    <p><strong>Key Business Metrics:</strong></p>
+    <ul>
+      <li><strong>Wholesale cost:</strong> $3-7 per plan (varies by data amount and region)</li>
+      <li><strong>Retail price:</strong> $5-20 per plan</li>
+      <li><strong>Typical margin:</strong> 40-60%</li>
+      <li><strong>Delivery cost:</strong> $0 (instant digital delivery)</li>
+    </ul>
+  </div>
+
+  <h3>13.2 eSIM Provider Comparison</h3>
+  <table>
+    <tr>
+      <th>Provider</th>
+      <th>Coverage</th>
+      <th>API</th>
+      <th>Min Order</th>
+      <th>Best For</th>
+    </tr>
+    <tr>
+      <td><strong>Airalo Partners</strong></td>
+      <td>200+ countries</td>
+      <td>REST API</td>
+      <td>$500/mo</td>
+      <td>Best coverage, most popular</td>
+    </tr>
+    <tr>
+      <td><strong>eSIM Go</strong></td>
+      <td>160+ countries</td>
+      <td>REST API</td>
+      <td>No minimum</td>
+      <td>Smaller operations, testing</td>
+    </tr>
+    <tr>
+      <td><strong>BNESIM</strong></td>
+      <td>150+ countries</td>
+      <td>REST API</td>
+      <td>$1000</td>
+      <td>European market</td>
+    </tr>
+    <tr>
+      <td><strong>RedteaGO</strong></td>
+      <td>200+ countries</td>
+      <td>REST API</td>
+      <td>No minimum</td>
+      <td>Asia-Pacific focus</td>
+    </tr>
+    <tr>
+      <td><strong>MobiMatter</strong></td>
+      <td>150+ countries</td>
+      <td>REST API</td>
+      <td>$200</td>
+      <td>Budget option</td>
+    </tr>
+  </table>
+
+  <div class="success">
+    <p><strong>Recommended Strategy:</strong> Start with eSIM Go (no minimum) → Move to Airalo Partners once you have volume ($500+/month)</p>
+  </div>
+
+  <h3>13.3 Database Schema</h3>
+  <pre><code>-- eSIM regions (continents/areas)
+CREATE TABLE esim_regions (
+  id UUID PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,           -- "Europe", "Asia Pacific"
+  slug VARCHAR(100) UNIQUE NOT NULL,
+  image_url VARCHAR(500),
+  country_count INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT true
+);
+
+-- eSIM plan templates (what we sell)
+CREATE TABLE esim_plans (
+  id UUID PRIMARY KEY,
+  provider VARCHAR(50) NOT NULL,        -- "airalo", "esimgo"
+  provider_plan_id VARCHAR(100),
+  name VARCHAR(255) NOT NULL,           -- "Europe 5GB - 30 Days"
+  region_id UUID REFERENCES esim_regions(id),
+  coverage_type VARCHAR(20) NOT NULL,   -- "single", "regional", "global"
+  countries TEXT[],                      -- ISO codes: ["FR", "DE", "IT"]
+  data_amount_gb DECIMAL(10,2) NOT NULL,
+  validity_days INT NOT NULL,
+  cost_price DECIMAL(10,2) NOT NULL,    -- What we pay
+  retail_price DECIMAL(10,2) NOT NULL,  -- What we sell for
+  supports_topup BOOLEAN DEFAULT false
+);
+
+-- User's purchased eSIMs
+CREATE TABLE user_esims (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  plan_id UUID REFERENCES esim_plans(id),
+  order_id UUID REFERENCES orders(id),
+  iccid VARCHAR(30),                     -- Integrated Circuit Card ID
+  qr_code_data TEXT,                     -- Raw QR code string
+  qr_code_url VARCHAR(500),
+  status VARCHAR(20) DEFAULT 'pending',  -- 'pending', 'active', 'expired'
+  data_used_mb DECIMAL(10,2) DEFAULT 0,
+  data_remaining_mb DECIMAL(10,2),
+  expires_at TIMESTAMP
+);</code></pre>
+
+  <h3>13.4 Purchase & Delivery Flow</h3>
+  <div class="flow-diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│                    eSIM PURCHASE FLOW                                │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. BROWSE & SELECT                                                  │
+│     └── User selects region → country → plan                        │
+│                                                                      │
+│  2. CHECKOUT                                                         │
+│     └── No reservation needed (on-demand provisioning)              │
+│                                                                      │
+│  3. PAYMENT SUCCESS                                                  │
+│     └── Call provider API to provision eSIM                         │
+│     └── Provider returns: ICCID, QR code, activation details        │
+│                                                                      │
+│  4. DELIVERY                                                         │
+│     ├── Generate QR code image                                       │
+│     ├── Send email with QR + instructions                           │
+│     └── Show in user's library immediately                          │
+│                                                                      │
+│  5. INSTALLATION                                                     │
+│     └── User scans QR code → eSIM installs on device                │
+└─────────────────────────────────────────────────────────────────────┘
+  </div>
+
+  <h3>13.5 API Integration Examples</h3>
+  <pre><code>// Airalo API Flow
+// 1. Authenticate
+POST /oauth/token
+{ client_id, client_secret, grant_type: 'client_credentials' }
+
+// 2. Order eSIM
+POST /orders
+{ package_id, quantity: 1, type: 'sim' }
+Returns: { iccid, qrcode, smdp_address, matching_id }
+
+// 3. Check usage
+GET /sims/{esim_id}/usage
+Returns: { status, total, remaining, expired_at }</code></pre>
+
+  <h3>13.6 Security Architecture</h3>
+  <div class="flow-diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│                    eSIM SECURITY                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. QR Code Security                                                 │
+│     ├── QR codes only shown to purchaser                            │
+│     ├── Rate limit QR code views                                    │
+│     └── QR codes are one-time use (by design)                       │
+├─────────────────────────────────────────────────────────────────────┤
+│  2. API Security                                                     │
+│     ├── Provider API keys in environment variables                   │
+│     ├── Never expose credentials to frontend                        │
+│     └── Validate ownership before showing eSIM details              │
+├─────────────────────────────────────────────────────────────────────┤
+│  3. Fraud Prevention                                                 │
+│     ├── Limit purchases per user per day                            │
+│     ├── Flag bulk purchases for review                              │
+│     └── Monitor for unusual patterns                                │
+└─────────────────────────────────────────────────────────────────────┘
+  </div>
+
+  <h3>13.7 Environment Variables</h3>
+  <pre><code># Airalo (recommended)
+AIRALO_API_URL=https://partner-api.airalo.com/v2
+AIRALO_CLIENT_ID=your_client_id
+AIRALO_CLIENT_SECRET=your_client_secret
+
+# eSIM Go (alternative)
+ESIMGO_API_KEY=your_api_key
+
+# Default provider
+DEFAULT_ESIM_PROVIDER=airalo</code></pre>
+
+  <hr>
+
+  <!-- Virtual Numbers Section -->
+  <h2 id="virtual-numbers">14. Virtual Numbers System - Sourcing, Integration & Delivery</h2>
+
+  <h3>14.1 Overview</h3>
+  <p>A virtual phone number (DID) is a phone number not tied to a physical phone line. It can receive SMS/calls and forward them to any destination.</p>
+
+  <h4>Use Cases</h4>
+  <ul>
+    <li><strong>Privacy:</strong> Temporary numbers for online signups</li>
+    <li><strong>Business:</strong> Local presence in different countries</li>
+    <li><strong>Verification:</strong> Receive SMS codes</li>
+    <li><strong>Travel:</strong> Local number while abroad</li>
+  </ul>
+
+  <h4>Revenue Model</h4>
+  <div class="flow-diagram">
+PROVIDER (Twilio, Vonage, Plivo)
+       │
+       │ Monthly: $1-2/number + $0.01/SMS
+       ▼
+YOUR PLATFORM (Zenorar)
+       │
+       │ Monthly: $5-15/number (subscription)
+       │ OR: $3-10 for 1-day/7-day temporary
+       ▼
+CUSTOMER
+       │
+       │ Gets: Phone number + SMS inbox + Call forwarding
+
+MARGIN: 300-500% on number rental
+  </div>
+
+  <h3>14.2 Telephony Provider Comparison</h3>
+  <table>
+    <tr>
+      <th>Provider</th>
+      <th>Coverage</th>
+      <th>API Quality</th>
+      <th>Pricing</th>
+      <th>Best For</th>
+    </tr>
+    <tr>
+      <td><strong>Twilio</strong></td>
+      <td>100+ countries</td>
+      <td>Excellent</td>
+      <td>$1-2/mo + usage</td>
+      <td>Best overall</td>
+    </tr>
+    <tr>
+      <td><strong>Vonage</strong></td>
+      <td>65+ countries</td>
+      <td>Good</td>
+      <td>$1-3/mo + usage</td>
+      <td>Enterprise</td>
+    </tr>
+    <tr>
+      <td><strong>Plivo</strong></td>
+      <td>65+ countries</td>
+      <td>Good</td>
+      <td>$0.80-1.5/mo</td>
+      <td>Budget option</td>
+    </tr>
+    <tr>
+      <td><strong>Bandwidth</strong></td>
+      <td>US/Canada</td>
+      <td>Excellent</td>
+      <td>$0.25-1/mo</td>
+      <td>North America</td>
+    </tr>
+    <tr>
+      <td><strong>Telnyx</strong></td>
+      <td>40+ countries</td>
+      <td>Good</td>
+      <td>$1-2/mo</td>
+      <td>Competitive pricing</td>
+    </tr>
+  </table>
+
+  <div class="success">
+    <p><strong>Recommended:</strong> Twilio - Best documentation, largest coverage, reliable delivery, easy API</p>
+  </div>
+
+  <h4>Profit Example</h4>
+  <div class="info">
+    <ul>
+      <li>You pay Twilio: <strong>$1/month</strong> for US number</li>
+      <li>You charge customer: <strong>$5/month</strong></li>
+      <li>Gross margin: <strong>$4/month per number (400%)</strong></li>
+    </ul>
+  </div>
+
+  <h3>14.3 Pricing Strategies</h3>
+  <table>
+    <tr>
+      <th>Model</th>
+      <th>Description</th>
+      <th>Best For</th>
+    </tr>
+    <tr>
+      <td><strong>Subscription</strong></td>
+      <td>$X/month for number + N messages</td>
+      <td>Regular users</td>
+    </tr>
+    <tr>
+      <td><strong>Temporary</strong></td>
+      <td>$X for 1-day or 7-day access</td>
+      <td>SMS verification</td>
+    </tr>
+    <tr>
+      <td><strong>Pay-as-you-go</strong></td>
+      <td>$X/month + per-message fee</td>
+      <td>High-volume users</td>
+    </tr>
+    <tr>
+      <td><strong>Bundle</strong></td>
+      <td>Number + eSIM package</td>
+      <td>Travelers</td>
+    </tr>
+  </table>
+
+  <h3>14.4 Database Schema</h3>
+  <pre><code>-- Available countries for virtual numbers
+CREATE TABLE virtual_number_countries (
+  id UUID PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,           -- "United States"
+  iso_code VARCHAR(2) NOT NULL,         -- "US"
+  dial_code VARCHAR(10) NOT NULL,       -- "+1"
+  sms_enabled BOOLEAN DEFAULT true,
+  voice_enabled BOOLEAN DEFAULT true,
+  provider VARCHAR(50) NOT NULL,        -- "twilio"
+  cost_monthly DECIMAL(10,2) NOT NULL,  -- $1.00
+  retail_monthly DECIMAL(10,2)          -- $5.00
+);
+
+-- Subscription plans
+CREATE TABLE virtual_number_plans (
+  id UUID PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,           -- "Basic SMS", "Pro"
+  duration_days INT NOT NULL,           -- 30, 1, 7
+  sms_included INT DEFAULT 0,           -- 100 SMS included
+  voice_minutes_included INT DEFAULT 0,
+  unlimited_sms BOOLEAN DEFAULT false,
+  base_price DECIMAL(10,2) NOT NULL     -- $5.00
+);
+
+-- User's virtual numbers
+CREATE TABLE user_virtual_numbers (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  plan_id UUID REFERENCES virtual_number_plans(id),
+  phone_number VARCHAR(20) NOT NULL,    -- "+14155551234"
+  provider VARCHAR(50) NOT NULL,
+  provider_number_sid VARCHAR(50),
+  status VARCHAR(20) DEFAULT 'active',
+  expires_at TIMESTAMP,
+  sms_forward_email VARCHAR(255),
+  voice_forward_to VARCHAR(20),
+  current_period_sms INT DEFAULT 0
+);
+
+-- SMS message log
+CREATE TABLE virtual_number_messages (
+  id UUID PRIMARY KEY,
+  virtual_number_id UUID REFERENCES user_virtual_numbers(id),
+  direction VARCHAR(10) NOT NULL,       -- 'inbound', 'outbound'
+  from_number VARCHAR(20) NOT NULL,
+  to_number VARCHAR(20) NOT NULL,
+  body TEXT,
+  status VARCHAR(20) DEFAULT 'delivered'
+);</code></pre>
+
+  <h3>14.5 Purchase Flow</h3>
+  <div class="flow-diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│                VIRTUAL NUMBER PURCHASE FLOW                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. BROWSE                                                           │
+│     └── User selects country → number type → plan                   │
+│                                                                      │
+│  2. SEARCH NUMBERS                                                   │
+│     └── API call to provider → show available numbers               │
+│                                                                      │
+│  3. CHECKOUT                                                         │
+│     └── Add to cart → payment                                       │
+│                                                                      │
+│  4. PROVISION                                                        │
+│     └── Purchase number from provider                               │
+│     └── Configure webhooks for SMS/voice                            │
+│                                                                      │
+│  5. DELIVERY                                                         │
+│     ├── Number active immediately                                   │
+│     ├── SMS inbox ready                                              │
+│     └── Email confirmation sent                                      │
+│                                                                      │
+│  6. ONGOING                                                          │
+│     └── User manages via inbox/settings                             │
+│     └── Auto-renewal or expiration                                  │
+└─────────────────────────────────────────────────────────────────────┘
+  </div>
+
+  <h3>14.6 Webhook Handling</h3>
+  <pre><code>// Incoming SMS webhook (Twilio)
+app.post('/webhooks/twilio/sms', async (req, res) => {
+  const { To, From, Body, MessageSid } = req.body
+
+  // 1. Validate Twilio signature
+  // 2. Find virtual number owner
+  // 3. Save message to database
+  // 4. Forward if configured (email or phone)
+  // 5. Send real-time notification
+
+  res.type('text/xml').send('&lt;Response&gt;&lt;/Response&gt;')
+})
+
+// Incoming voice webhook
+app.post('/webhooks/twilio/voice', async (req, res) => {
+  // Forward call or go to voicemail
+  if (forwardingEnabled) {
+    res.send('&lt;Response&gt;&lt;Dial&gt;${forwardTo}&lt;/Dial&gt;&lt;/Response&gt;')
+  }
+})</code></pre>
+
+  <h3>14.7 Security & Compliance</h3>
+  <div class="flow-diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│                VIRTUAL NUMBER SECURITY                               │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. Webhook Security                                                 │
+│     ├── Validate Twilio signature on all webhooks                   │
+│     ├── Use HTTPS only                                              │
+│     └── IP whitelist if supported                                   │
+├─────────────────────────────────────────────────────────────────────┤
+│  2. Access Control                                                   │
+│     ├── Users can only access their own numbers                     │
+│     ├── Rate limit API calls                                        │
+│     └── Audit log all actions                                       │
+├─────────────────────────────────────────────────────────────────────┤
+│  3. Compliance                                                       │
+│     ├── A2P 10DLC registration for US numbers                       │
+│     ├── GDPR for EU numbers                                         │
+│     └── Message retention policies                                   │
+├─────────────────────────────────────────────────────────────────────┤
+│  4. Fraud Prevention                                                 │
+│     ├── Limit numbers per user (e.g., 5)                            │
+│     ├── Require verified account                                    │
+│     └── Monitor for abuse patterns                                  │
+└─────────────────────────────────────────────────────────────────────┘
+  </div>
+
+  <h3>14.8 Environment Variables</h3>
+  <pre><code># Twilio (recommended)
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+
+# Plivo (alternative)
+PLIVO_AUTH_ID=your_auth_id
+PLIVO_AUTH_TOKEN=your_auth_token</code></pre>
+
+  <hr>
+
+  <!-- Full Product Comparison Matrix -->
+  <h2 id="product-matrix">15. Full Product Comparison Matrix</h2>
+
+  <table>
+    <tr>
+      <th>Feature</th>
+      <th>Scripts</th>
+      <th>Gift Cards</th>
+      <th>eSIMs</th>
+      <th>Virtual Numbers</th>
+    </tr>
+    <tr>
+      <td colspan="5" style="background: #1e3a4f; font-weight: bold;">Provisioning</td>
+    </tr>
+    <tr>
+      <td>Storage</td>
+      <td>R2 files</td>
+      <td>Database (encrypted)</td>
+      <td>Provider API</td>
+      <td>Provider API</td>
+    </tr>
+    <tr>
+      <td>On-demand</td>
+      <td>Yes</td>
+      <td>No (inventory)</td>
+      <td>Yes</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>Inventory mgmt</td>
+      <td>N/A</td>
+      <td>Required</td>
+      <td>N/A</td>
+      <td>N/A</td>
+    </tr>
+    <tr>
+      <td colspan="5" style="background: #1e3a4f; font-weight: bold;">Delivery</td>
+    </tr>
+    <tr>
+      <td>Method</td>
+      <td>Download URL</td>
+      <td>Code reveal</td>
+      <td>QR code</td>
+      <td>Instant access</td>
+    </tr>
+    <tr>
+      <td>Email</td>
+      <td>Optional</td>
+      <td>Yes</td>
+      <td>Yes</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>Time to deliver</td>
+      <td>Instant</td>
+      <td>Instant</td>
+      <td>1-5 seconds</td>
+      <td>1-5 seconds</td>
+    </tr>
+    <tr>
+      <td colspan="5" style="background: #1e3a4f; font-weight: bold;">Business Model</td>
+    </tr>
+    <tr>
+      <td>Pricing</td>
+      <td>One-time</td>
+      <td>One-time</td>
+      <td>One-time</td>
+      <td><strong>Subscription</strong></td>
+    </tr>
+    <tr>
+      <td>Recurring revenue</td>
+      <td>No</td>
+      <td>No</td>
+      <td>Top-ups</td>
+      <td><strong>Monthly</strong></td>
+    </tr>
+    <tr>
+      <td colspan="5" style="background: #1e3a4f; font-weight: bold;">Economics</td>
+    </tr>
+    <tr>
+      <td>Your cost</td>
+      <td>$0</td>
+      <td>Bulk buy</td>
+      <td>Per provision</td>
+      <td>Monthly + usage</td>
+    </tr>
+    <tr>
+      <td>Typical margin</td>
+      <td><strong>100%</strong></td>
+      <td>40-60%</td>
+      <td>40-60%</td>
+      <td><strong>300-500%</strong></td>
+    </tr>
+    <tr>
+      <td>Working capital</td>
+      <td>None</td>
+      <td>High</td>
+      <td>Low</td>
+      <td>Low</td>
+    </tr>
+    <tr>
+      <td colspan="5" style="background: #1e3a4f; font-weight: bold;">Complexity</td>
+    </tr>
+    <tr>
+      <td>Setup</td>
+      <td>Easy</td>
+      <td>Medium</td>
+      <td>Medium</td>
+      <td>Hard</td>
+    </tr>
+    <tr>
+      <td>Maintenance</td>
+      <td>Low</td>
+      <td>Medium</td>
+      <td>Low</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td>Provider dependency</td>
+      <td>None</td>
+      <td>Low</td>
+      <td>High</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td colspan="5" style="background: #1e3a4f; font-weight: bold;">User Management</td>
+    </tr>
+    <tr>
+      <td>Expiration</td>
+      <td>No</td>
+      <td>Some</td>
+      <td>Yes</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>Usage tracking</td>
+      <td>Downloads</td>
+      <td>N/A</td>
+      <td>Data used</td>
+      <td>SMS/Voice</td>
+    </tr>
+    <tr>
+      <td>Renewals</td>
+      <td>Updates only</td>
+      <td>N/A</td>
+      <td>Top-ups</td>
+      <td>Monthly</td>
+    </tr>
+    <tr>
+      <td colspan="5" style="background: #1e3a4f; font-weight: bold;">Security Focus</td>
+    </tr>
+    <tr>
+      <td>Primary concern</td>
+      <td>Piracy</td>
+      <td>Encryption</td>
+      <td>QR protection</td>
+      <td>Webhook auth</td>
+    </tr>
+    <tr>
+      <td>Key storage</td>
+      <td>R2 signed URLs</td>
+      <td>AES-256</td>
+      <td>Provider-side</td>
+      <td>Provider-side</td>
+    </tr>
+  </table>
+
+  <h3>Recommended Implementation Order</h3>
+  <div class="success">
+    <ol>
+      <li><strong>Scripts</strong> - Foundation, easy to implement, high margin</li>
+      <li><strong>Gift Cards</strong> - Familiar product, good for building traffic</li>
+      <li><strong>eSIMs</strong> - Travel market, good margins, medium complexity</li>
+      <li><strong>Virtual Numbers</strong> - Highest complexity but best recurring revenue</li>
+    </ol>
+  </div>
+
+  <hr>
+
+  <footer>
+    <p><strong>Zenorar Marketplace</strong></p>
+    <p>Script Licensing System Design Document</p>
+    <p>February 2026</p>
+  </footer>
+</body>
+</html>
