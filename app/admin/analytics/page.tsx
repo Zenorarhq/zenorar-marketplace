@@ -44,6 +44,20 @@ function getPeriodDates(period: Period, customStart?: string, customEnd?: string
   return { startDate: start.toISOString(), endDate: end }
 }
 
+function getPeriodMonths(period: Period): number {
+  if (period === '7days') return 1
+  if (period === '30days') return 3
+  if (period === '90days') return 6
+  return 12 // 'all' or 'custom'
+}
+
+function getPeriodDays(period: Period): number {
+  if (period === '7days') return 7
+  if (period === '30days') return 30
+  if (period === '90days') return 90
+  return 90 // 'all' → backend caps at 90 anyway
+}
+
 function getTimeAgo(dateStr: string): string {
   const now = Date.now()
   const diff = now - new Date(dateStr).getTime()
@@ -105,9 +119,9 @@ export default function AnalyticsPage() {
 
   // Fetch monthly revenue data
   const { data: monthlyRevenue = [], isLoading } = useQuery({
-    queryKey: ['analytics-monthly-revenue'],
+    queryKey: ['analytics-monthly-revenue', period],
     queryFn: async () => {
-      const result = await analyticsApi.getMonthlyRevenue(6)
+      const result = await analyticsApi.getMonthlyRevenue(getPeriodMonths(period))
       if (result.success && result.data) {
         return result.data
       }
@@ -118,9 +132,9 @@ export default function AnalyticsPage() {
 
   // Fetch customer growth data
   const { data: customerGrowth = [] } = useQuery({
-    queryKey: ['analytics-customer-growth'],
+    queryKey: ['analytics-customer-growth', period],
     queryFn: async () => {
-      const result = await analyticsApi.getCustomerGrowth(30)
+      const result = await analyticsApi.getCustomerGrowth(getPeriodDays(period))
       return result.success && result.data ? result.data : []
     },
     refetchInterval: 30000,

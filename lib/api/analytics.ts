@@ -47,13 +47,6 @@ export const analyticsApi = {
         usersApi.getStats(),
       ])
 
-      if (!ordersResult.success || !financeResult.success || !ticketsResult.success) {
-        return {
-          success: false,
-          error: 'Failed to fetch dashboard stats'
-        }
-      }
-
       // Calculate % changes by comparing current vs previous period
       let revenueChange: number | undefined
       let ordersChange: number | undefined
