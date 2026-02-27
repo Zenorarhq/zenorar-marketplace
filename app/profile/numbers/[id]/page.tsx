@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   getUserNumber,
   getMessages,
@@ -12,6 +13,7 @@ import {
   updateSettings,
   markMessagesRead,
   cancelNumber,
+  sendTestSms,
   UserVirtualNumber,
   VirtualNumberMessage,
 } from '@/lib/api/virtual-numbers'
@@ -20,13 +22,17 @@ export default function VirtualNumberPage() {
   const params = useParams()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const numberId = params.id as string
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const isAdmin = user?.role === 'ADMIN'
 
   const [activeTab, setActiveTab] = useState<'inbox' | 'settings'>('inbox')
   const [newMessage, setNewMessage] = useState({ to: '', body: '' })
   const [showSendModal, setShowSendModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [showTestSmsModal, setShowTestSmsModal] = useState(false)
+  const [testSmsData, setTestSmsData] = useState({ fromNumber: '+15559876543', message: '' })
 
   // Forwarding settings state
   const [settings, setSettings] = useState({
@@ -143,6 +149,23 @@ export default function VirtualNumberPage() {
     },
   })
 
+  // Test SMS mutation (admin only)
+  const testSmsMutation = useMutation({
+    mutationFn: async () => {
+      const result = await sendTestSms(numberId, testSmsData.message, testSmsData.fromNumber)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send test SMS')
+      }
+      return result.data
+    },
+    onSuccess: () => {
+      setTestSmsData({ fromNumber: '+15559876543', message: '' })
+      setShowTestSmsModal(false)
+      queryClient.invalidateQueries({ queryKey: ['virtual-number-messages', numberId] })
+      queryClient.invalidateQueries({ queryKey: ['virtual-number', numberId] })
+    },
+  })
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     const now = new Date()
@@ -226,6 +249,16 @@ export default function VirtualNumberPage() {
           </div>
 
           <div className="flex gap-3">
+            {isAdmin && (
+              <button
+                onClick={() => setShowTestSmsModal(true)}
+                disabled={numberData.status !== 'active'}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500/20 border border-orange-500/50 text-orange-400 font-bold rounded-lg hover:bg-orange-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon name="zap" size={18} />
+                Test Receive SMS
+              </button>
+            )}
             <button
               onClick={() => setShowSendModal(true)}
               disabled={numberData.status !== 'active'}
@@ -592,6 +625,77 @@ export default function VirtualNumberPage() {
               >
                 {cancelMutation.isPending ? 'Canceling...' : 'Yes, Cancel'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Test SMS Modal (Admin Only) */}
+      {showTestSmsModal && isAdmin && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-dark rounded-2xl p-6 max-w-md w-full border border-orange-500/30">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Icon name="zap" size={20} className="text-orange-400" />
+                <h3 className="text-xl font-bold text-orange-400">Simulate Incoming SMS</h3>
+              </div>
+              <button
+                onClick={() => setShowTestSmsModal(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+            <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 mb-4">
+              <p className="text-orange-300 text-sm">
+                This simulates receiving an SMS to test the inbox functionality.
+                The message will appear in the inbox as if someone sent it to this number.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-slate-400 mb-1 block">To (Your Virtual Number)</label>
+                <div className="bg-black border border-border-dark rounded-lg px-4 py-3 text-primary font-mono">
+                  {numberData.phoneNumberDisplay}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-slate-400 mb-1 block">From (Simulated Sender)</label>
+                <input
+                  type="tel"
+                  value={testSmsData.fromNumber}
+                  onChange={(e) => setTestSmsData({ ...testSmsData, fromNumber: e.target.value })}
+                  placeholder="+15559876543"
+                  className="w-full bg-black border border-border-dark rounded-lg px-4 py-3 text-white placeholder:text-slate-600"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-slate-400 mb-1 block">Message Content</label>
+                <textarea
+                  value={testSmsData.message}
+                  onChange={(e) => setTestSmsData({ ...testSmsData, message: e.target.value })}
+                  placeholder="Your verification code is 123456"
+                  rows={3}
+                  className="w-full bg-black border border-border-dark rounded-lg px-4 py-3 text-white placeholder:text-slate-600 resize-none"
+                />
+              </div>
+              <button
+                onClick={() => testSmsMutation.mutate()}
+                disabled={!testSmsData.message || testSmsMutation.isPending}
+                className="w-full py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {testSmsMutation.isPending ? 'Sending...' : 'Simulate Incoming SMS'}
+              </button>
+              {testSmsMutation.isError && (
+                <p className="text-red-500 text-sm text-center">
+                  {(testSmsMutation.error as Error).message}
+                </p>
+              )}
+              {testSmsMutation.isSuccess && (
+                <p className="text-green-500 text-sm text-center">
+                  Test SMS sent successfully! Check the inbox.
+                </p>
+              )}
             </div>
           </div>
         </div>

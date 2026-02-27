@@ -1,4 +1,7 @@
 // Twilio Provider Service for Virtual Numbers
+// Reads credentials from database settings (admin-configured)
+
+import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 
 export interface AvailableNumber {
   phoneNumber: string
@@ -26,23 +29,125 @@ export interface SmsResult {
   error?: string
 }
 
+interface TwilioCredentials {
+  accountSid: string
+  authToken: string
+  phoneNumber: string
+  isTestMode: boolean
+}
+
+// Cache credentials for 1 minute to avoid repeated DB calls
+let credentialsCache: { credentials: TwilioCredentials | null; timestamp: number } | null = null
+const CACHE_TTL = 60 * 1000 // 1 minute
+
 class TwilioService {
-  private accountSid: string
-  private authToken: string
-  private baseUrl: string
+  /**
+   * Get Twilio credentials from database settings
+   * Falls back to environment variables if DB fetch fails
+   */
+  private async getCredentials(): Promise<TwilioCredentials | null> {
+    // Check cache first
+    if (credentialsCache && Date.now() - credentialsCache.timestamp < CACHE_TTL) {
+      return credentialsCache.credentials
+    }
 
-  constructor() {
-    this.accountSid = process.env.TWILIO_ACCOUNT_SID || ''
-    this.authToken = process.env.TWILIO_AUTH_TOKEN || ''
-    this.baseUrl = `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}`
+    try {
+      const settings = await getSiteSettingsByGroup('virtual-numbers')
+
+      const twilioEnabled = settings.twilioEnabled === true || settings.twilioEnabled === 'true'
+      if (!twilioEnabled) {
+        credentialsCache = { credentials: null, timestamp: Date.now() }
+        return null
+      }
+
+      const mode = settings.twilioMode || 'test'
+      const isTestMode = mode === 'test'
+
+      let accountSid: string
+      let authToken: string
+      let phoneNumber: string
+
+      if (isTestMode) {
+        accountSid = settings.twilioTestAccountSid || process.env.TWILIO_TEST_ACCOUNT_SID || ''
+        authToken = settings.twilioTestAuthToken || process.env.TWILIO_TEST_AUTH_TOKEN || ''
+        phoneNumber = settings.twilioTestPhoneNumber || process.env.TWILIO_TEST_PHONE_NUMBER || ''
+      } else {
+        accountSid = settings.twilioLiveAccountSid || process.env.TWILIO_ACCOUNT_SID || ''
+        authToken = settings.twilioLiveAuthToken || process.env.TWILIO_AUTH_TOKEN || ''
+        phoneNumber = settings.twilioLivePhoneNumber || process.env.TWILIO_PHONE_NUMBER || ''
+      }
+
+      const credentials: TwilioCredentials | null = accountSid && authToken
+        ? { accountSid, authToken, phoneNumber, isTestMode }
+        : null
+
+      credentialsCache = { credentials, timestamp: Date.now() }
+      return credentials
+    } catch (error) {
+      console.error('Error fetching Twilio credentials from DB:', error)
+      // Fall back to environment variables
+      const accountSid = process.env.TWILIO_ACCOUNT_SID || ''
+      const authToken = process.env.TWILIO_AUTH_TOKEN || ''
+      const phoneNumber = process.env.TWILIO_PHONE_NUMBER || ''
+
+      return accountSid && authToken
+        ? { accountSid, authToken, phoneNumber, isTestMode: false }
+        : null
+    }
   }
 
-  private isConfigured(): boolean {
-    return !!(this.accountSid && this.authToken)
+  /**
+   * Clear credentials cache (call after settings update)
+   */
+  clearCache(): void {
+    credentialsCache = null
   }
 
-  private getAuthHeader(): string {
-    return 'Basic ' + Buffer.from(`${this.accountSid}:${this.authToken}`).toString('base64')
+  private getAuthHeader(credentials: TwilioCredentials): string {
+    return 'Basic ' + Buffer.from(`${credentials.accountSid}:${credentials.authToken}`).toString('base64')
+  }
+
+  private getBaseUrl(credentials: TwilioCredentials): string {
+    return `https://api.twilio.com/2010-04-01/Accounts/${credentials.accountSid}`
+  }
+
+  /**
+   * Test the Twilio connection with current credentials
+   */
+  async testConnection(): Promise<{ success: boolean; mode: string; error?: string }> {
+    const credentials = await this.getCredentials()
+    if (!credentials) {
+      return { success: false, mode: 'none', error: 'Twilio not configured' }
+    }
+
+    try {
+      const response = await fetch(`${this.getBaseUrl(credentials)}.json`, {
+        headers: {
+          'Authorization': this.getAuthHeader(credentials),
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        return {
+          success: false,
+          mode: credentials.isTestMode ? 'test' : 'live',
+          error: data.message || 'Authentication failed'
+        }
+      }
+
+      return {
+        success: true,
+        mode: credentials.isTestMode ? 'test' : 'live'
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        mode: credentials.isTestMode ? 'test' : 'live',
+        error: error.message || 'Connection failed'
+      }
+    }
   }
 
   /**
@@ -54,14 +159,15 @@ class TwilioService {
     areaCode?: string,
     limit: number = 20
   ): Promise<AvailableNumber[]> {
-    if (!this.isConfigured()) {
+    const credentials = await this.getCredentials()
+    if (!credentials) {
       console.warn('Twilio not configured, returning empty results')
       return []
     }
 
     try {
       const typeEndpoint = type === 'tollFree' ? 'TollFree' : type === 'mobile' ? 'Mobile' : 'Local'
-      let url = `${this.baseUrl}/AvailablePhoneNumbers/${countryCode}/${typeEndpoint}.json?SmsEnabled=true&PageSize=${limit}`
+      let url = `${this.getBaseUrl(credentials)}/AvailablePhoneNumbers/${countryCode}/${typeEndpoint}.json?SmsEnabled=true&PageSize=${limit}`
 
       if (areaCode) {
         url += `&AreaCode=${areaCode}`
@@ -69,7 +175,7 @@ class TwilioService {
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': this.getAuthHeader(),
+          'Authorization': this.getAuthHeader(credentials),
           'Content-Type': 'application/json'
         }
       })
@@ -103,7 +209,8 @@ class TwilioService {
    * Purchase a phone number
    */
   async purchaseNumber(phoneNumber: string): Promise<PurchaseResult> {
-    if (!this.isConfigured()) {
+    const credentials = await this.getCredentials()
+    if (!credentials) {
       return { success: false, numberSid: '', phoneNumber: '', error: 'Twilio not configured' }
     }
 
@@ -117,10 +224,10 @@ class TwilioService {
       formData.append('VoiceUrl', `${webhookBaseUrl}/api/webhooks/twilio/voice`)
       formData.append('VoiceMethod', 'POST')
 
-      const response = await fetch(`${this.baseUrl}/IncomingPhoneNumbers.json`, {
+      const response = await fetch(`${this.getBaseUrl(credentials)}/IncomingPhoneNumbers.json`, {
         method: 'POST',
         headers: {
-          'Authorization': this.getAuthHeader(),
+          'Authorization': this.getAuthHeader(credentials),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: formData.toString()
@@ -156,15 +263,16 @@ class TwilioService {
    * Release a phone number (cancel)
    */
   async releaseNumber(numberSid: string): Promise<{ success: boolean; error?: string }> {
-    if (!this.isConfigured()) {
+    const credentials = await this.getCredentials()
+    if (!credentials) {
       return { success: false, error: 'Twilio not configured' }
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/IncomingPhoneNumbers/${numberSid}.json`, {
+      const response = await fetch(`${this.getBaseUrl(credentials)}/IncomingPhoneNumbers/${numberSid}.json`, {
         method: 'DELETE',
         headers: {
-          'Authorization': this.getAuthHeader()
+          'Authorization': this.getAuthHeader(credentials)
         }
       })
 
@@ -183,7 +291,8 @@ class TwilioService {
    * Send outbound SMS
    */
   async sendSms(from: string, to: string, body: string): Promise<SmsResult> {
-    if (!this.isConfigured()) {
+    const credentials = await this.getCredentials()
+    if (!credentials) {
       return { success: false, messageSid: '', status: '', error: 'Twilio not configured' }
     }
 
@@ -193,10 +302,10 @@ class TwilioService {
       formData.append('To', to)
       formData.append('Body', body)
 
-      const response = await fetch(`${this.baseUrl}/Messages.json`, {
+      const response = await fetch(`${this.getBaseUrl(credentials)}/Messages.json`, {
         method: 'POST',
         headers: {
-          'Authorization': this.getAuthHeader(),
+          'Authorization': this.getAuthHeader(credentials),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: formData.toString()
@@ -232,7 +341,8 @@ class TwilioService {
    * Update webhook URLs for a number
    */
   async configureWebhook(numberSid: string, smsUrl: string, voiceUrl?: string): Promise<{ success: boolean; error?: string }> {
-    if (!this.isConfigured()) {
+    const credentials = await this.getCredentials()
+    if (!credentials) {
       return { success: false, error: 'Twilio not configured' }
     }
 
@@ -245,10 +355,10 @@ class TwilioService {
         formData.append('VoiceMethod', 'POST')
       }
 
-      const response = await fetch(`${this.baseUrl}/IncomingPhoneNumbers/${numberSid}.json`, {
+      const response = await fetch(`${this.getBaseUrl(credentials)}/IncomingPhoneNumbers/${numberSid}.json`, {
         method: 'POST',
         headers: {
-          'Authorization': this.getAuthHeader(),
+          'Authorization': this.getAuthHeader(credentials),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: formData.toString()
@@ -267,9 +377,11 @@ class TwilioService {
 
   /**
    * Validate Twilio webhook signature
+   * Note: This is synchronous but needs credentials, so it fetches them first
    */
-  validateWebhookSignature(signature: string, url: string, params: Record<string, string>): boolean {
-    if (!this.isConfigured()) {
+  async validateWebhookSignatureAsync(signature: string, url: string, params: Record<string, string>): Promise<boolean> {
+    const credentials = await this.getCredentials()
+    if (!credentials) {
       return false
     }
 
@@ -285,7 +397,46 @@ class TwilioService {
 
       // Create HMAC SHA1 signature
       const expectedSignature = crypto
-        .createHmac('sha1', this.authToken)
+        .createHmac('sha1', credentials.authToken)
+        .update(data)
+        .digest('base64')
+
+      return signature === expectedSignature
+    } catch (error) {
+      console.error('Signature validation error:', error)
+      return false
+    }
+  }
+
+  /**
+   * Synchronous signature validation - uses cached credentials or env vars
+   * For webhook handlers that need sync validation
+   */
+  validateWebhookSignature(signature: string, url: string, params: Record<string, string>): boolean {
+    // Use cached credentials if available
+    let authToken = ''
+    if (credentialsCache?.credentials) {
+      authToken = credentialsCache.credentials.authToken
+    } else {
+      // Fall back to env var for sync call
+      authToken = process.env.TWILIO_AUTH_TOKEN || process.env.TWILIO_TEST_AUTH_TOKEN || ''
+    }
+
+    if (!authToken) {
+      return false
+    }
+
+    try {
+      const crypto = require('crypto')
+
+      const sortedParams = Object.keys(params).sort()
+      let data = url
+      for (const key of sortedParams) {
+        data += key + params[key]
+      }
+
+      const expectedSignature = crypto
+        .createHmac('sha1', authToken)
         .update(data)
         .digest('base64')
 

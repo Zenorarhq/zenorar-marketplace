@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const userId = authResult.payload.userId
 
     // Query user's purchased products from completed orders
-    const result = await query(
+    const productsResult = await query(
       `
       SELECT DISTINCT
         p.id,
@@ -40,8 +40,31 @@ export async function GET(request: Request) {
       [userId]
     )
 
-    // Transform database results to library item format
-    const libraryItems = result.rows.map((row: any) => {
+    // Query user's virtual numbers
+    const virtualNumbersResult = await query(
+      `
+      SELECT
+        uvn.id,
+        'virtual-numbers' as category,
+        COALESCE(vnp.name, 'Virtual Number') as name,
+        uvn.phone_number_display as "phoneNumberDisplay",
+        uvn.phone_number as "phoneNumber",
+        uvn.status,
+        uvn.created_at as purchase_date,
+        uvn.expires_at as "expiresAt",
+        uvn.current_period_sms as "smsUsed",
+        COALESCE(vnp.sms_included, 0) as "smsIncluded",
+        (SELECT COUNT(*)::int FROM virtual_number_messages WHERE virtual_number_id = uvn.id AND direction = 'inbound' AND is_read = false) as "unreadCount"
+      FROM user_virtual_numbers uvn
+      LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+      WHERE uvn.user_id = $1 AND uvn.status IN ('active', 'expired')
+      ORDER BY uvn.created_at DESC
+      `,
+      [userId]
+    )
+
+    // Transform product results to library item format
+    const productItems = productsResult.rows.map((row: any) => {
       // Map category slugs to library filter types
       const categoryMap: Record<string, string> = {
         'scripts': 'scripts',
@@ -75,13 +98,36 @@ export async function GET(request: Request) {
           day: 'numeric',
           year: 'numeric',
         }),
-        status: 'active', // Default status - will be enhanced in Phase 2
-        // Optional fields that will be populated in Phase 2:
-        // version: undefined,
-        // downloadCount: undefined,
-        // expiresAt: undefined,
+        status: 'active',
       }
     })
+
+    // Transform virtual numbers to library item format
+    const virtualNumberItems = virtualNumbersResult.rows.map((row: any) => {
+      return {
+        id: row.id,
+        name: row.phoneNumberDisplay || row.phoneNumber,
+        slug: `virtual-number-${row.id}`,
+        description: `${row.name} - ${row.phoneNumber}`,
+        category: 'virtual-numbers',
+        icon: 'phone',
+        purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        status: row.status,
+        phoneNumber: row.phoneNumber,
+        phoneNumberDisplay: row.phoneNumberDisplay,
+        expiresAt: row.expiresAt ? new Date(row.expiresAt).toISOString() : null,
+        smsUsed: row.smsUsed || 0,
+        smsIncluded: row.smsIncluded || 0,
+        unreadCount: row.unreadCount || 0,
+      }
+    })
+
+    // Combine all library items
+    const libraryItems = [...productItems, ...virtualNumberItems]
 
     return NextResponse.json({
       success: true,
