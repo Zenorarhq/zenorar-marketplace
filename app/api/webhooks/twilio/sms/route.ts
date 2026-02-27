@@ -20,8 +20,18 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
 
     const messageSid = formData.get('MessageSid') as string
-    const from = formData.get('From') as string
-    const to = formData.get('To') as string
+    // Normalize phone numbers - URL encoding converts + to space
+    // Ensure numbers start with + (E.164 format)
+    const normalizePhone = (phone: string | null) => {
+      if (!phone) return ''
+      const trimmed = phone.trim()
+      // If starts with space (from URL-decoded +) or digit, add +
+      if (trimmed.startsWith(' ')) return '+' + trimmed.substring(1)
+      if (!trimmed.startsWith('+') && /^\d/.test(trimmed)) return '+' + trimmed
+      return trimmed
+    }
+    const from = normalizePhone(formData.get('From') as string)
+    const to = normalizePhone(formData.get('To') as string)
     const body = formData.get('Body') as string
     const numMedia = parseInt(formData.get('NumMedia') as string || '0')
 
