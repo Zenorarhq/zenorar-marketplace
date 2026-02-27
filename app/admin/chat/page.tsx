@@ -43,6 +43,7 @@ export default function AdminChatPage() {
   const [replyInput, setReplyInput] = useState('')
   const [sending, setSending] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   // Canned replies
   const [showCannedReplies, setShowCannedReplies] = useState(false)
@@ -483,9 +484,9 @@ export default function AdminChatPage() {
     const isImage = att.type?.startsWith('image/')
     if (isImage) {
       return (
-        <a href={att.url} target="_blank" rel="noopener noreferrer" className="block mt-1">
-          <img src={att.url} alt={att.name} className="max-w-[240px] rounded-lg" />
-        </a>
+        <button type="button" onClick={() => setLightboxUrl(att.url)} className="block mt-1">
+          <img src={att.url} alt={att.name} className="max-w-[240px] rounded-lg cursor-zoom-in" />
+        </button>
       )
     }
     return (
@@ -1192,6 +1193,23 @@ export default function AdminChatPage() {
           </div>
         </div>
       </div>
+      {/* Image lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <img src={lightboxUrl} alt="Preview" className="max-w-[90vw] max-h-[90vh] rounded-lg object-contain" />
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 text-white/80 hover:text-white"
+            aria-label="Close"
+          >
+            <Icon name="close" size={28} />
+          </button>
+        </div>
+      )}
     </AdminLayout>
   )
 }
