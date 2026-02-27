@@ -296,3 +296,30 @@ export async function cancelNumber(numberId: string): Promise<{
     method: 'POST'
   })
 }
+
+/**
+ * Send a test SMS to simulate receiving a message (development/admin only)
+ */
+export async function sendTestSms(
+  virtualNumberId: string,
+  message: string,
+  fromNumber?: string
+): Promise<{
+  success: boolean
+  data?: {
+    to: string
+    from: string
+    body: string
+    messageSid: string
+  }
+  error?: string
+}> {
+  return localApiFetch('/virtual-numbers/test-sms', {
+    method: 'POST',
+    body: JSON.stringify({
+      virtualNumberId,
+      message,
+      fromNumber
+    })
+  })
+}
