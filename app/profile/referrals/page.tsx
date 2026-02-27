@@ -9,7 +9,8 @@ import { formatCurrency } from '@/lib/currency'
 import { apiFetch } from '@/lib/api/client'
 
 export default function ReferralsPage() {
-  const [copied, setCopied] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
   const [filter, setFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const pageSize = 20
@@ -66,10 +67,16 @@ export default function ReferralsPage() {
     ? `${window.location.origin}/ref/${referralCode}`
     : ''
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const copyCode = () => {
+    navigator.clipboard.writeText(referralCode)
+    setCopiedCode(true)
+    setTimeout(() => setCopiedCode(false), 2000)
+  }
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(referralLink)
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2000)
   }
 
   const formatDate = (dateString: string) => {
@@ -187,12 +194,12 @@ export default function ReferralsPage() {
                 className="flex-1 bg-surface-dark border border-border-dark rounded-xl px-4 py-3 text-white font-mono text-base sm:text-lg"
               />
               <button
-                onClick={() => copyToClipboard(referralCode)}
+                onClick={copyCode}
                 className="px-4 py-3 sm:px-6 bg-surface-dark border border-border-dark rounded-xl text-white font-medium hover:bg-border-dark transition-colors flex items-center gap-2"
                 disabled={!referralCode}
               >
-                <Icon name={copied ? 'check' : 'copy'} size={20} />
-                {copied ? 'Copied!' : 'Copy'}
+                <Icon name={copiedCode ? 'check' : 'copy'} size={20} />
+                {copiedCode ? 'Copied!' : 'Copy'}
               </button>
             </div>
           </div>
@@ -207,12 +214,12 @@ export default function ReferralsPage() {
                 className="flex-1 bg-surface-dark border border-border-dark rounded-xl px-4 py-3 text-slate-400 text-sm"
               />
               <button
-                onClick={() => copyToClipboard(referralLink)}
+                onClick={copyLink}
                 className="px-4 py-3 sm:px-6 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center gap-2"
                 disabled={!referralLink}
               >
-                <Icon name={copied ? 'check' : 'copy'} size={20} />
-                {copied ? 'Copied!' : 'Copy'}
+                <Icon name={copiedLink ? 'check' : 'copy'} size={20} />
+                {copiedLink ? 'Copied!' : 'Copy'}
               </button>
             </div>
           </div>
@@ -269,7 +276,7 @@ export default function ReferralsPage() {
 
           {/* Filter */}
           <div className="flex gap-2 flex-wrap">
-            {['all', 'pending', 'completed', 'rewarded'].map((status) => (
+            {['all', 'pending', 'completed', 'rewarded', 'cancelled'].map((status) => (
               <button
                 key={status}
                 onClick={() => { setFilter(status); setPage(1) }}
@@ -356,10 +363,12 @@ export default function ReferralsPage() {
                           {getStatusBadge(referral.status)}
                         </td>
                         <td className="px-3 py-3 sm:px-6 sm:py-4 text-right">
-                          {referral.status === 'REWARDED' || referral.status === 'COMPLETED' ? (
+                          {referral.status === 'REWARDED' ? (
                             <div className="text-primary font-bold font-mono">
                               +{formatCurrency(referrerRewardAmount)}
                             </div>
+                          ) : referral.status === 'COMPLETED' ? (
+                            <span className="text-yellow-500 text-sm">Pending reward</span>
                           ) : referral.status === 'PENDING' ? (
                             <span className="text-yellow-500 text-sm">Pending purchase</span>
                           ) : (
