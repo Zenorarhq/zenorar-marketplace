@@ -215,6 +215,19 @@ export default function AdminSettingsPage() {
   const [newKeyName, setNewKeyName] = useState('')
   const [generatingKey, setGeneratingKey] = useState(false)
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null)
+  // R2 Storage Settings State
+  const [r2Settings, setR2Settings] = useState({
+    accountId: '',
+    accessKeyId: '',
+    secretAccessKey: '',
+    bucketName: 'zenorar-scripts',
+    isConfigured: false,
+  })
+  const [r2SecretPlaceholder, setR2SecretPlaceholder] = useState('')
+  const [showR2Secret, setShowR2Secret] = useState(false)
+  const [r2TestResult, setR2TestResult] = useState<{ success: boolean; error?: string } | null>(null)
+  const [testingR2, setTestingR2] = useState(false)
+  const [savingR2, setSavingR2] = useState(false)
 
   // Data eSIM Provider Settings State (travel data only)
   const [esimSettings, setEsimSettings] = useState({
@@ -594,6 +607,23 @@ export default function AdminSettingsPage() {
     }).catch(() => {})
   }, [])
 
+  // Load R2 settings on mount
+  useEffect(() => {
+    settingsApi.getR2Settings().then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setR2Settings({
+          accountId: d.accountId || '',
+          accessKeyId: d.accessKeyId || '',
+          secretAccessKey: '',
+          bucketName: d.bucketName || 'zenorar-scripts',
+          isConfigured: d.isConfigured,
+        })
+        setR2SecretPlaceholder(d.secretAccessKey || '')
+      }
+    })
+  }, [])
+
   // Load API keys on mount
   useEffect(() => {
     apiFetch<any[]>('/apikeys').then((res) => {
@@ -957,6 +987,56 @@ export default function AdminSettingsPage() {
     }
     setUploadingFavicon(false)
     if (faviconInputRef.current) faviconInputRef.current.value = ''
+  }
+
+  const handleTestR2 = async () => {
+    setTestingR2(true)
+    setR2TestResult(null)
+    const secretToUse = r2Settings.secretAccessKey || r2SecretPlaceholder
+    const res = await settingsApi.testR2Connection({
+      accountId: r2Settings.accountId,
+      accessKeyId: r2Settings.accessKeyId,
+      secretAccessKey: secretToUse,
+      bucketName: r2Settings.bucketName,
+    })
+    if (res.success && res.data) {
+      setR2TestResult(res.data)
+    } else {
+      setR2TestResult({ success: false, error: res.error || 'Test failed' })
+    }
+    setTestingR2(false)
+  }
+
+  const handleSaveR2 = async () => {
+    // Don't allow save if secret not provided and not already configured
+    const secretToSave = r2Settings.secretAccessKey
+    if (!secretToSave && !r2Settings.isConfigured) {
+      setMessage({ type: 'error', text: 'Secret Access Key is required' })
+      return
+    }
+    if (!r2Settings.accountId || !r2Settings.accessKeyId || !r2Settings.bucketName) {
+      setMessage({ type: 'error', text: 'All R2 fields are required' })
+      return
+    }
+    setSavingR2(true)
+    setMessage(null)
+    const res = await settingsApi.updateR2Settings({
+      accountId: r2Settings.accountId,
+      accessKeyId: r2Settings.accessKeyId,
+      secretAccessKey: secretToSave || r2SecretPlaceholder,
+      bucketName: r2Settings.bucketName,
+    })
+    setSavingR2(false)
+    if (res.success) {
+      setMessage({ type: 'success', text: 'R2 credentials saved and connection verified' })
+      setR2Settings(prev => ({ ...prev, isConfigured: true, secretAccessKey: '' }))
+      // Reload masked placeholder
+      settingsApi.getR2Settings().then(r => {
+        if (r.success && r.data) setR2SecretPlaceholder(r.data.secretAccessKey || '')
+      })
+    } else {
+      setMessage({ type: 'error', text: res.error || 'Failed to save R2 settings' })
+    }
   }
 
   const handleSave = async () => {
@@ -3919,6 +3999,110 @@ export default function AdminSettingsPage() {
                         </div>
                       )}
                     </div>
+                  </div>
+
+                  {/* Cloudflare R2 Storage */}
+                  <div className="border-t border-[#2a2a2a] pt-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                        <Icon name="cloud" size={20} className="text-orange-400" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-white font-medium">Cloudflare R2 — Script File Storage</h3>
+                          {r2Settings.isConfigured ? (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/15 text-green-400">Connected</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-400">Not Configured</span>
+                          )}
+                        </div>
+                        <p className="text-slate-500 text-sm">Secure private storage for downloadable script files</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Account ID</label>
+                        <input
+                          type="text"
+                          value={r2Settings.accountId}
+                          onChange={(e) => setR2Settings({ ...r2Settings, accountId: e.target.value })}
+                          placeholder="Your Cloudflare Account ID"
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Bucket Name</label>
+                        <input
+                          type="text"
+                          value={r2Settings.bucketName}
+                          onChange={(e) => setR2Settings({ ...r2Settings, bucketName: e.target.value })}
+                          placeholder="zenorar-scripts"
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Access Key ID</label>
+                        <input
+                          type="text"
+                          value={r2Settings.accessKeyId}
+                          onChange={(e) => setR2Settings({ ...r2Settings, accessKeyId: e.target.value })}
+                          placeholder="R2 Access Key ID"
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Secret Access Key</label>
+                        <div className="relative">
+                          <input
+                            type={showR2Secret ? 'text' : 'password'}
+                            value={r2Settings.secretAccessKey}
+                            onChange={(e) => setR2Settings({ ...r2Settings, secretAccessKey: e.target.value })}
+                            placeholder={r2SecretPlaceholder || 'R2 Secret Access Key'}
+                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 pr-10 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowR2Secret(!showR2Secret)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                          >
+                            <Icon name={showR2Secret ? 'eye-off' : 'eye'} size={16} />
+                          </button>
+                        </div>
+                        {r2Settings.isConfigured && !r2Settings.secretAccessKey && (
+                          <p className="text-xs text-slate-600">Leave blank to keep existing secret</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {r2TestResult && (
+                      <div className={`mb-4 p-3 rounded-lg text-sm ${r2TestResult.success ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                        {r2TestResult.success ? 'Connection successful — bucket is accessible' : `Connection failed: ${r2TestResult.error}`}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 mb-5">
+                      <button
+                        onClick={handleTestR2}
+                        disabled={testingR2 || !r2Settings.accountId || !r2Settings.accessKeyId || !r2Settings.bucketName}
+                        className="bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-[#2a2a2a] text-slate-300 text-sm px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-40"
+                      >
+                        <Icon name={testingR2 ? 'loader' : 'wifi'} size={14} className={testingR2 ? 'animate-spin' : ''} />
+                        {testingR2 ? 'Testing...' : 'Test Connection'}
+                      </button>
+                      <button
+                        onClick={handleSaveR2}
+                        disabled={savingR2 || !r2Settings.accountId || !r2Settings.accessKeyId || !r2Settings.bucketName}
+                        className="bg-primary hover:bg-primary/90 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-40"
+                      >
+                        <Icon name={savingR2 ? 'loader' : 'save'} size={14} className={savingR2 ? 'animate-spin' : ''} />
+                        {savingR2 ? 'Saving...' : 'Save R2 Credentials'}
+                      </button>
+                    </div>
+
+                    <div className="p-3 bg-[#111] rounded-lg border border-[#2a2a2a] text-xs text-slate-500">
+                      Credentials are stored encrypted in the database. Files are served via time-limited signed URLs (1 hour expiry).
+                      <a href="https://developers.cloudflare.com/r2/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">R2 docs →</a>                    </div>
                   </div>
 
                   {/* API Keys Table */}

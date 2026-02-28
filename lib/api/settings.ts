@@ -104,4 +104,39 @@ export const settingsApi = {
       method: 'POST',
     })
   },
+
+  // R2 Storage Settings
+  async getR2Settings() {
+    return apiFetch<{
+      accountId: string
+      accessKeyId: string
+      secretAccessKey: string
+      bucketName: string
+      isConfigured: boolean
+    }>('/settings/r2')
+  },
+
+  async updateR2Settings(data: {
+    accountId: string
+    accessKeyId: string
+    secretAccessKey: string
+    bucketName: string
+  }) {
+    return apiFetch<{ message: string }>('/settings/r2', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+
+  async testR2Connection(data: {
+    accountId: string
+    accessKeyId: string
+    secretAccessKey: string
+    bucketName: string
+  }) {
+    return apiFetch<{ success: boolean; error?: string }>('/settings/test-r2', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
 }

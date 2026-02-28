@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { ordersApi, Order } from '@/lib/api/orders'
+import { downloadsApi } from '@/lib/api/downloads'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
 type FilterStatus = 'all' | 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
@@ -95,6 +96,8 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
@@ -151,6 +154,18 @@ export default function OrdersPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [activeFilter, searchQuery, startDate, endDate])
+
+  const handleDownload = async (productId: string, orderId: string) => {
+    setDownloadingId(orderId)
+    setDownloadError(null)
+    const res = await downloadsApi.getDownloadUrl(productId)
+    setDownloadingId(null)
+    if (res.success && res.data?.downloadUrl) {
+      window.open(res.data.downloadUrl, '_blank')
+    } else {
+      setDownloadError(res.error || 'Download temporarily unavailable')
+    }
+  }
 
   const handleCancel = async (orderId: string) => {
     if (!confirm('Are you sure you want to cancel this order?')) return
@@ -427,6 +442,18 @@ export default function OrdersPage() {
                         >
                           <Icon name="close" size={18} />
                           {cancellingId === order.id ? 'Cancelling...' : 'Cancel'}
+                        </button>
+                      )}
+                      {/* Download script files for PAID digital orders */}
+                      {order.paymentStatus === 'PAID' &&
+                        order.items.some(i => i.license) && (
+                        <button
+                          onClick={() => handleDownload(order.items.find(i => i.license)!.productId, order.id)}
+                          disabled={downloadingId === order.id}
+                          className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <Icon name={downloadingId === order.id ? 'loader' : 'download'} size={16} className={downloadingId === order.id ? 'animate-spin' : ''} />
+                          {downloadingId === order.id ? 'Preparing...' : 'Download Files'}
                         </button>
                       )}
                       <button

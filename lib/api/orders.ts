@@ -14,6 +14,7 @@ export interface OrderItem {
   price: number
   quantity: number
   total: number
+  license?: string | null
 }
 
 export interface OrderAddress {
