@@ -15,8 +15,8 @@ interface AdminLayoutProps {
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard', permission: 'view_analytics' },
   { href: '/admin/products', label: 'Products', icon: 'box', permission: 'view_products' },
-  { href: '/admin/gift-cards', label: 'Gift Cards', icon: 'gift', permission: 'view_products' },
   { href: '/admin/categories', label: 'Categories', icon: 'grid-view', permission: 'manage_categories' },
+  { href: '/admin/gift-cards', label: 'Gift Cards', icon: 'gift', permission: 'view_products' },
   { href: '/admin/purchases', label: 'Purchases', icon: 'shopping-cart', permission: 'view_orders' },
   { href: '/admin/analytics', label: 'Analytics', icon: 'analytics', permission: 'view_analytics' },
   { href: '/admin/discounts', label: 'Discounts', icon: 'tag', permission: 'view_products' },
