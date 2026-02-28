@@ -7,6 +7,7 @@
 
 import { query } from './db'
 import { esimProvisioningService } from './esim'
+import { provisionGiftCard } from './gift-cards/provisioning'
 
 export interface FulfillmentResult {
   orderId: string
@@ -148,13 +149,7 @@ async function processOrderItem(
         return await processApiProduct(orderId, userId, item)
 
       case 'gift_card':
-        // Gift card provisioning will be handled separately
-        return {
-          itemId: item.item_id,
-          productType,
-          status: 'skipped',
-          error: 'Gift card provisioning not yet implemented'
-        }
+        return await processGiftCardItem(orderId, userId, item)
 
       default:
         // Generic digital product - just grant access
@@ -371,6 +366,122 @@ async function processApiProduct(
     return {
       itemId: item.item_id,
       productType: 'api',
+      status: 'failed',
+      error: error.message
+    }
+  }
+}
+
+/**
+ * Process gift card order item - provision from bulk inventory or API
+ */
+async function processGiftCardItem(
+  orderId: string,
+  userId: string,
+  item: {
+    item_id: string
+    product_id: string
+    name: string
+    quantity: number
+  }
+): Promise<FulfillmentResult['details'][0]> {
+  try {
+    // Check if already provisioned (idempotency)
+    const existingResult = await query(
+      `SELECT id FROM user_gift_cards WHERE order_id = $1 AND user_id = $2`,
+      [orderId, userId]
+    )
+
+    if (existingResult.rows.length > 0) {
+      return {
+        itemId: item.item_id,
+        productType: 'gift_card',
+        status: 'success',
+        provisionedId: existingResult.rows[0].id
+      }
+    }
+
+    // Get gift card details from product metadata or order item metadata
+    const productResult = await query(
+      `SELECT
+         p.metadata,
+         oi.metadata as item_metadata
+       FROM products p
+       LEFT JOIN order_items oi ON oi.product_id = p.id AND oi.order_id = $2
+       WHERE p.id = $1`,
+      [item.product_id, orderId]
+    )
+
+    let giftCardId: string | null = null
+    let denomination: number | null = null
+
+    if (productResult.rows.length > 0) {
+      const productMeta = productResult.rows[0].metadata || {}
+      const itemMeta = productResult.rows[0].item_metadata || {}
+
+      // Check item metadata first (for cart selections), then product metadata
+      giftCardId = itemMeta.gift_card_id || productMeta.gift_card_id
+      denomination = itemMeta.denomination || productMeta.denomination
+    }
+
+    // Try to find gift card by product name/slug if not in metadata
+    if (!giftCardId) {
+      const giftCardResult = await query(
+        `SELECT id FROM gift_cards
+         WHERE brand ILIKE $1 OR slug ILIKE $2
+         LIMIT 1`,
+        [item.name, item.name.toLowerCase().replace(/\s+/g, '-')]
+      )
+
+      if (giftCardResult.rows.length > 0) {
+        giftCardId = giftCardResult.rows[0].id
+      }
+    }
+
+    if (!giftCardId) {
+      throw new Error(`No gift card found for product: ${item.name}`)
+    }
+
+    // Get denomination from order item price if not in metadata
+    if (!denomination) {
+      const priceResult = await query(
+        `SELECT price FROM order_items WHERE id = $1`,
+        [item.item_id]
+      )
+
+      if (priceResult.rows.length > 0) {
+        denomination = parseFloat(priceResult.rows[0].price)
+      }
+    }
+
+    if (!denomination || denomination <= 0) {
+      throw new Error('Invalid denomination for gift card')
+    }
+
+    // Provision the gift card
+    const provisionResult = await provisionGiftCard(
+      giftCardId,
+      denomination,
+      userId,
+      orderId
+    )
+
+    if (!provisionResult.success) {
+      throw new Error(provisionResult.error || 'Gift card provisioning failed')
+    }
+
+    return {
+      itemId: item.item_id,
+      productType: 'gift_card',
+      status: 'success',
+      provisionedId: provisionResult.userGiftCardId
+    }
+  } catch (error: any) {
+    console.error(`Gift card provisioning failed for item ${item.item_id}:`, error)
+
+    return {
+      itemId: item.item_id,
+      productType: 'gift_card',
       status: 'failed',
       error: error.message
     }

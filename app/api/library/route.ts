@@ -40,6 +40,26 @@ export async function GET(request: Request) {
       [userId]
     )
 
+    // Query user's gift cards
+    const giftCardsResult = await query(
+      `
+      SELECT
+        ugc.id,
+        ugc.brand,
+        ugc.category,
+        ugc.denomination,
+        ugc.status,
+        ugc.image_url,
+        ugc.delivered_at as purchase_date,
+        ugc.expires_at,
+        ugc.redeemed_at
+      FROM user_gift_cards ugc
+      WHERE ugc.user_id = $1
+      ORDER BY ugc.delivered_at DESC
+      `,
+      [userId]
+    )
+
     // Query user's virtual numbers
     const virtualNumbersResult = await query(
       `
@@ -126,8 +146,32 @@ export async function GET(request: Request) {
       }
     })
 
+    // Transform gift cards to library item format
+    const giftCardItems = giftCardsResult.rows.map((row: any) => {
+      return {
+        id: row.id,
+        name: `${row.brand} $${row.denomination}`,
+        slug: `gift-card-${row.id}`,
+        description: `${row.brand} Gift Card - $${row.denomination}`,
+        category: 'gift-cards',
+        icon: 'gift',
+        imageUrl: row.image_url,
+        purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        status: row.status,
+        denomination: parseFloat(row.denomination),
+        brand: row.brand,
+        giftCardCategory: row.category,
+        expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : null,
+        redeemedAt: row.redeemed_at ? new Date(row.redeemed_at).toISOString() : null,
+      }
+    })
+
     // Combine all library items
-    const libraryItems = [...productItems, ...virtualNumberItems]
+    const libraryItems = [...productItems, ...virtualNumberItems, ...giftCardItems]
 
     return NextResponse.json({
       success: true,
