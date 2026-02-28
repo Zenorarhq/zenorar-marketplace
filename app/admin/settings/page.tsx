@@ -11,8 +11,9 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import EmailConfigSection from '@/components/admin/EmailConfigSection'
 import ProtectionLevelsSection from '@/components/admin/ProtectionLevelsSection'
+import PinSetupForm from '@/components/admin/PinSetupForm'
 
-type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'email' | 'marketing' | 'seo'
+type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'email' | 'marketing' | 'seo' | 'activity'
 
 const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'profile', label: 'Profile', icon: 'user' },
@@ -25,6 +26,7 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'email', label: 'Email Service', icon: 'mail' },
   { id: 'marketing', label: 'Marketing', icon: 'campaign' },
   { id: 'seo', label: 'SEO', icon: 'search' },
+  { id: 'activity', label: 'Activity Log', icon: 'list' },
 ]
 
 export default function AdminSettingsPage() {
@@ -39,6 +41,57 @@ export default function AdminSettingsPage() {
     const timer = setTimeout(() => setMessage(null), 4000)
     return () => clearTimeout(timer)
   }, [message])
+
+  // Admin PIN state
+  const [pinStatus, setPinStatus] = useState<{ hasPin: boolean; setAt: string | null } | null>(null)
+  const [showPinSetup, setShowPinSetup] = useState(false)
+  const [showPinEnforce, setShowPinEnforce] = useState(false)
+  const [resetingPin, setResetingPin] = useState(false)
+
+  // Activity Log state
+  const [activityLogs, setActivityLogs] = useState<any[]>([])
+  const [activityPagination, setActivityPagination] = useState<{ page: number; pages: number; total: number }>({ page: 1, pages: 1, total: 0 })
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityFilter, setActivityFilter] = useState('')
+
+  // Fetch PIN status on mount
+  useEffect(() => {
+    apiFetch<{ hasPin: boolean; setAt: string | null }>('/admin/pin/status').then((res) => {
+      if (res.success && res.data) {
+        setPinStatus(res.data)
+        if (!res.data.hasPin) setShowPinEnforce(true)
+      }
+    })
+  }, [])
+
+  // Fetch activity logs when tab is active
+  useEffect(() => {
+    if (activeTab !== 'activity') return
+    loadActivityLogs(1)
+  }, [activeTab, activityFilter])
+
+  const loadActivityLogs = async (page: number) => {
+    setActivityLoading(true)
+    const params = new URLSearchParams({ page: String(page), limit: '50' })
+    if (activityFilter) params.set('action', activityFilter)
+    const res = await apiFetch<any[]>(`/admin/activity-logs?${params}`)
+    if (res.success) {
+      setActivityLogs(res.data || [])
+      if (res.pagination) setActivityPagination({ page: res.pagination.page, pages: res.pagination.totalPages, total: res.pagination.total })
+    }
+    setActivityLoading(false)
+  }
+
+  const handlePinResetRequest = async () => {
+    setResetingPin(true)
+    const res = await apiFetch('/admin/pin/request-reset', { method: 'POST' })
+    if (res.success) {
+      setMessage({ type: 'success', text: 'PIN reset link sent to your email' })
+    } else {
+      setMessage({ type: 'error', text: res.message || res.error || 'Failed to send reset email' })
+    }
+    setResetingPin(false)
+  }
 
   const tabsRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -1247,6 +1300,19 @@ export default function AdminSettingsPage() {
 
   return (
     <AdminLayout>
+      {/* Enforce PIN setup for admins who don't have one */}
+      {showPinEnforce && (
+        <PinSetupForm
+          hasExistingPin={false}
+          fullScreen
+          onSuccess={() => {
+            setShowPinEnforce(false)
+            setPinStatus({ hasPin: true, setAt: new Date().toISOString() })
+            setMessage({ type: 'success', text: 'Security PIN set successfully' })
+          }}
+        />
+      )}
+
       <div className="max-w-full overflow-hidden">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
@@ -1709,6 +1775,53 @@ export default function AdminSettingsPage() {
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 resize-none font-mono text-sm"
                 />
                 <p className="text-slate-500 text-xs">Leave empty to allow all IPs</p>
+              </div>
+
+              {/* Admin Security PIN */}
+              <div className="p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                    <Icon name="lock" size={20} className="text-yellow-500" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Admin Security PIN</p>
+                    <p className="text-slate-500 text-sm">
+                      {pinStatus?.hasPin
+                        ? `PIN is set${pinStatus.setAt ? ` (last updated ${new Date(pinStatus.setAt).toLocaleDateString()})` : ''}`
+                        : 'No PIN set — required for sensitive actions'}
+                    </p>
+                  </div>
+                </div>
+
+                {showPinSetup ? (
+                  <PinSetupForm
+                    hasExistingPin={!!pinStatus?.hasPin}
+                    onSuccess={() => {
+                      setShowPinSetup(false)
+                      setPinStatus({ hasPin: true, setAt: new Date().toISOString() })
+                      setMessage({ type: 'success', text: pinStatus?.hasPin ? 'PIN changed' : 'PIN set successfully' })
+                    }}
+                    onCancel={() => setShowPinSetup(false)}
+                  />
+                ) : (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowPinSetup(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      {pinStatus?.hasPin ? 'Change PIN' : 'Set Up PIN'}
+                    </button>
+                    {pinStatus?.hasPin && (
+                      <button
+                        onClick={handlePinResetRequest}
+                        disabled={resetingPin}
+                        className="px-4 py-2 bg-[#2a2a2a] text-gray-300 rounded hover:bg-[#333] transition-colors text-sm"
+                      >
+                        {resetingPin ? 'Sending...' : 'Reset via Email'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -4626,6 +4739,95 @@ export default function AdminSettingsPage() {
                   <p className="text-xs text-slate-500 mt-1">Leave empty to use defaults. Controls which pages search engines can crawl.</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Activity Log Tab */}
+          {activeTab === 'activity' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-medium">Admin Activity Log</h3>
+                <select
+                  value={activityFilter}
+                  onChange={(e) => setActivityFilter(e.target.value)}
+                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-3 py-1.5 text-sm text-white focus:outline-none"
+                >
+                  <option value="">All Actions</option>
+                  <option value="PIN_SETUP">PIN Setup</option>
+                  <option value="PIN_CHANGED">PIN Changed</option>
+                  <option value="PIN_VERIFICATION_FAILED">PIN Failed</option>
+                  <option value="LICENSE_SUSPENDED">License Suspended</option>
+                  <option value="LICENSE_REVOKED">License Revoked</option>
+                  <option value="LICENSE_GENERATED_MANUAL">License Generated</option>
+                  <option value="R2_CREDENTIALS_CHANGED">R2 Settings Changed</option>
+                  <option value="PROTECTION_LEVELS_CHANGED">Protection Levels Changed</option>
+                  <option value="DATA_REVEALED">Data Revealed</option>
+                </select>
+              </div>
+
+              {activityLoading ? (
+                <p className="text-slate-500 text-sm p-4">Loading...</p>
+              ) : activityLogs.length === 0 ? (
+                <p className="text-slate-500 text-sm p-4">No activity logs found.</p>
+              ) : (
+                <div className="bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-[#141414]">
+                        <tr>
+                          <th className="text-left p-3 text-slate-400 font-medium">Date</th>
+                          <th className="text-left p-3 text-slate-400 font-medium">Admin</th>
+                          <th className="text-left p-3 text-slate-400 font-medium">Action</th>
+                          <th className="text-left p-3 text-slate-400 font-medium">Target</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activityLogs.map((log: any) => (
+                          <tr key={log.id} className="border-t border-[#2a2a2a]">
+                            <td className="p-3 text-slate-300 text-xs whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
+                            <td className="p-3 text-white text-xs">{log.admin?.name || 'Unknown'}</td>
+                            <td className="p-3">
+                              <span className={`text-xs px-2 py-0.5 rounded ${
+                                log.action.includes('FAILED') ? 'bg-red-500/10 text-red-400' :
+                                log.action.includes('REVOKED') ? 'bg-red-500/10 text-red-400' :
+                                log.action.includes('SUSPENDED') ? 'bg-yellow-500/10 text-yellow-400' :
+                                'bg-blue-500/10 text-blue-400'
+                              }`}>
+                                {log.action.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-400 text-xs font-mono">{log.targetType ? `${log.targetType} ${log.targetId ? '#' + log.targetId.slice(0, 8) : ''}` : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {activityPagination.pages > 1 && (
+                    <div className="flex items-center justify-between p-3 border-t border-[#2a2a2a]">
+                      <span className="text-xs text-slate-500">{activityPagination.total} total entries</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => loadActivityLogs(activityPagination.page - 1)}
+                          disabled={activityPagination.page <= 1}
+                          className="px-3 py-1 text-xs bg-[#2a2a2a] text-gray-300 rounded disabled:opacity-50"
+                        >
+                          Previous
+                        </button>
+                        <span className="px-3 py-1 text-xs text-slate-400">
+                          Page {activityPagination.page} of {activityPagination.pages}
+                        </span>
+                        <button
+                          onClick={() => loadActivityLogs(activityPagination.page + 1)}
+                          disabled={activityPagination.page >= activityPagination.pages}
+                          className="px-3 py-1 text-xs bg-[#2a2a2a] text-gray-300 rounded disabled:opacity-50"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

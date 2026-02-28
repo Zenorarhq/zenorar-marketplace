@@ -79,6 +79,7 @@ export interface TicketDetail extends Ticket {
     id: string
     licenseKey: string
     licenseType: string
+    status: string
     supportExpiresAt: string
     domainsAllowed: number
     registeredDomains: string[]

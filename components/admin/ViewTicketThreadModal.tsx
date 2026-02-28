@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import { ticketsApi, TicketDetail, TicketStatus, TicketPriority, TicketCategory } from '@/lib/api/tickets'
 import { staffApi } from '@/lib/api/staff'
+import { suspendLicense, revokeLicense } from '@/lib/api/licenses'
 import Icon from '@/components/ui/Icon'
+import PinConfirmationModal from '@/components/admin/PinConfirmationModal'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDate } from '@/lib/date-utils'
 
@@ -21,6 +23,7 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
   const [actionLoading, setActionLoading] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([])
+  const [licensePinAction, setLicensePinAction] = useState<{ type: 'suspend' | 'revoke'; licenseId: string } | null>(null)
 
   useEffect(() => {
     if (isOpen && ticketId) {
@@ -306,6 +309,33 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
                         </>
                       )}
                     </div>
+                    {/* License Actions */}
+                    {ticket.license && (
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-purple-500/10">
+                        {ticket.license.status === 'ACTIVE' && (
+                          <button
+                            onClick={() => setLicensePinAction({ type: 'suspend', licenseId: ticket.license!.id })}
+                            className="px-3 py-1.5 text-xs font-medium text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded hover:bg-yellow-500/20 transition-colors"
+                          >
+                            Suspend License
+                          </button>
+                        )}
+                        {ticket.license.status !== 'REVOKED' && (
+                          <button
+                            onClick={() => setLicensePinAction({ type: 'revoke', licenseId: ticket.license!.id })}
+                            className="px-3 py-1.5 text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 rounded hover:bg-red-500/20 transition-colors"
+                          >
+                            Revoke License
+                          </button>
+                        )}
+                        {ticket.license.status === 'SUSPENDED' && (
+                          <span className="px-3 py-1.5 text-xs text-yellow-400">Currently suspended</span>
+                        )}
+                        {ticket.license.status === 'REVOKED' && (
+                          <span className="px-3 py-1.5 text-xs text-red-400">License revoked</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -418,6 +448,26 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
           </button>
         </div>
       </div>
+
+      {/* License Action PIN Modal */}
+      <PinConfirmationModal
+        isOpen={!!licensePinAction}
+        onClose={() => setLicensePinAction(null)}
+        onConfirm={async (pin) => {
+          if (!licensePinAction) return
+          const fn = licensePinAction.type === 'suspend' ? suspendLicense : revokeLicense
+          const res = await fn(licensePinAction.licenseId, pin)
+          if (!res.success) throw new Error(res.error || 'Action failed')
+          setLicensePinAction(null)
+          loadTicket()
+        }}
+        title={licensePinAction?.type === 'suspend' ? 'Suspend License' : 'Revoke License'}
+        description={licensePinAction?.type === 'suspend'
+          ? 'This will temporarily suspend the license. Enter your PIN to confirm.'
+          : 'This will permanently revoke the license. This cannot be undone.'}
+        confirmLabel={licensePinAction?.type === 'suspend' ? 'Suspend' : 'Revoke'}
+        destructive={licensePinAction?.type === 'revoke'}
+      />
     </div>
   )
 }
