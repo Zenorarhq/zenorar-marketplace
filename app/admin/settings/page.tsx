@@ -1424,7 +1424,7 @@ export default function AdminSettingsPage() {
                 </div>
                 <button
                   onClick={() => setGeneralSettings({ ...generalSettings, maintenanceMode: !generalSettings.maintenanceMode })}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                  className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                     generalSettings.maintenanceMode ? 'bg-primary' : 'bg-[#2a2a2a]'
                   }`}
                 >
@@ -1557,7 +1557,7 @@ export default function AdminSettingsPage() {
                 </div>
                 <button
                   onClick={() => setSecuritySettings({ ...securitySettings, twoFactorAuth: !securitySettings.twoFactorAuth })}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                  className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                     securitySettings.twoFactorAuth ? 'bg-primary' : 'bg-[#2a2a2a]'
                   }`}
                 >
@@ -1635,7 +1635,7 @@ export default function AdminSettingsPage() {
                     </div>
                     <button
                       onClick={() => setNotificationSettings({ ...notificationSettings, [item.key]: !notificationSettings[item.key as keyof typeof notificationSettings] })}
-                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                      className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                         notificationSettings[item.key as keyof typeof notificationSettings] ? 'bg-primary' : 'bg-[#2a2a2a]'
                       }`}
                     >
@@ -1662,7 +1662,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <button
                     onClick={() => setNotificationSettings({ ...notificationSettings, pushEnabled: !notificationSettings.pushEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       notificationSettings.pushEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                     }`}
                   >
@@ -2106,7 +2106,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <button
                     onClick={() => setPaymentSettings({ ...paymentSettings, walletEnabled: !paymentSettings.walletEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       paymentSettings.walletEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                     }`}
                   >
@@ -2143,7 +2143,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <button
                     onClick={() => setPaymentSettings({ ...paymentSettings, stripeEnabled: !paymentSettings.stripeEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       paymentSettings.stripeEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                     }`}
                   >
@@ -2247,7 +2247,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <button
                     onClick={() => setPaymentSettings({ ...paymentSettings, paystackEnabled: !paymentSettings.paystackEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       paymentSettings.paystackEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                     }`}
                   >
@@ -2363,7 +2363,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <button
                     onClick={() => setPaymentSettings({ ...paymentSettings, cryptoEnabled: !paymentSettings.cryptoEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       paymentSettings.cryptoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                     }`}
                   >
@@ -2610,7 +2610,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <button
                     onClick={() => setPaymentSettings({ ...paymentSettings, paypalEnabled: !paymentSettings.paypalEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       paymentSettings.paypalEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                     }`}
                   >
@@ -2750,7 +2750,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <button
                     onClick={() => setPaymentSettings({ ...paymentSettings, autoWithdraw: !paymentSettings.autoWithdraw })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       paymentSettings.autoWithdraw ? 'bg-primary' : 'bg-[#2a2a2a]'
                     }`}
                   >
@@ -2795,7 +2795,7 @@ export default function AdminSettingsPage() {
                 </div>
                 <button
                   onClick={() => setPaymentSettings({ ...paymentSettings, walletDepositsEnabled: !paymentSettings.walletDepositsEnabled })}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${paymentSettings.walletDepositsEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                  className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${paymentSettings.walletDepositsEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                 >
                   <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${paymentSettings.walletDepositsEnabled ? 'left-7' : 'left-1'}`} />
                 </button>
@@ -2945,7 +2945,7 @@ export default function AdminSettingsPage() {
                   </div>
                   <button
                     onClick={() => setApiSettings({ ...apiSettings, apiEnabled: !apiSettings.apiEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                       apiSettings.apiEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                     }`}
                   >
@@ -3035,12 +3035,12 @@ export default function AdminSettingsPage() {
                     </div>
 
                     {/* Default Provider */}
-                    <div className="mb-6">
+                    <div className="mb-6 mt-4">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
                       <select
                         value={esimSettings.esimDefaultProvider}
                         onChange={(e) => setEsimSettings({ ...esimSettings, esimDefaultProvider: e.target.value as 'esimgo' | 'airalo' | 'mobimatter' })}
-                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[140px]"
                       >
                         <option value="esimgo">eSIM Go</option>
                         <option value="airalo">Airalo</option>
@@ -3063,7 +3063,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setEsimSettings({ ...esimSettings, esimGoEnabled: !esimSettings.esimGoEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${esimSettings.esimGoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${esimSettings.esimGoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${esimSettings.esimGoEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3109,7 +3109,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setEsimSettings({ ...esimSettings, airaloEnabled: !esimSettings.airaloEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${esimSettings.airaloEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${esimSettings.airaloEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${esimSettings.airaloEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3196,7 +3196,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setEsimSettings({ ...esimSettings, mobimatterEnabled: !esimSettings.mobimatterEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${esimSettings.mobimatterEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${esimSettings.mobimatterEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${esimSettings.mobimatterEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3253,12 +3253,12 @@ export default function AdminSettingsPage() {
                     </div>
 
                     {/* Default Voice eSIM Provider */}
-                    <div className="mb-6 mt-4">
+                    <div className="mb-6 mt-6">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Voice eSIM Provider</label>
                       <select
                         value={voiceEsimSettings.voiceEsimDefaultProvider}
                         onChange={(e) => setVoiceEsimSettings({ ...voiceEsimSettings, voiceEsimDefaultProvider: e.target.value as 'telnyx' | 'alosim' | 'twise' })}
-                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[140px]"
                       >
                         <option value="telnyx">Telnyx</option>
                         <option value="alosim">aloSIM</option>
@@ -3281,7 +3281,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setVoiceEsimSettings({ ...voiceEsimSettings, telnyxEnabled: !voiceEsimSettings.telnyxEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${voiceEsimSettings.telnyxEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${voiceEsimSettings.telnyxEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${voiceEsimSettings.telnyxEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3327,7 +3327,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setVoiceEsimSettings({ ...voiceEsimSettings, alosimEnabled: !voiceEsimSettings.alosimEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${voiceEsimSettings.alosimEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${voiceEsimSettings.alosimEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${voiceEsimSettings.alosimEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3373,7 +3373,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setVoiceEsimSettings({ ...voiceEsimSettings, twiseEnabled: !voiceEsimSettings.twiseEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${voiceEsimSettings.twiseEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${voiceEsimSettings.twiseEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${voiceEsimSettings.twiseEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3418,12 +3418,12 @@ export default function AdminSettingsPage() {
                     </div>
 
                     {/* Default VN Provider */}
-                    <div className="mb-6 mt-4">
+                    <div className="mb-6 mt-6">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
                       <select
                         value={virtualNumberSettings.virtualNumbersProvider}
                         onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, virtualNumbersProvider: e.target.value as 'twilio' | 'plivo' | 'vonage' })}
-                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[140px]"
                       >
                         <option value="twilio">Twilio</option>
                         <option value="plivo">Plivo</option>
@@ -3446,24 +3446,23 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, twilioEnabled: !virtualNumberSettings.twilioEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${virtualNumberSettings.twilioEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${virtualNumberSettings.twilioEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualNumberSettings.twilioEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
                       </div>
                       {virtualNumberSettings.twilioEnabled && (
-                        <div className="pt-4 border-t border-[#2a2a2a]">
+                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
                           {/* Test/Live Mode Toggle */}
-                          <div className="flex items-center gap-4 mb-4">
-                            <span className="text-sm font-medium text-slate-300">Mode:</span>
-                            <div className="flex bg-[#141414] rounded-lg p-1">
+                          <div className="flex items-center gap-3">
+                            <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
                               <button
                                 type="button"
                                 onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, twilioMode: 'test' })}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                   virtualNumberSettings.twilioMode === 'test'
                                     ? 'bg-yellow-500/20 text-yellow-400'
-                                    : 'text-slate-400 hover:text-white'
+                                    : 'text-slate-500 hover:text-slate-300'
                                 }`}
                               >
                                 Test
@@ -3471,21 +3470,21 @@ export default function AdminSettingsPage() {
                               <button
                                 type="button"
                                 onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, twilioMode: 'live' })}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                   virtualNumberSettings.twilioMode === 'live'
                                     ? 'bg-green-500/20 text-green-400'
-                                    : 'text-slate-400 hover:text-white'
+                                    : 'text-slate-500 hover:text-slate-300'
                                 }`}
                               >
                                 Live
                               </button>
                             </div>
-                            <span className={`text-xs font-medium px-2 py-1 rounded ${
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                               virtualNumberSettings.twilioMode === 'test'
-                                ? 'bg-yellow-500/10 text-yellow-400'
-                                : 'bg-green-500/10 text-green-400'
+                                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                : 'bg-green-500/10 text-green-400 border-green-500/20'
                             }`}>
-                              {virtualNumberSettings.twilioMode === 'test' ? '⚠️ TEST MODE' : '✓ LIVE'}
+                              {virtualNumberSettings.twilioMode === 'test' ? 'TEST' : '✓ LIVE'}
                             </span>
                           </div>
 
@@ -3599,7 +3598,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, plivoEnabled: !virtualNumberSettings.plivoEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${virtualNumberSettings.plivoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${virtualNumberSettings.plivoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualNumberSettings.plivoEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3657,7 +3656,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setVirtualNumberSettings({ ...virtualNumberSettings, vonageEnabled: !virtualNumberSettings.vonageEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${virtualNumberSettings.vonageEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${virtualNumberSettings.vonageEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualNumberSettings.vonageEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3714,12 +3713,12 @@ export default function AdminSettingsPage() {
                     </div>
 
                     {/* Default Provider */}
-                    <div className="mb-6 mt-4">
+                    <div className="mb-6 mt-6">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
                       <select
                         value={giftCardSettings.giftCardDefaultProvider}
                         onChange={(e) => setGiftCardSettings({ ...giftCardSettings, giftCardDefaultProvider: e.target.value as 'reloadly' | 'ezgiftcard' | 'bitrefill' })}
-                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[140px]"
                       >
                         <option value="reloadly">Reloadly</option>
                         <option value="ezgiftcard">EZGiftCard</option>
@@ -3742,7 +3741,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setGiftCardSettings({ ...giftCardSettings, reloadlyEnabled: !giftCardSettings.reloadlyEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${giftCardSettings.reloadlyEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.reloadlyEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.reloadlyEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3823,7 +3822,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setGiftCardSettings({ ...giftCardSettings, ezgiftcardEnabled: !giftCardSettings.ezgiftcardEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${giftCardSettings.ezgiftcardEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.ezgiftcardEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.ezgiftcardEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
@@ -3869,7 +3868,7 @@ export default function AdminSettingsPage() {
                         <button
                           type="button"
                           onClick={() => setGiftCardSettings({ ...giftCardSettings, bitrefillEnabled: !giftCardSettings.bitrefillEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${giftCardSettings.bitrefillEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.bitrefillEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                         >
                           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.bitrefillEnabled ? 'left-7' : 'left-1'}`} />
                         </button>
