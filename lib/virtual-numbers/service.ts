@@ -231,6 +231,89 @@ class VirtualNumberService {
   }
 
   /**
+   * Renew a virtual number for another billing period
+   */
+  async renewNumber(
+    userVirtualNumberId: string,
+    userId: string
+  ): Promise<{ success: boolean; newExpiresAt?: Date; error?: string }> {
+    try {
+      // Get number details
+      const numberResult = await query(
+        `SELECT uvn.*, vnp.duration_days, vnp.price
+         FROM user_virtual_numbers uvn
+         JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+         WHERE uvn.id = $1 AND uvn.user_id = $2`,
+        [userVirtualNumberId, userId]
+      )
+
+      if (numberResult.rows.length === 0) {
+        return { success: false, error: 'Virtual number not found' }
+      }
+
+      const virtualNumber = numberResult.rows[0]
+
+      if (virtualNumber.status === 'cancelled') {
+        return { success: false, error: 'Cannot renew a cancelled number' }
+      }
+
+      // Calculate new expiry date
+      const currentExpiry = new Date(virtualNumber.expires_at)
+      const now = new Date()
+      const baseDate = currentExpiry > now ? currentExpiry : now
+      const newExpiresAt = new Date(baseDate)
+      newExpiresAt.setDate(newExpiresAt.getDate() + virtualNumber.duration_days)
+
+      // Update the number
+      await query(
+        `UPDATE user_virtual_numbers
+         SET expires_at = $1,
+             next_billing_at = $1,
+             status = 'active',
+             updated_at = NOW()
+         WHERE id = $2`,
+        [newExpiresAt, userVirtualNumberId]
+      )
+
+      return { success: true, newExpiresAt }
+    } catch (error: any) {
+      console.error('Error renewing virtual number:', error)
+      return { success: false, error: error.message || 'Renewal failed' }
+    }
+  }
+
+  /**
+   * Get renewal price for a virtual number
+   */
+  async getRenewalPrice(
+    userVirtualNumberId: string,
+    userId: string
+  ): Promise<{ success: boolean; price?: number; durationDays?: number; error?: string }> {
+    try {
+      const result = await query(
+        `SELECT vnp.price, vnp.duration_days
+         FROM user_virtual_numbers uvn
+         JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+         WHERE uvn.id = $1 AND uvn.user_id = $2`,
+        [userVirtualNumberId, userId]
+      )
+
+      if (result.rows.length === 0) {
+        return { success: false, error: 'Virtual number not found' }
+      }
+
+      return {
+        success: true,
+        price: parseFloat(result.rows[0].price),
+        durationDays: result.rows[0].duration_days
+      }
+    } catch (error: any) {
+      console.error('Error getting renewal price:', error)
+      return { success: false, error: error.message || 'Failed to get renewal price' }
+    }
+  }
+
+  /**
    * Expire virtual numbers that have passed their expiry date
    */
   async expireNumbers(): Promise<{ expired: number; released: number }> {

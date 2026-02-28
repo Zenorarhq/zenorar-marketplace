@@ -478,6 +478,170 @@ export class EsimProvisioningService {
   }
 
   /**
+   * Get available top-up options for an eSIM
+   */
+  async getTopupOptions(esimId: string, userId: string): Promise<{
+    success: boolean
+    options?: Array<{
+      id: string
+      name: string
+      dataAmountMb: number
+      dataAmountDisplay: string
+      price: number
+      validityDays: number
+    }>
+    error?: string
+  }> {
+    try {
+      // Get the user's eSIM
+      const esimResult = await query(
+        `SELECT ue.*, ep.provider_id, ep.provider_plan_id, epr.slug as provider_slug
+         FROM user_esims ue
+         JOIN esim_plans ep ON ue.plan_id = ep.id
+         LEFT JOIN esim_providers epr ON ep.provider_id = epr.id
+         WHERE ue.id = $1 AND ue.user_id = $2`,
+        [esimId, userId]
+      )
+
+      if (esimResult.rows.length === 0) {
+        return { success: false, error: 'eSIM not found' }
+      }
+
+      const esim = esimResult.rows[0]
+
+      // Check if top-ups are supported for this eSIM
+      if (esim.source_type !== 'api') {
+        return { success: false, error: 'Top-ups are only available for API-provisioned eSIMs' }
+      }
+
+      // Get topup plans from database
+      const topupResult = await query(
+        `SELECT
+           et.id,
+           et.name,
+           et.data_amount_mb,
+           et.price,
+           et.validity_days
+         FROM esim_topups et
+         WHERE et.plan_id = $1
+           AND et.is_active = true
+         ORDER BY et.data_amount_mb ASC`,
+        [esim.plan_id]
+      )
+
+      const options = topupResult.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        dataAmountMb: parseInt(row.data_amount_mb),
+        dataAmountDisplay: row.data_amount_mb >= 1024
+          ? `${(row.data_amount_mb / 1024).toFixed(1)} GB`
+          : `${row.data_amount_mb} MB`,
+        price: parseFloat(row.price),
+        validityDays: row.validity_days
+      }))
+
+      return { success: true, options }
+    } catch (error: any) {
+      console.error('Error getting topup options:', error)
+      return { success: false, error: error.message || 'Failed to get topup options' }
+    }
+  }
+
+  /**
+   * Apply a top-up to an eSIM
+   */
+  async applyTopup(
+    esimId: string,
+    userId: string,
+    topupId: string,
+    orderId: string
+  ): Promise<{
+    success: boolean
+    newDataRemainingMb?: number
+    newExpiresAt?: Date
+    error?: string
+  }> {
+    try {
+      // Get the user's eSIM
+      const esimResult = await query(
+        `SELECT ue.*, ep.provider_id, epr.slug as provider_slug
+         FROM user_esims ue
+         JOIN esim_plans ep ON ue.plan_id = ep.id
+         LEFT JOIN esim_providers epr ON ep.provider_id = epr.id
+         WHERE ue.id = $1 AND ue.user_id = $2`,
+        [esimId, userId]
+      )
+
+      if (esimResult.rows.length === 0) {
+        return { success: false, error: 'eSIM not found' }
+      }
+
+      const esim = esimResult.rows[0]
+
+      // Get topup details
+      const topupResult = await query(
+        `SELECT * FROM esim_topups WHERE id = $1 AND plan_id = $2 AND is_active = true`,
+        [topupId, esim.plan_id]
+      )
+
+      if (topupResult.rows.length === 0) {
+        return { success: false, error: 'Top-up option not found' }
+      }
+
+      const topup = topupResult.rows[0]
+
+      // If API-provisioned, try to apply via provider
+      if (esim.source_type === 'api' && esim.provider_esim_id) {
+        try {
+          const provider = EsimProviderFactory.getProvider(esim.provider_slug)
+          if (provider && typeof provider.topUp === 'function') {
+            const result = await provider.topUp(esim.provider_esim_id, topup.provider_topup_id)
+            if (!result.success) {
+              return { success: false, error: result.error || 'Provider top-up failed' }
+            }
+          }
+        } catch (providerError) {
+          console.error('Provider topup error:', providerError)
+          // Continue with local update if provider call fails
+        }
+      }
+
+      // Calculate new values
+      const currentData = parseFloat(esim.data_remaining_mb) || 0
+      const newDataRemainingMb = currentData + parseInt(topup.data_amount_mb)
+
+      const currentExpiry = new Date(esim.expires_at)
+      const now = new Date()
+      const baseDate = currentExpiry > now ? currentExpiry : now
+      const newExpiresAt = new Date(baseDate)
+      newExpiresAt.setDate(newExpiresAt.getDate() + topup.validity_days)
+
+      // Update the eSIM
+      await query(
+        `UPDATE user_esims
+         SET data_remaining_mb = $1,
+             expires_at = $2,
+             status = 'active',
+             updated_at = NOW()
+         WHERE id = $3`,
+        [newDataRemainingMb, newExpiresAt, esimId]
+      )
+
+      // Log the topup
+      await query(
+        `INSERT INTO esim_topup_history (user_esim_id, topup_id, order_id, data_added_mb, new_expires_at)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [esimId, topupId, orderId, topup.data_amount_mb, newExpiresAt]
+      ).catch(() => {}) // Don't fail if logging fails
+
+      return { success: true, newDataRemainingMb, newExpiresAt }
+    } catch (error: any) {
+      console.error('Error applying topup:', error)
+      return { success: false, error: error.message || 'Failed to apply top-up' }
+    }
+  }
+
+  /**
    * Get single user eSIM by ID
    */
   async getUserEsim(esimId: string, userId: string) {

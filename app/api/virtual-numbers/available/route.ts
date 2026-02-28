@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { twilioService } from '@/lib/virtual-numbers/providers/twilio'
 
 // Mock available numbers for development
 // In production, this will call Twilio/Plivo API
@@ -96,17 +97,34 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { dial_code: dialCode } = countryResult.rows[0]
+    const { dial_code: dialCode, retail_monthly: retailMonthly } = countryResult.rows[0]
 
-    // Check if Twilio is configured
-    const twilioConfigured = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
+    // Map type parameter to Twilio type
+    const twilioType = type === 'toll-free' ? 'tollFree' : type === 'mobile' ? 'mobile' : 'local'
 
-    if (twilioConfigured) {
-      // TODO: Call Twilio API to search for available numbers
-      // For now, return mock data
+    // Try to fetch from Twilio first
+    const twilioNumbers = await twilioService.searchNumbers(countryCode, twilioType, areaCode || undefined, 20)
+
+    if (twilioNumbers.length > 0) {
+      // Format Twilio results for frontend
+      const formattedNumbers = twilioNumbers.map(n => ({
+        phoneNumber: n.phoneNumber,
+        friendlyName: n.friendlyName || formatPhoneNumber(n.phoneNumber, countryCode),
+        locality: n.locality || getRandomCity(countryCode),
+        region: n.region || countryCode,
+        type,
+        capabilities: n.capabilities,
+        monthlyPrice: parseFloat(retailMonthly) || (type === 'toll-free' ? 8.00 : type === 'mobile' ? 6.00 : 5.00)
+      }))
+
+      return NextResponse.json({
+        success: true,
+        data: formattedNumbers,
+        source: 'twilio'
+      })
     }
 
-    // Generate mock numbers for development
+    // Fall back to mock numbers if Twilio not configured or returns no results
     const numbers = generateMockNumbers(countryCode, type, dialCode, 12)
 
     // Filter by area code if provided
@@ -116,7 +134,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: filteredNumbers
+      data: filteredNumbers,
+      source: 'mock'
     })
   } catch (error: any) {
     console.error('Error searching available numbers:', error)

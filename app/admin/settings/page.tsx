@@ -265,9 +265,18 @@ export default function AdminSettingsPage() {
     rateLimit: '1000',
     webhookUrl: '',
   })
+
+  // Cron Jobs Settings State
+  const [cronSettings, setCronSettings] = useState({
+    cronEnabled: true,
+    cronSecret: '',
+  })
+  const [showCronSecret, setShowCronSecret] = useState(false)
+
   // Section collapse states (all expanded by default)
   const [expandedSections, setExpandedSections] = useState({
     apiAccess: true,
+    cronJobs: true,
     exchangeRates: true,
     esimProviders: true,
     voiceEsimProviders: true,
@@ -628,6 +637,16 @@ export default function AdminSettingsPage() {
           bitrefillEnabled: d.bitrefillEnabled ?? prev.bitrefillEnabled,
           bitrefillApiKey: d.bitrefillApiKey ?? prev.bitrefillApiKey,
           bitrefillApiSecret: d.bitrefillApiSecret ?? prev.bitrefillApiSecret,
+        }))
+      }
+    })
+    // Load cron settings
+    settingsApi.getSettingsByGroup('cron').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setCronSettings((prev) => ({
+          cronEnabled: d.cronEnabled ?? prev.cronEnabled,
+          cronSecret: d.cronSecret ?? prev.cronSecret,
         }))
       }
     })
@@ -1285,6 +1304,9 @@ export default function AdminSettingsPage() {
       { key: 'bitrefillEnabled', value: giftCardSettings.bitrefillEnabled, group: 'api', isPublic: true },
       { key: 'bitrefillApiKey', value: giftCardSettings.bitrefillApiKey, group: 'api', isPublic: false },
       { key: 'bitrefillApiSecret', value: giftCardSettings.bitrefillApiSecret, group: 'api', isPublic: false },
+      // Cron Jobs
+      { key: 'cronEnabled', value: cronSettings.cronEnabled, group: 'cron', isPublic: false },
+      { key: 'cronSecret', value: cronSettings.cronSecret, group: 'cron', isPublic: false },
     ]
 
     const result = await settingsApi.updateSettings(settingsToSave)
@@ -3183,6 +3205,135 @@ export default function AdminSettingsPage() {
                         placeholder="https://your-server.com/webhook"
                         className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
                       />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Cron Jobs Card */}
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button
+                  onClick={() => toggleSection('cronJobs')}
+                  className="w-full flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <Icon name="clock" size={24} className="text-amber-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Cron Jobs</p>
+                      <p className="text-slate-500 text-sm">Scheduled cleanup tasks and secret management</p>
+                    </div>
+                  </div>
+                  <Icon
+                    name={expandedSections.cronJobs ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    className="text-slate-400 flex-shrink-0"
+                  />
+                </button>
+
+                {expandedSections.cronJobs && (
+                  <div className="mt-6 pt-6 border-t border-[#1f1f1f] space-y-6">
+                    <div className="bg-[#1a1a1a] rounded-lg p-4">
+                      <h4 className="text-white font-medium mb-2">About Cron Jobs</h4>
+                      <p className="text-slate-400 text-sm mb-3">
+                        Cron jobs run scheduled cleanup tasks to maintain your store. These include:
+                      </p>
+                      <ul className="text-slate-400 text-sm list-disc list-inside space-y-1">
+                        <li>Releasing stale eSIM inventory reservations</li>
+                        <li>Retrying failed eSIM provisions</li>
+                        <li>Releasing expired gift card reservations</li>
+                        <li>Marking expired gift card codes</li>
+                        <li>Expiring virtual numbers</li>
+                      </ul>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg">
+                      <div>
+                        <p className="text-white font-medium">Enable Cron Jobs</p>
+                        <p className="text-slate-500 text-sm">Allow scheduled cleanup tasks to run</p>
+                      </div>
+                      <button
+                        onClick={() => setCronSettings({ ...cronSettings, cronEnabled: !cronSettings.cronEnabled })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          cronSettings.cronEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            cronSettings.cronEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-slate-300">Cron Secret</label>
+                        <button
+                          onClick={() => {
+                            const newSecret = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
+                            setCronSettings({ ...cronSettings, cronSecret: newSecret })
+                          }}
+                          className="text-xs text-primary hover:text-primary/80 font-medium"
+                        >
+                          Generate New Secret
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showCronSecret ? 'text' : 'password'}
+                          value={cronSettings.cronSecret}
+                          onChange={(e) => setCronSettings({ ...cronSettings, cronSecret: e.target.value })}
+                          placeholder="Enter or generate a cron secret"
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCronSecret(!showCronSecret)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        >
+                          <Icon name={showCronSecret ? 'eye-off' : 'eye'} size={18} />
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-600">
+                        This secret authenticates cron requests. Keep it secure and use it when configuring external cron services.
+                      </p>
+                    </div>
+
+                    <div className="bg-[#1a1a1a] rounded-lg p-4">
+                      <h4 className="text-white font-medium mb-3">Cron Endpoint</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-slate-400 text-sm mb-1">URL:</p>
+                          <code className="text-xs bg-[#0f0f0f] text-primary px-3 py-2 rounded block overflow-x-auto">
+                            {typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/api/cron/cleanup
+                          </code>
+                        </div>
+                        <div>
+                          <p className="text-slate-400 text-sm mb-1">Authorization Header:</p>
+                          <code className="text-xs bg-[#0f0f0f] text-primary px-3 py-2 rounded block">
+                            Authorization: Bearer {cronSettings.cronSecret || '<your-cron-secret>'}
+                          </code>
+                        </div>
+                        <div>
+                          <p className="text-slate-400 text-sm mb-1">Schedule:</p>
+                          <p className="text-white text-sm">Every 15 minutes (configured in vercel.json)</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <Icon name="alert-triangle" size={18} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-amber-400 font-medium text-sm">External Cron Service</p>
+                          <p className="text-amber-400/80 text-xs mt-1">
+                            If not using Vercel Cron, you can set up an external service like cron-job.org to call this endpoint.
+                            Configure it to make a GET request every 15-30 minutes with the Authorization header above.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

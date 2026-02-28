@@ -8,6 +8,12 @@
 import { query } from './db'
 import { esimProvisioningService } from './esim'
 import { provisionGiftCard } from './gift-cards/provisioning'
+import { virtualNumberService } from './virtual-numbers/service'
+import {
+  sendEsimDeliveryEmail,
+  sendVirtualNumberDeliveryEmail,
+  sendGiftCardDeliveryEmail
+} from './email-service'
 
 export interface FulfillmentResult {
   orderId: string
@@ -151,6 +157,9 @@ async function processOrderItem(
       case 'gift_card':
         return await processGiftCardItem(orderId, userId, item)
 
+      case 'virtual_number':
+        return await processVirtualNumberItem(orderId, userId, item)
+
       default:
         // Generic digital product - just grant access
         return await processDigitalDownload(orderId, userId, item)
@@ -236,6 +245,53 @@ async function processEsimItem(
 
     if (!provisionResult.success) {
       throw new Error(provisionResult.error || 'eSIM provisioning failed')
+    }
+
+    // Send delivery email
+    try {
+      // Get user email and eSIM details
+      const esimDetails = await query(
+        `SELECT
+           ue.*,
+           u.email as user_email,
+           u.name as user_name,
+           ep.name as plan_name,
+           ep.data_amount_mb,
+           ep.validity_days,
+           er.name as region_name,
+           o.order_number
+         FROM user_esims ue
+         JOIN users u ON ue.user_id = u.id
+         JOIN esim_plans ep ON ue.plan_id = ep.id
+         LEFT JOIN esim_regions er ON ep.region_id = er.id
+         LEFT JOIN orders o ON ue.order_id = o.id
+         WHERE ue.id = $1`,
+        [provisionResult.userEsimId]
+      )
+
+      if (esimDetails.rows.length > 0) {
+        const esim = esimDetails.rows[0]
+        const dataAmount = esim.data_amount_mb >= 1024
+          ? `${(esim.data_amount_mb / 1024).toFixed(1)} GB`
+          : `${esim.data_amount_mb} MB`
+
+        await sendEsimDeliveryEmail({
+          customerName: esim.user_name || 'Customer',
+          email: esim.user_email,
+          orderNumber: esim.order_number || orderId.slice(0, 8).toUpperCase(),
+          planName: esim.plan_name,
+          region: esim.region_name || 'Global',
+          dataAmount,
+          validityDays: esim.validity_days,
+          qrCodeUrl: esim.qr_code_url,
+          iccid: esim.iccid || 'N/A',
+          smdpAddress: esim.smdp_address,
+          matchingId: esim.matching_id
+        })
+      }
+    } catch (emailError) {
+      console.error('Failed to send eSIM delivery email:', emailError)
+      // Don't fail the provision if email fails
     }
 
     return {
@@ -470,6 +526,43 @@ async function processGiftCardItem(
       throw new Error(provisionResult.error || 'Gift card provisioning failed')
     }
 
+    // Send delivery email
+    try {
+      const cardDetails = await query(
+        `SELECT
+           ugc.*,
+           u.email as user_email,
+           u.name as user_name,
+           gc.brand,
+           gc.description as redemption_instructions,
+           o.order_number
+         FROM user_gift_cards ugc
+         JOIN users u ON ugc.user_id = u.id
+         JOIN gift_cards gc ON ugc.gift_card_id = gc.id
+         LEFT JOIN orders o ON ugc.order_id = o.id
+         WHERE ugc.id = $1`,
+        [provisionResult.userGiftCardId]
+      )
+
+      if (cardDetails.rows.length > 0) {
+        const card = cardDetails.rows[0]
+        await sendGiftCardDeliveryEmail({
+          customerName: card.user_name || 'Customer',
+          email: card.user_email,
+          orderNumber: card.order_number || orderId.slice(0, 8).toUpperCase(),
+          brand: card.brand,
+          denomination: parseFloat(card.denomination),
+          code: card.code,
+          pin: card.pin,
+          expiresAt: card.expires_at ? new Date(card.expires_at) : undefined,
+          redemptionInstructions: card.redemption_instructions
+        })
+      }
+    } catch (emailError) {
+      console.error('Failed to send gift card delivery email:', emailError)
+      // Don't fail the provision if email fails
+    }
+
     return {
       itemId: item.item_id,
       productType: 'gift_card',
@@ -482,6 +575,131 @@ async function processGiftCardItem(
     return {
       itemId: item.item_id,
       productType: 'gift_card',
+      status: 'failed',
+      error: error.message
+    }
+  }
+}
+
+/**
+ * Process virtual number order item - provision number via Twilio
+ */
+async function processVirtualNumberItem(
+  orderId: string,
+  userId: string,
+  item: {
+    item_id: string
+    product_id: string
+    name: string
+    quantity: number
+  }
+): Promise<FulfillmentResult['details'][0]> {
+  try {
+    // Check if already provisioned (idempotency)
+    const existingResult = await query(
+      `SELECT id FROM user_virtual_numbers WHERE order_id = $1 AND user_id = $2`,
+      [orderId, userId]
+    )
+
+    if (existingResult.rows.length > 0) {
+      return {
+        itemId: item.item_id,
+        productType: 'virtual_number',
+        status: 'success',
+        provisionedId: existingResult.rows[0].id
+      }
+    }
+
+    // Get virtual number details from order item metadata
+    const itemResult = await query(
+      `SELECT metadata FROM order_items WHERE id = $1`,
+      [item.item_id]
+    )
+
+    if (itemResult.rows.length === 0) {
+      throw new Error('Order item not found')
+    }
+
+    const metadata = itemResult.rows[0].metadata || {}
+
+    // Extract required fields from metadata
+    const phoneNumber = metadata.phone_number || metadata.phoneNumber
+    const countryId = metadata.country_id || metadata.countryId
+    const planId = metadata.plan_id || metadata.planId
+    const numberType = metadata.number_type || metadata.numberType || 'local'
+
+    if (!phoneNumber || !countryId || !planId) {
+      throw new Error('Missing required virtual number metadata (phone_number, country_id, plan_id)')
+    }
+
+    // Provision the virtual number
+    const provisionResult = await virtualNumberService.provisionNumber(
+      userId,
+      countryId,
+      planId,
+      phoneNumber,
+      orderId,
+      numberType
+    )
+
+    if (!provisionResult.success) {
+      throw new Error(provisionResult.error || 'Virtual number provisioning failed')
+    }
+
+    // Send delivery email
+    try {
+      const numberDetails = await query(
+        `SELECT
+           uvn.*,
+           u.email as user_email,
+           u.name as user_name,
+           vnp.name as plan_name,
+           o.order_number
+         FROM user_virtual_numbers uvn
+         JOIN users u ON uvn.user_id = u.id
+         JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+         LEFT JOIN orders o ON uvn.order_id = o.id
+         WHERE uvn.id = $1`,
+        [provisionResult.userVirtualNumberId]
+      )
+
+      if (numberDetails.rows.length > 0) {
+        const number = numberDetails.rows[0]
+        await sendVirtualNumberDeliveryEmail({
+          customerName: number.user_name || 'Customer',
+          email: number.user_email,
+          orderNumber: number.order_number || orderId.slice(0, 8).toUpperCase(),
+          phoneNumber: number.phone_number,
+          phoneNumberDisplay: number.phone_number_display || provisionResult.phoneNumberDisplay || number.phone_number,
+          planName: number.plan_name,
+          expiresAt: new Date(number.expires_at)
+        })
+      }
+    } catch (emailError) {
+      console.error('Failed to send virtual number delivery email:', emailError)
+      // Don't fail the provision if email fails
+    }
+
+    return {
+      itemId: item.item_id,
+      productType: 'virtual_number',
+      status: 'success',
+      provisionedId: provisionResult.userVirtualNumberId
+    }
+  } catch (error: any) {
+    console.error(`Virtual number provisioning failed for item ${item.item_id}:`, error)
+
+    // Log failed provision for debugging
+    await query(
+      `INSERT INTO virtual_number_provision_log (user_id, order_id, status, error_message)
+       VALUES ($1, $2, 'failed', $3)
+       ON CONFLICT DO NOTHING`,
+      [userId, orderId, error.message]
+    ).catch(() => {}) // Don't fail if logging fails
+
+    return {
+      itemId: item.item_id,
+      productType: 'virtual_number',
       status: 'failed',
       error: error.message
     }
