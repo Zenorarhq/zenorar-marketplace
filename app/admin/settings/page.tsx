@@ -211,6 +211,20 @@ export default function AdminSettingsPage() {
     rateLimit: '1000',
     webhookUrl: '',
   })
+  // Section collapse states (all expanded by default)
+  const [expandedSections, setExpandedSections] = useState({
+    apiAccess: true,
+    exchangeRates: true,
+    esimProviders: true,
+    voiceEsimProviders: true,
+    virtualNumbers: true,
+    giftCardProviders: true,
+    cloudflareR2: true,
+    apiKeys: true,
+  })
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
   const [apiKeys, setApiKeys] = useState<any[]>([])
   const [newKeyName, setNewKeyName] = useState('')
   const [generatingKey, setGeneratingKey] = useState(false)
@@ -3013,31 +3027,27 @@ export default function AdminSettingsPage() {
             <div className="space-y-8">
               {/* API Access Card */}
               <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
-                <div className="flex items-center justify-between">
+                <button
+                  onClick={() => toggleSection('apiAccess')}
+                  className="w-full flex items-center justify-between"
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                       <Icon name="code" size={24} className="text-primary" />
                     </div>
-                    <div>
+                    <div className="text-left">
                       <p className="text-white font-semibold text-lg">API Access</p>
-                      <p className="text-slate-500 text-sm">Enable API access for third-party integrations</p>
+                      <p className="text-slate-500 text-sm">Rate limits and webhook configuration</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setApiSettings({ ...apiSettings, apiEnabled: !apiSettings.apiEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      apiSettings.apiEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                        apiSettings.apiEnabled ? 'left-7' : 'left-1'
-                      }`}
-                    />
-                  </button>
-                </div>
+                  <Icon
+                    name={expandedSections.apiAccess ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    className="text-slate-400 flex-shrink-0"
+                  />
+                </button>
 
-                {apiSettings.apiEnabled && (
+                {expandedSections.apiAccess && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-[#1f1f1f]">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-300">Rate Limit (requests/hour)</label>
@@ -3062,21 +3072,33 @@ export default function AdminSettingsPage() {
                 )}
               </div>
 
-              {apiSettings.apiEnabled && (
-                <>
+              {/* All sections below are always visible */}
+              <>
                   {/* Exchange Rate APIs Card */}
                   <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                        <Icon name="trending-up" size={20} className="text-green-400" />
+                    <button
+                      onClick={() => toggleSection('exchangeRates')}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                          <Icon name="trending-up" size={20} className="text-green-400" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-white font-semibold text-lg">Exchange Rate APIs</h3>
+                          <p className="text-slate-500 text-sm">Optional API keys for live currency exchange rates</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-white font-semibold text-lg">Exchange Rate APIs</h3>
-                        <p className="text-slate-500 text-sm">Optional API keys for live currency exchange rates</p>
-                      </div>
-                    </div>
-                    <p className="text-slate-600 text-sm mb-4 mt-4">Free endpoints are used when keys are not provided, but API keys give higher rate limits.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Icon
+                        name={expandedSections.exchangeRates ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        className="text-slate-400 flex-shrink-0"
+                      />
+                    </button>
+                    {expandedSections.exchangeRates && (
+                      <>
+                        <p className="text-slate-600 text-sm mb-4 mt-4">Free endpoints are used when keys are not provided, but API keys give higher rate limits.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300">ExchangeRate-API Key</label>
                         <input
@@ -3099,28 +3121,42 @@ export default function AdminSettingsPage() {
                         />
                         <p className="text-xs text-slate-600">For crypto rates (BTC, ETH, BNB, SOL, USDT)</p>
                       </div>
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* eSIM Providers Card */}
                   <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <Icon name="sim-card" size={20} className="text-blue-400" />
+                    <button
+                      onClick={() => toggleSection('esimProviders')}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                          <Icon name="sim-card" size={20} className="text-blue-400" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-white font-semibold text-lg">eSIM Providers</h3>
+                          <p className="text-slate-500 text-sm">Configure providers for selling travel eSIM data plans</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-white font-semibold text-lg">eSIM Providers</h3>
-                        <p className="text-slate-500 text-sm">Configure providers for selling travel eSIM data plans</p>
-                      </div>
-                    </div>
+                      <Icon
+                        name={expandedSections.esimProviders ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        className="text-slate-400 flex-shrink-0"
+                      />
+                    </button>
 
-                    {/* Default Provider */}
-                    <div className="mb-6 mt-4">
+                    {expandedSections.esimProviders && (
+                      <>
+                        {/* Default Provider */}
+                        <div className="mb-6 mt-6">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
                       <select
                         value={esimSettings.esimDefaultProvider}
                         onChange={(e) => setEsimSettings({ ...esimSettings, esimDefaultProvider: e.target.value as 'esimgo' | 'airalo' | 'mobimatter' })}
-                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[140px]"
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[160px] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat"
                       >
                         <option value="esimgo">eSIM Go</option>
                         <option value="airalo">Airalo</option>
@@ -3317,28 +3353,42 @@ export default function AdminSettingsPage() {
                           <p className="text-xs text-slate-600">Get your credentials at <a href="https://mobimatter.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mobimatter.com</a> ($250 minimum wallet top-up required)</p>
                         </div>
                       )}
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Voice eSIM Providers Configuration */}
                   <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
-                        <Icon name="phone-call" size={20} className="text-teal-400" />
+                    <button
+                      onClick={() => toggleSection('voiceEsimProviders')}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
+                          <Icon name="phone-call" size={20} className="text-teal-400" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-white font-semibold text-lg">Voice eSIM Providers</h3>
+                          <p className="text-slate-500 text-sm">eSIMs with phone numbers, calls, and SMS capability</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-white font-semibold text-lg">Voice eSIM Providers</h3>
-                        <p className="text-slate-500 text-sm">Configure providers for eSIMs with phone numbers, calls, and SMS capability</p>
-                      </div>
-                    </div>
+                      <Icon
+                        name={expandedSections.voiceEsimProviders ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        className="text-slate-400 flex-shrink-0"
+                      />
+                    </button>
 
-                    {/* Default Voice eSIM Provider */}
-                    <div className="mb-6 mt-6">
+                    {expandedSections.voiceEsimProviders && (
+                      <>
+                        {/* Default Voice eSIM Provider */}
+                        <div className="mb-6 mt-6">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Voice eSIM Provider</label>
                       <select
                         value={voiceEsimSettings.voiceEsimDefaultProvider}
                         onChange={(e) => setVoiceEsimSettings({ ...voiceEsimSettings, voiceEsimDefaultProvider: e.target.value as 'telnyx' | 'alosim' | 'twise' })}
-                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[140px]"
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[160px] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat"
                       >
                         <option value="telnyx">Telnyx</option>
                         <option value="alosim">aloSIM</option>
@@ -3482,28 +3532,42 @@ export default function AdminSettingsPage() {
                           </div>
                         </div>
                       )}
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Virtual Numbers Configuration */}
                   <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-                        <Icon name="phone" size={20} className="text-red-400" />
+                    <button
+                      onClick={() => toggleSection('virtualNumbers')}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                          <Icon name="phone" size={20} className="text-red-400" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-white font-semibold text-lg">Virtual Phone Numbers</h3>
+                          <p className="text-slate-500 text-sm">Configure providers for virtual phone number services</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-white font-semibold text-lg">Virtual Phone Numbers</h3>
-                        <p className="text-slate-500 text-sm">Configure providers for virtual phone number services</p>
-                      </div>
-                    </div>
+                      <Icon
+                        name={expandedSections.virtualNumbers ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        className="text-slate-400 flex-shrink-0"
+                      />
+                    </button>
 
-                    {/* Default VN Provider */}
-                    <div className="mb-6 mt-6">
+                    {expandedSections.virtualNumbers && (
+                      <>
+                        {/* Default VN Provider */}
+                        <div className="mb-6 mt-6">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
                       <select
                         value={virtualNumberSettings.virtualNumbersProvider}
                         onChange={(e) => setVirtualNumberSettings({ ...virtualNumberSettings, virtualNumbersProvider: e.target.value as 'twilio' | 'plivo' | 'vonage' })}
-                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[140px]"
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[160px] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat"
                       >
                         <option value="twilio">Twilio</option>
                         <option value="plivo">Plivo</option>
@@ -3777,28 +3841,42 @@ export default function AdminSettingsPage() {
                           <p className="text-xs text-slate-600 mt-3">Get your credentials at <a href="https://dashboard.vonage.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">dashboard.vonage.com</a></p>
                         </div>
                       )}
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Gift Card Providers Configuration */}
                   <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                        <Icon name="gift" size={20} className="text-purple-400" />
+                    <button
+                      onClick={() => toggleSection('giftCardProviders')}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                          <Icon name="gift" size={20} className="text-purple-400" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-white font-semibold text-lg">Gift Card Providers</h3>
+                          <p className="text-slate-500 text-sm">Configure providers for digital gift card purchasing via API</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-white font-semibold text-lg">Gift Card Providers</h3>
-                        <p className="text-slate-500 text-sm">Configure providers for digital gift card purchasing via API</p>
-                      </div>
-                    </div>
+                      <Icon
+                        name={expandedSections.giftCardProviders ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        className="text-slate-400 flex-shrink-0"
+                      />
+                    </button>
 
-                    {/* Default Provider */}
-                    <div className="mb-6 mt-6">
+                    {expandedSections.giftCardProviders && (
+                      <>
+                        {/* Default Provider */}
+                        <div className="mb-6 mt-6">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
                       <select
                         value={giftCardSettings.giftCardDefaultProvider}
                         onChange={(e) => setGiftCardSettings({ ...giftCardSettings, giftCardDefaultProvider: e.target.value as 'reloadly' | 'ezgiftcard' | 'bitrefill' })}
-                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[140px]"
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[160px] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat"
                       >
                         <option value="reloadly">Reloadly</option>
                         <option value="ezgiftcard">EZGiftCard</option>
@@ -3998,29 +4076,43 @@ export default function AdminSettingsPage() {
                           <p className="text-xs text-slate-600 mt-3">Get your credentials at <a href="https://www.bitrefill.com/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">bitrefill.com/api</a></p>
                         </div>
                       )}
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Cloudflare R2 Storage */}
-                  <div className="border-t border-[#2a2a2a] pt-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                        <Icon name="cloud" size={20} className="text-orange-400" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-white font-medium">Cloudflare R2 — Script File Storage</h3>
-                          {r2Settings.isConfigured ? (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/15 text-green-400">Connected</span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-400">Not Configured</span>
-                          )}
+                  <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                    <button
+                      onClick={() => toggleSection('cloudflareR2')}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                          <Icon name="cloud" size={20} className="text-orange-400" />
                         </div>
-                        <p className="text-slate-500 text-sm">Secure private storage for downloadable script files</p>
+                        <div className="text-left">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-white font-semibold text-lg">Cloudflare R2 — Script File Storage</h3>
+                            {r2Settings.isConfigured ? (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/15 text-green-400">Connected</span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-400">Not Configured</span>
+                            )}
+                          </div>
+                          <p className="text-slate-500 text-sm">Secure private storage for downloadable script files</p>
+                        </div>
                       </div>
-                    </div>
+                      <Icon
+                        name={expandedSections.cloudflareR2 ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        className="text-slate-400 flex-shrink-0"
+                      />
+                    </button>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {expandedSections.cloudflareR2 && (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 mt-6">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300">Account ID</label>
                         <input
@@ -4100,43 +4192,57 @@ export default function AdminSettingsPage() {
                       </button>
                     </div>
 
-                    <div className="p-3 bg-[#111] rounded-lg border border-[#2a2a2a] text-xs text-slate-500">
-                      Credentials are stored encrypted in the database. Files are served via time-limited signed URLs (1 hour expiry).
-                      <a href="https://developers.cloudflare.com/r2/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">R2 docs →</a>                    </div>
+                        <div className="p-3 bg-[#111] rounded-lg border border-[#2a2a2a] text-xs text-slate-500">
+                          Credentials are stored encrypted in the database. Files are served via time-limited signed URLs (1 hour expiry).
+                          <a href="https://developers.cloudflare.com/r2/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">R2 docs →</a>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* API Keys Table */}
                   <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
-                    <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => toggleSection('apiKeys')}
+                      className="w-full flex items-center justify-between"
+                    >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
                           <Icon name="key" size={20} className="text-amber-400" />
                         </div>
-                        <div>
+                        <div className="text-left">
                           <h3 className="text-white font-semibold text-lg">API Keys</h3>
                           <p className="text-slate-500 text-sm">Manage your API access keys</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={newKeyName}
-                          onChange={(e) => setNewKeyName(e.target.value)}
-                          placeholder="Key name..."
-                          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-                        />
-                        <button
-                          onClick={handleGenerateKey}
-                          disabled={generatingKey || !newKeyName.trim()}
-                          className="bg-primary hover:bg-primary/90 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-                        >
-                          <Icon name="add" size={16} />
-                          {generatingKey ? 'Generating...' : 'Generate New Key'}
-                        </button>
-                      </div>
-                    </div>
+                      <Icon
+                        name={expandedSections.apiKeys ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        className="text-slate-400 flex-shrink-0"
+                      />
+                    </button>
 
-                    {newlyCreatedKey && (
+                    {expandedSections.apiKeys && (
+                      <>
+                        <div className="flex items-center justify-end gap-2 mt-6">
+                          <input
+                            type="text"
+                            value={newKeyName}
+                            onChange={(e) => setNewKeyName(e.target.value)}
+                            placeholder="Key name..."
+                            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                          />
+                          <button
+                            onClick={handleGenerateKey}
+                            disabled={generatingKey || !newKeyName.trim()}
+                            className="bg-primary hover:bg-primary/90 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                          >
+                            <Icon name="add" size={16} />
+                            {generatingKey ? 'Generating...' : 'Generate New Key'}
+                          </button>
+                        </div>
+
+                        {newlyCreatedKey && (
                       <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4">
                         <p className="text-green-400 text-sm font-medium mb-2">New API key created! Copy it now — it won&apos;t be shown again.</p>
                         <div className="flex items-center gap-2">
@@ -4186,10 +4292,11 @@ export default function AdminSettingsPage() {
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </>
-              )}
             </div>
           )}
         </div>
