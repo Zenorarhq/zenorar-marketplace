@@ -41,15 +41,13 @@ interface InventoryStats {
 export default function AdminGiftCardsPage() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'inventory' | 'import' | 'settings'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'inventory' | 'import'>('overview')
   const [selectedGiftCard, setSelectedGiftCard] = useState<string>('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingCard, setEditingCard] = useState<GiftCard | null>(null)
   const [importData, setImportData] = useState('')
   const [importError, setImportError] = useState('')
   const [formError, setFormError] = useState('')
-  const [settingsError, setSettingsError] = useState('')
-  const [settingsSaved, setSettingsSaved] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -64,14 +62,6 @@ export default function AdminGiftCardsPage() {
     isFeatured: false,
     provider: '',
     providerProductId: ''
-  })
-
-  // Settings form state
-  const [settingsData, setSettingsData] = useState({
-    reloadlyEnabled: false,
-    reloadlyClientId: '',
-    reloadlyClientSecret: '',
-    reloadlySandbox: true
   })
 
   // Fetch gift cards
@@ -127,36 +117,6 @@ export default function AdminGiftCardsPage() {
       return data
     }
   })
-
-  // Fetch settings
-  const { data: settingsResponse, isLoading: loadingSettings } = useQuery({
-    queryKey: ['gift-card-settings'],
-    queryFn: async () => {
-      const token = localStorage.getItem('admin_auth_token')
-      const res = await fetch('/api/admin/gift-cards/settings', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error)
-      return data.settings
-    },
-    enabled: activeTab === 'settings'
-  })
-
-  // Update settings data when fetched
-  const settingsLoaded = useRef(false)
-  if (settingsResponse && !settingsLoaded.current) {
-    settingsLoaded.current = true
-    setSettingsData({
-      reloadlyEnabled: settingsResponse.reloadlyEnabled,
-      reloadlyClientId: settingsResponse.reloadlyClientId,
-      reloadlyClientSecret: settingsResponse.reloadlyClientSecret,
-      reloadlySandbox: settingsResponse.reloadlySandbox
-    })
-  }
 
   // Create/update gift card mutation
   const saveMutation = useMutation({
@@ -262,36 +222,6 @@ export default function AdminGiftCardsPage() {
     },
     onError: (error: any) => {
       alert(`Sync failed: ${error.message}`)
-    }
-  })
-
-  // Save settings mutation
-  const saveSettingsMutation = useMutation({
-    mutationFn: async (data: typeof settingsData) => {
-      const token = localStorage.getItem('admin_auth_token')
-      const res = await fetch('/api/admin/gift-cards/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(data)
-      })
-      const result = await res.json()
-      if (!result.success) throw new Error(result.error)
-      return result
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['gift-card-settings'] })
-      queryClient.invalidateQueries({ queryKey: ['reloadly-status'] })
-      settingsLoaded.current = false
-      setSettingsSaved(true)
-      setSettingsError('')
-      setTimeout(() => setSettingsSaved(false), 3000)
-    },
-    onError: (error: any) => {
-      setSettingsError(error.message)
-      setSettingsSaved(false)
     }
   })
 
@@ -473,7 +403,6 @@ export default function AdminGiftCardsPage() {
             { id: 'products', label: 'Products', icon: 'box' },
             { id: 'inventory', label: 'Inventory', icon: 'list' },
             { id: 'import', label: 'Import', icon: 'upload' },
-            { id: 'settings', label: 'Settings', icon: 'settings' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -836,144 +765,6 @@ export default function AdminGiftCardsPage() {
                   {importMutation.isPending ? 'Importing...' : 'Import Codes'}
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div className="max-w-2xl">
-            <div className="bg-[#121212] border border-border-dark rounded-xl p-6">
-              <h3 className="text-lg font-bold text-white mb-2">Reloadly API Configuration</h3>
-              <p className="text-sm text-slate-400 mb-6">
-                Configure Reloadly API credentials for automatic gift card provisioning.
-                Get your credentials from{' '}
-                <a
-                  href="https://www.reloadly.com/developers"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Reloadly Developer Portal
-                </a>
-              </p>
-
-              {loadingSettings ? (
-                <div className="text-center text-slate-400 py-8">Loading settings...</div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 bg-surface-dark rounded-lg border border-border-dark">
-                    <label className="flex items-center gap-3 cursor-pointer flex-1">
-                      <input
-                        type="checkbox"
-                        checked={settingsData.reloadlyEnabled}
-                        onChange={(e) => setSettingsData({ ...settingsData, reloadlyEnabled: e.target.checked })}
-                        className="w-5 h-5 rounded border-border-dark bg-surface-dark text-primary"
-                      />
-                      <div>
-                        <span className="text-white font-medium">Enable Reloadly Integration</span>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          When enabled, gift cards will be purchased from Reloadly API when bulk inventory is unavailable
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-
-                  <div className="flex items-center gap-3 p-4 bg-surface-dark rounded-lg border border-border-dark">
-                    <label className="flex items-center gap-3 cursor-pointer flex-1">
-                      <input
-                        type="checkbox"
-                        checked={settingsData.reloadlySandbox}
-                        onChange={(e) => setSettingsData({ ...settingsData, reloadlySandbox: e.target.checked })}
-                        className="w-5 h-5 rounded border-border-dark bg-surface-dark text-primary"
-                      />
-                      <div>
-                        <span className="text-white font-medium">Sandbox Mode</span>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Use sandbox API for testing (no real charges or cards)
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Client ID</label>
-                    <input
-                      type="text"
-                      value={settingsData.reloadlyClientId}
-                      onChange={(e) => setSettingsData({ ...settingsData, reloadlyClientId: e.target.value })}
-                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white font-mono"
-                      placeholder="Enter your Reloadly Client ID"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Client Secret
-                      {settingsResponse?.hasSecret && (
-                        <span className="ml-2 text-xs text-green-400">(saved)</span>
-                      )}
-                    </label>
-                    <input
-                      type="password"
-                      value={settingsData.reloadlyClientSecret}
-                      onChange={(e) => setSettingsData({ ...settingsData, reloadlyClientSecret: e.target.value })}
-                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white font-mono"
-                      placeholder={settingsResponse?.hasSecret ? 'Enter new secret to update' : 'Enter your Reloadly Client Secret'}
-                    />
-                    <p className="text-xs text-slate-500 mt-1">
-                      Leave blank to keep the existing secret
-                    </p>
-                  </div>
-
-                  {settingsError && (
-                    <div className="p-3 bg-red-900/30 border border-red-500/20 rounded-lg text-red-400 text-sm">
-                      {settingsError}
-                    </div>
-                  )}
-
-                  {settingsSaved && (
-                    <div className="p-3 bg-green-900/30 border border-green-500/20 rounded-lg text-green-400 text-sm flex items-center gap-2">
-                      <Icon name="check-circle" size={16} />
-                      Settings saved successfully
-                    </div>
-                  )}
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      onClick={() => saveSettingsMutation.mutate(settingsData)}
-                      disabled={saveSettingsMutation.isPending}
-                      className="flex-1 px-4 py-3 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
-                    >
-                      {saveSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
-                    </button>
-                  </div>
-
-                  {/* Connection Status */}
-                  <div className="mt-6 pt-6 border-t border-border-dark">
-                    <h4 className="text-sm font-medium text-slate-300 mb-3">Connection Status</h4>
-                    <div className={`p-4 rounded-lg border ${
-                      reloadlyStatus?.success
-                        ? 'bg-green-900/20 border-green-500/20'
-                        : 'bg-yellow-900/20 border-yellow-500/20'
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        <Icon
-                          name={reloadlyStatus?.success ? 'check-circle' : 'alert'}
-                          size={18}
-                          className={reloadlyStatus?.success ? 'text-green-400' : 'text-yellow-400'}
-                        />
-                        <span className={reloadlyStatus?.success ? 'text-green-400' : 'text-yellow-400'}>
-                          {reloadlyStatus?.success
-                            ? `Connected (${reloadlyStatus.mode} mode)`
-                            : reloadlyStatus?.error || 'Not configured'
-                          }
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}

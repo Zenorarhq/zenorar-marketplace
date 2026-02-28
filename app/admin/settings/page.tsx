@@ -272,6 +272,23 @@ export default function AdminSettingsPage() {
     vonageApiSecret: '',
   })
 
+  // Gift Card Providers Settings State
+  const [giftCardSettings, setGiftCardSettings] = useState({
+    giftCardDefaultProvider: 'reloadly' as 'reloadly' | 'ezgiftcard' | 'bitrefill',
+    // Reloadly
+    reloadlyEnabled: false,
+    reloadlyMode: 'sandbox' as 'sandbox' | 'production',
+    reloadlyClientId: '',
+    reloadlyClientSecret: '',
+    // EZGiftCard (RapidAPI)
+    ezgiftcardEnabled: false,
+    ezgiftcardApiKey: '',
+    // Bitrefill
+    bitrefillEnabled: false,
+    bitrefillApiKey: '',
+    bitrefillApiSecret: '',
+  })
+
   // Show/hide secrets for services
   const [showServiceSecrets, setShowServiceSecrets] = useState<Record<string, boolean>>({})
 
@@ -514,6 +531,22 @@ export default function AdminSettingsPage() {
           vonageEnabled: d.vonageEnabled ?? prev.vonageEnabled,
           vonageApiKey: d.vonageApiKey ?? prev.vonageApiKey,
           vonageApiSecret: d.vonageApiSecret ?? prev.vonageApiSecret,
+        }))
+        // Gift Card Providers settings
+        setGiftCardSettings((prev) => ({
+          giftCardDefaultProvider: d.giftCardDefaultProvider ?? prev.giftCardDefaultProvider,
+          // Reloadly
+          reloadlyEnabled: d.reloadlyEnabled ?? prev.reloadlyEnabled,
+          reloadlyMode: d.reloadlyMode ?? prev.reloadlyMode,
+          reloadlyClientId: d.reloadlyClientId ?? prev.reloadlyClientId,
+          reloadlyClientSecret: d.reloadlyClientSecret ?? prev.reloadlyClientSecret,
+          // EZGiftCard
+          ezgiftcardEnabled: d.ezgiftcardEnabled ?? prev.ezgiftcardEnabled,
+          ezgiftcardApiKey: d.ezgiftcardApiKey ?? prev.ezgiftcardApiKey,
+          // Bitrefill
+          bitrefillEnabled: d.bitrefillEnabled ?? prev.bitrefillEnabled,
+          bitrefillApiKey: d.bitrefillApiKey ?? prev.bitrefillApiKey,
+          bitrefillApiSecret: d.bitrefillApiSecret ?? prev.bitrefillApiSecret,
         }))
       }
     })
@@ -1090,6 +1123,20 @@ export default function AdminSettingsPage() {
       { key: 'vonageEnabled', value: virtualNumberSettings.vonageEnabled, group: 'api', isPublic: true },
       { key: 'vonageApiKey', value: virtualNumberSettings.vonageApiKey, group: 'api', isPublic: false },
       { key: 'vonageApiSecret', value: virtualNumberSettings.vonageApiSecret, group: 'api', isPublic: false },
+      // Gift Card Providers
+      { key: 'giftCardDefaultProvider', value: giftCardSettings.giftCardDefaultProvider, group: 'api', isPublic: false },
+      // Reloadly
+      { key: 'reloadlyEnabled', value: giftCardSettings.reloadlyEnabled, group: 'api', isPublic: true },
+      { key: 'reloadlyMode', value: giftCardSettings.reloadlyMode, group: 'api', isPublic: false },
+      { key: 'reloadlyClientId', value: giftCardSettings.reloadlyClientId, group: 'api', isPublic: false },
+      { key: 'reloadlyClientSecret', value: giftCardSettings.reloadlyClientSecret, group: 'api', isPublic: false },
+      // EZGiftCard
+      { key: 'ezgiftcardEnabled', value: giftCardSettings.ezgiftcardEnabled, group: 'api', isPublic: true },
+      { key: 'ezgiftcardApiKey', value: giftCardSettings.ezgiftcardApiKey, group: 'api', isPublic: false },
+      // Bitrefill
+      { key: 'bitrefillEnabled', value: giftCardSettings.bitrefillEnabled, group: 'api', isPublic: true },
+      { key: 'bitrefillApiKey', value: giftCardSettings.bitrefillApiKey, group: 'api', isPublic: false },
+      { key: 'bitrefillApiSecret', value: giftCardSettings.bitrefillApiSecret, group: 'api', isPublic: false },
     ]
 
     const result = await settingsApi.updateSettings(settingsToSave)
@@ -2883,34 +2930,35 @@ export default function AdminSettingsPage() {
 
           {/* API Settings */}
           {activeTab === 'api' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Icon name="code" size={20} className="text-primary" />
+            <div className="space-y-8">
+              {/* API Access Card */}
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Icon name="code" size={24} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-lg">API Access</p>
+                      <p className="text-slate-500 text-sm">Enable API access for third-party integrations</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white font-medium">API Access</p>
-                    <p className="text-slate-500 text-sm">Enable API access for third-party integrations</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setApiSettings({ ...apiSettings, apiEnabled: !apiSettings.apiEnabled })}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
-                    apiSettings.apiEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                      apiSettings.apiEnabled ? 'left-7' : 'left-1'
+                  <button
+                    onClick={() => setApiSettings({ ...apiSettings, apiEnabled: !apiSettings.apiEnabled })}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      apiSettings.apiEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                     }`}
-                  />
-                </button>
-              </div>
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                        apiSettings.apiEnabled ? 'left-7' : 'left-1'
+                      }`}
+                    />
+                  </button>
+                </div>
 
-              {apiSettings.apiEnabled && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {apiSettings.apiEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-[#1f1f1f]">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-300">Rate Limit (requests/hour)</label>
                       <input
@@ -2931,11 +2979,23 @@ export default function AdminSettingsPage() {
                       />
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Exchange Rate API Configuration */}
-                  <div className="border-t border-[#2a2a2a] pt-6">
-                    <h3 className="text-white font-medium mb-4">Exchange Rate APIs</h3>
-                    <p className="text-slate-500 text-sm mb-4">Optional API keys for live currency exchange rates. Free endpoints are used when keys are not provided, but API keys give higher rate limits.</p>
+              {apiSettings.apiEnabled && (
+                <>
+                  {/* Exchange Rate APIs Card */}
+                  <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                        <Icon name="trending-up" size={20} className="text-green-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-semibold text-lg">Exchange Rate APIs</h3>
+                        <p className="text-slate-500 text-sm">Optional API keys for live currency exchange rates</p>
+                      </div>
+                    </div>
+                    <p className="text-slate-600 text-sm mb-4 mt-4">Free endpoints are used when keys are not provided, but API keys give higher rate limits.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300">ExchangeRate-API Key</label>
@@ -2962,10 +3022,17 @@ export default function AdminSettingsPage() {
                     </div>
                   </div>
 
-                  {/* eSIM Providers Configuration */}
-                  <div className="border-t border-[#2a2a2a] pt-6">
-                    <h3 className="text-white font-medium mb-4">eSIM Providers</h3>
-                    <p className="text-slate-500 text-sm mb-4">Configure providers for selling travel eSIM data plans. Enable at least one provider to offer eSIMs.</p>
+                  {/* eSIM Providers Card */}
+                  <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                        <Icon name="sim-card" size={20} className="text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-semibold text-lg">eSIM Providers</h3>
+                        <p className="text-slate-500 text-sm">Configure providers for selling travel eSIM data plans</p>
+                      </div>
+                    </div>
 
                     {/* Default Provider */}
                     <div className="mb-6">
@@ -3174,12 +3241,19 @@ export default function AdminSettingsPage() {
                   </div>
 
                   {/* Voice eSIM Providers Configuration */}
-                  <div className="border-t border-[#2a2a2a] pt-6">
-                    <h3 className="text-white font-medium mb-4">Voice eSIM Providers</h3>
-                    <p className="text-slate-500 text-sm mb-4">Configure providers for eSIMs with phone numbers, calls, and SMS capability (for bank verification, etc.).</p>
+                  <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
+                        <Icon name="phone-call" size={20} className="text-teal-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-semibold text-lg">Voice eSIM Providers</h3>
+                        <p className="text-slate-500 text-sm">Configure providers for eSIMs with phone numbers, calls, and SMS capability</p>
+                      </div>
+                    </div>
 
                     {/* Default Voice eSIM Provider */}
-                    <div className="mb-6">
+                    <div className="mb-6 mt-4">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Voice eSIM Provider</label>
                       <select
                         value={voiceEsimSettings.voiceEsimDefaultProvider}
@@ -3332,12 +3406,19 @@ export default function AdminSettingsPage() {
                   </div>
 
                   {/* Virtual Numbers Configuration */}
-                  <div className="border-t border-[#2a2a2a] pt-6">
-                    <h3 className="text-white font-medium mb-4">Virtual Phone Numbers</h3>
-                    <p className="text-slate-500 text-sm mb-4">Configure providers for virtual phone number services. Enable at least one provider.</p>
+                  <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                        <Icon name="phone" size={20} className="text-red-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-semibold text-lg">Virtual Phone Numbers</h3>
+                        <p className="text-slate-500 text-sm">Configure providers for virtual phone number services</p>
+                      </div>
+                    </div>
 
                     {/* Default VN Provider */}
-                    <div className="mb-6">
+                    <div className="mb-6 mt-4">
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
                       <select
                         value={virtualNumberSettings.virtualNumbersProvider}
@@ -3620,10 +3701,239 @@ export default function AdminSettingsPage() {
                     </div>
                   </div>
 
+                  {/* Gift Card Providers Configuration */}
+                  <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                        <Icon name="gift" size={20} className="text-purple-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-semibold text-lg">Gift Card Providers</h3>
+                        <p className="text-slate-500 text-sm">Configure providers for digital gift card purchasing via API</p>
+                      </div>
+                    </div>
+
+                    {/* Default Provider */}
+                    <div className="mb-6 mt-4">
+                      <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
+                      <select
+                        value={giftCardSettings.giftCardDefaultProvider}
+                        onChange={(e) => setGiftCardSettings({ ...giftCardSettings, giftCardDefaultProvider: e.target.value as 'reloadly' | 'ezgiftcard' | 'bitrefill' })}
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      >
+                        <option value="reloadly">Reloadly</option>
+                        <option value="ezgiftcard">EZGiftCard</option>
+                        <option value="bitrefill">Bitrefill</option>
+                      </select>
+                    </div>
+
+                    {/* Reloadly */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                            <Icon name="gift" size={20} className="text-purple-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Reloadly</p>
+                            <p className="text-slate-500 text-sm">600+ brands, instant delivery, global coverage</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGiftCardSettings({ ...giftCardSettings, reloadlyEnabled: !giftCardSettings.reloadlyEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${giftCardSettings.reloadlyEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.reloadlyEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {giftCardSettings.reloadlyEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
+                          {/* Mode Toggle */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
+                              <button
+                                type="button"
+                                onClick={() => setGiftCardSettings({ ...giftCardSettings, reloadlyMode: 'sandbox' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.reloadlyMode === 'sandbox' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Sandbox
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setGiftCardSettings({ ...giftCardSettings, reloadlyMode: 'production' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.reloadlyMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Production
+                              </button>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${giftCardSettings.reloadlyMode === 'sandbox' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                              {giftCardSettings.reloadlyMode === 'sandbox' ? 'SANDBOX' : 'PRODUCTION'}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">Client ID</label>
+                              <input
+                                type="text"
+                                value={giftCardSettings.reloadlyClientId}
+                                onChange={(e) => setGiftCardSettings({ ...giftCardSettings, reloadlyClientId: e.target.value })}
+                                placeholder="Your Reloadly Client ID"
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">Client Secret</label>
+                              <div className="relative">
+                                <input
+                                  type={showServiceSecrets.reloadlyClientSecret ? 'text' : 'password'}
+                                  value={giftCardSettings.reloadlyClientSecret}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, reloadlyClientSecret: e.target.value })}
+                                  placeholder="Your Reloadly Client Secret"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, reloadlyClientSecret: !prev.reloadlyClientSecret }))}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                  <Icon name={showServiceSecrets.reloadlyClientSecret ? 'eye-off' : 'eye'} size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600">Get your credentials at <a href="https://www.reloadly.com/developers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">reloadly.com/developers</a></p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* EZGiftCard (RapidAPI) */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <Icon name="gift" size={20} className="text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">EZGiftCard</p>
+                            <p className="text-slate-500 text-sm">RapidAPI marketplace, simple integration</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGiftCardSettings({ ...giftCardSettings, ezgiftcardEnabled: !giftCardSettings.ezgiftcardEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${giftCardSettings.ezgiftcardEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.ezgiftcardEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {giftCardSettings.ezgiftcardEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a]">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">RapidAPI Key</label>
+                            <div className="relative">
+                              <input
+                                type={showServiceSecrets.ezgiftcardApiKey ? 'text' : 'password'}
+                                value={giftCardSettings.ezgiftcardApiKey}
+                                onChange={(e) => setGiftCardSettings({ ...giftCardSettings, ezgiftcardApiKey: e.target.value })}
+                                placeholder="Your RapidAPI key"
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowServiceSecrets(prev => ({ ...prev, ezgiftcardApiKey: !prev.ezgiftcardApiKey }))}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                              >
+                                <Icon name={showServiceSecrets.ezgiftcardApiKey ? 'eye-off' : 'eye'} size={16} />
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-600">Get your API key at <a href="https://rapidapi.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">rapidapi.com</a></p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bitrefill */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                            <Icon name="gift" size={20} className="text-orange-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Bitrefill</p>
+                            <p className="text-slate-500 text-sm">Crypto-friendly, 4000+ products, 180+ countries</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGiftCardSettings({ ...giftCardSettings, bitrefillEnabled: !giftCardSettings.bitrefillEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors ${giftCardSettings.bitrefillEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.bitrefillEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {giftCardSettings.bitrefillEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a]">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">API Key</label>
+                              <div className="relative">
+                                <input
+                                  type={showServiceSecrets.bitrefillApiKey ? 'text' : 'password'}
+                                  value={giftCardSettings.bitrefillApiKey}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, bitrefillApiKey: e.target.value })}
+                                  placeholder="Your Bitrefill API key"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, bitrefillApiKey: !prev.bitrefillApiKey }))}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                  <Icon name={showServiceSecrets.bitrefillApiKey ? 'eye-off' : 'eye'} size={16} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">API Secret</label>
+                              <div className="relative">
+                                <input
+                                  type={showServiceSecrets.bitrefillApiSecret ? 'text' : 'password'}
+                                  value={giftCardSettings.bitrefillApiSecret}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, bitrefillApiSecret: e.target.value })}
+                                  placeholder="Your Bitrefill API secret"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, bitrefillApiSecret: !prev.bitrefillApiSecret }))}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                  <Icon name={showServiceSecrets.bitrefillApiSecret ? 'eye-off' : 'eye'} size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600 mt-3">Get your credentials at <a href="https://www.bitrefill.com/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">bitrefill.com/api</a></p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* API Keys Table */}
-                  <div>
+                  <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-white font-medium">API Keys</h3>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                          <Icon name="key" size={20} className="text-amber-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-semibold text-lg">API Keys</h3>
+                          <p className="text-slate-500 text-sm">Manage your API access keys</p>
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
