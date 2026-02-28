@@ -248,7 +248,6 @@ export default function LoginPage() {
       }
 
       const walletAddress = accounts[0]
-      console.log('Wallet connected:', walletAddress)
 
       // Get nonce from server
       const nonceResult = await authApi.getWalletNonce(walletAddress)
@@ -258,13 +257,11 @@ export default function LoginPage() {
       }
 
       const { nonce, message } = nonceResult.data
-      console.log('Nonce received, requesting signature...')
 
       // Sign the message
       const provider = new BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
       const signature = await signer.signMessage(message)
-      console.log('Message signed successfully')
 
       // Authenticate with the server
       const result = await authApi.walletAuth(walletAddress, signature, nonce)
@@ -274,7 +271,6 @@ export default function LoginPage() {
           router.push('/admin')
           return
         }
-        console.log('Wallet authentication successful')
         refreshUser()
         router.push(getRedirectUrl())
       } else {

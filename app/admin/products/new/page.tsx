@@ -116,8 +116,6 @@ export default function NewProductPage() {
         specs: formData.specs.length > 0 ? formData.specs : null,
       }
 
-      console.log('Creating product with data:', productData)
-
       const result = await productsApi.create(productData)
 
       if (result.success && result.data) {

@@ -224,8 +224,6 @@ export default function PaymentPage() {
           return res.json()
         })
         .catch(() => {
-          // Fallback to local API route
-          console.log('Falling back to local Paystack config')
           return fetch('/api/payments/paystack/config').then(res => res.json())
         })
         .then(data => {

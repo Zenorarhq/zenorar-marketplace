@@ -7,6 +7,7 @@ import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { libraryApi, LibraryItem } from '@/lib/api/library'
 import EsimDetailModal from '@/components/library/EsimDetailModal'
+import IntegrationCodeModal from '@/components/library/IntegrationCodeModal'
 
 type LibraryFilter = 'all' | 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers'
 
@@ -27,6 +28,7 @@ export default function LibraryPage() {
   const menuRef = useRef<HTMLDivElement>(null)
   const [apiKeyModal, setApiKeyModal] = useState<{ key: string; productName: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [snippetModal, setSnippetModal] = useState<{ productId: string; productName: string } | null>(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -338,6 +340,15 @@ export default function LibraryPage() {
                           )}
                         </button>
                       )}
+                      {(item.category === 'scripts' || item.category === 'tools') && (
+                        <button
+                          onClick={() => setSnippetModal({ productId: item.id, productName: item.name })}
+                          className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
+                        >
+                          <Icon name="code" size={18} />
+                          Integration Code
+                        </button>
+                      )}
                       {item.category === 'esims' && (
                         <button
                           onClick={() => handleViewQR(item.id)}
@@ -506,6 +517,14 @@ export default function LibraryPage() {
           </div>
         </div>
       )}
+      {/* Integration Code Modal */}
+      <IntegrationCodeModal
+        isOpen={!!snippetModal}
+        onClose={() => setSnippetModal(null)}
+        productId={snippetModal?.productId || ''}
+        productName={snippetModal?.productName || ''}
+      />
+
     </ProfileLayout>
   )
 }

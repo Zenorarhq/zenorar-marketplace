@@ -258,6 +258,57 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
                   )}
                 </div>
 
+                {/* Product & License Info */}
+                {ticket.product && (
+                  <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-4">
+                    <p className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">Product & License</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-slate-500 mb-0.5">Product</p>
+                        <p className="text-sm text-white font-medium">{ticket.product.name}</p>
+                      </div>
+                      {ticket.supportStatus && (
+                        <div>
+                          <p className="text-xs text-slate-500 mb-0.5">Support Status</p>
+                          {ticket.supportStatus === 'ACTIVE' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-500 border border-green-500/30">Active</span>
+                          )}
+                          {ticket.supportStatus === 'EXPIRED' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-500 border border-yellow-500/30">Expired</span>
+                          )}
+                          {ticket.supportStatus === 'NO_LICENSE' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-500 border border-blue-500/30">No License</span>
+                          )}
+                        </div>
+                      )}
+                      {ticket.license && (
+                        <>
+                          <div>
+                            <p className="text-xs text-slate-500 mb-0.5">License Key</p>
+                            <p className="text-sm text-slate-300 font-mono">{ticket.license.licenseKey}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 mb-0.5">License Type</p>
+                            <p className="text-sm text-white">{ticket.license.licenseType}</p>
+                          </div>
+                          {ticket.license.supportExpiresAt && (
+                            <div>
+                              <p className="text-xs text-slate-500 mb-0.5">Support Expires</p>
+                              <p className="text-sm text-white">{new Date(ticket.license.supportExpiresAt).toLocaleDateString()}</p>
+                            </div>
+                          )}
+                          {ticket.license.registeredDomains && ticket.license.registeredDomains.length > 0 && (
+                            <div>
+                              <p className="text-xs text-slate-500 mb-0.5">Registered Domains</p>
+                              <p className="text-sm text-slate-300">{ticket.license.registeredDomains.join(', ')}</p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <p className="text-xs text-slate-500 mb-2">Description</p>
                   <p className="text-sm text-slate-300 whitespace-pre-wrap">{ticket.description}</p>

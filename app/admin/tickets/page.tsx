@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
-import { ticketsApi, Ticket, TicketStatus, TicketPriority } from '@/lib/api/tickets'
+import { ticketsApi, Ticket, TicketStatus, TicketPriority, SupportStatus } from '@/lib/api/tickets'
 import NewTicketModal from '@/components/admin/NewTicketModal'
 import ViewTicketThreadModal from '@/components/admin/ViewTicketThreadModal'
 import ReplyTicketModal from '@/components/admin/ReplyTicketModal'
@@ -19,6 +19,7 @@ export default function TicketsPage() {
   const [showUnassignedOnly, setShowUnassignedOnly] = useState(false)
   const [filterStatus, setFilterStatus] = useState<TicketStatus | ''>('')
   const [filterPriority, setFilterPriority] = useState<TicketPriority | ''>('')
+  const [filterSupportStatus, setFilterSupportStatus] = useState<SupportStatus | ''>('')
 
   // Modal states
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false)
@@ -117,7 +118,8 @@ export default function TicketsPage() {
     const matchesUnassigned = !showUnassignedOnly || !ticket.assignedTo
     const matchesStatus = !filterStatus || ticket.status === filterStatus
     const matchesPriority = !filterPriority || ticket.priority === filterPriority
-    return matchesSearch && matchesUnassigned && matchesStatus && matchesPriority
+    const matchesSupportStatus = !filterSupportStatus || ticket.supportStatus === filterSupportStatus
+    return matchesSearch && matchesUnassigned && matchesStatus && matchesPriority && matchesSupportStatus
   })
 
   // Pagination
@@ -129,7 +131,7 @@ export default function TicketsPage() {
   // Reset to page 1 when search or filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, showUnassignedOnly, filterStatus, filterPriority])
+  }, [searchQuery, showUnassignedOnly, filterStatus, filterPriority, filterSupportStatus])
 
   const openTickets = tickets.filter((t) => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length
   const urgentTickets = tickets.filter((t) => t.priority === 'URGENT').length
@@ -305,9 +307,19 @@ export default function TicketsPage() {
             <option value="MEDIUM">Medium</option>
             <option value="LOW">Low</option>
           </select>
-          {(filterStatus || filterPriority || showUnassignedOnly) && (
+          <select
+            value={filterSupportStatus}
+            onChange={(e) => setFilterSupportStatus(e.target.value as SupportStatus | '')}
+            className="bg-charcoal border border-border-dark rounded-lg py-2 px-3 text-sm text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+          >
+            <option value="">All Support</option>
+            <option value="ACTIVE">Active Support</option>
+            <option value="EXPIRED">Expired Support</option>
+            <option value="NO_LICENSE">No License</option>
+          </select>
+          {(filterStatus || filterPriority || filterSupportStatus || showUnassignedOnly) && (
             <button
-              onClick={() => { setFilterStatus(''); setFilterPriority(''); setShowUnassignedOnly(false) }}
+              onClick={() => { setFilterStatus(''); setFilterPriority(''); setFilterSupportStatus(''); setShowUnassignedOnly(false) }}
               className="text-xs text-slate-400 hover:text-white transition-colors"
             >
               Clear filters
@@ -338,6 +350,12 @@ export default function TicketsPage() {
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Priority
+                </th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Support
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">
                   Actions
@@ -370,6 +388,27 @@ export default function TicketsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(ticket.status)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{getPriorityBadge(ticket.priority)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {ticket.product ? (
+                        <span className="text-purple-400">{ticket.product.name}</span>
+                      ) : (
+                        <span className="text-slate-600">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {ticket.supportStatus === 'ACTIVE' && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-500 border border-green-500/30">Active</span>
+                      )}
+                      {ticket.supportStatus === 'EXPIRED' && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-500 border border-yellow-500/30">Expired</span>
+                      )}
+                      {ticket.supportStatus === 'NO_LICENSE' && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-500 border border-blue-500/30">No License</span>
+                      )}
+                      {!ticket.supportStatus && (
+                        <span className="text-slate-600">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end gap-2">
                         <button
@@ -402,7 +441,7 @@ export default function TicketsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <Icon name="ticket" size={48} className="text-slate-600 mx-auto mb-4" />
                     <p className="text-slate-400">No tickets found</p>
                   </td>

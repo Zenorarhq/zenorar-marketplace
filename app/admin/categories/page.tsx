@@ -82,9 +82,6 @@ export default function CategoriesPage() {
 
   const categories = flattenCategories(categoriesTree)
 
-  // Debug: Log categories to check childrenCount
-  console.log('Categories:', categories.map(c => ({ name: c.name, level: c.level, childrenCount: c.childrenCount })))
-
   const error = categoryError ? String(categoryError) : ''
 
   // Function to invalidate cache (called after CRUD operations)

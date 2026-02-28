@@ -13,6 +13,14 @@ export interface ProductFile {
   created_at: string | null
   downloadCount?: number
   isLegacy?: boolean
+  obfuscation_level?: string | null
+  obfuscation_report?: {
+    totalFiles: number
+    obfuscatedFiles: number
+    skippedFiles: number
+    failedFiles: number
+    level: string
+  } | null
 }
 
 export interface DownloadResult {

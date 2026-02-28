@@ -10,6 +10,7 @@ import { usersApi } from '@/lib/api/users'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import EmailConfigSection from '@/components/admin/EmailConfigSection'
+import ProtectionLevelsSection from '@/components/admin/ProtectionLevelsSection'
 
 type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'email' | 'marketing' | 'seo'
 
@@ -1633,6 +1634,8 @@ export default function AdminSettingsPage() {
                   <a href="/admin/frontend?slug=cookies" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Cookie Policy</a>
                 </div>
               </div>
+              {/* Script Protection Levels */}
+              <ProtectionLevelsSection />
             </div>
           )}
 

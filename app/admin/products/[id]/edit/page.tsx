@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -30,6 +30,7 @@ export default function EditProductPage() {
   const [fileIsLatest, setFileIsLatest] = useState(true)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
+  const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -777,12 +778,14 @@ export default function EditProductPage() {
                       <th className="pb-2 font-medium">Hash (SHA-256)</th>
                       <th className="pb-2 font-medium">Downloads</th>
                       <th className="pb-2 font-medium">Status</th>
+                      <th className="pb-2 font-medium">Protection</th>
                       <th className="pb-2 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1a1a1a]">
                     {productFiles.map(file => (
-                      <tr key={file.id} className="py-2">
+                      <Fragment key={file.id}>
+                      <tr className="py-2">
                         <td className="py-2 pr-4">
                           <div className="flex items-center gap-2">
                             <Icon name="file" size={14} className="text-slate-400 shrink-0" />
@@ -801,6 +804,16 @@ export default function EditProductPage() {
                         <td className="py-2 pr-4">
                           {file.is_latest
                             ? <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/15 text-green-400">Latest</span>
+                            : <span className="text-slate-600 text-xs">—</span>
+                          }
+                        </td>
+                        <td className="py-2 pr-4">
+                          {file.obfuscation_level
+                            ? <button type="button" onClick={() => file.obfuscation_report && setExpandedReportId(expandedReportId === file.id ? null : file.id)} className={`px-2 py-0.5 rounded-full text-xs ${
+                                file.obfuscation_level === 'HEAVY' ? 'bg-red-500/15 text-red-400' :
+                                file.obfuscation_level === 'MEDIUM' ? 'bg-yellow-500/15 text-yellow-400' :
+                                'bg-blue-500/15 text-blue-400'
+                              } ${file.obfuscation_report ? 'cursor-pointer hover:opacity-80' : ''}`}>{file.obfuscation_level}</button>
                             : <span className="text-slate-600 text-xs">—</span>
                           }
                         </td>
@@ -826,6 +839,19 @@ export default function EditProductPage() {
                           </div>
                         </td>
                       </tr>
+                      {expandedReportId === file.id && file.obfuscation_report && (
+                        <tr>
+                          <td colSpan={8} className="py-2 px-4 bg-[#111]">
+                            <div className="grid grid-cols-4 gap-4 text-xs">
+                              <div><span className="text-slate-500">Total Files:</span> <span className="text-white">{file.obfuscation_report.totalFiles}</span></div>
+                              <div><span className="text-slate-500">Obfuscated:</span> <span className="text-green-400">{file.obfuscation_report.obfuscatedFiles}</span></div>
+                              <div><span className="text-slate-500">Skipped:</span> <span className="text-yellow-400">{file.obfuscation_report.skippedFiles}</span></div>
+                              <div><span className="text-slate-500">Failed:</span> <span className="text-red-400">{file.obfuscation_report.failedFiles}</span></div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

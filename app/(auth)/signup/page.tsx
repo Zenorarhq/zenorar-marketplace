@@ -254,7 +254,6 @@ export default function SignupPage() {
       }
 
       const walletAddress = accounts[0]
-      console.log('Wallet connected:', walletAddress)
 
       const nonceResult = await authApi.getWalletNonce(walletAddress)
       if (!nonceResult.success || !nonceResult.data) {
@@ -263,16 +262,13 @@ export default function SignupPage() {
       }
 
       const { nonce, message } = nonceResult.data
-      console.log('Nonce received, requesting signature...')
 
       const provider = new BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
       const signature = await signer.signMessage(message)
-      console.log('Message signed successfully')
 
       const result = await authApi.walletAuth(walletAddress, signature, nonce)
       if (result.success) {
-        console.log('Wallet authentication successful')
         refreshUser()
         router.push('/')
       } else {

@@ -230,7 +230,6 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
         return res.json()
       })
       .catch(() => {
-        console.log('Falling back to local Stripe config')
         return fetch('/api/payments/stripe/config').then(res => res.json())
       })
       .then(data => {
@@ -252,8 +251,6 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
         return res.json()
       })
       .catch(() => {
-        // Fallback to local API route
-        console.log('Falling back to local Paystack config')
         return fetch('/api/payments/paystack/config').then(res => res.json())
       })
       .then(data => {
@@ -668,7 +665,6 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
 
       // Fallback to local upload if Railway fails
       if (!uploadRes.ok) {
-        console.log('Railway upload failed, trying local')
         uploadRes = await fetch('/api/media/upload', {
           method: 'POST',
           body: formData,

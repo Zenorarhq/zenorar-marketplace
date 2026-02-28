@@ -169,7 +169,6 @@ async function sendViaSMTP(
       html
     })
 
-    console.log(`✓ Email sent successfully via SMTP to ${to}`)
     return true
   } catch (error) {
     console.error('SMTP send error:', error)
@@ -194,7 +193,6 @@ async function sendViaResend(
       html
     })
 
-    console.log(`✓ Email sent successfully via Resend to ${to}`)
     return true
   } catch (error) {
     console.error('Resend send error:', error)
@@ -219,7 +217,6 @@ async function sendViaSendGrid(
       html
     })
 
-    console.log(`✓ Email sent successfully via SendGrid to ${to}`)
     return true
   } catch (error) {
     console.error('SendGrid send error:', error)
@@ -245,8 +242,6 @@ export async function sendOrderConfirmationEmail(
 
     const htmlContent = generateOrderConfirmationHTML(data)
     const subject = `Order Confirmation - ${data.orderNumber}`
-
-    console.log(`→ Sending order confirmation email via ${provider.provider} to ${data.email}`)
 
     switch (provider.provider) {
       case 'smtp':
@@ -281,8 +276,6 @@ export async function sendEmail(
       console.warn('⚠ No active email provider configured - email not sent')
       return false
     }
-
-    console.log(`→ Sending email via ${provider.provider} to ${to}`)
 
     switch (provider.provider) {
       case 'smtp':

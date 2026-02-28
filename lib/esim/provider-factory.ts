@@ -80,7 +80,6 @@ export class EsimProviderFactory {
         const result = await provider.orderEsim(providerPlanId, orderId)
 
         if (result.success) {
-          console.log(`eSIM ordered successfully via ${provider.slug}`)
           return { ...result, providerUsed: provider.slug }
         }
 

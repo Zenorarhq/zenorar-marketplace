@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
-import { ticketsApi, Ticket as ApiTicket, TicketDetail, TicketCategory } from '@/lib/api/tickets'
+import { ticketsApi, Ticket as ApiTicket, TicketDetail, TicketCategory, SupportStatusResponse } from '@/lib/api/tickets'
+import { libraryApi } from '@/lib/api/library'
 
 type FilterStatus = 'all' | 'open' | 'in-progress' | 'resolved' | 'closed'
 
@@ -57,6 +58,23 @@ export default function TicketsPage() {
   const [replyContent, setReplyContent] = useState('')
   const [isReplying, setIsReplying] = useState(false)
   const [replyError, setReplyError] = useState('')
+
+  // Product selector state for ticket creation
+  const [ticketAbout, setTicketAbout] = useState<'general' | 'product'>('general')
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const [supportStatus, setSupportStatus] = useState<SupportStatusResponse | null>(null)
+  const [loadingSupportStatus, setLoadingSupportStatus] = useState(false)
+
+  // Fetch user's purchased products for ticket product selector
+  const { data: purchasedProducts = [] } = useQuery({
+    queryKey: ['my-library-products'],
+    queryFn: async () => {
+      const result = await libraryApi.getLibrary()
+      if (result.success && result.data) return result.data
+      return []
+    },
+    enabled: showNewTicketModal,
+  })
 
   // Fetch user's tickets from Railway API
   const { data: tickets = [], isLoading } = useQuery({
@@ -112,6 +130,9 @@ export default function TicketsPage() {
         queryClient.invalidateQueries({ queryKey: ['my-tickets'] })
         setShowNewTicketModal(false)
         setNewTicket({ subject: '', category: '', priority: 'medium', description: '' })
+        setTicketAbout('general')
+        setSelectedProductId('')
+        setSupportStatus(null)
       } else {
         setCreateError(result.error || 'Failed to create ticket')
       }
@@ -141,6 +162,19 @@ export default function TicketsPage() {
     } finally {
       setIsReplying(false)
     }
+  }
+
+  // Check support status when product is selected
+  async function handleProductSelect(productId: string) {
+    setSelectedProductId(productId)
+    setSupportStatus(null)
+    if (!productId) return
+    setLoadingSupportStatus(true)
+    try {
+      const result = await ticketsApi.getSupportStatus(productId)
+      if (result.success && result.data) setSupportStatus(result.data)
+    } catch { /* ignore */ }
+    setLoadingSupportStatus(false)
   }
 
   // Open view modal
@@ -296,6 +330,9 @@ export default function TicketsPage() {
                             <span className="text-slate-500 font-mono text-sm">{ticket.ticketNumber}</span>
                             {getStatusBadge(ticket.status)}
                             {getPriorityBadge(ticket.priority)}
+                            {ticket.product && (
+                              <span className="text-xs bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full">{ticket.product.name}</span>
+                            )}
                           </div>
                           <h3 className="text-white font-bold text-base sm:text-lg mb-2">{ticket.subject}</h3>
                           <p className="text-slate-400 text-sm line-clamp-2 mb-3">{ticket.description}</p>
@@ -405,6 +442,66 @@ export default function TicketsPage() {
                   {createError}
                 </div>
               )}
+              {/* What is this about? */}
+              <div>
+                <label className="text-sm font-semibold text-slate-300 mb-2 block">What is this about?</label>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => { setTicketAbout('general'); setSelectedProductId(''); setSupportStatus(null) }}
+                    className={`flex-1 px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${ticketAbout === 'general' ? 'bg-primary/10 border-primary text-primary' : 'bg-black border-border-dark text-slate-400 hover:text-white'}`}>
+                    General Inquiry
+                  </button>
+                  <button type="button" onClick={() => setTicketAbout('product')}
+                    className={`flex-1 px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${ticketAbout === 'product' ? 'bg-primary/10 border-primary text-primary' : 'bg-black border-border-dark text-slate-400 hover:text-white'}`}>
+                    A Product I Purchased
+                  </button>
+                </div>
+              </div>
+
+              {/* Product selector */}
+              {ticketAbout === 'product' && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-300 mb-2 block">Select Product</label>
+                  <select
+                    value={selectedProductId}
+                    onChange={(e) => handleProductSelect(e.target.value)}
+                    className="w-full bg-black border border-border-dark rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="">Choose a product...</option>
+                    {purchasedProducts.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+
+                  {/* Support Status Banner */}
+                  {loadingSupportStatus && (
+                    <div className="mt-3 bg-slate-800/50 rounded-lg px-4 py-3 text-slate-400 text-sm">Checking support status...</div>
+                  )}
+                  {supportStatus?.supportStatus === 'ACTIVE' && (
+                    <div className="mt-3 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3 text-green-400 text-sm">
+                      Active Support — expires {supportStatus.supportExpiresAt ? new Date(supportStatus.supportExpiresAt).toLocaleDateString() : 'N/A'} ({supportStatus.daysRemaining} days remaining)
+                    </div>
+                  )}
+                  {supportStatus?.supportStatus === 'EXPIRED' && (
+                    <div className="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-3">
+                      <p className="text-yellow-400 text-sm font-medium mb-1">Your support for {supportStatus.productName} has expired.</p>
+                      <p className="text-slate-400 text-xs mb-2">You can still submit this ticket, but it will be marked as low priority.</p>
+                      {supportStatus.renewalOptions && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <span className="text-xs bg-yellow-500/10 border border-yellow-500/20 rounded px-2 py-1 text-yellow-400">6 months — ${supportStatus.renewalOptions.sixMonths.price}</span>
+                          <span className="text-xs bg-yellow-500/10 border border-yellow-500/20 rounded px-2 py-1 text-yellow-400">12 months — ${supportStatus.renewalOptions.twelveMonths.price}</span>
+                          <span className="text-xs bg-yellow-500/10 border border-yellow-500/20 rounded px-2 py-1 text-yellow-400">36 months — ${supportStatus.renewalOptions.thirtySixMonths.price}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {supportStatus?.supportStatus === 'NO_LICENSE' && (
+                    <div className="mt-3 bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 text-blue-400 text-sm">
+                      No license found for {supportStatus.productName}. You can still ask a pre-purchase question.
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="text-sm font-semibold text-slate-300 mb-2 block">Subject</label>
                 <input
@@ -505,6 +602,18 @@ export default function TicketsPage() {
                     {getStatusBadge(ticketDetail.status)}
                     {getPriorityBadge(ticketDetail.priority)}
                     <span className="text-slate-500 text-xs">{ticketDetail.category}</span>
+                    {ticketDetail.product && (
+                      <span className="text-xs bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full">{ticketDetail.product.name}</span>
+                    )}
+                    {ticketDetail.supportStatus === 'ACTIVE' && (
+                      <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">Active Support</span>
+                    )}
+                    {ticketDetail.supportStatus === 'EXPIRED' && (
+                      <span className="text-xs bg-yellow-500/15 text-yellow-400 px-2 py-0.5 rounded-full">Expired Support</span>
+                    )}
+                    {ticketDetail.supportStatus === 'NO_LICENSE' && (
+                      <span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">No License</span>
+                    )}
                   </div>
                   <h3 className="text-white font-bold text-lg mb-2">{ticketDetail.subject}</h3>
                   <p className="text-slate-400 text-sm mb-3">{ticketDetail.description}</p>

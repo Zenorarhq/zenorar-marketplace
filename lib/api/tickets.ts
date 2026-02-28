@@ -5,6 +5,24 @@ import { apiFetch, buildQueryString } from './client'
 export type TicketCategory = 'GENERAL' | 'ORDER' | 'SHIPPING' | 'PAYMENT' | 'REFUND' | 'PRODUCT' | 'ACCOUNT' | 'TECHNICAL' | 'OTHER'
 export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING_CUSTOMER' | 'WAITING_INTERNAL' | 'RESOLVED' | 'CLOSED'
+export type SupportStatus = 'ACTIVE' | 'EXPIRED' | 'NO_LICENSE'
+
+export interface SupportStatusResponse {
+  hasLicense: boolean
+  licenseId: string | null
+  licenseKey: string | null
+  licenseType: string | null
+  supportStatus: SupportStatus
+  supportExpiresAt: string | null
+  daysRemaining: number | null
+  renewalOptions: {
+    sixMonths: { price: number; percent: number }
+    twelveMonths: { price: number; percent: number }
+    thirtySixMonths: { price: number; percent: number }
+  } | null
+  productName: string
+  productPrice: number
+}
 
 export interface TicketResponse {
   id: string
@@ -44,6 +62,10 @@ export interface Ticket {
     avatar: string | null
   } | null
   orderId: string | null
+  productId: string | null
+  licenseId: string | null
+  supportStatus: SupportStatus | null
+  product: { id: string; name: string; slug?: string; price?: number } | null
   resolution: string | null
   resolvedAt: string | null
   responseCount: number
@@ -53,6 +75,14 @@ export interface Ticket {
 
 export interface TicketDetail extends Ticket {
   responses: TicketResponse[]
+  license: {
+    id: string
+    licenseKey: string
+    licenseType: string
+    supportExpiresAt: string
+    domainsAllowed: number
+    registeredDomains: string[]
+  } | null
 }
 
 export interface CreateTicketData {
@@ -63,6 +93,7 @@ export interface CreateTicketData {
   guestEmail?: string
   guestName?: string
   orderId?: string
+  productId?: string
 }
 
 export interface TicketFilters {
@@ -73,6 +104,8 @@ export interface TicketFilters {
   assignedToId?: string
   unassigned?: boolean
   search?: string
+  supportStatus?: SupportStatus
+  productId?: string
   page?: number
   limit?: number
 }
@@ -82,6 +115,11 @@ export const ticketsApi = {
   async getByNumber(ticketNumber: string, email?: string) {
     const query = email ? `?email=${encodeURIComponent(email)}` : ''
     return apiFetch<TicketDetail>(`/tickets/lookup/${ticketNumber}${query}`)
+  },
+
+  // Support status check
+  async getSupportStatus(productId: string) {
+    return apiFetch<SupportStatusResponse>(`/tickets/support-status/${productId}`)
   },
 
   // User methods
