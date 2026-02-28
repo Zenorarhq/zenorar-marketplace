@@ -4224,18 +4224,18 @@ export default function AdminSettingsPage() {
 
                     {expandedSections.apiKeys && (
                       <>
-                        <div className="flex items-center justify-end gap-2 mt-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mt-6 mb-6">
                           <input
                             type="text"
                             value={newKeyName}
                             onChange={(e) => setNewKeyName(e.target.value)}
                             placeholder="Key name..."
-                            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                            className="w-full sm:w-auto bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
                           />
                           <button
                             onClick={handleGenerateKey}
                             disabled={generatingKey || !newKeyName.trim()}
-                            className="bg-primary hover:bg-primary/90 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-black text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                           >
                             <Icon name="add" size={16} />
                             {generatingKey ? 'Generating...' : 'Generate New Key'}
@@ -4243,19 +4243,19 @@ export default function AdminSettingsPage() {
                         </div>
 
                         {newlyCreatedKey && (
-                      <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4">
-                        <p className="text-green-400 text-sm font-medium mb-2">New API key created! Copy it now — it won&apos;t be shown again.</p>
-                        <div className="flex items-center gap-2">
-                          <code className="text-green-300 text-sm bg-[#141414] px-3 py-2 rounded flex-1 break-all">{newlyCreatedKey}</code>
-                          <button
-                            onClick={() => { navigator.clipboard.writeText(newlyCreatedKey); setNewlyCreatedKey(null) }}
-                            className="p-2 rounded-lg text-green-400 hover:bg-green-500/20 transition-colors"
-                          >
-                            <Icon name="copy" size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                          <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-6">
+                            <p className="text-green-400 text-sm font-medium mb-2">New API key created! Copy it now — it won&apos;t be shown again.</p>
+                            <div className="flex items-center gap-2">
+                              <code className="text-green-300 text-sm bg-[#141414] px-3 py-2 rounded flex-1 break-all">{newlyCreatedKey}</code>
+                              <button
+                                onClick={() => { navigator.clipboard.writeText(newlyCreatedKey); setNewlyCreatedKey(null) }}
+                                className="p-2 rounded-lg text-green-400 hover:bg-green-500/20 transition-colors"
+                              >
+                                <Icon name="copy" size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                     <div className="bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                       <table className="w-full min-w-[500px]">
