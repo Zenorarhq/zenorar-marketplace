@@ -18,12 +18,8 @@ interface GiftCard {
   discountPercent: number
   isActive: boolean
   isFeatured: boolean
-  minCustomAmount: number | null
-  maxCustomAmount: number | null
   provider: string | null
   providerProductId: string | null
-  createdAt: string
-  updatedAt: string
   inventory: {
     available: number
     sold: number
@@ -45,14 +41,15 @@ interface InventoryStats {
 export default function AdminGiftCardsPage() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [activeTab, setActiveTab] = useState<'products' | 'inventory' | 'import'>('products')
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'inventory' | 'import' | 'settings'>('overview')
   const [selectedGiftCard, setSelectedGiftCard] = useState<string>('')
   const [showAddModal, setShowAddModal] = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
   const [editingCard, setEditingCard] = useState<GiftCard | null>(null)
   const [importData, setImportData] = useState('')
   const [importError, setImportError] = useState('')
   const [formError, setFormError] = useState('')
+  const [settingsError, setSettingsError] = useState('')
+  const [settingsSaved, setSettingsSaved] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -67,6 +64,14 @@ export default function AdminGiftCardsPage() {
     isFeatured: false,
     provider: '',
     providerProductId: ''
+  })
+
+  // Settings form state
+  const [settingsData, setSettingsData] = useState({
+    reloadlyEnabled: false,
+    reloadlyClientId: '',
+    reloadlyClientSecret: '',
+    reloadlySandbox: true
   })
 
   // Fetch gift cards
@@ -87,7 +92,7 @@ export default function AdminGiftCardsPage() {
   })
 
   // Fetch inventory stats
-  const { data: inventoryStats } = useQuery<InventoryStats[]>({
+  const { data: inventoryStats, isLoading: loadingInventory } = useQuery<InventoryStats[]>({
     queryKey: ['admin-gift-cards-inventory', selectedGiftCard],
     queryFn: async () => {
       const token = localStorage.getItem('admin_auth_token')
@@ -104,8 +109,54 @@ export default function AdminGiftCardsPage() {
       if (!data.success) throw new Error(data.error)
       return data.stats
     },
-    enabled: activeTab === 'inventory'
+    enabled: activeTab === 'inventory' || activeTab === 'overview'
   })
+
+  // Test Reloadly connection
+  const { data: reloadlyStatus } = useQuery({
+    queryKey: ['reloadly-status'],
+    queryFn: async () => {
+      const token = localStorage.getItem('admin_auth_token')
+      const res = await fetch('/api/admin/gift-cards/sync', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await res.json()
+      return data
+    }
+  })
+
+  // Fetch settings
+  const { data: settingsResponse, isLoading: loadingSettings } = useQuery({
+    queryKey: ['gift-card-settings'],
+    queryFn: async () => {
+      const token = localStorage.getItem('admin_auth_token')
+      const res = await fetch('/api/admin/gift-cards/settings', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+      return data.settings
+    },
+    enabled: activeTab === 'settings'
+  })
+
+  // Update settings data when fetched
+  const settingsLoaded = useRef(false)
+  if (settingsResponse && !settingsLoaded.current) {
+    settingsLoaded.current = true
+    setSettingsData({
+      reloadlyEnabled: settingsResponse.reloadlyEnabled,
+      reloadlyClientId: settingsResponse.reloadlyClientId,
+      reloadlyClientSecret: settingsResponse.reloadlyClientSecret,
+      reloadlySandbox: settingsResponse.reloadlySandbox
+    })
+  }
 
   // Create/update gift card mutation
   const saveMutation = useMutation({
@@ -179,7 +230,6 @@ export default function AdminGiftCardsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-gift-cards'] })
       queryClient.invalidateQueries({ queryKey: ['admin-gift-cards-inventory'] })
-      setShowImportModal(false)
       setImportData('')
       setSelectedGiftCard('')
       alert(`Import complete: ${data.successCount} imported, ${data.failureCount} failed`)
@@ -207,10 +257,41 @@ export default function AdminGiftCardsPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-gift-cards'] })
-      alert(`Sync complete: ${data.synced} new, ${data.updated} updated`)
+      queryClient.invalidateQueries({ queryKey: ['reloadly-status'] })
+      alert(`Sync complete: ${data.synced} new products, ${data.updated} updated`)
     },
     onError: (error: any) => {
       alert(`Sync failed: ${error.message}`)
+    }
+  })
+
+  // Save settings mutation
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (data: typeof settingsData) => {
+      const token = localStorage.getItem('admin_auth_token')
+      const res = await fetch('/api/admin/gift-cards/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      return result
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['gift-card-settings'] })
+      queryClient.invalidateQueries({ queryKey: ['reloadly-status'] })
+      settingsLoaded.current = false
+      setSettingsSaved(true)
+      setSettingsError('')
+      setTimeout(() => setSettingsSaved(false), 3000)
+    },
+    onError: (error: any) => {
+      setSettingsError(error.message)
+      setSettingsSaved(false)
     }
   })
 
@@ -290,7 +371,6 @@ export default function AdminGiftCardsPage() {
       return
     }
 
-    // Parse CSV: denomination,code,pin,cost_price,expires_at
     const lines = importData.trim().split('\n')
     const codes = []
 
@@ -327,263 +407,387 @@ export default function AdminGiftCardsPage() {
     reader.readAsText(file)
   }
 
+  const getStatusBadge = (isActive: boolean) => {
+    return isActive
+      ? <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 border border-green-500/20">Active</span>
+      : <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 border border-red-500/20">Inactive</span>
+  }
+
   const giftCards: GiftCard[] = giftCardsData?.giftCards || []
   const stats = giftCardsData?.stats
 
+  // Calculate totals from inventory
+  const totalAvailable = inventoryStats?.reduce((sum, s) => sum + s.available, 0) || 0
+  const totalSold = inventoryStats?.reduce((sum, s) => sum + s.sold, 0) || 0
+  const totalReserved = inventoryStats?.reduce((sum, s) => sum + s.reserved, 0) || 0
+
   return (
     <AdminLayout>
-      <h1 className="text-2xl font-bold text-white mb-6">Gift Cards Management</h1>
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-dark-800 rounded-lg p-4 border border-dark-700">
-            <div className="text-gray-400 text-sm">Total Products</div>
-            <div className="text-2xl font-bold text-white">{stats.totalProducts}</div>
+      <div className="p-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-1">Gift Cards</h1>
+            <p className="text-slate-400">Manage gift card products and inventory</p>
           </div>
-          <div className="bg-dark-800 rounded-lg p-4 border border-dark-700">
-            <div className="text-gray-400 text-sm">Active</div>
-            <div className="text-2xl font-bold text-green-400">{stats.activeProducts}</div>
-          </div>
-          <div className="bg-dark-800 rounded-lg p-4 border border-dark-700">
-            <div className="text-gray-400 text-sm">Total Codes</div>
-            <div className="text-2xl font-bold text-white">{stats.totalCodes}</div>
-          </div>
-          <div className="bg-dark-800 rounded-lg p-4 border border-dark-700">
-            <div className="text-gray-400 text-sm">Available</div>
-            <div className="text-2xl font-bold text-blue-400">{stats.availableCodes}</div>
-          </div>
-          <div className="bg-dark-800 rounded-lg p-4 border border-dark-700">
-            <div className="text-gray-400 text-sm">Sold</div>
-            <div className="text-2xl font-bold text-purple-400">{stats.soldCodes}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex items-center gap-4 mb-6 border-b border-dark-700">
-        <button
-          onClick={() => setActiveTab('products')}
-          className={`px-4 py-2 font-medium border-b-2 -mb-px transition-colors ${
-            activeTab === 'products'
-              ? 'border-primary-500 text-primary-400'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          Products
-        </button>
-        <button
-          onClick={() => setActiveTab('inventory')}
-          className={`px-4 py-2 font-medium border-b-2 -mb-px transition-colors ${
-            activeTab === 'inventory'
-              ? 'border-primary-500 text-primary-400'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          Inventory
-        </button>
-        <button
-          onClick={() => setActiveTab('import')}
-          className={`px-4 py-2 font-medium border-b-2 -mb-px transition-colors ${
-            activeTab === 'import'
-              ? 'border-primary-500 text-primary-400'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          Import Codes
-        </button>
-
-        <div className="ml-auto flex gap-2">
-          <button
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg flex items-center gap-2"
-          >
-            <Icon name="refresh-cw" className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-            Sync Reloadly
-          </button>
-          <button
-            onClick={() => { resetForm(); setEditingCard(null); setShowAddModal(true) }}
-            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg flex items-center gap-2"
-          >
-            <Icon name="plus" className="w-4 h-4" />
-            Add Gift Card
-          </button>
-        </div>
-      </div>
-
-      {/* Products Tab */}
-      {activeTab === 'products' && (
-        <div className="bg-dark-800 rounded-lg border border-dark-700 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-dark-900">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Brand</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Category</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Denominations</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Stock</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Provider</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Status</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-400">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-dark-700">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                    Loading...
-                  </td>
-                </tr>
-              ) : giftCards.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                    No gift cards found. Add one or sync from Reloadly.
-                  </td>
-                </tr>
-              ) : (
-                giftCards.map((card) => (
-                  <tr key={card.id} className="hover:bg-dark-700/50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {card.imageUrl && (
-                          <img src={card.imageUrl} alt={card.brand} className="w-10 h-10 rounded object-cover" />
-                        )}
-                        <div>
-                          <div className="font-medium text-white">{card.brand}</div>
-                          <div className="text-sm text-gray-400">{card.slug}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-300 capitalize">{card.category}</td>
-                    <td className="px-4 py-3 text-gray-300">
-                      {card.denominations.slice(0, 3).map(d => `$${d}`).join(', ')}
-                      {card.denominations.length > 3 && ` +${card.denominations.length - 3}`}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-400">{card.inventory.available}</span>
-                        <span className="text-gray-500">/</span>
-                        <span className="text-purple-400">{card.inventory.sold}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {card.provider ? (
-                        <span className="px-2 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400 border border-blue-500/20">
-                          {card.provider}
-                        </span>
-                      ) : (
-                        <span className="text-gray-500">Bulk only</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => toggleActiveMutation.mutate({ id: card.id, isActive: !card.isActive })}
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          card.isActive
-                            ? 'bg-green-900/30 text-green-400 border border-green-500/20'
-                            : 'bg-red-900/30 text-red-400 border border-red-500/20'
-                        }`}
-                      >
-                        {card.isActive ? 'Active' : 'Inactive'}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleEdit(card)}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-dark-600 rounded"
-                      >
-                        <Icon name="edit" className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Inventory Tab */}
-      {activeTab === 'inventory' && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <select
-              value={selectedGiftCard}
-              onChange={(e) => setSelectedGiftCard(e.target.value)}
-              className="px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
+          <div className="flex gap-3">
+            <button
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              <option value="">All Gift Cards</option>
-              {giftCards.map(card => (
-                <option key={card.id} value={card.id}>{card.brand}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="bg-dark-800 rounded-lg border border-dark-700 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-dark-900">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Brand</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Denomination</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Available</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Reserved</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Sold</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Expired</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-dark-700">
-                {!inventoryStats || inventoryStats.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                      No inventory data. Import codes to see stats.
-                    </td>
-                  </tr>
-                ) : (
-                  inventoryStats.map((stat, i) => (
-                    <tr key={i} className="hover:bg-dark-700/50">
-                      <td className="px-4 py-3 text-white">{stat.brand}</td>
-                      <td className="px-4 py-3 text-gray-300">${stat.denomination}</td>
-                      <td className="px-4 py-3 text-green-400">{stat.available}</td>
-                      <td className="px-4 py-3 text-yellow-400">{stat.reserved}</td>
-                      <td className="px-4 py-3 text-purple-400">{stat.sold}</td>
-                      <td className="px-4 py-3 text-red-400">{stat.expired}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+              <Icon name="refresh-cw" size={18} className={syncMutation.isPending ? 'animate-spin' : ''} />
+              Sync Reloadly
+            </button>
+            <button
+              onClick={() => { resetForm(); setEditingCard(null); setShowAddModal(true) }}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+            >
+              <Icon name="plus" size={18} />
+              Add Gift Card
+            </button>
           </div>
         </div>
-      )}
 
-      {/* Import Tab */}
-      {activeTab === 'import' && (
-        <div className="max-w-2xl space-y-6">
-          <div className="bg-dark-800 rounded-lg border border-dark-700 p-6">
-            <h3 className="text-lg font-medium text-white mb-4">Import Gift Card Codes</h3>
+        {/* Reloadly Status */}
+        {reloadlyStatus && (
+          <div className={`mb-4 p-3 rounded-lg border ${
+            reloadlyStatus.success
+              ? 'bg-green-900/20 border-green-500/20 text-green-400'
+              : 'bg-yellow-900/20 border-yellow-500/20 text-yellow-400'
+          }`}>
+            <div className="flex items-center gap-2 text-sm">
+              <Icon name={reloadlyStatus.success ? 'check-circle' : 'alert'} size={16} />
+              {reloadlyStatus.success
+                ? `Reloadly connected (${reloadlyStatus.mode} mode)`
+                : `Reloadly: ${reloadlyStatus.error || 'Not configured'}`
+              }
+            </div>
+          </div>
+        )}
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Select Gift Card
-                </label>
-                <select
-                  value={selectedGiftCard}
-                  onChange={(e) => setSelectedGiftCard(e.target.value)}
-                  className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
-                >
-                  <option value="">Select a gift card...</option>
-                  {giftCards.map(card => (
-                    <option key={card.id} value={card.id}>{card.brand}</option>
-                  ))}
-                </select>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          {[
+            { id: 'overview', label: 'Overview', icon: 'chart' },
+            { id: 'products', label: 'Products', icon: 'box' },
+            { id: 'inventory', label: 'Inventory', icon: 'list' },
+            { id: 'import', label: 'Import', icon: 'upload' },
+            { id: 'settings', label: 'Settings', icon: 'settings' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-primary text-black'
+                  : 'bg-surface-dark text-slate-400 hover:text-white'
+              }`}
+            >
+              <Icon name={tab.icon} size={16} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="box" size={16} />
+                  Total Products
+                </div>
+                <p className="text-2xl font-bold text-white">{formatNumber(stats?.totalProducts || 0)}</p>
               </div>
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="check-circle" size={16} />
+                  Active
+                </div>
+                <p className="text-2xl font-bold text-green-400">{formatNumber(stats?.activeProducts || 0)}</p>
+              </div>
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="package" size={16} />
+                  Available Codes
+                </div>
+                <p className="text-2xl font-bold text-blue-400">{formatNumber(totalAvailable)}</p>
+              </div>
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="clock" size={16} />
+                  Reserved
+                </div>
+                <p className="text-2xl font-bold text-yellow-400">{formatNumber(totalReserved)}</p>
+              </div>
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="shopping-cart" size={16} />
+                  Sold
+                </div>
+                <p className="text-2xl font-bold text-purple-400">{formatNumber(totalSold)}</p>
+              </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Upload CSV or paste data
-                </label>
-                <div className="flex gap-2 mb-2">
+            {/* Low Stock Alert */}
+            {giftCards.filter(c => c.inventory.available === 0 && !c.provider).length > 0 && (
+              <div className="bg-red-900/20 border border-red-500/20 rounded-xl p-4 mb-6">
+                <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2">
+                  <Icon name="alert" size={18} />
+                  Out of Stock (No API Fallback)
+                </h3>
+                <div className="space-y-2">
+                  {giftCards.filter(c => c.inventory.available === 0 && !c.provider).map(card => (
+                    <div key={card.id} className="flex items-center justify-between text-sm">
+                      <span className="text-white">{card.brand}</span>
+                      <span className="text-red-400 font-medium">0 codes available</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Stock by Product */}
+            <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-border-dark">
+                <h3 className="text-white font-bold">Stock by Product</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border-dark text-left">
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Product</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Category</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Provider</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Available</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Reserved</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Sold</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
+                      </tr>
+                    ) : giftCards.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                          No gift cards found. Add one or sync from Reloadly.
+                        </td>
+                      </tr>
+                    ) : (
+                      giftCards.map(card => (
+                        <tr key={card.id} className="border-b border-border-dark hover:bg-white/5">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              {card.imageUrl && (
+                                <img src={card.imageUrl} alt={card.brand} className="w-8 h-8 rounded object-cover" />
+                              )}
+                              <span className="text-white font-medium">{card.brand}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 capitalize">{card.category}</td>
+                          <td className="px-4 py-3">
+                            {card.provider ? (
+                              <span className="px-2 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400 border border-blue-500/20">
+                                {card.provider}
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">Bulk only</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`font-medium ${card.inventory.available === 0 && !card.provider ? 'text-red-400' : 'text-green-400'}`}>
+                              {card.inventory.available}
+                              {card.provider && <span className="text-slate-500 text-xs ml-1">+ API</span>}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center text-yellow-400">{card.inventory.reserved}</td>
+                          <td className="px-4 py-3 text-center text-purple-400">{card.inventory.sold}</td>
+                          <td className="px-4 py-3">{getStatusBadge(card.isActive)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Products Tab */}
+        {activeTab === 'products' && (
+          <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border-dark text-left">
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Brand</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Category</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Denominations</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Discount</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Provider</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
+                    </tr>
+                  ) : giftCards.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                        No gift cards found.
+                      </td>
+                    </tr>
+                  ) : (
+                    giftCards.map(card => (
+                      <tr key={card.id} className="border-b border-border-dark hover:bg-white/5">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            {card.imageUrl && (
+                              <img src={card.imageUrl} alt={card.brand} className="w-10 h-10 rounded object-cover" />
+                            )}
+                            <div>
+                              <p className="text-white font-medium">{card.brand}</p>
+                              <p className="text-sm text-slate-500">{card.slug}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 capitalize">{card.category}</td>
+                        <td className="px-4 py-3 text-slate-400">
+                          {card.denominations.slice(0, 3).map(d => `$${d}`).join(', ')}
+                          {card.denominations.length > 3 && ` +${card.denominations.length - 3}`}
+                        </td>
+                        <td className="px-4 py-3 text-slate-400">
+                          {card.discountPercent > 0 ? `${card.discountPercent}%` : '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          {card.provider ? (
+                            <span className="px-2 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400 border border-blue-500/20">
+                              {card.provider}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => toggleActiveMutation.mutate({ id: card.id, isActive: !card.isActive })}
+                            disabled={toggleActiveMutation.isPending}
+                          >
+                            {getStatusBadge(card.isActive)}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleEdit(card)}
+                            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                          >
+                            <Icon name="edit" size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Inventory Tab */}
+        {activeTab === 'inventory' && (
+          <>
+            <div className="flex flex-wrap gap-3 mb-4">
+              <select
+                value={selectedGiftCard}
+                onChange={(e) => setSelectedGiftCard(e.target.value)}
+                className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
+              >
+                <option value="">All Gift Cards</option>
+                {giftCards.map(card => (
+                  <option key={card.id} value={card.id}>{card.brand}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border-dark text-left">
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Brand</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Denomination</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Available</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Reserved</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Sold</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Expired</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingInventory ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-slate-400">Loading...</td>
+                      </tr>
+                    ) : !inventoryStats || inventoryStats.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                          No inventory data. Import codes to see stats.
+                        </td>
+                      </tr>
+                    ) : (
+                      inventoryStats.map((stat, i) => (
+                        <tr key={i} className="border-b border-border-dark hover:bg-white/5">
+                          <td className="px-4 py-3 text-white font-medium">{stat.brand}</td>
+                          <td className="px-4 py-3 text-slate-400">${stat.denomination}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`font-medium ${stat.available === 0 ? 'text-red-400' : 'text-green-400'}`}>
+                              {stat.available}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center text-yellow-400">{stat.reserved}</td>
+                          <td className="px-4 py-3 text-center text-purple-400">{stat.sold}</td>
+                          <td className="px-4 py-3 text-center text-red-400">{stat.expired}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Import Tab */}
+        {activeTab === 'import' && (
+          <div className="max-w-2xl">
+            <div className="bg-[#121212] border border-border-dark rounded-xl p-6">
+              <h3 className="text-lg font-bold text-white mb-4">Import Gift Card Codes</h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Select Gift Card</label>
+                  <select
+                    value={selectedGiftCard}
+                    onChange={(e) => setSelectedGiftCard(e.target.value)}
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                  >
+                    <option value="">Select a gift card...</option>
+                    {giftCards.map(card => (
+                      <option key={card.id} value={card.id}>{card.brand}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Upload CSV File</label>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -593,221 +797,358 @@ export default function AdminGiftCardsPage() {
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 bg-dark-600 hover:bg-dark-500 text-white rounded-lg flex items-center gap-2"
+                    className="w-full px-4 py-3 border-2 border-dashed border-border-dark rounded-lg text-slate-400 hover:text-white hover:border-primary transition-colors"
                   >
-                    <Icon name="upload" className="w-4 h-4" />
-                    Upload CSV
+                    <Icon name="upload" size={24} className="mx-auto mb-2" />
+                    Click to upload CSV file
                   </button>
                 </div>
-                <textarea
-                  value={importData}
-                  onChange={(e) => setImportData(e.target.value)}
-                  placeholder="denomination,code,pin,costPrice,expiresAt&#10;50,XXXX-XXXX-XXXX,,45.00,2027-12-31&#10;25,YYYY-YYYY-YYYY,1234,22.50,"
-                  className="w-full h-48 px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-gray-500 font-mono text-sm"
-                />
-              </div>
 
-              {importError && (
-                <div className="p-3 bg-red-900/30 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                  {importError}
-                </div>
-              )}
-
-              <button
-                onClick={handleImport}
-                disabled={importMutation.isPending || !selectedGiftCard || !importData.trim()}
-                className="w-full px-4 py-3 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg font-medium"
-              >
-                {importMutation.isPending ? 'Importing...' : 'Import Codes'}
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-dark-800 rounded-lg border border-dark-700 p-6">
-            <h3 className="text-lg font-medium text-white mb-2">CSV Format</h3>
-            <p className="text-gray-400 text-sm mb-4">
-              Each line should contain: denomination, code, pin (optional), cost_price (optional), expires_at (optional)
-            </p>
-            <pre className="bg-dark-900 p-4 rounded-lg text-sm text-gray-300 overflow-x-auto">
-{`50,XXXX-XXXX-XXXX-XXXX,,45.00,2027-12-31
-25,ABCD-EFGH-IJKL-MNOP,1234,22.50,
-100,STEAM-CODE-HERE,,90.00,`}
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {/* Add/Edit Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-800 rounded-lg border border-dark-700 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-dark-700">
-              <h2 className="text-lg font-medium text-white">
-                {editingCard ? 'Edit Gift Card' : 'Add Gift Card'}
-              </h2>
-              <button
-                onClick={() => { setShowAddModal(false); setEditingCard(null); resetForm() }}
-                className="p-2 text-gray-400 hover:text-white hover:bg-dark-600 rounded"
-              >
-                <Icon name="x" className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Brand *</label>
-                  <input
-                    type="text"
-                    value={formData.brand}
-                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
-                    placeholder="Steam"
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Or paste data manually (one per line)
+                  </label>
+                  <textarea
+                    value={importData}
+                    onChange={(e) => setImportData(e.target.value)}
+                    placeholder="denomination,code,pin,costPrice,expiresAt&#10;50,XXXX-XXXX-XXXX,,45.00,2027-12-31&#10;25,YYYY-YYYY-YYYY,1234,22.50,"
+                    rows={8}
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white font-mono text-sm placeholder:text-slate-600"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Slug *</label>
-                  <input
-                    type="text"
-                    value={formData.slug}
-                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                    className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
-                    placeholder="steam"
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Category *</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
+                <p className="text-xs text-slate-500">
+                  Format: denomination,code,pin,costPrice,expiresAt<br />
+                  Required: denomination, code. Optional: pin, costPrice, expiresAt
+                </p>
+
+                {importError && (
+                  <div className="p-3 bg-red-900/30 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                    {importError}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleImport}
+                  disabled={importMutation.isPending || !selectedGiftCard || !importData.trim()}
+                  className="w-full px-4 py-3 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
                 >
-                  {GIFT_CARD_CATEGORIES.map(cat => (
-                    <option key={cat} value={cat} className="capitalize">{cat}</option>
-                  ))}
-                </select>
+                  {importMutation.isPending ? 'Importing...' : 'Import Codes'}
+                </button>
               </div>
+            </div>
+          </div>
+        )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white h-20"
-                  placeholder="Gift card description..."
-                />
-              </div>
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div className="max-w-2xl">
+            <div className="bg-[#121212] border border-border-dark rounded-xl p-6">
+              <h3 className="text-lg font-bold text-white mb-2">Reloadly API Configuration</h3>
+              <p className="text-sm text-slate-400 mb-6">
+                Configure Reloadly API credentials for automatic gift card provisioning.
+                Get your credentials from{' '}
+                <a
+                  href="https://www.reloadly.com/developers"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Reloadly Developer Portal
+                </a>
+              </p>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Image URL</label>
-                <input
-                  type="text"
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
-                  placeholder="https://..."
-                />
-              </div>
+              {loadingSettings ? (
+                <div className="text-center text-slate-400 py-8">Loading settings...</div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-surface-dark rounded-lg border border-border-dark">
+                    <label className="flex items-center gap-3 cursor-pointer flex-1">
+                      <input
+                        type="checkbox"
+                        checked={settingsData.reloadlyEnabled}
+                        onChange={(e) => setSettingsData({ ...settingsData, reloadlyEnabled: e.target.checked })}
+                        className="w-5 h-5 rounded border-border-dark bg-surface-dark text-primary"
+                      />
+                      <div>
+                        <span className="text-white font-medium">Enable Reloadly Integration</span>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          When enabled, gift cards will be purchased from Reloadly API when bulk inventory is unavailable
+                        </p>
+                      </div>
+                    </label>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Denominations (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={formData.denominations}
-                  onChange={(e) => setFormData({ ...formData, denominations: e.target.value })}
-                  className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
-                  placeholder="25, 50, 100"
-                />
-              </div>
+                  <div className="flex items-center gap-3 p-4 bg-surface-dark rounded-lg border border-border-dark">
+                    <label className="flex items-center gap-3 cursor-pointer flex-1">
+                      <input
+                        type="checkbox"
+                        checked={settingsData.reloadlySandbox}
+                        onChange={(e) => setSettingsData({ ...settingsData, reloadlySandbox: e.target.checked })}
+                        className="w-5 h-5 rounded border-border-dark bg-surface-dark text-primary"
+                      />
+                      <div>
+                        <span className="text-white font-medium">Sandbox Mode</span>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Use sandbox API for testing (no real charges or cards)
+                        </p>
+                      </div>
+                    </label>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Discount %</label>
-                  <input
-                    type="number"
-                    value={formData.discountPercent}
-                    onChange={(e) => setFormData({ ...formData, discountPercent: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Provider</label>
-                  <select
-                    value={formData.provider}
-                    onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                    className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
-                  >
-                    <option value="">None (Bulk only)</option>
-                    <option value="reloadly">Reloadly</option>
-                  </select>
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Client ID</label>
+                    <input
+                      type="text"
+                      value={settingsData.reloadlyClientId}
+                      onChange={(e) => setSettingsData({ ...settingsData, reloadlyClientId: e.target.value })}
+                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white font-mono"
+                      placeholder="Enter your Reloadly Client ID"
+                    />
+                  </div>
 
-              {formData.provider && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Provider Product ID</label>
-                  <input
-                    type="text"
-                    value={formData.providerProductId}
-                    onChange={(e) => setFormData({ ...formData, providerProductId: e.target.value })}
-                    className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white"
-                    placeholder="12345"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Client Secret
+                      {settingsResponse?.hasSecret && (
+                        <span className="ml-2 text-xs text-green-400">(saved)</span>
+                      )}
+                    </label>
+                    <input
+                      type="password"
+                      value={settingsData.reloadlyClientSecret}
+                      onChange={(e) => setSettingsData({ ...settingsData, reloadlyClientSecret: e.target.value })}
+                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white font-mono"
+                      placeholder={settingsResponse?.hasSecret ? 'Enter new secret to update' : 'Enter your Reloadly Client Secret'}
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Leave blank to keep the existing secret
+                    </p>
+                  </div>
+
+                  {settingsError && (
+                    <div className="p-3 bg-red-900/30 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                      {settingsError}
+                    </div>
+                  )}
+
+                  {settingsSaved && (
+                    <div className="p-3 bg-green-900/30 border border-green-500/20 rounded-lg text-green-400 text-sm flex items-center gap-2">
+                      <Icon name="check-circle" size={16} />
+                      Settings saved successfully
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => saveSettingsMutation.mutate(settingsData)}
+                      disabled={saveSettingsMutation.isPending}
+                      className="flex-1 px-4 py-3 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
+                    >
+                      {saveSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
+                    </button>
+                  </div>
+
+                  {/* Connection Status */}
+                  <div className="mt-6 pt-6 border-t border-border-dark">
+                    <h4 className="text-sm font-medium text-slate-300 mb-3">Connection Status</h4>
+                    <div className={`p-4 rounded-lg border ${
+                      reloadlyStatus?.success
+                        ? 'bg-green-900/20 border-green-500/20'
+                        : 'bg-yellow-900/20 border-yellow-500/20'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <Icon
+                          name={reloadlyStatus?.success ? 'check-circle' : 'alert'}
+                          size={18}
+                          className={reloadlyStatus?.success ? 'text-green-400' : 'text-yellow-400'}
+                        />
+                        <span className={reloadlyStatus?.success ? 'text-green-400' : 'text-yellow-400'}>
+                          {reloadlyStatus?.success
+                            ? `Connected (${reloadlyStatus.mode} mode)`
+                            : reloadlyStatus?.error || 'Not configured'
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
 
-              <div className="flex items-center gap-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="w-4 h-4 rounded border-dark-600 bg-dark-700 text-primary-500"
-                  />
-                  <span className="text-gray-300">Active</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isFeatured}
-                    onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
-                    className="w-4 h-4 rounded border-dark-600 bg-dark-700 text-primary-500"
-                  />
-                  <span className="text-gray-300">Featured</span>
-                </label>
-              </div>
-
-              {formError && (
-                <div className="p-3 bg-red-900/30 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                  {formError}
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-4">
+        {/* Add/Edit Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => { setShowAddModal(false); setEditingCard(null); resetForm() }} />
+            <div className="relative bg-[#121212] border border-border-dark rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-border-dark">
+                <h2 className="text-xl font-bold text-white">
+                  {editingCard ? 'Edit Gift Card' : 'Add Gift Card'}
+                </h2>
                 <button
                   onClick={() => { setShowAddModal(false); setEditingCard(null); resetForm() }}
-                  className="flex-1 px-4 py-2 bg-dark-600 hover:bg-dark-500 text-white rounded-lg"
+                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <Icon name="x" size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Brand *</label>
+                    <input
+                      type="text"
+                      value={formData.brand}
+                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                      placeholder="Steam"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Slug *</label>
+                    <input
+                      type="text"
+                      value={formData.slug}
+                      onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                      placeholder="steam"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Category *</label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                  >
+                    {GIFT_CARD_CATEGORIES.map(cat => (
+                      <option key={cat} value={cat} className="capitalize">{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white h-20"
+                    placeholder="Gift card description..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Image URL</label>
+                  <input
+                    type="text"
+                    value={formData.imageUrl}
+                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Denominations (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={formData.denominations}
+                    onChange={(e) => setFormData({ ...formData, denominations: e.target.value })}
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                    placeholder="25, 50, 100"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Discount %</label>
+                    <input
+                      type="number"
+                      value={formData.discountPercent}
+                      onChange={(e) => setFormData({ ...formData, discountPercent: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">API Provider</label>
+                    <select
+                      value={formData.provider}
+                      onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                    >
+                      <option value="">None (Bulk only)</option>
+                      <option value="reloadly">Reloadly</option>
+                    </select>
+                  </div>
+                </div>
+
+                {formData.provider && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Provider Product ID</label>
+                    <input
+                      type="text"
+                      value={formData.providerProductId}
+                      onChange={(e) => setFormData({ ...formData, providerProductId: e.target.value })}
+                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                      placeholder="12345"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isActive}
+                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                      className="w-4 h-4 rounded border-border-dark bg-surface-dark text-primary"
+                    />
+                    <span className="text-slate-300">Active</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isFeatured}
+                      onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
+                      className="w-4 h-4 rounded border-border-dark bg-surface-dark text-primary"
+                    />
+                    <span className="text-slate-300">Featured</span>
+                  </label>
+                </div>
+
+                {formError && (
+                  <div className="p-3 bg-red-900/30 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                    {formError}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-border-dark flex gap-3 justify-end">
+                <button
+                  onClick={() => { setShowAddModal(false); setEditingCard(null); resetForm() }}
+                  className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-[#262626] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saveMutation.isPending}
-                  className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg"
+                  className="px-6 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
                 >
                   {saveMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </AdminLayout>
   )
 }
