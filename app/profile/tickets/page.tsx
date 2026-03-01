@@ -125,6 +125,7 @@ export default function TicketsPage() {
         description: newTicket.description,
         category: mapCategory(newTicket.category),
         priority: newTicket.priority.toUpperCase() as any,
+        ...(ticketAbout === 'product' && selectedProductId ? { productId: selectedProductId } : {}),
       })
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ['my-tickets'] })
