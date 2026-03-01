@@ -508,6 +508,29 @@ function LicenseDetailModal({ licenseId, onClose }: { licenseId: string; onClose
               </div>
             </div>
 
+            {/* Buyer */}
+            <div className="bg-[#111] rounded-lg p-4">
+              <h4 className="text-white text-sm font-medium mb-3">Buyer</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Name</p>
+                  <p className="text-white text-sm">{license.user?.name || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Email</p>
+                  {license.user?.email ? (
+                    <MaskedField maskedValue={license.user.email} />
+                  ) : (
+                    <p className="text-gray-400 text-sm">—</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Order ID</p>
+                  <p className="text-white text-sm font-mono text-xs">{license.orderId || '—'}</p>
+                </div>
+              </div>
+            </div>
+
             {/* Support */}
             <div className="bg-[#111] rounded-lg p-4">
               <h4 className="text-white text-sm font-medium mb-2">Support Status</h4>
