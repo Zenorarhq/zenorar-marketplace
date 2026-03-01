@@ -1,4 +1,47 @@
-# Todo — Library: One Card Per License
+# Todo — Pro License Price Bug
+
+## Root Cause
+`cart.service.ts → getOrCreateCart` always recalculates the cart item price from
+`item.product.price` (base price), ignoring the `item.price` field that was correctly
+stored in the DB when the buyer chose "Pro License ($149.99)".
+
+This wrong price flows into `cart.subtotal` → `createFromCart` → the order total.
+
+## Investigation Summary
+- Frontend + cart context: correctly sends `{ license: 'pro', price: 149.99 }` to the API.
+- `cartService.addItem`: correctly stores that price in `cart_items.price`.
+- `cartService.getOrCreateCart` **(BUG)**: ignores stored `item.price`, always uses
+  `item.variant?.price || item.product.price`.
+
+## Fix
+One-line change in `zenorar-api/src/services/cart.service.ts → getOrCreateCart`:
+```
+// Before (always base price):
+const price = item.variant?.price || item.product.price
+
+// After (stored price first, fallback to base):
+const price = item.price != null ? Number(item.price) : Number(item.variant?.price || item.product.price)
+```
+
+## Tasks
+
+### 1. Fix `getOrCreateCart` in `cart.service.ts`
+- [x] Use stored `item.price` when non-null; fall back to product/variant price otherwise
+
+---
+
+## Review
+**`zenorar-api/src/services/cart.service.ts`** — Changed one line in `getOrCreateCart`:
+```
+const price = item.price != null ? Number(item.price) : Number(item.variant?.price || item.product.price)
+```
+Now the stored license-specific price (Pro $149.99, Extended, etc.) is used when present.
+All downstream consumers (cart display, checkout total, order creation) automatically get the correct price.
+
+---
+---
+
+# Previous: Library: One Card Per License
 
 ## Root Cause
 `GET /api/library` (Next.js route) uses `SELECT DISTINCT … GROUP BY p.id` on orders+products.
