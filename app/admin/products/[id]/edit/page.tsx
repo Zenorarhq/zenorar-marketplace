@@ -230,8 +230,12 @@ export default function EditProductPage() {
   const handleDeleteFile = async (fileId: string) => {
     if (!confirm('Permanently delete this file from storage?')) return
     setDeletingFileId(fileId)
-    await downloadsApi.adminDeleteFile(productId, fileId)
-    setProductFiles(prev => prev.filter(f => f.id !== fileId))
+    const res = await downloadsApi.adminDeleteFile(productId, fileId)
+    if (res.success) {
+      setProductFiles(prev => prev.filter(f => f.id !== fileId))
+    } else {
+      alert(res.error || 'Failed to delete file')
+    }
     setDeletingFileId(null)
   }
 
