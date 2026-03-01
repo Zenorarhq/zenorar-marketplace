@@ -70,7 +70,10 @@ export default function TicketsPage() {
     queryKey: ['my-library-products'],
     queryFn: async () => {
       const result = await libraryApi.getLibrary()
-      if (result.success && result.data) return result.data
+      if (result.success && result.data)
+        // Only show actual products (scripts/tools/esims/api) — not gift cards or virtual numbers
+        // whose IDs are not product IDs and would fail the FK constraint on ticket creation
+        return result.data.filter((p: any) => p.category !== 'virtual-numbers' && p.category !== 'gift-cards')
       return []
     },
     enabled: showNewTicketModal,
