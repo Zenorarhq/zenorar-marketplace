@@ -64,23 +64,28 @@ export async function POST(
     const file = fileResult.rows[0]
 
     // Update user_product_access table (track download)
-    await query(
-      `
-      INSERT INTO user_product_access (user_id, product_id, order_id, access_type, downloads_count, last_accessed)
-      SELECT $1, $2, o.id, 'download', 1, CURRENT_TIMESTAMP
-      FROM orders o
-      JOIN order_items oi ON o.id = oi."orderId"
-      WHERE o."userId" = $1
-        AND oi."productId" = $2
-        AND o."paymentStatus" = 'PAID'
-      LIMIT 1
-      ON CONFLICT (user_id, product_id, access_type)
-      DO UPDATE SET
-        downloads_count = user_product_access.downloads_count + 1,
-        last_accessed = CURRENT_TIMESTAMP
-      `,
+    const existing = await query(
+      `SELECT id FROM user_product_access WHERE user_id = $1 AND product_id = $2 AND access_type = 'download' LIMIT 1`,
       [userId, productId]
     )
+
+    if (existing.rows.length > 0) {
+      await query(
+        `UPDATE user_product_access SET downloads_count = COALESCE(downloads_count, 0) + 1, last_accessed = CURRENT_TIMESTAMP WHERE id = $1`,
+        [existing.rows[0].id]
+      )
+    } else {
+      const orderRow = await query(
+        `SELECT o.id FROM orders o JOIN order_items oi ON o.id = oi."orderId" WHERE o."userId" = $1 AND oi."productId" = $2 AND o."paymentStatus" = 'PAID' LIMIT 1`,
+        [userId, productId]
+      )
+      if (orderRow.rows.length > 0) {
+        await query(
+          `INSERT INTO user_product_access (user_id, product_id, order_id, access_type, downloads_count, last_accessed) VALUES ($1, $2, $3, 'download', 1, CURRENT_TIMESTAMP)`,
+          [userId, productId, orderRow.rows[0].id]
+        )
+      }
+    }
 
     // Log download in history
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'

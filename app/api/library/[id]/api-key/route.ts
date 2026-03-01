@@ -169,20 +169,22 @@ export async function POST(
     const newApiKey = `znr_live_${randomPart}`
 
     // Update existing key or create new one
-    await query(
-      `
-      INSERT INTO user_product_access (
-        user_id, product_id, order_id, access_type, access_key, is_active, last_accessed
-      ) VALUES ($1, $2, $3, 'api_key', $4, true, CURRENT_TIMESTAMP)
-      ON CONFLICT (user_id, product_id)
-      WHERE access_type = 'api_key'
-      DO UPDATE SET
-        access_key = $4,
-        updated_at = CURRENT_TIMESTAMP,
-        last_accessed = CURRENT_TIMESTAMP
-      `,
-      [userId, productId, ownershipCheck.rows[0].order_id, newApiKey]
+    const existingAccess = await query(
+      `SELECT id FROM user_product_access WHERE user_id = $1 AND product_id = $2 AND access_type = 'api_key' LIMIT 1`,
+      [userId, productId]
     )
+
+    if (existingAccess.rows.length > 0) {
+      await query(
+        `UPDATE user_product_access SET access_key = $1, updated_at = CURRENT_TIMESTAMP, last_accessed = CURRENT_TIMESTAMP WHERE id = $2`,
+        [newApiKey, existingAccess.rows[0].id]
+      )
+    } else {
+      await query(
+        `INSERT INTO user_product_access (user_id, product_id, order_id, access_type, access_key, is_active, last_accessed) VALUES ($1, $2, $3, 'api_key', $4, true, CURRENT_TIMESTAMP)`,
+        [userId, productId, ownershipCheck.rows[0].order_id, newApiKey]
+      )
+    }
 
     return NextResponse.json({
       success: true,
