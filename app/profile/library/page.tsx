@@ -342,90 +342,87 @@ export default function LibraryPage() {
                   item.status === 'expired' ? 'opacity-60' : ''
                 }`}
               >
-                <div className="p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center gap-4 sm:gap-6">
-                  {/* Icon */}
-                  <div className="h-16 w-16 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 text-primary">
-                    <Icon name={item.icon} size={32} />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-grow">
-                    <div className="flex flex-wrap items-center gap-3 mb-2">
-                      <h3 className="text-white font-bold text-base sm:text-lg">{item.name}</h3>
-                      {getStatusBadge(item.status)}
+                <div className="p-4 sm:p-6">
+                  {/* Top: icon + info */}
+                  <div className="flex gap-4 mb-4">
+                    <div className="h-14 w-14 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 text-primary">
+                      <Icon name={item.icon} size={28} />
                     </div>
-                    <p className="text-slate-400 text-sm mb-3">{item.description}</p>
-                    <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                      {item.category === 'virtual-numbers' && item.phoneNumberDisplay && (
-                        <span className="flex items-center gap-1 text-primary font-mono">
-                          <Icon name="phone" size={14} />
-                          {item.phoneNumberDisplay}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Icon name="calendar" size={14} />
-                        Purchased: {item.purchaseDate}
-                      </span>
-                      {item.version && (
-                        <span className="flex items-center gap-1">
-                          <Icon name="code" size={14} />
-                          {item.version}
-                        </span>
-                      )}
-                      {item.expiresAt && (
-                        <span className={`flex items-center gap-1 ${item.status === 'expired' ? 'text-red-500' : ''}`}>
-                          <Icon name="clock" size={14} />
-                          {item.status === 'expired' ? 'Expired:' : 'Expires:'} {item.expiresAt}
-                        </span>
-                      )}
-                      {item.downloadCount !== undefined && (
-                        <span className="flex items-center gap-1">
-                          <Icon name="download" size={14} />
-                          {item.downloadCount} downloads
-                        </span>
-                      )}
-                      {item.category === 'virtual-numbers' && item.smsUsed !== undefined && (
-                        <span className="flex items-center gap-1">
-                          <Icon name="message" size={14} />
-                          SMS: {item.smsUsed} / {item.smsIncluded === 0 ? '∞' : item.smsIncluded}
-                        </span>
-                      )}
-                    </div>
-                    {/* License Key display */}
-                    {isScriptOrTool && license && (
-                      <div className="mt-2 flex items-center gap-2 text-xs">
-                        <span className="flex items-center gap-1 text-slate-500">
-                          <Icon name="key" size={13} />
-                          License:
-                        </span>
-                        <span className="font-mono text-slate-300">
-                          {isRevealed ? license.licenseKey : maskLicenseKey(license.licenseKey)}
-                        </span>
-                        <button
-                          onClick={() => toggleRevealKey(item.id)}
-                          className="text-slate-500 hover:text-white transition-colors"
-                          title={isRevealed ? 'Hide key' : 'Reveal key'}
-                        >
-                          <Icon name={isRevealed ? 'visibility-off' : 'eye'} size={14} />
-                        </button>
-                        <button
-                          onClick={() => copyLicenseKey(license.licenseKey, item.id)}
-                          className="text-slate-500 hover:text-white transition-colors"
-                          title="Copy key"
-                        >
-                          <Icon name={copiedKey === item.id ? 'check' : 'copy'} size={14} />
-                        </button>
+                    <div className="flex-grow min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <h3 className="text-white font-bold text-base sm:text-lg truncate">{item.name}</h3>
+                        {getStatusBadge(item.status)}
                       </div>
-                    )}
+                      <p className="text-slate-400 text-sm mb-2">{item.description}</p>
+                      <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                        {item.category === 'virtual-numbers' && item.phoneNumberDisplay && (
+                          <span className="flex items-center gap-1 text-primary font-mono">
+                            <Icon name="phone" size={13} />
+                            {item.phoneNumberDisplay}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Icon name="calendar" size={13} />
+                          Purchased: {item.purchaseDate}
+                        </span>
+                        {item.version && (
+                          <span className="flex items-center gap-1">
+                            <Icon name="code" size={13} />
+                            {item.version}
+                          </span>
+                        )}
+                        {item.expiresAt && (
+                          <span className={`flex items-center gap-1 ${item.status === 'expired' ? 'text-red-500' : ''}`}>
+                            <Icon name="clock" size={13} />
+                            {item.status === 'expired' ? 'Expired:' : 'Expires:'} {item.expiresAt}
+                          </span>
+                        )}
+                        {item.downloadCount !== undefined && (
+                          <span className="flex items-center gap-1">
+                            <Icon name="download" size={13} />
+                            {item.downloadCount} downloads
+                          </span>
+                        )}
+                        {item.category === 'virtual-numbers' && item.smsUsed !== undefined && (
+                          <span className="flex items-center gap-1">
+                            <Icon name="message" size={13} />
+                            SMS: {item.smsUsed} / {item.smsIncluded === 0 ? '∞' : item.smsIncluded}
+                          </span>
+                        )}
+                      </div>
+                      {/* License Key — inline with eye + copy, same size as meta */}
+                      {isScriptOrTool && license && (
+                        <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
+                          <Icon name="key" size={13} />
+                          <span className="font-mono text-slate-300 whitespace-nowrap">
+                            {isRevealed ? license.licenseKey : maskLicenseKey(license.licenseKey)}
+                          </span>
+                          <button
+                            onClick={() => toggleRevealKey(item.id)}
+                            className="text-slate-500 hover:text-white transition-colors"
+                            title={isRevealed ? 'Hide key' : 'Reveal key'}
+                          >
+                            <Icon name={isRevealed ? 'visibility-off' : 'eye'} size={13} />
+                          </button>
+                          <button
+                            onClick={() => copyLicenseKey(license.licenseKey, item.id)}
+                            className="text-slate-500 hover:text-white transition-colors"
+                            title="Copy key"
+                          >
+                            <Icon name={copiedKey === item.id ? 'check' : 'copy'} size={13} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-wrap gap-2 sm:gap-3 flex-shrink-0">
+                  {/* Bottom: action buttons */}
+                  <div className="flex flex-wrap gap-2 pt-4 border-t border-border-dark">
                     {item.status === 'expired' ? (
                       <button
                         onClick={() => handleRenew(item.id, item.name)}
                         disabled={loadingAction === `renew-${item.id}`}
-                        className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {loadingAction === `renew-${item.id}` ? (
                           <>
@@ -434,7 +431,7 @@ export default function LibraryPage() {
                           </>
                         ) : (
                           <>
-                            <Icon name="refresh" size={18} />
+                            <Icon name="refresh" size={16} />
                             Renew
                           </>
                         )}
@@ -445,7 +442,7 @@ export default function LibraryPage() {
                           <button
                             onClick={() => handleDownload(item.id, item.name)}
                             disabled={loadingAction === `download-${item.id}`}
-                            className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {loadingAction === `download-${item.id}` ? (
                               <>
@@ -454,7 +451,7 @@ export default function LibraryPage() {
                               </>
                             ) : (
                               <>
-                                <Icon name="download" size={18} />
+                                <Icon name="download" size={16} />
                                 {item.status === 'update-available' ? 'Update' : 'Download'}
                               </>
                             )}
@@ -463,36 +460,36 @@ export default function LibraryPage() {
                         {(item.category === 'scripts' || item.category === 'tools') && (
                           <button
                             onClick={() => setSnippetModal({ productId: item.id, productName: item.name })}
-                            className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
                           >
-                            <Icon name="code" size={18} />
+                            <Icon name="code" size={16} />
                             Integration Code
                           </button>
                         )}
                         {isScriptOrTool && license && (
                           <button
                             onClick={() => setDomainModal({ licenseId: license.id, licenseKey: license.licenseKey, productName: item.name, registeredDomains: [...license.registeredDomains] })}
-                            className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
                           >
-                            <Icon name="globe" size={18} />
+                            <Icon name="globe" size={16} />
                             Activate Domain
                           </button>
                         )}
                         {item.category === 'esims' && (
                           <button
                             onClick={() => handleViewQR(item.id)}
-                            className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
                           >
-                            <Icon name="qr" size={18} />
+                            <Icon name="qr" size={16} />
                             View Details
                           </button>
                         )}
                         {item.category === 'virtual-numbers' && (
                           <button
                             onClick={() => router.push(`/profile/numbers/${item.id}`)}
-                            className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
                           >
-                            <Icon name="inbox" size={18} />
+                            <Icon name="inbox" size={16} />
                             {item.unreadCount && item.unreadCount > 0 ? (
                               <span className="flex items-center gap-1">
                                 Inbox
@@ -509,7 +506,7 @@ export default function LibraryPage() {
                           <button
                             onClick={() => handleApiKey(item.id, item.name)}
                             disabled={loadingAction === `api-${item.id}`}
-                            className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {loadingAction === `api-${item.id}` ? (
                               <>
@@ -518,18 +515,18 @@ export default function LibraryPage() {
                               </>
                             ) : (
                               <>
-                                <Icon name="key" size={18} />
+                                <Icon name="key" size={16} />
                                 API Key
                               </>
                             )}
                           </button>
                         )}
-                        <div className="relative" ref={openMenuId === item.id ? menuRef : undefined}>
+                        <div className="relative ml-auto" ref={openMenuId === item.id ? menuRef : undefined}>
                           <button
                             onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                            className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
                           >
-                            <Icon name="more-horizontal" size={18} />
+                            <Icon name="more-horizontal" size={16} />
                           </button>
                           {openMenuId === item.id && (
                             <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
