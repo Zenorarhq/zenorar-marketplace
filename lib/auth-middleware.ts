@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyAccessToken, TokenPayload } from './auth-utils'
 import db from './db'
 
-// Railway backend URL for auth verification
-const RAILWAY_API = process.env.NEXT_PUBLIC_API_URL || 'https://api-production-8db8.up.railway.app/api'
+// Railway backend URL for auth verification (must be absolute for server-side use)
+const RAILWAY_API = process.env.RAILWAY_API_URL || 'https://api-production-8db8.up.railway.app/api'
 
 export interface AuthenticatedUser {
   id: string
