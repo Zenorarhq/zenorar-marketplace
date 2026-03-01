@@ -44,7 +44,10 @@ export function setAccessToken(token: string) {
 
 export function getAccessToken(): string | null {
   if (typeof window !== 'undefined') {
+    // Try primary key first, then fall back to the other key
     return localStorage.getItem(getTokenKey())
+      || localStorage.getItem('admin_auth_token')
+      || localStorage.getItem('auth_token')
   }
   return null
 }
