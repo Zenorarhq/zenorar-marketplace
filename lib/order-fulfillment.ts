@@ -5,6 +5,7 @@
  * Supports multiple product types: eSIMs, gift cards, scripts, etc.
  */
 
+import crypto from 'crypto'
 import { query } from './db'
 import { esimProvisioningService } from './esim'
 import { provisionGiftCard } from './gift-cards/provisioning'
@@ -14,6 +15,65 @@ import {
   sendVirtualNumberDeliveryEmail,
   sendGiftCardDeliveryEmail
 } from './email-service'
+
+const LICENSE_KEY_PREFIX = 'ZNRSCR'
+
+const LICENSE_TYPE_CONFIG: Record<string, { type: string; domains: number; months: number }> = {
+  extended: { type: 'EXTENDED', domains: 1, months: 12 },
+  pro:      { type: 'PRO',      domains: 3, months: 36 },
+}
+
+/**
+ * Generate a license record in the licenses table for a purchased digital product.
+ * Returns the new license id.
+ */
+async function generateLicenseRecord(
+  userId: string,
+  productId: string,
+  orderId: string,
+  orderItemId: string,
+  cartLicense?: string | null
+): Promise<string> {
+  // Map cart license string → license type config
+  const cfg = LICENSE_TYPE_CONFIG[cartLicense || ''] || { type: 'NORMAL', domains: 1, months: 6 }
+
+  // Calculate support expiry
+  const supportExpiry = new Date()
+  supportExpiry.setMonth(supportExpiry.getMonth() + cfg.months)
+
+  // Generate unique license key (ZNRSCR-XXXX-XXXX-XXXX-XXXX)
+  let licenseKey = ''
+  for (let attempts = 0; attempts < 5; attempts++) {
+    const salt = crypto.randomBytes(16).toString('hex')
+    const hash = crypto.createHash('sha256')
+      .update(`${orderId}:${productId}:${Date.now()}:${salt}`)
+      .digest('hex')
+      .toUpperCase()
+    licenseKey = `${LICENSE_KEY_PREFIX}-${hash.slice(0, 4)}-${hash.slice(4, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}`
+    const existing = await query('SELECT id FROM licenses WHERE license_key = $1', [licenseKey])
+    if (existing.rows.length === 0) break
+  }
+
+  // Insert license record
+  const result = await query(
+    `INSERT INTO licenses
+       (user_id, product_id, order_id, order_item_id, license_key, license_type,
+        domains_allowed, registered_domains, support_expires_at, is_active, status, verification_count)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, 'ACTIVE', 0)
+     RETURNING id`,
+    [userId, productId, orderId, orderItemId, licenseKey, cfg.type, cfg.domains, JSON.stringify([]), supportExpiry]
+  )
+
+  // Update user_product_access with license key and type
+  await query(
+    `UPDATE user_product_access
+     SET access_key = $1, access_type = $2
+     WHERE user_id = $3 AND product_id = $4`,
+    [licenseKey, `license_${cfg.type.toLowerCase()}`, userId, productId]
+  )
+
+  return result.rows[0].id
+}
 
 export interface FulfillmentResult {
   orderId: string
@@ -42,9 +102,9 @@ export async function fulfillOrder(orderId: string): Promise<FulfillmentResult> 
   }
 
   try {
-    // Get order details
+    // Get order details — orders table uses Prisma camelCase columns
     const orderResult = await query(
-      `SELECT o.*, o.user_id
+      `SELECT o.*, o."userId" as user_id
        FROM orders o
        WHERE o.id = $1`,
       [orderId]
@@ -61,18 +121,19 @@ export async function fulfillOrder(orderId: string): Promise<FulfillmentResult> 
       throw new Error('Order has no associated user')
     }
 
-    // Get order items with product type information
+    // Get order items — order_items table uses Prisma camelCase columns
     const itemsResult = await query(
       `SELECT
          oi.id as item_id,
-         oi.product_id,
+         oi."productId" as product_id,
          oi.name,
          oi.quantity,
+         oi.license,
          p.product_type,
          p.slug as product_slug
        FROM order_items oi
-       LEFT JOIN products p ON oi.product_id = p.id
-       WHERE oi.order_id = $1`,
+       LEFT JOIN products p ON oi."productId" = p.id
+       WHERE oi."orderId" = $1`,
       [orderId]
     )
 
@@ -89,23 +150,22 @@ export async function fulfillOrder(orderId: string): Promise<FulfillmentResult> 
       }
     }
 
-    // Update order fulfillment status
+    // Update order fulfillment status — orders table uses camelCase
     if (result.itemsFailed === 0 && result.itemsProcessed > 0) {
       await query(
         `UPDATE orders
          SET status = 'DELIVERED',
-             delivered_at = NOW(),
-             updated_at = NOW()
+             "deliveredAt" = NOW(),
+             "updatedAt" = NOW()
          WHERE id = $1`,
         [orderId]
       )
     } else if (result.itemsFailed > 0) {
-      // Partial fulfillment - mark as processing with note
       await query(
         `UPDATE orders
          SET status = 'PROCESSING',
-             admin_note = COALESCE(admin_note, '') || E'\n[Auto] Partial fulfillment: ' || $2 || ' items failed',
-             updated_at = NOW()
+             "adminNote" = COALESCE("adminNote", '') || E'\n[Auto] Partial fulfillment: ' || $2 || ' items failed',
+             "updatedAt" = NOW()
          WHERE id = $1`,
         [orderId, result.itemsFailed.toString()]
       )
@@ -136,6 +196,7 @@ async function processOrderItem(
     product_id: string
     name: string
     quantity: number
+    license?: string | null
     product_type: string | null
     product_slug: string | null
   }
@@ -189,9 +250,6 @@ async function processEsimItem(
   }
 ): Promise<FulfillmentResult['details'][0]> {
   try {
-    // For eSIMs, the product_id should reference an esim_plan
-    // We need to look up the plan from the product or order metadata
-
     // First, check if there's already a user_esim for this order item (idempotency)
     const existingResult = await query(
       `SELECT id FROM user_esims WHERE order_id = $1 AND order_item_id = $2`,
@@ -199,7 +257,6 @@ async function processEsimItem(
     )
 
     if (existingResult.rows.length > 0) {
-      // Already provisioned
       return {
         itemId: item.item_id,
         productType: 'esim',
@@ -222,7 +279,6 @@ async function processEsimItem(
     if (planResult.rows.length > 0 && planResult.rows[0].plan_id) {
       planId = planResult.rows[0].plan_id
     } else {
-      // Try to find plan by matching product name/slug
       const planByNameResult = await query(
         `SELECT id FROM esim_plans WHERE name ILIKE $1 OR slug ILIKE $2 LIMIT 1`,
         [item.name, item.name.toLowerCase().replace(/\s+/g, '-')]
@@ -235,7 +291,6 @@ async function processEsimItem(
       planId = planByNameResult.rows[0].id
     }
 
-    // Provision the eSIM using the hybrid service
     const provisionResult = await esimProvisioningService.provisionEsim(
       userId,
       planId,
@@ -249,7 +304,6 @@ async function processEsimItem(
 
     // Send delivery email
     try {
-      // Get user email and eSIM details
       const esimDetails = await query(
         `SELECT
            ue.*,
@@ -259,7 +313,7 @@ async function processEsimItem(
            ep.data_amount_mb,
            ep.validity_days,
            er.name as region_name,
-           o.order_number
+           o."orderNumber" as order_number
          FROM user_esims ue
          JOIN users u ON ue.user_id = u.id
          JOIN esim_plans ep ON ue.plan_id = ep.id
@@ -291,7 +345,6 @@ async function processEsimItem(
       }
     } catch (emailError) {
       console.error('Failed to send eSIM delivery email:', emailError)
-      // Don't fail the provision if email fails
     }
 
     return {
@@ -303,13 +356,12 @@ async function processEsimItem(
   } catch (error: any) {
     console.error(`eSIM provisioning failed for item ${item.item_id}:`, error)
 
-    // Log failed provision for retry
     await query(
       `INSERT INTO esim_provision_log (order_id, order_item_id, user_id, plan_id, status, error_message)
        VALUES ($1, $2, $3, $4, 'failed', $5)
        ON CONFLICT DO NOTHING`,
       [orderId, item.item_id, '', item.product_id, error.message]
-    ).catch(() => {}) // Don't fail if logging fails
+    ).catch(() => {})
 
     return {
       itemId: item.item_id,
@@ -321,7 +373,7 @@ async function processEsimItem(
 }
 
 /**
- * Process digital download (script/tool) - grant access in user_product_access
+ * Process digital download (script/tool) - grant access and generate license
  */
 async function processDigitalDownload(
   orderId: string,
@@ -330,37 +382,49 @@ async function processDigitalDownload(
     item_id: string
     product_id: string
     name: string
+    license?: string | null
   }
 ): Promise<FulfillmentResult['details'][0]> {
   try {
-    // Check if access already granted (idempotency)
-    const existingResult = await query(
-      `SELECT id FROM user_product_access WHERE user_id = $1 AND product_id = $2`,
-      [userId, item.product_id]
+    // Idempotency: check if license already exists for this order item
+    const existingLicense = await query(
+      `SELECT id FROM licenses WHERE order_id = $1 AND order_item_id = $2`,
+      [orderId, item.item_id]
     )
 
-    if (existingResult.rows.length > 0) {
+    if (existingLicense.rows.length > 0) {
       return {
         itemId: item.item_id,
         productType: 'digital',
         status: 'success',
-        provisionedId: existingResult.rows[0].id
+        provisionedId: existingLicense.rows[0].id
       }
     }
 
-    // Grant access
-    const accessResult = await query(
-      `INSERT INTO user_product_access (user_id, product_id, order_id, order_item_id, access_type, granted_at)
-       VALUES ($1, $2, $3, $4, 'download', NOW())
-       RETURNING id`,
-      [userId, item.product_id, orderId, item.item_id]
+    // Grant user_product_access if not already granted
+    const existingAccess = await query(
+      `SELECT id FROM user_product_access WHERE user_id = $1 AND product_id = $2`,
+      [userId, item.product_id]
+    )
+
+    if (existingAccess.rows.length === 0) {
+      await query(
+        `INSERT INTO user_product_access (user_id, product_id, order_id, access_type)
+         VALUES ($1, $2, $3, 'download')`,
+        [userId, item.product_id, orderId]
+      )
+    }
+
+    // Generate license record in licenses table
+    const licenseId = await generateLicenseRecord(
+      userId, item.product_id, orderId, item.item_id, item.license
     )
 
     return {
       itemId: item.item_id,
       productType: 'digital',
       status: 'success',
-      provisionedId: accessResult.rows[0]?.id
+      provisionedId: licenseId
     }
   } catch (error: any) {
     return {
@@ -373,7 +437,7 @@ async function processDigitalDownload(
 }
 
 /**
- * Process API product - generate API key and grant access
+ * Process API product - generate API key and grant access + license
  */
 async function processApiProduct(
   orderId: string,
@@ -382,41 +446,50 @@ async function processApiProduct(
     item_id: string
     product_id: string
     name: string
+    license?: string | null
   }
 ): Promise<FulfillmentResult['details'][0]> {
   try {
-    // Check if access already granted
-    const existingResult = await query(
-      `SELECT id FROM user_product_access WHERE user_id = $1 AND product_id = $2`,
-      [userId, item.product_id]
+    // Idempotency: check if license already exists
+    const existingLicense = await query(
+      `SELECT id FROM licenses WHERE order_id = $1 AND order_item_id = $2`,
+      [orderId, item.item_id]
     )
 
-    if (existingResult.rows.length > 0) {
+    if (existingLicense.rows.length > 0) {
       return {
         itemId: item.item_id,
         productType: 'api',
         status: 'success',
-        provisionedId: existingResult.rows[0].id
+        provisionedId: existingLicense.rows[0].id
       }
     }
 
-    // Generate API key
-    const crypto = await import('crypto')
-    const apiKey = `zn_${crypto.randomBytes(24).toString('hex')}`
+    // Grant user_product_access with API key if not already granted
+    const existingAccess = await query(
+      `SELECT id FROM user_product_access WHERE user_id = $1 AND product_id = $2`,
+      [userId, item.product_id]
+    )
 
-    // Grant access with API key
-    const accessResult = await query(
-      `INSERT INTO user_product_access (user_id, product_id, order_id, order_item_id, access_type, api_key, granted_at)
-       VALUES ($1, $2, $3, $4, 'api', $5, NOW())
-       RETURNING id`,
-      [userId, item.product_id, orderId, item.item_id, apiKey]
+    if (existingAccess.rows.length === 0) {
+      const apiKey = `zn_${crypto.randomBytes(24).toString('hex')}`
+      await query(
+        `INSERT INTO user_product_access (user_id, product_id, order_id, access_type, access_key)
+         VALUES ($1, $2, $3, 'api', $4)`,
+        [userId, item.product_id, orderId, apiKey]
+      )
+    }
+
+    // Generate license record in licenses table
+    const licenseId = await generateLicenseRecord(
+      userId, item.product_id, orderId, item.item_id, item.license
     )
 
     return {
       itemId: item.item_id,
       productType: 'api',
       status: 'success',
-      provisionedId: accessResult.rows[0]?.id
+      provisionedId: licenseId
     }
   } catch (error: any) {
     return {
@@ -463,7 +536,7 @@ async function processGiftCardItem(
          p.metadata,
          oi.metadata as item_metadata
        FROM products p
-       LEFT JOIN order_items oi ON oi.product_id = p.id AND oi.order_id = $2
+       LEFT JOIN order_items oi ON oi."productId" = p.id AND oi."orderId" = $2
        WHERE p.id = $1`,
       [item.product_id, orderId]
     )
@@ -475,12 +548,10 @@ async function processGiftCardItem(
       const productMeta = productResult.rows[0].metadata || {}
       const itemMeta = productResult.rows[0].item_metadata || {}
 
-      // Check item metadata first (for cart selections), then product metadata
       giftCardId = itemMeta.gift_card_id || productMeta.gift_card_id
       denomination = itemMeta.denomination || productMeta.denomination
     }
 
-    // Try to find gift card by product name/slug if not in metadata
     if (!giftCardId) {
       const giftCardResult = await query(
         `SELECT id FROM gift_cards
@@ -498,7 +569,6 @@ async function processGiftCardItem(
       throw new Error(`No gift card found for product: ${item.name}`)
     }
 
-    // Get denomination from order item price if not in metadata
     if (!denomination) {
       const priceResult = await query(
         `SELECT price FROM order_items WHERE id = $1`,
@@ -514,7 +584,6 @@ async function processGiftCardItem(
       throw new Error('Invalid denomination for gift card')
     }
 
-    // Provision the gift card
     const provisionResult = await provisionGiftCard(
       giftCardId,
       denomination,
@@ -535,7 +604,7 @@ async function processGiftCardItem(
            u.name as user_name,
            gc.brand,
            gc.description as redemption_instructions,
-           o.order_number
+           o."orderNumber" as order_number
          FROM user_gift_cards ugc
          JOIN users u ON ugc.user_id = u.id
          JOIN gift_cards gc ON ugc.gift_card_id = gc.id
@@ -560,7 +629,6 @@ async function processGiftCardItem(
       }
     } catch (emailError) {
       console.error('Failed to send gift card delivery email:', emailError)
-      // Don't fail the provision if email fails
     }
 
     return {
@@ -610,7 +678,6 @@ async function processVirtualNumberItem(
       }
     }
 
-    // Get virtual number details from order item metadata
     const itemResult = await query(
       `SELECT metadata FROM order_items WHERE id = $1`,
       [item.item_id]
@@ -622,7 +689,6 @@ async function processVirtualNumberItem(
 
     const metadata = itemResult.rows[0].metadata || {}
 
-    // Extract required fields from metadata
     const phoneNumber = metadata.phone_number || metadata.phoneNumber
     const countryId = metadata.country_id || metadata.countryId
     const planId = metadata.plan_id || metadata.planId
@@ -632,7 +698,6 @@ async function processVirtualNumberItem(
       throw new Error('Missing required virtual number metadata (phone_number, country_id, plan_id)')
     }
 
-    // Provision the virtual number
     const provisionResult = await virtualNumberService.provisionNumber(
       userId,
       countryId,
@@ -654,7 +719,7 @@ async function processVirtualNumberItem(
            u.email as user_email,
            u.name as user_name,
            vnp.name as plan_name,
-           o.order_number
+           o."orderNumber" as order_number
          FROM user_virtual_numbers uvn
          JOIN users u ON uvn.user_id = u.id
          JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
@@ -677,7 +742,6 @@ async function processVirtualNumberItem(
       }
     } catch (emailError) {
       console.error('Failed to send virtual number delivery email:', emailError)
-      // Don't fail the provision if email fails
     }
 
     return {
@@ -689,13 +753,12 @@ async function processVirtualNumberItem(
   } catch (error: any) {
     console.error(`Virtual number provisioning failed for item ${item.item_id}:`, error)
 
-    // Log failed provision for debugging
     await query(
       `INSERT INTO virtual_number_provision_log (user_id, order_id, status, error_message)
        VALUES ($1, $2, 'failed', $3)
        ON CONFLICT DO NOTHING`,
       [userId, orderId, error.message]
-    ).catch(() => {}) // Don't fail if logging fails
+    ).catch(() => {})
 
     return {
       itemId: item.item_id,
@@ -718,7 +781,6 @@ export async function retryFailedProvisions(): Promise<{
   const result = { processed: 0, succeeded: 0, failed: 0 }
 
   try {
-    // Get failed provisions that haven't exceeded retry limit
     const failedResult = await query(
       `SELECT * FROM esim_provision_log
        WHERE status = 'failed'
