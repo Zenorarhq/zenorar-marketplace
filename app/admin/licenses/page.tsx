@@ -13,6 +13,7 @@ import {
   searchLicenses,
   suspendLicense,
   revokeLicense,
+  reactivateLicense,
   getLicenseDetails,
   getVerificationLogs,
   type License,
@@ -175,7 +176,7 @@ function StatCard({ label, value, color = 'text-white' }: { label: string; value
 function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQueryClient> }) {
   const [filters, setFilters] = useState<LicenseFilters>({ page: 1, limit: 20 })
   const [search, setSearch] = useState('')
-  const [pinAction, setPinAction] = useState<{ type: 'suspend' | 'revoke'; licenseId: string } | null>(null)
+  const [pinAction, setPinAction] = useState<{ type: 'suspend' | 'revoke' | 'reactivate'; licenseId: string } | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [revealedRowId, setRevealedRowId] = useState<string | null>(null)
   const [revealedLicense, setRevealedLicense] = useState<License | null>(null)
@@ -212,7 +213,9 @@ function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQue
 
   const handlePinConfirm = async (pin: string) => {
     if (!pinAction) return
-    const fn = pinAction.type === 'suspend' ? suspendLicense : revokeLicense
+    const fn = pinAction.type === 'suspend' ? suspendLicense
+      : pinAction.type === 'revoke' ? revokeLicense
+      : reactivateLicense
     const res = await fn(pinAction.licenseId, pin)
     if (!res.success) throw new Error(res.error || 'Action failed')
     queryClient.invalidateQueries({ queryKey: ['admin-licenses'] })
@@ -372,6 +375,14 @@ function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQue
                             Revoke
                           </button>
                         )}
+                        {(l.status === 'SUSPENDED' || l.status === 'REVOKED') && (
+                          <button
+                            onClick={() => setPinAction({ type: 'reactivate', licenseId: l.id })}
+                            className="px-2 py-1 text-xs text-green-400 hover:text-green-300 bg-green-500/10 rounded transition-colors"
+                          >
+                            Reactivate
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -420,11 +431,23 @@ function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQue
         isOpen={!!pinAction}
         onClose={() => setPinAction(null)}
         onConfirm={handlePinConfirm}
-        title={pinAction?.type === 'suspend' ? 'Suspend License' : 'Revoke License'}
-        description={pinAction?.type === 'suspend'
-          ? 'This will temporarily suspend the license. Enter your PIN to confirm.'
-          : 'This will permanently revoke the license. This cannot be undone.'}
-        confirmLabel={pinAction?.type === 'suspend' ? 'Suspend' : 'Revoke'}
+        title={
+          pinAction?.type === 'suspend' ? 'Suspend License'
+          : pinAction?.type === 'revoke' ? 'Revoke License'
+          : 'Reactivate License'
+        }
+        description={
+          pinAction?.type === 'suspend'
+            ? 'This will temporarily suspend the license. Enter your PIN to confirm.'
+            : pinAction?.type === 'revoke'
+            ? 'This will permanently revoke the license. This cannot be undone.'
+            : 'This will restore the license to active status. Enter your PIN to confirm.'
+        }
+        confirmLabel={
+          pinAction?.type === 'suspend' ? 'Suspend'
+          : pinAction?.type === 'revoke' ? 'Revoke'
+          : 'Reactivate'
+        }
         destructive={pinAction?.type === 'revoke'}
       />
 

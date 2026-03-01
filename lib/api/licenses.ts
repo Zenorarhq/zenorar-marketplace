@@ -113,3 +113,10 @@ export async function revokeLicense(id: string, pin: string, reason?: string) {
     body: JSON.stringify({ pin, reason }),
   })
 }
+
+export async function reactivateLicense(id: string, pin: string, reason?: string) {
+  return apiFetch(`/licenses/${id}/reactivate`, {
+    method: 'PUT',
+    body: JSON.stringify({ pin, reason }),
+  })
+}
