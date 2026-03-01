@@ -2181,6 +2181,9 @@ function PaystackCardForm({
           })
             .then(verifyResponse => {
               if (verifyResponse.ok) {
+                // Run digital product fulfillment (licenses, eSIMs, etc.)
+                fetch(`/api/orders/${orderId}/fulfill`, { method: 'POST' })
+                  .catch(err => console.error('Paystack: fulfillment error:', err))
                 // Increment discount usage counter
                 if (discountCode && discountAmount > 0) {
                   apiFetch('/discounts/use', {
