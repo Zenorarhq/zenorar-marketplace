@@ -332,12 +332,14 @@ export default function LibraryPage() {
           </div>
         ) : (
           filteredItems.map((item) => {
-            const license = licenses.find(l => l.productId === item.id)
+            const license = item.licenseId
+              ? licenses.find(l => l.id === item.licenseId)
+              : licenses.find(l => l.productId === item.id)
             const isScriptOrTool = item.category === 'scripts' || item.category === 'tools'
             const isRevealed = revealedKeys.has(item.id)
             return (
               <div
-                key={item.id}
+                key={item.licenseId || item.id}
                 className={`bg-[#121212] border border-border-dark rounded-xl shadow-lg ${
                   item.status === 'expired' ? 'opacity-60' : ''
                 }`}

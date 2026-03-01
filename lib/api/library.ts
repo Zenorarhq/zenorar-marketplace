@@ -27,6 +27,7 @@ async function localApiFetch<T>(endpoint: string, options: RequestInit = {}): Pr
 
 export interface LibraryItem {
   id: string
+  licenseId?: string
   name: string
   slug?: string
   description: string

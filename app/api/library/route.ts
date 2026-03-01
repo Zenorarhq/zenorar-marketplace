@@ -15,27 +15,25 @@ export async function GET(request: Request) {
 
     const userId = authResult.payload.userId
 
-    // Query user's purchased products from completed orders
+    // Query user's licenses — one row per license so multiple purchases of the same product show separately
     const productsResult = await query(
       `
-      SELECT DISTINCT
-        p.id,
+      SELECT
+        l.id as license_id,
+        p.id as product_id,
         p.name,
         p.slug,
         p.description,
         c.slug as category,
         c.icon as category_icon,
-        MIN(oi."createdAt") as purchase_date,
-        COUNT(DISTINCT o.id) as purchase_count,
-        MIN(o.id) as order_id
-      FROM orders o
-      JOIN order_items oi ON o.id = oi."orderId"
-      JOIN products p ON oi."productId" = p.id
+        l."createdAt" as purchase_date,
+        l."orderId" as order_id,
+        l.status as license_status
+      FROM licenses l
+      JOIN products p ON l."productId" = p.id
       JOIN categories c ON p."categoryId" = c.id
-      WHERE o."userId" = $1
-        AND o."paymentStatus" = 'PAID'
-      GROUP BY p.id, p.name, p.slug, p.description, c.slug, c.icon
-      ORDER BY MIN(oi."createdAt") DESC
+      WHERE l."userId" = $1
+      ORDER BY l."createdAt" DESC
       `,
       [userId]
     )
@@ -102,11 +100,20 @@ export async function GET(request: Request) {
         'api': 'api',
       }
 
+      // Map license status to library item status
+      const statusMap: Record<string, string> = {
+        'ACTIVE': 'active',
+        'SUSPENDED': 'suspended',
+        'REVOKED': 'expired',
+        'EXPIRED': 'expired',
+      }
+
       const category = categoryMap[row.category] || row.category
       const icon = iconMap[category] || row.category_icon || 'box'
 
       return {
-        id: row.id,
+        id: row.product_id,
+        licenseId: row.license_id,
         name: row.name,
         slug: row.slug,
         description: row.description || `${row.name} - Digital product`,
@@ -118,7 +125,7 @@ export async function GET(request: Request) {
           day: 'numeric',
           year: 'numeric',
         }),
-        status: 'active',
+        status: statusMap[row.license_status] || 'active',
       }
     })
 
