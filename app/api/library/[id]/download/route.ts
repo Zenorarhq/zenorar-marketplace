@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth-middleware'
-import { query } from '@/lib/db'
+
+const RAILWAY_API = process.env.RAILWAY_API_URL || 'https://api-production-8db8.up.railway.app/api'
 
 export async function POST(
   request: Request,
@@ -16,106 +17,36 @@ export async function POST(
       )
     }
 
-    const userId = authResult.payload.userId
     const productId = params.id
+    const token = request.headers.get('Authorization') || ''
 
-    // Verify user owns this product (has completed order for it)
-    const ownershipCheck = await query(
-      `
-      SELECT COUNT(*) as count
-      FROM orders o
-      JOIN order_items oi ON o.id = oi."orderId"
-      WHERE o."userId" = $1
-        AND oi."productId" = $2
-        AND o."paymentStatus" = 'PAID'
-      `,
-      [userId, productId]
-    )
+    // Delegate to Railway API — it handles access check, R2 signed URL, watermarking, and logging
+    const railwayRes = await fetch(`${RAILWAY_API}/downloads/${productId}`, {
+      headers: { Authorization: token },
+    })
 
-    if (parseInt(ownershipCheck.rows[0].count) === 0) {
+    const data = await railwayRes.json()
+
+    if (!railwayRes.ok || !data.success) {
       return NextResponse.json(
-        { success: false, error: 'Product not found in your library' },
-        { status: 404 }
+        { success: false, error: data.error || data.message || 'Download failed' },
+        { status: railwayRes.status }
       )
     }
 
-    // Get product file (latest version)
-    const fileResult = await query(
-      `
-      SELECT id, file_name, file_url, version
-      FROM product_files
-      WHERE product_id = $1
-        AND is_latest = true
-      LIMIT 1
-      `,
-      [productId]
-    )
-
-    if (fileResult.rows.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'No download file available for this product',
-        },
-        { status: 404 }
-      )
-    }
-
-    const file = fileResult.rows[0]
-
-    // Update user_product_access table (track download)
-    const existing = await query(
-      `SELECT id FROM user_product_access WHERE user_id = $1 AND product_id = $2 AND access_type = 'download' LIMIT 1`,
-      [userId, productId]
-    )
-
-    if (existing.rows.length > 0) {
-      await query(
-        `UPDATE user_product_access SET downloads_count = COALESCE(downloads_count, 0) + 1, last_accessed = CURRENT_TIMESTAMP WHERE id = $1`,
-        [existing.rows[0].id]
-      )
-    } else {
-      const orderRow = await query(
-        `SELECT o.id FROM orders o JOIN order_items oi ON o.id = oi."orderId" WHERE o."userId" = $1 AND oi."productId" = $2 AND o."paymentStatus" = 'PAID' LIMIT 1`,
-        [userId, productId]
-      )
-      if (orderRow.rows.length > 0) {
-        await query(
-          `INSERT INTO user_product_access (user_id, product_id, order_id, access_type, downloads_count, last_accessed) VALUES ($1, $2, $3, 'download', 1, CURRENT_TIMESTAMP)`,
-          [userId, productId, orderRow.rows[0].id]
-        )
-      }
-    }
-
-    // Log download in history
-    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    const userAgent = request.headers.get('user-agent') || 'unknown'
-
-    await query(
-      `
-      INSERT INTO download_history (user_id, product_id, file_id, ip_address, user_agent)
-      VALUES ($1, $2, $3, $4, $5)
-      `,
-      [userId, productId, file.id, ipAddress, userAgent]
-    )
-
-    // Return download link
     return NextResponse.json({
       success: true,
       data: {
-        url: file.file_url,
-        filename: file.file_name,
-        version: file.version,
-        expiresAt: new Date(Date.now() + 3600000).toISOString(), // 1 hour expiry
+        url: data.data.downloadUrl,
+        filename: data.data.fileName,
+        version: data.data.version,
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
       },
     })
   } catch (error: any) {
     console.error('Download error:', error)
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to process download',
-      },
+      { success: false, error: error.message || 'Failed to process download' },
       { status: 500 }
     )
   }
