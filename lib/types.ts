@@ -63,12 +63,13 @@ export interface Product {
   demoUrl?: string
   demoInfo?: string
   purchaseCount?: number
+  proPrice?: number
 }
 
 export interface CartItem {
   product: Product
   quantity: number
-  license: 'standard' | 'extended'
+  license: 'standard' | 'extended' | 'pro'
   price: number
 }
 

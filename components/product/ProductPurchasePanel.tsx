@@ -15,13 +15,15 @@ interface ProductPurchasePanelProps {
 export default function ProductPurchasePanel({ product }: ProductPurchasePanelProps) {
   const { addItem, showAddedToCartPopup, buyNow } = useCart()
   const { formatPrice } = usePreferences()
-  const [selectedLicense, setSelectedLicense] = useState<'standard' | 'extended'>('standard')
+  const [selectedLicense, setSelectedLicense] = useState<'standard' | 'extended' | 'pro'>('standard')
   const [isAdding, setIsAdding] = useState(false)
   const [showAddedMessage, setShowAddedMessage] = useState(false)
 
-  const currentPrice = selectedLicense === 'extended'
-    ? (product.priceRange?.max || product.price)
-    : (product.priceRange?.min || product.price)
+  const currentPrice = selectedLicense === 'pro'
+    ? (product.proPrice || product.price)
+    : selectedLicense === 'extended'
+      ? (product.priceRange?.max || product.price)
+      : (product.priceRange?.min || product.price)
 
   const handleAddToCart = async () => {
     setIsAdding(true)
@@ -62,8 +64,8 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
           )}
         </div>
 
-        {/* License Select - only show when extended price is set */}
-        {product.priceRange && (
+        {/* License Select - show when extended or pro price is set */}
+        {(product.priceRange || product.proPrice) && (
           <div className="space-y-4 mb-6">
             <div>
               <label htmlFor="license-type" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
@@ -72,11 +74,12 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
               <select
                 id="license-type"
                 value={selectedLicense}
-                onChange={(e) => setSelectedLicense(e.target.value as 'standard' | 'extended')}
+                onChange={(e) => setSelectedLicense(e.target.value as 'standard' | 'extended' | 'pro')}
                 className="w-full bg-background-dark border-border-dark rounded-lg text-slate-300 text-sm focus:ring-primary focus:border-primary px-4 py-3"
               >
-                <option value="standard">Standard License ({formatPrice(product.priceRange.min)})</option>
-                <option value="extended">Extended License ({formatPrice(product.priceRange.max)})</option>
+                <option value="standard">Standard License ({formatPrice(product.priceRange?.min || product.price)})</option>
+                {product.priceRange && <option value="extended">Extended License ({formatPrice(product.priceRange.max)})</option>}
+                {product.proPrice && <option value="pro">Pro License ({formatPrice(product.proPrice)})</option>}
               </select>
             </div>
           </div>

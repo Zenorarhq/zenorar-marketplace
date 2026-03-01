@@ -17,9 +17,9 @@ interface CartContextType {
   apiCart: CartSummary | null
   isLoading: boolean
   // Actions
-  addItem: (product: Product, license?: 'standard' | 'extended', customPrice?: number) => Promise<void>
-  removeItem: (productId: string, license?: 'standard' | 'extended') => Promise<void>
-  updateQuantity: (productId: string, quantity: number, license?: 'standard' | 'extended') => Promise<void>
+  addItem: (product: Product, license?: 'standard' | 'extended' | 'pro', customPrice?: number) => Promise<void>
+  removeItem: (productId: string, license?: 'standard' | 'extended' | 'pro') => Promise<void>
+  updateQuantity: (productId: string, quantity: number, license?: 'standard' | 'extended' | 'pro') => Promise<void>
   clearCart: () => Promise<void>
   refreshCart: () => Promise<void>
   mergeGuestCart: () => Promise<void>
@@ -31,7 +31,7 @@ interface CartContextType {
   showAddedToCartPopup: (product: Product, price?: number) => void
   hidePopup: () => void
   // Buy now
-  buyNow: (product: Product, license?: 'standard' | 'extended', customPrice?: number) => void
+  buyNow: (product: Product, license?: 'standard' | 'extended' | 'pro', customPrice?: number) => void
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -170,10 +170,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
-  const addItem = useCallback(async (product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
-    const price = Number(customPrice ?? (license === 'extended'
-      ? (product.priceRange?.max || product.price)
-      : (product.priceRange?.min || product.price)))
+  const addItem = useCallback(async (product: Product, license: 'standard' | 'extended' | 'pro' = 'standard', customPrice?: number) => {
+    const price = Number(customPrice ?? (license === 'pro'
+      ? (product.proPrice || product.price)
+      : license === 'extended'
+        ? (product.priceRange?.max || product.price)
+        : (product.priceRange?.min || product.price)))
 
     // Optimistic update — capture the new quantity for API sync
     let newQuantity = 1
@@ -207,7 +209,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated])
 
-  const removeItem = useCallback(async (productId: string, license?: 'standard' | 'extended') => {
+  const removeItem = useCallback(async (productId: string, license?: 'standard' | 'extended' | 'pro') => {
     // Save current state for rollback
     const previousItems = items
 
@@ -232,7 +234,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, items])
 
-  const updateQuantity = useCallback(async (productId: string, quantity: number, license?: 'standard' | 'extended') => {
+  const updateQuantity = useCallback(async (productId: string, quantity: number, license?: 'standard' | 'extended' | 'pro') => {
     if (quantity <= 0) {
       return removeItem(productId, license)
     }
@@ -347,10 +349,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setPopupPrice(null)
   }, [])
 
-  const buyNow = useCallback(async (product: Product, license: 'standard' | 'extended' = 'standard', customPrice?: number) => {
-    const price = Number(customPrice ?? (license === 'extended'
-      ? (product.priceRange?.max || product.price)
-      : (product.priceRange?.min || product.price)))
+  const buyNow = useCallback(async (product: Product, license: 'standard' | 'extended' | 'pro' = 'standard', customPrice?: number) => {
+    const price = Number(customPrice ?? (license === 'pro'
+      ? (product.proPrice || product.price)
+      : license === 'extended'
+        ? (product.priceRange?.max || product.price)
+        : (product.priceRange?.min || product.price)))
 
     // Clear cart and add only this item
     setItems([{ product, quantity: 1, license, price }])

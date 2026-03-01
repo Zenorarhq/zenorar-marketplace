@@ -41,6 +41,7 @@ export default function EditProductPage() {
     comparePrice: '',
     costPrice: '',
     extendedPrice: '',
+    proPrice: '',
     stock: '',
     lowStockThreshold: '',
     categoryId: '',
@@ -100,6 +101,7 @@ export default function EditProductPage() {
         comparePrice: p.comparePrice?.toString() || '',
         costPrice: p.costPrice?.toString() || '',
         extendedPrice: (p as any).extendedPrice?.toString() || '',
+        proPrice: (p as any).proPrice?.toString() || '',
         stock: p.stock.toString(),
         lowStockThreshold: p.lowStockThreshold.toString(),
         categoryId: p.categoryId || '',
@@ -170,6 +172,7 @@ export default function EditProductPage() {
         comparePrice: formData.comparePrice ? parseFloat(formData.comparePrice) : null,
         costPrice: formData.costPrice ? parseFloat(formData.costPrice) : null,
         extendedPrice: formData.extendedPrice ? parseFloat(formData.extendedPrice) : null,
+        proPrice: formData.proPrice ? parseFloat(formData.proPrice) : null,
         stock: parseInt(formData.stock) || 0,
         lowStockThreshold: parseInt(formData.lowStockThreshold) || 10,
         categoryId: formData.categoryId || null,
@@ -439,6 +442,22 @@ export default function EditProductPage() {
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-slate-500 mt-1">Leave empty to hide the license selector on the product page</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Pro License Price ($)
+                </label>
+                <input
+                  type="number"
+                  name="proPrice"
+                  value={formData.proPrice}
+                  onChange={handleChange}
+                  step="0.01"
+                  min="0"
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-slate-500 mt-1">Leave empty to hide pro option on product page</p>
               </div>
 
               <div>
