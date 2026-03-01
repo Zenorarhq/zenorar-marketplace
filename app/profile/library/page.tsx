@@ -181,7 +181,7 @@ export default function LibraryPage() {
     if (!domainModal || !domainInput.trim()) return
     setDomainLoading(true)
     setDomainError(null)
-    const res = await apiFetch('/licenses/activate', {
+    const res = await apiFetch(`/licenses/${domainModal.licenseId}/activate`, {
       method: 'POST',
       body: JSON.stringify({ licenseKey: domainModal.licenseKey, identifier: domainInput.trim(), identifierType: 'DOMAIN' }),
     })
