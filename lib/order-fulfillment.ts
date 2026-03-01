@@ -151,11 +151,11 @@ export async function fulfillOrder(orderId: string): Promise<FulfillmentResult> 
     }
 
     // Update order fulfillment status — orders table uses camelCase
+    // Digital products use CONFIRMED as final status (same as wallet path — no shipping needed)
     if (result.itemsFailed === 0 && result.itemsProcessed > 0) {
       await query(
         `UPDATE orders
-         SET status = 'DELIVERED',
-             "deliveredAt" = NOW(),
+         SET status = 'CONFIRMED',
              "updatedAt" = NOW()
          WHERE id = $1`,
         [orderId]
