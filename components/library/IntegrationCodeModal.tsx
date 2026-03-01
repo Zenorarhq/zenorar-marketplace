@@ -6,8 +6,8 @@ import { apiFetch } from '@/lib/api/client'
 
 interface License {
   id: string
-  product_id: string
-  license_key: string
+  productId: string
+  licenseKey: string
 }
 
 interface SnippetResult {
@@ -48,7 +48,7 @@ export default function IntegrationCodeModal({ isOpen, onClose, productId, produ
     setError(null)
     apiFetch<License[]>('/licenses/my').then(res => {
       if (res.success && res.data) {
-        const license = res.data.find(l => l.product_id === productId)
+        const license = res.data.find(l => l.productId === productId)
         if (license) {
           setLicenseId(license.id)
         } else {
