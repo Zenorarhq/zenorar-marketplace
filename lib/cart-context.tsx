@@ -221,8 +221,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // Sync to API if authenticated
     if (isAuthenticated) {
-      const licenseParam = license || 'standard'
-      const result = await apiFetch(`/cart/items/product/${productId}?license=${licenseParam}`, {
+      const query = license ? `?license=${license}` : ''
+      const result = await apiFetch(`/cart/items/product/${productId}${query}`, {
         method: 'DELETE',
       })
       if (!result.success) {
