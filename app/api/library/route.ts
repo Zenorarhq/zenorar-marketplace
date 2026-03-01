@@ -26,14 +26,14 @@ export async function GET(request: Request) {
         p.description,
         c.slug as category,
         c.icon as category_icon,
-        l."createdAt" as purchase_date,
-        l."orderId" as order_id,
+        l.created_at as purchase_date,
+        l.order_id as order_id,
         l.status as license_status
       FROM licenses l
-      JOIN products p ON l."productId" = p.id
+      JOIN products p ON l.product_id = p.id
       JOIN categories c ON p."categoryId" = c.id
-      WHERE l."userId" = $1
-      ORDER BY l."createdAt" DESC
+      WHERE l.user_id = $1
+      ORDER BY l.created_at DESC
       `,
       [userId]
     )
