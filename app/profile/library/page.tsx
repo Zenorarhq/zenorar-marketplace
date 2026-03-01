@@ -338,7 +338,7 @@ export default function LibraryPage() {
             return (
               <div
                 key={item.id}
-                className={`bg-[#121212] border border-border-dark rounded-xl overflow-hidden shadow-lg ${
+                className={`bg-[#121212] border border-border-dark rounded-xl shadow-lg ${
                   item.status === 'expired' ? 'opacity-60' : ''
                 }`}
               >
@@ -529,7 +529,7 @@ export default function LibraryPage() {
                             <Icon name="more-horizontal" size={16} />
                           </button>
                           {openMenuId === item.id && (
-                            <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
+                            <div className="absolute right-0 bottom-full mb-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
                               <button
                                 onClick={() => { setOpenMenuId(null); router.push(`/products/${item.slug}`) }}
                                 className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
