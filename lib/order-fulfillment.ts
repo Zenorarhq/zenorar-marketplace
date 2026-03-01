@@ -73,9 +73,11 @@ async function generateLicenseRecord(
   )
 
   // Send in-app notification (non-blocking — same as wallet path)
+  // notifications table uses Prisma camelCase columns: "userId", "isRead", "createdAt", metadata
   query(
-    `INSERT INTO notifications (user_id, type, title, message, data)
-     VALUES ($1::uuid, 'LICENSE_GENERATED', 'License Key Generated',
+    `INSERT INTO notifications (id, "userId", type, title, message, metadata)
+     VALUES (gen_random_uuid()::text, $1, 'LICENSE_GENERATED'::"NotificationType",
+             'License Key Generated',
              'Your license key for order #' || $2 || ' is ready: ' || $3,
              $4::jsonb)`,
     [userId, orderId, licenseKey, JSON.stringify({ licenseKey, productId, orderId })]
