@@ -25,11 +25,11 @@ export async function GET(
       `
       SELECT o.id as order_id, p.name as product_name
       FROM orders o
-      JOIN order_items oi ON o.id = oi.order_id
-      JOIN products p ON oi.product_id = p.id
-      WHERE o.user_id = $1
-        AND oi.product_id = $2
-        AND o.payment_status = 'PAID'
+      JOIN order_items oi ON o.id = oi."orderId"
+      JOIN products p ON oi."productId" = p.id
+      WHERE o."userId" = $1
+        AND oi."productId" = $2
+        AND o."paymentStatus" = 'PAID'
       LIMIT 1
       `,
       [userId, productId]

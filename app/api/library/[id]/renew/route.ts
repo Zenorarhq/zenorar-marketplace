@@ -29,8 +29,8 @@ export async function POST(
         p.price,
         COUNT(oi.id) as purchase_count
       FROM products p
-      LEFT JOIN order_items oi ON p.id = oi.product_id
-      LEFT JOIN orders o ON oi.order_id = o.id AND o."userId" = $1 AND o.payment_status = 'PAID'
+      LEFT JOIN order_items oi ON p.id = oi."productId"
+      LEFT JOIN orders o ON oi."orderId" = o.id AND o."userId" = $1 AND o."paymentStatus" = 'PAID'
       WHERE p.id = $2
       GROUP BY p.id, p.name, p.slug, p.price
       `,
@@ -49,7 +49,7 @@ export async function POST(
     // Check if user has an active cart
     let cartResult = await query(
       `
-      SELECT id FROM carts WHERE user_id = $1 LIMIT 1
+      SELECT id FROM carts WHERE "userId" = $1 LIMIT 1
       `,
       [userId]
     )
@@ -59,7 +59,7 @@ export async function POST(
       // Create new cart
       const newCart = await query(
         `
-        INSERT INTO carts (user_id, session_id)
+        INSERT INTO carts ("userId", "sessionId")
         VALUES ($1, $2)
         RETURNING id
         `,
@@ -74,7 +74,7 @@ export async function POST(
     const existingItem = await query(
       `
       SELECT id, quantity FROM cart_items
-      WHERE cart_id = $1 AND product_id = $2
+      WHERE "cartId" = $1 AND "productId" = $2
       `,
       [cartId, productId]
     )
@@ -95,7 +95,7 @@ export async function POST(
     // Add product to cart for renewal
     await query(
       `
-      INSERT INTO cart_items (cart_id, product_id, quantity, price)
+      INSERT INTO cart_items ("cartId", "productId", quantity, price)
       VALUES ($1, $2, 1, $3)
       `,
       [cartId, productId, product.price]

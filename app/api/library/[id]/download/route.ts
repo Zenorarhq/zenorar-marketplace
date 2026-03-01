@@ -24,10 +24,10 @@ export async function POST(
       `
       SELECT COUNT(*) as count
       FROM orders o
-      JOIN order_items oi ON o.id = oi.order_id
+      JOIN order_items oi ON o.id = oi."orderId"
       WHERE o."userId" = $1
-        AND oi.product_id = $2
-        AND o.payment_status = 'PAID'
+        AND oi."productId" = $2
+        AND o."paymentStatus" = 'PAID'
       `,
       [userId, productId]
     )
@@ -69,10 +69,10 @@ export async function POST(
       INSERT INTO user_product_access (user_id, product_id, order_id, access_type, downloads_count, last_accessed)
       SELECT $1, $2, o.id, 'download', 1, CURRENT_TIMESTAMP
       FROM orders o
-      JOIN order_items oi ON o.id = oi.order_id
+      JOIN order_items oi ON o.id = oi."orderId"
       WHERE o."userId" = $1
-        AND oi.product_id = $2
-        AND o.payment_status = 'PAID'
+        AND oi."productId" = $2
+        AND o."paymentStatus" = 'PAID'
       LIMIT 1
       ON CONFLICT (user_id, product_id, access_type)
       DO UPDATE SET
