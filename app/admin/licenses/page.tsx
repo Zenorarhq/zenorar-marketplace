@@ -177,6 +177,25 @@ function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQue
   const [search, setSearch] = useState('')
   const [pinAction, setPinAction] = useState<{ type: 'suspend' | 'revoke'; licenseId: string } | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [revealedRowId, setRevealedRowId] = useState<string | null>(null)
+  const [revealedLicense, setRevealedLicense] = useState<License | null>(null)
+  const [revealingId, setRevealingId] = useState<string | null>(null)
+
+  const handleReveal = async (licenseId: string) => {
+    // Same row clicked again → toggle off
+    if (revealedRowId === licenseId) {
+      setRevealedRowId(null)
+      setRevealedLicense(null)
+      return
+    }
+    setRevealingId(licenseId)
+    const res = await getLicenseDetails(licenseId)
+    setRevealingId(null)
+    if (res.success && res.data) {
+      setRevealedRowId(licenseId)
+      setRevealedLicense(res.data)
+    }
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-licenses', filters],
@@ -269,23 +288,30 @@ function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQue
                 </tr>
               </thead>
               <tbody>
-                {data?.licenses.map((l: License) => (
+                {data?.licenses.map((l: License) => {
+                  const isRevealed = revealedRowId === l.id
+                  const raw = isRevealed ? revealedLicense : null
+                  const isLoading = revealingId === l.id
+                  return (
                   <tr key={l.id} className="border-b border-[#222] hover:bg-white/[0.02]">
                     <td className="px-4 py-3">
-                      <MaskedField
-                        maskedValue={l.licenseKey}
-                        onReveal={async () => {
-                          const res = await getLicenseDetails(l.id)
-                          return res.data?.licenseKey || l.licenseKey
-                        }}
-                      />
+                      <span className="font-mono text-sm text-gray-300">
+                        {raw ? raw.licenseKey : l.licenseKey}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-gray-300">{l.product?.name || '—'}</td>
                     <td className="px-4 py-3">
                       <div>
                         <span className="text-gray-300">{l.user?.name || '—'}</span>
                         {l.user?.email && (
-                          <span className="text-gray-500 text-xs block">{l.user.email}</span>
+                          <span className="text-gray-500 text-xs block">
+                            {raw ? raw.user?.email : l.user.email}
+                          </span>
+                        )}
+                        {raw?.lastVerifiedIp && (
+                          <span className="text-gray-600 text-xs block font-mono">
+                            IP: {raw.lastVerifiedIp}
+                          </span>
                         )}
                       </div>
                     </td>
@@ -301,7 +327,29 @@ function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQue
                       {new Date(l.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-1 justify-end items-center">
+                        <button
+                          onClick={() => handleReveal(l.id)}
+                          disabled={isLoading}
+                          title={isRevealed ? 'Hide data' : 'Reveal data'}
+                          className="px-2 py-1 text-xs text-gray-400 hover:text-white bg-[#222] rounded transition-colors disabled:opacity-50"
+                        >
+                          {isLoading ? (
+                            <svg className="w-3.5 h-3.5 animate-spin inline" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.3" />
+                              <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                            </svg>
+                          ) : isRevealed ? (
+                            <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          )}
+                        </button>
                         <button
                           onClick={() => setDetailId(l.id)}
                           className="px-2 py-1 text-xs text-gray-400 hover:text-white bg-[#222] rounded transition-colors"
@@ -327,7 +375,8 @@ function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQue
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
                 {(!data?.licenses || data.licenses.length === 0) && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
