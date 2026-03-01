@@ -48,6 +48,8 @@ export default function IntegrationCodeModal({ isOpen, onClose, productId, produ
     setError(null)
     apiFetch<License[]>('/licenses/my').then(res => {
       if (res.success && res.data) {
+        console.log('MODAL productId prop:', productId);
+        console.log('LICENSE data from API:', res.data.map(l => ({ productId: l.productId, id: l.id })));
         const license = res.data.find(l => l.productId === productId)
         if (license) {
           setLicenseId(license.id)
