@@ -72,6 +72,15 @@ async function generateLicenseRecord(
     [licenseKey, `license_${cfg.type.toLowerCase()}`, userId, productId]
   )
 
+  // Send in-app notification (non-blocking — same as wallet path)
+  query(
+    `INSERT INTO notifications (user_id, type, title, message, data)
+     VALUES ($1::uuid, 'LICENSE_GENERATED', 'License Key Generated',
+             'Your license key for order #' || $2 || ' is ready: ' || $3,
+             $4::jsonb)`,
+    [userId, orderId, licenseKey, JSON.stringify({ licenseKey, productId, orderId })]
+  ).catch((err) => console.error('Failed to send license notification:', err))
+
   return result.rows[0].id
 }
 
