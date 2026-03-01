@@ -70,7 +70,7 @@ export default function IntegrationCodeModal({ isOpen, onClose, productId, produ
       if (res.success && res.data) {
         setSnippet(res.data)
       } else {
-        setError(res.error || 'Failed to load snippet')
+        setError(res.message || res.error || 'Failed to load snippet')
       }
     })
   }, [licenseId, language])
