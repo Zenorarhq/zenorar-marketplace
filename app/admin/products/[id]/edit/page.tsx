@@ -220,36 +220,62 @@ export default function EditProductPage() {
     if (!selectedFile) return
     setUploadingFile(true)
     setUploadError(null)
-
-    // Cycle through stages every 7 s — approximates server processing steps
-    const stages = ['Uploading...', 'Obfuscating...', 'Injecting license gate...', 'Finalizing...']
-    let stageIdx = 0
-    setUploadStage(stages[0])
-    const stageTimer = setInterval(() => {
-      stageIdx = Math.min(stageIdx + 1, stages.length - 1)
-      setUploadStage(stages[stageIdx])
-    }, 7000)
+    setUploadStage('Uploading...')
 
     try {
       const form = new FormData()
       form.append('file', selectedFile)
       form.append('version', fileVersion)
       form.append('isLatest', String(fileIsLatest))
+
       const res = await downloadsApi.adminUpload(productId, form)
-      if (res.success && res.data) {
-        setProductFiles(prev => fileIsLatest
-          ? [res.data!, ...prev.map(f => ({ ...f, is_latest: false }))]
-          : [...prev, res.data!]
-        )
-        setSelectedFile(null)
-        setFileVersion('1.0.0')
-      } else {
+      if (!res.success || !res.data?.jobId) {
         setUploadError(res.error || 'Upload failed. Please try again.')
+        setUploadingFile(false)
+        setUploadStage('')
+        return
       }
+
+      // Poll job status every 3 seconds
+      const jobId = res.data.jobId
+      const stageLabels: Record<string, string> = {
+        queued: 'Queued...',
+        obfuscating: 'Obfuscating...',
+        injecting: 'Injecting license gate...',
+        uploading: 'Uploading to R2...',
+        saving: 'Saving...',
+      }
+
+      const poll = setInterval(async () => {
+        try {
+          const statusRes = await downloadsApi.getJobStatus(jobId)
+          if (!statusRes.success || !statusRes.data) return
+
+          const { stage, status: jobStatus, result, error } = statusRes.data
+          setUploadStage(stageLabels[stage] ?? 'Processing...')
+
+          if (jobStatus === 'complete' && result) {
+            clearInterval(poll)
+            setProductFiles(prev => fileIsLatest
+              ? [result, ...prev.map(f => ({ ...f, is_latest: false }))]
+              : [...prev, result]
+            )
+            setSelectedFile(null)
+            setFileVersion('1.0.0')
+            setUploadingFile(false)
+            setUploadStage('')
+          } else if (jobStatus === 'failed') {
+            clearInterval(poll)
+            setUploadError(error || 'Upload failed. Please try again.')
+            setUploadingFile(false)
+            setUploadStage('')
+          }
+        } catch {
+          // ignore transient poll errors — keep polling
+        }
+      }, 3000)
     } catch {
       setUploadError('Upload failed. Please try again.')
-    } finally {
-      clearInterval(stageTimer)
       setUploadingFile(false)
       setUploadStage('')
     }

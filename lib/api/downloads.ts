@@ -24,6 +24,14 @@ export interface ProductFile {
   } | null
 }
 
+export interface UploadJob {
+  jobId: string
+  status: 'processing' | 'complete' | 'failed'
+  stage: 'queued' | 'obfuscating' | 'injecting' | 'uploading' | 'saving'
+  result?: ProductFile
+  error?: string
+}
+
 export interface DownloadResult {
   downloadUrl: string
   fileName: string
@@ -73,12 +81,17 @@ export const downloadsApi = {
 
   // ─── Admin ────────────────────────────────────────────────────────────────
 
-  /** Upload a product file to R2 */
-  async adminUpload(productId: string, formData: FormData): Promise<ApiResponse<ProductFile>> {
-    return apiFetch<ProductFile>(`/downloads/admin/products/${productId}/files`, {
+  /** Upload a product file — returns jobId immediately (202) */
+  async adminUpload(productId: string, formData: FormData): Promise<ApiResponse<{ jobId: string }>> {
+    return apiFetch<{ jobId: string }>(`/downloads/admin/products/${productId}/files`, {
       method: 'POST',
       body: formData,
     })
+  },
+
+  /** Poll background upload job status */
+  async getJobStatus(jobId: string): Promise<ApiResponse<UploadJob>> {
+    return apiFetch<UploadJob>(`/downloads/admin/jobs/${jobId}`)
   },
 
   /** List all file versions for a product (admin) */
