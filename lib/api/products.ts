@@ -53,6 +53,7 @@ export interface Product {
   reviewCount?: number
   averageRating?: number
   videoUrl: string | null
+  licenseGate: boolean
   createdAt: string
   updatedAt: string
 }

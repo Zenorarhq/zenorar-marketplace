@@ -49,6 +49,7 @@ export default function EditProductPage() {
     isDigital: true,
     isFeatured: false,
     isStaffPick: false,
+    licenseGate: true,
     videoUrl: '',
     tags: '',
     demoUrl: '',
@@ -109,6 +110,7 @@ export default function EditProductPage() {
         isDigital: p.isDigital,
         isFeatured: p.isFeatured,
         isStaffPick,
+        licenseGate: (p as any).licenseGate !== false,
         videoUrl,
         tags: (p as any).tags?.join(', ') || '',
         demoUrl: (p as any).demoUrl || '',
@@ -179,6 +181,7 @@ export default function EditProductPage() {
         status: formData.status,
         isDigital: formData.isDigital,
         isFeatured: formData.isFeatured,
+        licenseGate: formData.licenseGate,
         tags: formData.tags ? formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
         demoUrl: formData.demoUrl.trim() || null,
         demoInfo: formData.demoInfo.trim() || null,
@@ -708,6 +711,25 @@ export default function EditProductPage() {
                 <label htmlFor="isStaffPick" className="text-sm text-slate-300">
                   Staff Pick (show in Staff Picks section)
                 </label>
+              </div>
+
+              <div className="flex items-start gap-2 pt-2 border-t border-[#2a2a2a]">
+                <input
+                  type="checkbox"
+                  id="licenseGate"
+                  name="licenseGate"
+                  checked={formData.licenseGate}
+                  onChange={handleChange}
+                  className="w-4 h-4 mt-0.5 bg-[#1a1a1a] border-[#2a2a2a] rounded focus:ring-primary"
+                />
+                <div>
+                  <label htmlFor="licenseGate" className="text-sm text-slate-300 font-medium cursor-pointer">
+                    License Gate Protection
+                  </label>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Inject a forced license activation page into uploaded scripts. Buyers must enter their license key before the script works.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
