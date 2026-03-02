@@ -803,7 +803,7 @@ export default function EditProductPage() {
                 </>
               ) : (
                 <>
-                  <Icon name="save" size={16} />
+                  <Icon name="check" size={16} />
                   Save Changes
                 </>
               )}
@@ -853,7 +853,7 @@ export default function EditProductPage() {
                   disabled={!selectedFile || uploadingFile}
                   className="bg-primary hover:bg-primary/90 disabled:opacity-40 text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
                 >
-                  <Icon name={uploadingFile ? 'loader' : 'upload'} size={14} className={uploadingFile ? 'animate-spin' : ''} />
+                  <Icon name={uploadingFile ? 'loading' : 'upload'} size={14} className={uploadingFile ? 'animate-spin' : ''} />
                   {uploadingFile ? (uploadStage || 'Processing...') : 'Upload to R2'}
                 </button>
               </div>
