@@ -98,9 +98,9 @@ export default function LibraryPage() {
   })
 
   // Handler for Download/Update button
-  const handleDownload = async (productId: string, productName: string) => {
+  const handleDownload = async (productId: string, productName: string, cardId: string) => {
     try {
-      setLoadingAction(`download-${productId}`)
+      setLoadingAction(`download-${cardId}`)
       const result = await libraryApi.downloadProduct(productId)
 
       if (result.success && result.data) {
@@ -123,9 +123,9 @@ export default function LibraryPage() {
   }
 
   // Handler for API Key button
-  const handleApiKey = async (productId: string, productName: string) => {
+  const handleApiKey = async (productId: string, productName: string, cardId: string) => {
     try {
-      setLoadingAction(`api-${productId}`)
+      setLoadingAction(`api-${cardId}`)
       const result = await libraryApi.getApiKey(productId)
 
       if (result.success && result.data) {
@@ -141,9 +141,9 @@ export default function LibraryPage() {
   }
 
   // Handler for Renew button
-  const handleRenew = async (productId: string, productName: string) => {
+  const handleRenew = async (productId: string, productName: string, cardId: string) => {
     try {
-      setLoadingAction(`renew-${productId}`)
+      setLoadingAction(`renew-${cardId}`)
       const result = await libraryApi.renewSubscription(productId)
 
       if (result.success && result.data) {
@@ -332,11 +332,12 @@ export default function LibraryPage() {
           </div>
         ) : (
           filteredItems.map((item) => {
+            const cardId = item.licenseId || item.id
             const license = item.licenseId
               ? licenses.find(l => l.id === item.licenseId)
               : licenses.find(l => l.productId === item.id)
             const isScriptOrTool = item.category === 'scripts' || item.category === 'tools'
-            const isRevealed = revealedKeys.has(item.id)
+            const isRevealed = revealedKeys.has(cardId)
             return (
               <div
                 key={item.licenseId || item.id}
@@ -400,18 +401,18 @@ export default function LibraryPage() {
                             {isRevealed ? license.licenseKey : maskLicenseKey(license.licenseKey)}
                           </span>
                           <button
-                            onClick={() => toggleRevealKey(item.id)}
+                            onClick={() => toggleRevealKey(cardId)}
                             className="text-slate-500 hover:text-white transition-colors"
                             title={isRevealed ? 'Hide key' : 'Reveal key'}
                           >
                             <Icon name={isRevealed ? 'visibility-off' : 'eye'} size={13} />
                           </button>
                           <button
-                            onClick={() => copyLicenseKey(license.licenseKey, item.id)}
+                            onClick={() => copyLicenseKey(license.licenseKey, cardId)}
                             className="text-slate-500 hover:text-white transition-colors"
                             title="Copy key"
                           >
-                            <Icon name={copiedKey === item.id ? 'check' : 'copy'} size={13} />
+                            <Icon name={copiedKey === cardId ? 'check' : 'copy'} size={13} />
                           </button>
                         </div>
                       )}
@@ -422,11 +423,11 @@ export default function LibraryPage() {
                   <div className="flex flex-wrap gap-2 pt-4 border-t border-border-dark">
                     {item.status === 'expired' ? (
                       <button
-                        onClick={() => handleRenew(item.id, item.name)}
-                        disabled={loadingAction === `renew-${item.id}`}
+                        onClick={() => handleRenew(item.id, item.name, cardId)}
+                        disabled={loadingAction === `renew-${cardId}`}
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {loadingAction === `renew-${item.id}` ? (
+                        {loadingAction === `renew-${cardId}` ? (
                           <>
                             <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
                             Processing...
@@ -442,11 +443,11 @@ export default function LibraryPage() {
                       <>
                         {(item.category === 'scripts' || item.category === 'tools') && (
                           <button
-                            onClick={() => handleDownload(item.id, item.name)}
-                            disabled={loadingAction === `download-${item.id}`}
+                            onClick={() => handleDownload(item.id, item.name, cardId)}
+                            disabled={loadingAction === `download-${cardId}`}
                             className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {loadingAction === `download-${item.id}` ? (
+                            {loadingAction === `download-${cardId}` ? (
                               <>
                                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
                                 Loading...
@@ -506,11 +507,11 @@ export default function LibraryPage() {
                         )}
                         {item.category === 'api' && (
                           <button
-                            onClick={() => handleApiKey(item.id, item.name)}
-                            disabled={loadingAction === `api-${item.id}`}
+                            onClick={() => handleApiKey(item.id, item.name, cardId)}
+                            disabled={loadingAction === `api-${cardId}`}
                             className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {loadingAction === `api-${item.id}` ? (
+                            {loadingAction === `api-${cardId}` ? (
                               <>
                                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
                                 Loading...
@@ -523,14 +524,14 @@ export default function LibraryPage() {
                             )}
                           </button>
                         )}
-                        <div className="relative ml-auto" ref={openMenuId === item.id ? menuRef : undefined}>
+                        <div className="relative ml-auto" ref={openMenuId === cardId ? menuRef : undefined}>
                           <button
-                            onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                            onClick={() => setOpenMenuId(openMenuId === cardId ? null : cardId)}
                             className="flex items-center gap-2 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
                           >
                             <Icon name="more-horizontal" size={16} />
                           </button>
-                          {openMenuId === item.id && (
+                          {openMenuId === cardId && (
                             <div className="absolute right-0 bottom-full mb-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
                               <button
                                 onClick={() => { setOpenMenuId(null); router.push(`/products/${item.slug}`) }}
