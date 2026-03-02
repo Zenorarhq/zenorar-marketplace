@@ -112,7 +112,15 @@ export async function apiFetch<T>(
       headers,
     })
 
-    const data = await response.json()
+    let data: any
+    try {
+      data = await response.json()
+    } catch {
+      return {
+        success: false,
+        error: `Server error (${response.status}). The file may be too complex to process — try again or contact support.`,
+      }
+    }
 
     if (!response.ok && data.success !== false) {
       return {
@@ -147,7 +155,12 @@ export async function localApiFetch<T>(
   }
   try {
     const response = await fetch(`/api${endpoint}`, { ...options, headers })
-    const data = await response.json()
+    let data: any
+    try {
+      data = await response.json()
+    } catch {
+      return { success: false, error: `Server error (${response.status}). Try again or contact support.` }
+    }
     if (!response.ok && data.success !== false) {
       return { success: false, error: data.error || data.message || `HTTP Error: ${response.status}` }
     }
