@@ -26,6 +26,8 @@ export default function EditProductPage() {
   // File management state
   const [productFiles, setProductFiles] = useState<ProductFile[]>([])
   const [uploadingFile, setUploadingFile] = useState(false)
+  const [uploadStage, setUploadStage] = useState('')
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [fileVersion, setFileVersion] = useState('1.0.0')
   const [fileIsLatest, setFileIsLatest] = useState(true)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -217,19 +219,39 @@ export default function EditProductPage() {
   const handleFileUpload = async () => {
     if (!selectedFile) return
     setUploadingFile(true)
-    const form = new FormData()
-    form.append('file', selectedFile)
-    form.append('version', fileVersion)
-    form.append('isLatest', String(fileIsLatest))
-    const res = await downloadsApi.adminUpload(productId, form)
-    setUploadingFile(false)
-    if (res.success && res.data) {
-      setProductFiles(prev => fileIsLatest
-        ? [res.data!, ...prev.map(f => ({ ...f, is_latest: false }))]
-        : [...prev, res.data!]
-      )
-      setSelectedFile(null)
-      setFileVersion('1.0.0')
+    setUploadError(null)
+
+    // Cycle through stages every 7 s — approximates server processing steps
+    const stages = ['Uploading...', 'Obfuscating...', 'Injecting license gate...', 'Finalizing...']
+    let stageIdx = 0
+    setUploadStage(stages[0])
+    const stageTimer = setInterval(() => {
+      stageIdx = Math.min(stageIdx + 1, stages.length - 1)
+      setUploadStage(stages[stageIdx])
+    }, 7000)
+
+    try {
+      const form = new FormData()
+      form.append('file', selectedFile)
+      form.append('version', fileVersion)
+      form.append('isLatest', String(fileIsLatest))
+      const res = await downloadsApi.adminUpload(productId, form)
+      if (res.success && res.data) {
+        setProductFiles(prev => fileIsLatest
+          ? [res.data!, ...prev.map(f => ({ ...f, is_latest: false }))]
+          : [...prev, res.data!]
+        )
+        setSelectedFile(null)
+        setFileVersion('1.0.0')
+      } else {
+        setUploadError(res.error || 'Upload failed. Please try again.')
+      }
+    } catch {
+      setUploadError('Upload failed. Please try again.')
+    } finally {
+      clearInterval(stageTimer)
+      setUploadingFile(false)
+      setUploadStage('')
     }
   }
 
@@ -806,9 +828,12 @@ export default function EditProductPage() {
                   className="bg-primary hover:bg-primary/90 disabled:opacity-40 text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
                 >
                   <Icon name={uploadingFile ? 'loader' : 'upload'} size={14} className={uploadingFile ? 'animate-spin' : ''} />
-                  {uploadingFile ? 'Uploading...' : 'Upload to R2'}
+                  {uploadingFile ? (uploadStage || 'Processing...') : 'Upload to R2'}
                 </button>
               </div>
+              {uploadError && (
+                <p className="text-red-400 text-sm mt-2">{uploadError}</p>
+              )}
             </div>
 
             {/* Files list */}
