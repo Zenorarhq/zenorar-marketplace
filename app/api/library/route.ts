@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     const userId = authResult.payload.userId
 
     // Query user's licenses — one row per license so multiple purchases of the same product show separately
+    // Also joins download_history and product_files to detect update-available status
     const productsResult = await query(
       `
       SELECT
@@ -28,10 +29,23 @@ export async function GET(request: Request) {
         c.icon as category_icon,
         l.created_at as purchase_date,
         l.order_id as order_id,
-        l.status as license_status
+        l.status as license_status,
+        dh.last_file_id,
+        lf.latest_file_id
       FROM licenses l
       JOIN products p ON l.product_id = p.id
       JOIN categories c ON p."categoryId" = c.id
+      LEFT JOIN (
+        SELECT DISTINCT ON (product_id) file_id as last_file_id, product_id
+        FROM download_history
+        WHERE user_id = $1
+        ORDER BY product_id, downloaded_at DESC
+      ) dh ON dh.product_id = p.id
+      LEFT JOIN (
+        SELECT id as latest_file_id, product_id
+        FROM product_files
+        WHERE is_latest = true
+      ) lf ON lf.product_id = p.id
       WHERE l.user_id = $1
       ORDER BY l.created_at DESC
       `,
@@ -125,7 +139,9 @@ export async function GET(request: Request) {
           day: 'numeric',
           year: 'numeric',
         }),
-        status: statusMap[row.license_status] || 'active',
+        status: (row.last_file_id && row.latest_file_id && row.last_file_id !== row.latest_file_id)
+          ? 'update-available'
+          : (statusMap[row.license_status] || 'active'),
       }
     })
 
