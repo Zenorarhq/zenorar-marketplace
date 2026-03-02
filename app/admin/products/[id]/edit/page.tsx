@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -33,6 +33,7 @@ export default function EditProductPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
+  const jobProcessedRef = useRef(false)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -218,6 +219,7 @@ export default function EditProductPage() {
 
   const handleFileUpload = async () => {
     if (!selectedFile) return
+    jobProcessedRef.current = false
     setUploadingFile(true)
     setUploadError(null)
     setUploadStage('Uploading...')
@@ -254,7 +256,8 @@ export default function EditProductPage() {
           const { stage, status: jobStatus, result, error } = statusRes.data
           setUploadStage(stageLabels[stage] ?? 'Processing...')
 
-          if (jobStatus === 'complete' && result) {
+          if (jobStatus === 'complete' && result && !jobProcessedRef.current) {
+            jobProcessedRef.current = true
             clearInterval(poll)
             setProductFiles(prev => fileIsLatest
               ? [result, ...prev.map(f => ({ ...f, is_latest: false }))]
@@ -264,7 +267,8 @@ export default function EditProductPage() {
             setFileVersion('1.0.0')
             setUploadingFile(false)
             setUploadStage('')
-          } else if (jobStatus === 'failed') {
+          } else if (jobStatus === 'failed' && !jobProcessedRef.current) {
+            jobProcessedRef.current = true
             clearInterval(poll)
             setUploadError(error || 'Upload failed. Please try again.')
             setUploadingFile(false)
