@@ -887,12 +887,28 @@ export default function EditProductPage() {
                       {expandedReportId === file.id && file.obfuscation_report && (
                         <tr>
                           <td colSpan={8} className="py-2 px-4 bg-[#111]">
-                            <div className="grid grid-cols-4 gap-4 text-xs">
-                              <div><span className="text-slate-500">Total Files:</span> <span className="text-white">{file.obfuscation_report.totalFiles}</span></div>
-                              <div><span className="text-slate-500">Obfuscated:</span> <span className="text-green-400">{file.obfuscation_report.obfuscatedFiles}</span></div>
-                              <div><span className="text-slate-500">Skipped:</span> <span className="text-yellow-400">{file.obfuscation_report.skippedFiles}</span></div>
-                              <div><span className="text-slate-500">Failed:</span> <span className="text-red-400">{file.obfuscation_report.failedFiles}</span></div>
-                            </div>
+                            {file.obfuscation_report.partialFiles !== undefined ? (
+                              // Enhanced report (new format with fallback chain)
+                              <div className="text-xs space-y-1">
+                                <div className="text-slate-400 mb-1">Total files: <span className="text-white">{file.obfuscation_report.totalFiles}</span></div>
+                                <div className="text-green-400">✅ {(file.obfuscation_report.obfuscatedFiles ?? 0) - (file.obfuscation_report.partialFiles ?? 0)} fully protected ({file.obfuscation_report.level})</div>
+                                {(file.obfuscation_report.partialFiles ?? 0) > 0 && (
+                                  <div className="text-yellow-400">⚠️ {file.obfuscation_report.partialFiles} partially protected (fallback level)</div>
+                                )}
+                                {(file.obfuscation_report.failedFiles ?? 0) > 0 && (
+                                  <div className="text-red-400">🔴 {file.obfuscation_report.failedFiles} kept original (incompatible)</div>
+                                )}
+                                <div className="text-slate-500">— {file.obfuscation_report.skippedFiles} non-code files skipped</div>
+                              </div>
+                            ) : (
+                              // Legacy report (4-column grid)
+                              <div className="grid grid-cols-4 gap-4 text-xs">
+                                <div><span className="text-slate-500">Total Files:</span> <span className="text-white">{file.obfuscation_report.totalFiles}</span></div>
+                                <div><span className="text-slate-500">Obfuscated:</span> <span className="text-green-400">{file.obfuscation_report.obfuscatedFiles}</span></div>
+                                <div><span className="text-slate-500">Skipped:</span> <span className="text-yellow-400">{file.obfuscation_report.skippedFiles}</span></div>
+                                <div><span className="text-slate-500">Failed:</span> <span className="text-red-400">{file.obfuscation_report.failedFiles}</span></div>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )}

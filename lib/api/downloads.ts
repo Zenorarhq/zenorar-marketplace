@@ -19,6 +19,7 @@ export interface ProductFile {
     obfuscatedFiles: number
     skippedFiles: number
     failedFiles: number
+    partialFiles?: number
     level: string
   } | null
 }
