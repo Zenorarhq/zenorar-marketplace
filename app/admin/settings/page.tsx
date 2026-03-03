@@ -282,6 +282,7 @@ export default function AdminSettingsPage() {
     voiceEsimProviders: true,
     virtualNumbers: true,
     giftCardProviders: true,
+    otpProviders: true,
     cloudflareR2: true,
     apiKeys: true,
   })
@@ -364,7 +365,7 @@ export default function AdminSettingsPage() {
 
   // Gift Card Providers Settings State
   const [giftCardSettings, setGiftCardSettings] = useState({
-    giftCardDefaultProvider: 'reloadly' as 'reloadly' | 'ezgiftcard' | 'bitrefill',
+    giftCardDefaultProvider: 'reloadly' as 'reloadly' | 'ezgiftcard' | 'bitrefill' | 'tango' | 'ezpin',
     // Reloadly
     reloadlyEnabled: false,
     reloadlyMode: 'sandbox' as 'sandbox' | 'production',
@@ -377,6 +378,29 @@ export default function AdminSettingsPage() {
     bitrefillEnabled: false,
     bitrefillApiKey: '',
     bitrefillApiSecret: '',
+    // Tango Card (RaaS)
+    tangoEnabled: false,
+    tangoMode: 'sandbox' as 'sandbox' | 'production',
+    tangoSandboxPlatformName: '',
+    tangoSandboxPlatformKey: '',
+    tangoProductionPlatformName: '',
+    tangoProductionPlatformKey: '',
+    // EZ Pin
+    ezpinEnabled: false,
+    ezpinSandbox: true,
+    ezpinApiKey: '',
+    ezpinApiSecret: '',
+  })
+
+  // OTP Providers Settings State
+  const [otpSettings, setOtpSettings] = useState({
+    otpDefaultProvider: 'smspool' as 'smspool' | '5sim',
+    // SMSPool
+    smspoolEnabled: false,
+    smspoolApiKey: '',
+    // 5sim
+    fivesimEnabled: false,
+    fivesimApiKey: '',
   })
 
   // Show/hide secrets for services
@@ -637,6 +661,29 @@ export default function AdminSettingsPage() {
           bitrefillEnabled: d.bitrefillEnabled ?? prev.bitrefillEnabled,
           bitrefillApiKey: d.bitrefillApiKey ?? prev.bitrefillApiKey,
           bitrefillApiSecret: d.bitrefillApiSecret ?? prev.bitrefillApiSecret,
+          // Tango Card
+          tangoEnabled: d.tangoEnabled ?? prev.tangoEnabled,
+          tangoMode: d.tangoMode ?? prev.tangoMode,
+          tangoSandboxPlatformName: d.tangoSandboxPlatformName ?? prev.tangoSandboxPlatformName,
+          tangoSandboxPlatformKey: d.tangoSandboxPlatformKey ?? prev.tangoSandboxPlatformKey,
+          tangoProductionPlatformName: d.tangoProductionPlatformName ?? prev.tangoProductionPlatformName,
+          tangoProductionPlatformKey: d.tangoProductionPlatformKey ?? prev.tangoProductionPlatformKey,
+          // EZ Pin
+          ezpinEnabled: d.ezpinEnabled ?? prev.ezpinEnabled,
+          ezpinSandbox: d.ezpinSandbox ?? prev.ezpinSandbox,
+          ezpinApiKey: d.ezpinApiKey ?? prev.ezpinApiKey,
+          ezpinApiSecret: d.ezpinApiSecret ?? prev.ezpinApiSecret,
+        }))
+
+        // OTP Providers settings
+        setOtpSettings((prev) => ({
+          otpDefaultProvider: d.otpDefaultProvider ?? prev.otpDefaultProvider,
+          // SMSPool
+          smspoolEnabled: d.smspoolEnabled ?? prev.smspoolEnabled,
+          smspoolApiKey: d.smspoolApiKey ?? prev.smspoolApiKey,
+          // 5sim
+          fivesimEnabled: d.fivesimEnabled ?? prev.fivesimEnabled,
+          fivesimApiKey: d.fivesimApiKey ?? prev.fivesimApiKey,
         }))
       }
     })
@@ -1304,6 +1351,24 @@ export default function AdminSettingsPage() {
       { key: 'bitrefillEnabled', value: giftCardSettings.bitrefillEnabled, group: 'api', isPublic: true },
       { key: 'bitrefillApiKey', value: giftCardSettings.bitrefillApiKey, group: 'api', isPublic: false },
       { key: 'bitrefillApiSecret', value: giftCardSettings.bitrefillApiSecret, group: 'api', isPublic: false },
+      // Tango Card
+      { key: 'tangoEnabled', value: giftCardSettings.tangoEnabled, group: 'api', isPublic: true },
+      { key: 'tangoMode', value: giftCardSettings.tangoMode, group: 'api', isPublic: false },
+      { key: 'tangoSandboxPlatformName', value: giftCardSettings.tangoSandboxPlatformName, group: 'api', isPublic: false },
+      { key: 'tangoSandboxPlatformKey', value: giftCardSettings.tangoSandboxPlatformKey, group: 'api', isPublic: false },
+      { key: 'tangoProductionPlatformName', value: giftCardSettings.tangoProductionPlatformName, group: 'api', isPublic: false },
+      { key: 'tangoProductionPlatformKey', value: giftCardSettings.tangoProductionPlatformKey, group: 'api', isPublic: false },
+      // EZ Pin
+      { key: 'ezpinEnabled', value: giftCardSettings.ezpinEnabled, group: 'api', isPublic: true },
+      { key: 'ezpinSandbox', value: giftCardSettings.ezpinSandbox, group: 'api', isPublic: false },
+      { key: 'ezpinApiKey', value: giftCardSettings.ezpinApiKey, group: 'api', isPublic: false },
+      { key: 'ezpinApiSecret', value: giftCardSettings.ezpinApiSecret, group: 'api', isPublic: false },
+      // OTP Providers
+      { key: 'otpDefaultProvider', value: otpSettings.otpDefaultProvider, group: 'api', isPublic: false },
+      { key: 'smspoolEnabled', value: otpSettings.smspoolEnabled, group: 'api', isPublic: true },
+      { key: 'smspoolApiKey', value: otpSettings.smspoolApiKey, group: 'api', isPublic: false },
+      { key: 'fivesimEnabled', value: otpSettings.fivesimEnabled, group: 'api', isPublic: true },
+      { key: 'fivesimApiKey', value: otpSettings.fivesimApiKey, group: 'api', isPublic: false },
       // Cron Jobs
       { key: 'cronEnabled', value: cronSettings.cronEnabled, group: 'cron', isPublic: false },
       { key: 'cronSecret', value: cronSettings.cronSecret, group: 'cron', isPublic: false },
@@ -4142,12 +4207,14 @@ export default function AdminSettingsPage() {
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
                       <select
                         value={giftCardSettings.giftCardDefaultProvider}
-                        onChange={(e) => setGiftCardSettings({ ...giftCardSettings, giftCardDefaultProvider: e.target.value as 'reloadly' | 'ezgiftcard' | 'bitrefill' })}
+                        onChange={(e) => setGiftCardSettings({ ...giftCardSettings, giftCardDefaultProvider: e.target.value as 'reloadly' | 'ezgiftcard' | 'bitrefill' | 'tango' | 'ezpin' })}
                         className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[160px] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat"
                       >
                         <option value="reloadly">Reloadly</option>
                         <option value="ezgiftcard">EZGiftCard</option>
                         <option value="bitrefill">Bitrefill</option>
+                        <option value="tango">Tango Card</option>
+                        <option value="ezpin">EZ Pin</option>
                       </select>
                     </div>
 
@@ -4343,6 +4410,339 @@ export default function AdminSettingsPage() {
                           <p className="text-xs text-slate-600 mt-3">Get your credentials at <a href="https://www.bitrefill.com/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">bitrefill.com/api</a></p>
                         </div>
                       )}
+                        </div>
+
+                    {/* Tango Card (RaaS) */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
+                            <Icon name="gift" size={20} className="text-teal-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Tango Card</p>
+                            <p className="text-slate-500 text-sm">RaaS API, 1000+ brands, B2B rewards platform</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGiftCardSettings({ ...giftCardSettings, tangoEnabled: !giftCardSettings.tangoEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.tangoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.tangoEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {giftCardSettings.tangoEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
+                          {/* Mode Toggle */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
+                              <button
+                                type="button"
+                                onClick={() => setGiftCardSettings({ ...giftCardSettings, tangoMode: 'sandbox' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.tangoMode === 'sandbox' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Sandbox
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setGiftCardSettings({ ...giftCardSettings, tangoMode: 'production' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.tangoMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Production
+                              </button>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${giftCardSettings.tangoMode === 'sandbox' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                              {giftCardSettings.tangoMode === 'sandbox' ? 'SANDBOX' : 'PRODUCTION'}
+                            </span>
+                          </div>
+
+                          {/* Credentials based on mode */}
+                          {giftCardSettings.tangoMode === 'sandbox' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Sandbox Platform Name</label>
+                                <input
+                                  type="text"
+                                  value={giftCardSettings.tangoSandboxPlatformName}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoSandboxPlatformName: e.target.value })}
+                                  placeholder="Your sandbox platform name"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Sandbox Platform Key</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.tangoSandboxPlatformKey ? 'text' : 'password'}
+                                    value={giftCardSettings.tangoSandboxPlatformKey}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoSandboxPlatformKey: e.target.value })}
+                                    placeholder="Your sandbox platform key"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, tangoSandboxPlatformKey: !prev.tangoSandboxPlatformKey }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.tangoSandboxPlatformKey ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Production Platform Name</label>
+                                <input
+                                  type="text"
+                                  value={giftCardSettings.tangoProductionPlatformName}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoProductionPlatformName: e.target.value })}
+                                  placeholder="Your production platform name"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Production Platform Key</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.tangoProductionPlatformKey ? 'text' : 'password'}
+                                    value={giftCardSettings.tangoProductionPlatformKey}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoProductionPlatformKey: e.target.value })}
+                                    placeholder="Your production platform key"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, tangoProductionPlatformKey: !prev.tangoProductionPlatformKey }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.tangoProductionPlatformKey ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-xs text-slate-600">Get your credentials at <a href="https://www.tangocard.com/developers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">tangocard.com/developers</a></p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* EZ Pin */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                            <Icon name="gift" size={20} className="text-cyan-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">EZ Pin</p>
+                            <p className="text-slate-500 text-sm">Digital gift cards, prepaid cards, loyalty programs</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGiftCardSettings({ ...giftCardSettings, ezpinEnabled: !giftCardSettings.ezpinEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.ezpinEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.ezpinEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {giftCardSettings.ezpinEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
+                          {/* Sandbox Toggle */}
+                          <div className="flex items-center justify-between p-3 bg-[#141414] rounded-lg">
+                            <div>
+                              <p className="text-white text-sm font-medium">Sandbox Mode</p>
+                              <p className="text-slate-500 text-xs">Use sandbox environment for testing</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setGiftCardSettings({ ...giftCardSettings, ezpinSandbox: !giftCardSettings.ezpinSandbox })}
+                              className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.ezpinSandbox ? 'bg-orange-500' : 'bg-green-500'}`}
+                            >
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.ezpinSandbox ? 'left-7' : 'left-1'}`} />
+                            </button>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${giftCardSettings.ezpinSandbox ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                            {giftCardSettings.ezpinSandbox ? 'SANDBOX' : 'PRODUCTION'}
+                          </span>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">API Key</label>
+                              <div className="relative">
+                                <input
+                                  type={showServiceSecrets.ezpinApiKey ? 'text' : 'password'}
+                                  value={giftCardSettings.ezpinApiKey}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, ezpinApiKey: e.target.value })}
+                                  placeholder="Your EZ Pin API key"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, ezpinApiKey: !prev.ezpinApiKey }))}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                  <Icon name={showServiceSecrets.ezpinApiKey ? 'eye-off' : 'eye'} size={16} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-300">API Secret</label>
+                              <div className="relative">
+                                <input
+                                  type={showServiceSecrets.ezpinApiSecret ? 'text' : 'password'}
+                                  value={giftCardSettings.ezpinApiSecret}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, ezpinApiSecret: e.target.value })}
+                                  placeholder="Your EZ Pin API secret"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, ezpinApiSecret: !prev.ezpinApiSecret }))}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                  <Icon name={showServiceSecrets.ezpinApiSecret ? 'eye-off' : 'eye'} size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600">Get your credentials at <a href="https://www.ezpin.com/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">ezpin.com/api</a></p>
+                        </div>
+                      )}
+                    </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* OTP Verification Providers */}
+                  <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                    <button
+                      onClick={() => toggleSection('otpProviders')}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                          <Icon name="smartphone" size={20} className="text-violet-400" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-white font-semibold text-lg">OTP Verification Providers</h3>
+                          <p className="text-slate-500 text-sm">One-time phone numbers for SMS verification codes</p>
+                        </div>
+                      </div>
+                      <Icon
+                        name={expandedSections.otpProviders ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        className="text-slate-400 flex-shrink-0"
+                      />
+                    </button>
+
+                    {expandedSections.otpProviders && (
+                      <>
+                        {/* Default Provider */}
+                        <div className="mb-6 mt-6">
+                          <label className="text-sm font-medium text-slate-300 mb-2 block">Default OTP Provider</label>
+                          <select
+                            value={otpSettings.otpDefaultProvider}
+                            onChange={(e) => setOtpSettings({ ...otpSettings, otpDefaultProvider: e.target.value as 'smspool' | '5sim' })}
+                            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[160px] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat"
+                          >
+                            <option value="smspool">SMSPool</option>
+                            <option value="5sim">5sim</option>
+                          </select>
+                        </div>
+
+                        {/* SMSPool */}
+                        <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                <Icon name="message-square" size={20} className="text-blue-400" />
+                              </div>
+                              <div>
+                                <p className="text-white font-medium">SMSPool</p>
+                                <p className="text-slate-500 text-sm">Affordable SMS verification, 100+ countries</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setOtpSettings({ ...otpSettings, smspoolEnabled: !otpSettings.smspoolEnabled })}
+                              className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${otpSettings.smspoolEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                            >
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${otpSettings.smspoolEnabled ? 'left-7' : 'left-1'}`} />
+                            </button>
+                          </div>
+                          {otpSettings.smspoolEnabled && (
+                            <div className="pt-4 border-t border-[#2a2a2a]">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">API Key</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.smspoolApiKey ? 'text' : 'password'}
+                                    value={otpSettings.smspoolApiKey}
+                                    onChange={(e) => setOtpSettings({ ...otpSettings, smspoolApiKey: e.target.value })}
+                                    placeholder="Your SMSPool API key"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, smspoolApiKey: !prev.smspoolApiKey }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.smspoolApiKey ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                                <p className="text-xs text-slate-600">Get your API key at <a href="https://www.smspool.net" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">smspool.net</a></p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 5sim */}
+                        <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                                <Icon name="hash" size={20} className="text-green-400" />
+                              </div>
+                              <div>
+                                <p className="text-white font-medium">5sim</p>
+                                <p className="text-slate-500 text-sm">Fast SMS activation, 180+ countries</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setOtpSettings({ ...otpSettings, fivesimEnabled: !otpSettings.fivesimEnabled })}
+                              className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${otpSettings.fivesimEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                            >
+                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${otpSettings.fivesimEnabled ? 'left-7' : 'left-1'}`} />
+                            </button>
+                          </div>
+                          {otpSettings.fivesimEnabled && (
+                            <div className="pt-4 border-t border-[#2a2a2a]">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">API Key</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.fivesimApiKey ? 'text' : 'password'}
+                                    value={otpSettings.fivesimApiKey}
+                                    onChange={(e) => setOtpSettings({ ...otpSettings, fivesimApiKey: e.target.value })}
+                                    placeholder="Your 5sim API key"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, fivesimApiKey: !prev.fivesimApiKey }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.fivesimApiKey ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                                <p className="text-xs text-slate-600">Get your API key at <a href="https://5sim.net" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">5sim.net</a></p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </>
                     )}
