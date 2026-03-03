@@ -793,6 +793,16 @@ export interface LowStockAlertData {
   }>
 }
 
+export interface SmsForwardingData {
+  email: string
+  phoneNumber: string
+  phoneNumberDisplay: string
+  fromNumber: string
+  messageBody: string
+  receivedAt: Date
+  mediaUrls?: string[]
+}
+
 function generateLowStockAlertHTML(data: LowStockAlertData): string {
   return `
     <!DOCTYPE html>
@@ -898,6 +908,265 @@ export async function sendLowStockAlertEmail(data: LowStockAlertData): Promise<b
     }
   } catch (error) {
     console.error('✗ Failed to send low stock alert email:', error)
+    return false
+  }
+}
+
+// ============================================================================
+// SMS Forwarding Email
+// ============================================================================
+
+function generateSmsForwardingHTML(data: SmsForwardingData): string {
+  const receivedTime = new Date(data.receivedAt).toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  })
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>New SMS - ${data.phoneNumberDisplay}</title>
+    </head>
+    <body style="font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 30px 20px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">💬 New SMS Message</h1>
+          <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">To: ${data.phoneNumberDisplay}</p>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 30px; background: #ffffff;">
+          <!-- Message Info -->
+          <div style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <table style="width: 100%;">
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">From:</td>
+                <td style="padding: 8px 0; color: #1f2937; font-weight: 600; text-align: right;">${data.fromNumber}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">To:</td>
+                <td style="padding: 8px 0; color: #1f2937; font-weight: 600; text-align: right;">${data.phoneNumberDisplay}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Received:</td>
+                <td style="padding: 8px 0; color: #1f2937; font-weight: 600; text-align: right;">${receivedTime}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Message Content -->
+          <div style="background: #1f2937; border-radius: 12px; padding: 25px; margin: 20px 0;">
+            <p style="color: #9ca3af; font-size: 12px; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">Message</p>
+            <p style="color: #ffffff; font-size: 16px; margin: 0; line-height: 1.6; white-space: pre-wrap;">${data.messageBody}</p>
+          </div>
+
+          ${data.mediaUrls && data.mediaUrls.length > 0 ? `
+            <!-- Media Attachments -->
+            <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0;">
+              <p style="color: #6b7280; font-size: 14px; margin: 0 0 15px 0; font-weight: 600;">📎 Attachments (${data.mediaUrls.length})</p>
+              ${data.mediaUrls.map((url, i) => `
+                <a href="${url}" style="display: inline-block; margin: 5px; padding: 10px 15px; background: #e5e7eb; border-radius: 8px; color: #1f2937; text-decoration: none; font-size: 14px;">
+                  Attachment ${i + 1}
+                </a>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          <!-- CTA -->
+          <div style="margin-top: 30px; text-align: center;">
+            <a href="https://zenorar.com/profile/numbers"
+               style="display: inline-block; background: #8b5cf6; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+              View in Dashboard
+            </a>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 20px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
+          <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+            SMS forwarding from your Zenorar virtual number ${data.phoneNumberDisplay}
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+}
+
+/**
+ * Send SMS forwarding notification email
+ */
+export async function sendSmsForwardingEmail(data: SmsForwardingData): Promise<boolean> {
+  try {
+    const provider = await getActiveEmailProvider()
+
+    if (!provider) {
+      console.warn('⚠ No active email provider configured - SMS forwarding email not sent')
+      return false
+    }
+
+    const htmlContent = generateSmsForwardingHTML(data)
+    const subject = `📱 SMS from ${data.fromNumber} to ${data.phoneNumberDisplay}`
+
+    console.log(`→ Sending SMS forwarding email via ${provider.provider} to ${data.email}`)
+
+    switch (provider.provider) {
+      case 'smtp':
+        return await sendViaSMTP(provider.config, data.email, subject, htmlContent)
+      case 'resend':
+        return await sendViaResend(provider.config, data.email, subject, htmlContent)
+      case 'sendgrid':
+        return await sendViaSendGrid(provider.config, data.email, subject, htmlContent)
+      default:
+        console.error(`✗ Unknown email provider: ${provider.provider}`)
+        return false
+    }
+  } catch (error) {
+    console.error('✗ Failed to send SMS forwarding email:', error)
+    return false
+  }
+}
+
+// ============================================================================
+// Voicemail Notification Email
+// ============================================================================
+
+export interface VoicemailNotificationData {
+  email: string
+  customerName: string
+  phoneNumber: string
+  phoneNumberDisplay: string
+  callerNumber: string
+  duration: number
+  recordingUrl: string
+  receivedAt: Date
+}
+
+function generateVoicemailNotificationHTML(data: VoicemailNotificationData): string {
+  const receivedTime = new Date(data.receivedAt).toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  })
+
+  const durationFormatted = data.duration >= 60
+    ? `${Math.floor(data.duration / 60)}:${(data.duration % 60).toString().padStart(2, '0')}`
+    : `${data.duration} seconds`
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>New Voicemail - ${data.phoneNumberDisplay}</title>
+    </head>
+    <body style="font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px 20px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">📞 New Voicemail</h1>
+          <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">To: ${data.phoneNumberDisplay}</p>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 30px; background: #ffffff;">
+          <p style="color: #6b7280; font-size: 16px; line-height: 1.5; margin: 0 0 20px 0;">
+            Hi <strong>${data.customerName}</strong>, you have a new voicemail on your virtual number.
+          </p>
+
+          <!-- Voicemail Info -->
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <table style="width: 100%;">
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">From:</td>
+                <td style="padding: 8px 0; color: #1f2937; font-weight: 600; text-align: right;">${data.callerNumber}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">To:</td>
+                <td style="padding: 8px 0; color: #1f2937; font-weight: 600; text-align: right;">${data.phoneNumberDisplay}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Received:</td>
+                <td style="padding: 8px 0; color: #1f2937; font-weight: 600; text-align: right;">${receivedTime}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Duration:</td>
+                <td style="padding: 8px 0; color: #1f2937; font-weight: 600; text-align: right;">${durationFormatted}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Play Button -->
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.recordingUrl}"
+               style="display: inline-block; background: #ef4444; color: white; padding: 16px 40px; text-decoration: none; border-radius: 30px; font-weight: 600; font-size: 16px;">
+              🎵 Play Voicemail
+            </a>
+          </div>
+
+          <!-- CTA -->
+          <div style="margin-top: 30px; text-align: center;">
+            <a href="https://zenorar.com/profile/numbers"
+               style="display: inline-block; background: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 14px;">
+              View All Messages
+            </a>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 20px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
+          <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+            Voicemail notification from your Zenorar virtual number ${data.phoneNumberDisplay}
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+}
+
+/**
+ * Send voicemail notification email
+ */
+export async function sendVoicemailNotificationEmail(data: VoicemailNotificationData): Promise<boolean> {
+  try {
+    const provider = await getActiveEmailProvider()
+
+    if (!provider) {
+      console.warn('⚠ No active email provider configured - voicemail notification email not sent')
+      return false
+    }
+
+    const htmlContent = generateVoicemailNotificationHTML(data)
+    const subject = `📞 Voicemail from ${data.callerNumber} to ${data.phoneNumberDisplay}`
+
+    console.log(`→ Sending voicemail notification email via ${provider.provider} to ${data.email}`)
+
+    switch (provider.provider) {
+      case 'smtp':
+        return await sendViaSMTP(provider.config, data.email, subject, htmlContent)
+      case 'resend':
+        return await sendViaResend(provider.config, data.email, subject, htmlContent)
+      case 'sendgrid':
+        return await sendViaSendGrid(provider.config, data.email, subject, htmlContent)
+      default:
+        console.error(`✗ Unknown email provider: ${provider.provider}`)
+        return false
+    }
+  } catch (error) {
+    console.error('✗ Failed to send voicemail notification email:', error)
     return false
   }
 }

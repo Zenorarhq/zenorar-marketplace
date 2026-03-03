@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { query } from '@/lib/db'
+import { twilioService } from '@/lib/virtual-numbers/providers/twilio'
+import { checkSmsSendLimits, getRateLimitHeaders } from '@/lib/virtual-numbers/rate-limit'
 
 /**
  * POST /api/virtual-numbers/my-numbers/[id]/send-sms
@@ -18,6 +20,24 @@ export async function POST(
       return NextResponse.json(
         { success: false, error: 'Authentication required' },
         { status: 401 }
+      )
+    }
+
+    // Check rate limits
+    const rateLimitResult = checkSmsSendLimits(user.id)
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: rateLimitResult.blocked
+            ? `Too many requests. Try again after ${rateLimitResult.blockExpiresAt?.toISOString()}`
+            : 'Rate limit exceeded',
+          retryAfter: rateLimitResult.blockExpiresAt || rateLimitResult.resetAt
+        },
+        {
+          status: 429,
+          headers: getRateLimitHeaders(rateLimitResult)
+        }
       )
     }
 
@@ -68,16 +88,35 @@ export async function POST(
       )
     }
 
-    // For now, simulate sending (Twilio integration will be added)
-    const messageSid = `SM${Date.now()}${Math.random().toString(36).substring(2, 10)}`
+    // Send SMS via Twilio
+    const smsResult = await twilioService.sendSms(
+      virtualNumber.phone_number,
+      to,
+      messageBody
+    )
+
+    if (!smsResult.success) {
+      // Log failed attempt
+      await query(
+        `INSERT INTO virtual_number_messages
+           (virtual_number_id, user_id, direction, from_number, to_number, body, status, error_message)
+         VALUES ($1, $2, 'outbound', $3, $4, $5, 'failed', $6)`,
+        [numberId, user.id, virtualNumber.phone_number, to, messageBody, smsResult.error]
+      )
+
+      return NextResponse.json(
+        { success: false, error: smsResult.error || 'Failed to send SMS' },
+        { status: 500 }
+      )
+    }
 
     // Log the outbound message
     const messageResult = await query(
       `INSERT INTO virtual_number_messages
          (virtual_number_id, user_id, direction, from_number, to_number, body, provider_message_sid, status)
-       VALUES ($1, $2, 'outbound', $3, $4, $5, $6, 'sent')
+       VALUES ($1, $2, 'outbound', $3, $4, $5, $6, $7)
        RETURNING id`,
-      [numberId, user.id, virtualNumber.phone_number, to, messageBody, messageSid]
+      [numberId, user.id, virtualNumber.phone_number, to, messageBody, smsResult.messageSid, smsResult.status]
     )
 
     // Update usage counters
@@ -94,8 +133,11 @@ export async function POST(
       success: true,
       data: {
         messageId: messageResult.rows[0].id,
-        status: 'sent'
+        messageSid: smsResult.messageSid,
+        status: smsResult.status
       }
+    }, {
+      headers: getRateLimitHeaders(rateLimitResult)
     })
   } catch (error: any) {
     console.error('Error sending SMS:', error)
