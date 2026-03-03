@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest } from 'next/server'
 import { requireAdmin, successResponse, errorResponse } from '@/lib/auth-middleware'
 import { executeQuery } from '@/lib/db-helpers'

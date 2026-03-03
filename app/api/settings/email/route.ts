@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // Email Settings API
 // GET: Fetch all email provider configurations
 // PUT: Update email provider configuration

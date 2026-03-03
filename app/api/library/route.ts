@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth-middleware'
 import { query } from '@/lib/db'
