@@ -59,6 +59,14 @@ export default function LibraryPage() {
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set())
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
+  // Download toast notification
+  const [downloadToast, setDownloadToast] = useState<{ message: string; variant: 'info' | 'success' | 'error' } | null>(null)
+
+  const showToast = (message: string, variant: 'info' | 'success' | 'error', autoDismiss = 0) => {
+    setDownloadToast({ message, variant })
+    if (autoDismiss > 0) setTimeout(() => setDownloadToast(null), autoDismiss)
+  }
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -101,17 +109,17 @@ export default function LibraryPage() {
   const handleDownload = async (productId: string, productName: string, cardId: string) => {
     try {
       setLoadingAction(`download-${cardId}`)
+      showToast('Preparing your download… this can take up to 60 seconds for large files.', 'info')
       const result = await libraryApi.downloadProduct(productId)
 
       if (result.success && result.data) {
-        // Open download URL in new tab
         window.open(result.data.url, '_blank')
-        alert(`${productName} download started!`)
+        showToast(`${productName} download started!`, 'success', 4000)
       } else {
-        alert(result.error || 'Download failed')
+        showToast(result.error || 'Download failed. Please try again.', 'error', 5000)
       }
     } catch (error: any) {
-      alert(error.message || 'Failed to download product')
+      showToast(error.message || 'Failed to download product. Please try again.', 'error', 5000)
     } finally {
       setLoadingAction(null)
     }
@@ -450,7 +458,7 @@ export default function LibraryPage() {
                             {loadingAction === `download-${cardId}` ? (
                               <>
                                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
-                                Loading...
+                                Preparing...
                               </>
                             ) : (
                               <>
@@ -655,6 +663,27 @@ export default function LibraryPage() {
         productId={snippetModal?.productId || ''}
         productName={snippetModal?.productName || ''}
       />
+
+      {/* Download Toast */}
+      {downloadToast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl border text-sm font-medium max-w-sm w-full transition-all ${
+          downloadToast.variant === 'info'
+            ? 'bg-[#1a1a1a] border-border-dark text-slate-200'
+            : downloadToast.variant === 'success'
+            ? 'bg-green-900/80 border-green-500/30 text-green-300'
+            : 'bg-red-900/80 border-red-500/30 text-red-300'
+        }`}>
+          {downloadToast.variant === 'info' && (
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent flex-shrink-0" />
+          )}
+          {downloadToast.variant === 'success' && <Icon name="check-circle" size={18} className="text-green-400 flex-shrink-0" />}
+          {downloadToast.variant === 'error' && <Icon name="alert-circle" size={18} className="text-red-400 flex-shrink-0" />}
+          <span>{downloadToast.message}</span>
+          <button onClick={() => setDownloadToast(null)} className="ml-auto text-slate-500 hover:text-white flex-shrink-0">
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Domain Activation Modal */}
       {domainModal && (
