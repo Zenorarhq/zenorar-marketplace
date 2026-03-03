@@ -13,6 +13,7 @@ export interface GiftCardProduct {
   isFeatured: boolean
   minCustomAmount?: number
   maxCustomAmount?: number
+  currency?: string // Default: USD
   provider?: string
   providerProductId?: string
   providerData?: Record<string, any>
@@ -24,6 +25,7 @@ export interface GiftCardCode {
   id: string
   giftCardId: string
   denomination: number
+  currency?: string // Default: USD
   code: string
   pin?: string
   status: 'available' | 'reserved' | 'sold' | 'expired' | 'invalid'
@@ -49,9 +51,10 @@ export interface UserGiftCard {
   category?: string
   imageUrl?: string
   denomination: number
+  currency?: string // Default: USD
   code: string
   pin?: string
-  status: 'delivered' | 'redeemed' | 'expired'
+  status: 'delivered' | 'redeemed' | 'expired' | 'refunded'
   source: 'bulk' | 'reloadly' | 'manual'
   deliveredAt: Date
   redeemedAt?: Date
@@ -179,3 +182,29 @@ export const GIFT_CARD_CATEGORIES = [
 ] as const
 
 export type GiftCardCategory = typeof GIFT_CARD_CATEGORIES[number]
+
+// Supported currencies
+export const SUPPORTED_CURRENCIES = [
+  'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NGN', 'INR', 'BRL', 'MXN', 'JPY'
+] as const
+
+export type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number]
+
+// Currency display helpers
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  CAD: 'C$',
+  AUD: 'A$',
+  NGN: '₦',
+  INR: '₹',
+  BRL: 'R$',
+  MXN: 'MX$',
+  JPY: '¥'
+}
+
+export function formatCurrency(amount: number, currency: string = 'USD'): string {
+  const symbol = CURRENCY_SYMBOLS[currency] || '$'
+  return `${symbol}${amount.toFixed(2)}`
+}

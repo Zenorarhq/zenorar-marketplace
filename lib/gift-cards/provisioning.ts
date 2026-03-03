@@ -4,6 +4,7 @@
 import { query } from '@/lib/db'
 import { sellCode, checkStock as checkBulkStock } from './inventory'
 import { reloadlyProvider } from './providers/reloadly'
+import { encryptCode, decryptCode } from './encryption'
 import type { GiftCardPurchaseResult, GiftCardAvailability, UserGiftCard } from './types'
 
 /**
@@ -194,11 +195,15 @@ async function createUserGiftCard(data: {
   expiresAt?: Date
   providerOrderId?: string
 }): Promise<{ id: string }> {
+  // Encrypt the code and pin before storing
+  const encryptedCode = encryptCode(data.code)
+  const encryptedPin = data.pin ? encryptCode(data.pin) : null
+
   const result = await query(
     `INSERT INTO user_gift_cards
        (user_id, gift_card_id, gift_card_code_id, order_id, brand, category, image_url,
-        denomination, code, pin, source, expires_at, provider_order_id, status, delivered_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'delivered', NOW())
+        denomination, code, pin, source, expires_at, provider_order_id, status, delivered_at, code_encrypted)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'delivered', NOW(), true)
      RETURNING id`,
     [
       data.userId,
@@ -209,8 +214,8 @@ async function createUserGiftCard(data: {
       data.category || null,
       data.imageUrl || null,
       data.denomination,
-      data.code,
-      data.pin || null,
+      encryptedCode,
+      encryptedPin,
       data.source,
       data.expiresAt || null,
       data.providerOrderId || null
@@ -247,8 +252,8 @@ export async function getUserGiftCards(
       category: row.category,
       imageUrl: row.image_url,
       denomination: parseFloat(row.denomination),
-      code: row.code,
-      pin: row.pin,
+      code: decryptCode(row.code), // Decrypt code for display
+      pin: row.pin ? decryptCode(row.pin) : undefined, // Decrypt pin if present
       status: row.status,
       source: row.source,
       deliveredAt: row.delivered_at,
@@ -293,8 +298,8 @@ export async function getUserGiftCard(
       category: row.category,
       imageUrl: row.image_url,
       denomination: parseFloat(row.denomination),
-      code: row.code,
-      pin: row.pin,
+      code: decryptCode(row.code), // Decrypt code for display
+      pin: row.pin ? decryptCode(row.pin) : undefined, // Decrypt pin if present
       status: row.status,
       source: row.source,
       deliveredAt: row.delivered_at,

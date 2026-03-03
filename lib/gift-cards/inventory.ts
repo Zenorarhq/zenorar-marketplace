@@ -2,6 +2,7 @@
 // Handles bulk inventory: reserve, release, and sell codes
 
 import { query } from '@/lib/db'
+import { encryptCode, decryptCode } from './encryption'
 import type { GiftCardCode, InventoryStats, ImportResult, GiftCardCSVRow } from './types'
 
 const RESERVATION_DURATION_MINUTES = 15
@@ -145,8 +146,8 @@ export async function sellCode(
       id: row.id,
       giftCardId: row.gift_card_id,
       denomination: parseFloat(row.denomination),
-      code: row.code,
-      pin: row.pin,
+      code: decryptCode(row.code), // Decrypt code for use
+      pin: row.pin ? decryptCode(row.pin) : undefined, // Decrypt pin if present
       status: row.status,
       costPrice: row.cost_price ? parseFloat(row.cost_price) : undefined,
       batchId: row.batch_id,
@@ -303,16 +304,19 @@ export async function importCodes(
           continue
         }
 
-        // Insert the code
+        // Encrypt and insert the code
+        const encryptedCode = encryptCode(row.code)
+        const encryptedPin = row.pin ? encryptCode(row.pin) : null
+
         await query(
           `INSERT INTO gift_card_codes
-             (gift_card_id, denomination, code, pin, cost_price, batch_id, expires_at, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, 'available')`,
+             (gift_card_id, denomination, code, pin, cost_price, batch_id, expires_at, status, code_encrypted)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'available', true)`,
           [
             giftCardId,
             denomination,
-            row.code,
-            row.pin || null,
+            encryptedCode,
+            encryptedPin,
             row.cost_price ? parseFloat(row.cost_price) : null,
             batchId,
             row.expires_at || null
@@ -391,6 +395,79 @@ export async function markExpiredCodes(): Promise<number> {
 }
 
 /**
+ * Refund a sold code back to inventory
+ */
+export async function refundCode(
+  codeId: string,
+  refundedBy: string,
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const result = await query(
+      `UPDATE gift_card_codes
+       SET status = 'available',
+           sold_at = NULL,
+           sold_to = NULL,
+           order_id = NULL,
+           refunded_at = NOW(),
+           refunded_by = $2,
+           refund_reason = $3
+       WHERE id = $1
+         AND status = 'sold'
+       RETURNING id`,
+      [codeId, refundedBy, reason || null]
+    )
+
+    if (result.rows.length === 0) {
+      return { success: false, error: 'Code not found or not sold' }
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error refunding gift card code:', error)
+    return { success: false, error: error.message || 'Failed to refund code' }
+  }
+}
+
+/**
+ * Get low stock alerts (denominations with available < threshold)
+ */
+export async function getLowStockAlerts(threshold: number = 5): Promise<Array<{
+  giftCardId: string
+  brand: string
+  denomination: number
+  available: number
+}>> {
+  try {
+    const result = await query(
+      `SELECT
+         gc.id as gift_card_id,
+         gc.brand,
+         gcc.denomination,
+         COUNT(*) FILTER (WHERE gcc.status = 'available' AND (gcc.expires_at IS NULL OR gcc.expires_at > NOW())) as available
+       FROM gift_cards gc
+       LEFT JOIN gift_card_codes gcc ON gc.id = gcc.gift_card_id
+       WHERE gc.is_active = true
+       GROUP BY gc.id, gc.brand, gcc.denomination
+       HAVING COUNT(*) FILTER (WHERE gcc.status = 'available' AND (gcc.expires_at IS NULL OR gcc.expires_at > NOW())) < $1
+         AND COUNT(*) FILTER (WHERE gcc.status = 'available' AND (gcc.expires_at IS NULL OR gcc.expires_at > NOW())) > 0
+       ORDER BY COUNT(*) FILTER (WHERE gcc.status = 'available' AND (gcc.expires_at IS NULL OR gcc.expires_at > NOW())) ASC`,
+      [threshold]
+    )
+
+    return result.rows.map(row => ({
+      giftCardId: row.gift_card_id,
+      brand: row.brand,
+      denomination: parseFloat(row.denomination || '0'),
+      available: parseInt(row.available || '0')
+    }))
+  } catch (error) {
+    console.error('Error getting low stock alerts:', error)
+    return []
+  }
+}
+
+/**
  * Get codes by batch
  */
 export async function getCodesByBatch(
@@ -411,8 +488,8 @@ export async function getCodesByBatch(
       id: row.id,
       giftCardId: row.gift_card_id,
       denomination: parseFloat(row.denomination),
-      code: row.code,
-      pin: row.pin,
+      code: decryptCode(row.code), // Decrypt for display
+      pin: row.pin ? decryptCode(row.pin) : undefined, // Decrypt pin if present
       status: row.status,
       costPrice: row.cost_price ? parseFloat(row.cost_price) : undefined,
       batchId: row.batch_id,

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { getUserGiftCard, markAsRedeemed } from '@/lib/gift-cards/provisioning'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/gift-cards/rate-limit'
+import { logAuditEvent } from '@/lib/gift-cards/audit'
 
 /**
  * GET /api/gift-cards/my-cards/[id]
@@ -20,6 +22,28 @@ export async function GET(
       )
     }
 
+    // Rate limit check
+    const rateLimitResult = checkRateLimit(user.id, 'code_reveal', RATE_LIMITS.codeReveal)
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: rateLimitResult.blocked
+            ? `Too many requests. Please try again after ${rateLimitResult.blockExpiresAt?.toLocaleTimeString()}`
+            : 'Rate limit exceeded. Please slow down.',
+          retryAfter: rateLimitResult.resetAt.toISOString()
+        },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+            'X-RateLimit-Reset': rateLimitResult.resetAt.toISOString()
+          }
+        }
+      )
+    }
+
     const { id } = await params
 
     const card = await getUserGiftCard(id, user.id)
@@ -31,11 +55,33 @@ export async function GET(
       )
     }
 
-    // Return full code details
-    return NextResponse.json({
-      success: true,
-      card
+    // Log audit event
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined
+    const userAgent = request.headers.get('user-agent') || undefined
+
+    await logAuditEvent({
+      userId: user.id,
+      action: 'code_revealed',
+      resourceType: 'user_gift_card',
+      resourceId: id,
+      metadata: {
+        brand: card.brand,
+        denomination: card.denomination
+      },
+      ipAddress,
+      userAgent
     })
+
+    // Return full code details with rate limit headers
+    return NextResponse.json(
+      { success: true, card },
+      {
+        headers: {
+          'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+          'X-RateLimit-Reset': rateLimitResult.resetAt.toISOString()
+        }
+      }
+    )
   } catch (error: any) {
     console.error('Error fetching user gift card:', error)
     return NextResponse.json(
@@ -75,6 +121,19 @@ export async function PATCH(
           { status: 400 }
         )
       }
+
+      // Log audit event
+      const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined
+      const userAgent = request.headers.get('user-agent') || undefined
+
+      await logAuditEvent({
+        userId: user.id,
+        action: 'code_marked_redeemed',
+        resourceType: 'user_gift_card',
+        resourceId: id,
+        ipAddress,
+        userAgent
+      })
 
       return NextResponse.json({ success: true })
     }

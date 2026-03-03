@@ -2,6 +2,7 @@
 
 import { query } from '@/lib/db'
 import { twilioService } from './providers/twilio'
+import { sendSmsForwardingEmail } from '@/lib/email-service'
 
 export interface ProvisionResult {
   success: boolean
@@ -218,9 +219,16 @@ class VirtualNumberService {
       // Forward if configured
       let forwarded = false
       if (virtualNumber.sms_forwarding_enabled && virtualNumber.sms_forward_email) {
-        // TODO: Send email notification
-        // await emailService.sendSmsForwardingEmail(...)
-        forwarded = true
+        const emailSent = await sendSmsForwardingEmail({
+          email: virtualNumber.sms_forward_email,
+          phoneNumber: virtualNumber.phone_number,
+          phoneNumberDisplay: virtualNumber.phone_number_display || virtualNumber.phone_number,
+          fromNumber: from,
+          messageBody: body,
+          receivedAt: new Date(),
+          mediaUrls: mediaUrls
+        })
+        forwarded = emailSent
       }
 
       return { success: true, forwarded }

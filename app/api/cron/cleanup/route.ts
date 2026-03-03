@@ -4,6 +4,9 @@ import { esimProvisioningService } from '@/lib/esim'
 import { releaseExpiredReservations as releaseGiftCardReservations, markExpiredCodes } from '@/lib/gift-cards/inventory'
 import { virtualNumberService } from '@/lib/virtual-numbers/service'
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
+import { checkAndSendLowStockAlerts } from '@/lib/gift-cards/alerts'
+import { anonymizeOldAuditLogs, purgeDeletedGiftCards } from '@/lib/gift-cards/gdpr'
+import { query } from '@/lib/db'
 
 // Get cron settings from database
 async function getCronSettings(): Promise<{ cronEnabled: boolean; cronSecret: string }> {
@@ -127,6 +130,64 @@ export async function GET(request: NextRequest) {
       }
     } catch (error: any) {
       results.virtualNumbers = {
+        success: false,
+        error: error.message
+      }
+    }
+
+    // 6. Gift card low stock alerts
+    try {
+      const alertResult = await checkAndSendLowStockAlerts()
+      results.giftCardAlerts = {
+        success: true,
+        ...alertResult
+      }
+    } catch (error: any) {
+      results.giftCardAlerts = {
+        success: false,
+        error: error.message
+      }
+    }
+
+    // 7. Clean up old rate limit logs (runs daily)
+    try {
+      const rateLimitCleanup = await query(
+        `DELETE FROM gift_card_rate_limit_log WHERE created_at < NOW() - INTERVAL '24 hours' RETURNING id`
+      )
+      results.rateLimitCleanup = {
+        success: true,
+        deleted: rateLimitCleanup.rows.length
+      }
+    } catch (error: any) {
+      results.rateLimitCleanup = {
+        success: false,
+        error: error.message
+      }
+    }
+
+    // 8. Anonymize old audit logs (GDPR - 90 day retention)
+    try {
+      const anonymized = await anonymizeOldAuditLogs(90)
+      results.auditLogAnonymization = {
+        success: true,
+        anonymized
+      }
+    } catch (error: any) {
+      results.auditLogAnonymization = {
+        success: false,
+        error: error.message
+      }
+    }
+
+    // 9. Purge soft-deleted gift cards (30 day retention)
+    try {
+      const purged = await purgeDeletedGiftCards(30)
+      results.giftCardPurge = {
+        success: true,
+        purged
+      }
+    } catch (error: any) {
+      results.giftCardPurge = {
         success: false,
         error: error.message
       }
