@@ -405,6 +405,91 @@ class ReloadlyProvider implements GiftCardProvider {
   }
 
   /**
+   * Verify redemption status of a gift card
+   * Note: Reloadly doesn't provide real-time redemption status,
+   * but we can verify the order was successfully fulfilled
+   */
+  async verifyRedemption(transactionId: string): Promise<{
+    verified: boolean
+    status: 'delivered' | 'redeemed' | 'unknown'
+    code?: string
+    pin?: string
+    error?: string
+  }> {
+    const orderStatus = await this.getOrderStatus(transactionId)
+
+    if (orderStatus.status === 'error') {
+      return {
+        verified: false,
+        status: 'unknown',
+        error: orderStatus.error
+      }
+    }
+
+    // Reloadly doesn't track redemption - we can only verify delivery
+    return {
+      verified: true,
+      status: 'delivered',
+      code: orderStatus.code,
+      pin: orderStatus.pin
+    }
+  }
+
+  /**
+   * Retry a failed purchase with exponential backoff
+   */
+  async purchaseWithRetry(
+    productId: string,
+    denomination: number,
+    maxAttempts: number = 3,
+    recipientEmail?: string
+  ): Promise<ProviderPurchaseResult & { attempts: number }> {
+    let lastError = ''
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const result = await this.purchaseCard(productId, denomination, recipientEmail)
+
+      if (result.success) {
+        return { ...result, attempts: attempt }
+      }
+
+      lastError = result.error || 'Purchase failed'
+
+      // Don't retry on certain errors
+      if (lastError.includes('insufficient') ||
+          lastError.includes('not found') ||
+          lastError.includes('invalid')) {
+        return { ...result, attempts: attempt }
+      }
+
+      // Exponential backoff: 1s, 2s, 4s
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000))
+      }
+    }
+
+    return {
+      success: false,
+      error: `Failed after ${maxAttempts} attempts: ${lastError}`,
+      attempts: maxAttempts
+    }
+  }
+
+  /**
+   * Get redemption instructions for a product
+   */
+  async getRedemptionInstructions(productId: string): Promise<string | null> {
+    const product = await this.getProduct(productId)
+    if (!product) {
+      return null
+    }
+
+    // Reloadly products may include redemption instructions in description
+    // For now, return a generic message
+    return `Visit the ${product.brand} website or app and enter your gift card code during checkout.`
+  }
+
+  /**
    * Clear token cache (call after settings update)
    */
   clearCache(): void {

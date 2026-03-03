@@ -778,3 +778,126 @@ export async function sendGiftCardDeliveryEmail(data: GiftCardDeliveryData): Pro
     return false
   }
 }
+
+// ============================================================================
+// Admin Alert Emails
+// ============================================================================
+
+export interface LowStockAlertData {
+  adminEmail: string
+  items: Array<{
+    brand: string
+    denomination: number
+    available: number
+    threshold: number
+  }>
+}
+
+function generateLowStockAlertHTML(data: LowStockAlertData): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Low Stock Alert - Gift Cards</title>
+    </head>
+    <body style="font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 40px 20px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 700;">⚠️ Low Stock Alert</h1>
+          <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Gift Card Inventory Warning</p>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 40px 30px; background: #ffffff;">
+          <p style="color: #6b7280; font-size: 16px; line-height: 1.5; margin: 0 0 20px 0;">
+            The following gift card inventory items are running low and need attention:
+          </p>
+
+          <!-- Items Table -->
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+              <tr style="background-color: #fef2f2;">
+                <th style="padding: 12px; text-align: left; font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #fecaca;">Brand</th>
+                <th style="padding: 12px; text-align: center; font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #fecaca;">Denomination</th>
+                <th style="padding: 12px; text-align: center; font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #fecaca;">Available</th>
+                <th style="padding: 12px; text-align: center; font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #fecaca;">Threshold</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.items.map(item => `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 15px 12px; color: #1f2937; font-size: 14px; font-weight: 600;">${item.brand}</td>
+                  <td style="padding: 15px 12px; text-align: center; color: #1f2937; font-size: 14px;">$${item.denomination.toFixed(2)}</td>
+                  <td style="padding: 15px 12px; text-align: center; color: ${item.available <= 2 ? '#dc2626' : '#f59e0b'}; font-weight: 700; font-size: 14px;">${item.available}</td>
+                  <td style="padding: 15px 12px; text-align: center; color: #6b7280; font-size: 14px;">${item.threshold}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <!-- Action Required -->
+          <div style="background: #fef3c7; border: 1px solid #fcd34d; border-radius: 12px; padding: 20px; margin: 20px 0;">
+            <h3 style="margin: 0 0 10px 0; color: #92400e; font-size: 16px;">Action Required</h3>
+            <p style="color: #78350f; font-size: 14px; margin: 0; line-height: 1.6;">
+              Please restock these items to ensure continuous availability for customers.
+              You can import new codes via the admin dashboard.
+            </p>
+          </div>
+
+          <!-- CTA -->
+          <div style="margin-top: 40px; text-align: center;">
+            <a href="https://zenorar.com/admin/gift-cards/inventory"
+               style="display: inline-block; background: #ef4444; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+              Manage Inventory
+            </a>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 30px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
+          <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+            This is an automated alert from Zenorar Marketplace.
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+}
+
+/**
+ * Send low stock alert email to admin
+ */
+export async function sendLowStockAlertEmail(data: LowStockAlertData): Promise<boolean> {
+  try {
+    const provider = await getActiveEmailProvider()
+
+    if (!provider) {
+      console.warn('⚠ No active email provider configured - low stock alert not sent')
+      return false
+    }
+
+    const htmlContent = generateLowStockAlertHTML(data)
+    const subject = `⚠️ Low Stock Alert: ${data.items.length} Gift Card(s) Need Restocking`
+
+    console.log(`→ Sending low stock alert email via ${provider.provider} to ${data.adminEmail}`)
+
+    switch (provider.provider) {
+      case 'smtp':
+        return await sendViaSMTP(provider.config, data.adminEmail, subject, htmlContent)
+      case 'resend':
+        return await sendViaResend(provider.config, data.adminEmail, subject, htmlContent)
+      case 'sendgrid':
+        return await sendViaSendGrid(provider.config, data.adminEmail, subject, htmlContent)
+      default:
+        console.error(`✗ Unknown email provider: ${provider.provider}`)
+        return false
+    }
+  } catch (error) {
+    console.error('✗ Failed to send low stock alert email:', error)
+    return false
+  }
+}
