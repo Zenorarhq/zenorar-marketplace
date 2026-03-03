@@ -41,3 +41,12 @@ CLAUDE.local.md
 
 # Misc
 nul
+
+# E2E test files (Playwright)
+e2e/
+playwright.config.ts
+playwright-report/
+test-results/
+playwright/.cache/
+.env.test
+e2e/.test-state.json

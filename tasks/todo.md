@@ -77,3 +77,105 @@ Two purchases of "Web 3" collapse into one row. Fix: query the `licenses` table 
 ### No Breaking Changes
 - `item.id` still equals `productId` — all download/snippet/api-key/renew calls that use `item.id` as productId continue to work.
 - Virtual numbers and gift cards are unaffected (separate queries).
+
+---
+---
+
+# Current: Stripe/Paystack Post-Payment — No Licenses Generated
+
+## Root Cause
+
+**Stripe:** `webhooks.controller.ts → payment_intent.succeeded` only handles `metadata.depositId` (wallet top-ups). If `depositId` is absent, it `break`s immediately — `metadata.orderId` is never read. If the client-side `/api/payments/stripe/confirm` fails or `fulfillOrder()` errors out, the order is stuck PAID+PROCESSING forever with no safety net.
+
+**Paystack:** `paymentsService.verifyAndCompletePaystackPayment` → `markAsPaid` sets order to `CONFIRMED+PAID` but **never calls `generateLicensesForOrder`**. All Paystack orders get no licenses.
+
+## Fix
+
+Mirror exactly what `ordersService.updatePaymentStatus(id, PAID)` does (the working wallet path):
+- Updates order to CONFIRMED+PAID
+- Sends confirmation email + notification
+- Calls `generateLicensesForOrder`
+
+## Tasks
+
+### 1. Make `generateLicensesForOrder` public in `orders.service.ts`
+- [x] Change `private async generateLicensesForOrder` → `async generateLicensesForOrder`
+
+### 2. Add `orderId` branch to Stripe webhook in `webhooks.controller.ts`
+- [x] After the `depositId` block, add an `else if (paymentIntent.metadata?.orderId)` branch
+- [x] Inside: find the order; if not already PAID, call `ordersService.updatePaymentStatus(orderId, PaymentStatus.PAID)`
+
+### 3. Fix Paystack webhook in `payments.controller.ts`
+- [x] After `verifyAndCompletePaystackPayment(reference)`, capture return value and extract `orderId`
+- [x] Call `ordersService.generateLicensesForOrder(orderId)` (fire-and-forget with `.catch` log)
+
+### 4. Write recovery SQL for stuck orders
+- [x] SQL to identify PAID orders with zero licenses
+- [x] SQL to set them back to a re-triggerable state (or manual re-run notes)
+
+#### Step 1 — Identify stuck orders (PAID but no licenses)
+```sql
+SELECT o.id, o."orderNumber", o."paymentStatus", o.status, o."createdAt", o."userId",
+       COUNT(l.id) AS license_count
+FROM orders o
+LEFT JOIN licenses l ON l.order_id = o.id
+WHERE o."paymentStatus" = 'PAID'
+  AND o.status IN ('PROCESSING', 'CONFIRMED')
+GROUP BY o.id
+HAVING COUNT(l.id) = 0
+ORDER BY o."createdAt" DESC;
+```
+
+#### Step 2 — Trigger re-generation manually
+For each stuck `orderId` returned above, call the API or run this to mark them ready for the webhook to re-process:
+```sql
+-- Set status back to CONFIRMED so the next deploy re-triggers license gen via the webhook fix
+-- NOTE: The webhook fix only generates licenses on NEW webhook events.
+-- For already-stuck orders, run the Node script below instead.
+```
+
+#### Step 3 — One-time Node recovery script (run once on Railway console)
+```typescript
+// Run: npx ts-node scripts/recover-licenses.ts
+import { ordersService } from './src/services/orders.service'
+import prisma from './src/config/database'
+
+async function recoverLicenses() {
+  const stuckOrders = await prisma.$queryRaw`
+    SELECT o.id
+    FROM orders o
+    LEFT JOIN licenses l ON l.order_id = o.id
+    WHERE o."paymentStatus" = 'PAID'
+      AND o.status IN ('PROCESSING', 'CONFIRMED')
+    GROUP BY o.id
+    HAVING COUNT(l.id) = 0
+  ` as { id: string }[]
+
+  console.log(`Found ${stuckOrders.length} orders with no licenses`)
+  for (const { id } of stuckOrders) {
+    console.log('Generating licenses for order', id)
+    await ordersService.generateLicensesForOrder(id)
+  }
+  console.log('Done')
+}
+
+recoverLicenses().catch(console.error).finally(() => prisma.$disconnect())
+```
+
+---
+
+## Review
+
+### Changes Made
+1. **`zenorar-api/src/services/orders.service.ts`** — Removed `private` from `generateLicensesForOrder` so it can be called externally (by Paystack/Stripe handlers).
+
+2. **`zenorar-api/src/controllers/webhooks.controller.ts`** — Added `ordersService` + `PaymentStatus` imports. In `payment_intent.succeeded`: restructured the `depositId`-only block into `if (depositId) { deposit path } else if (orderId) { order path }`. The order path calls `ordersService.updatePaymentStatus(orderId, PAID)` — which sets CONFIRMED+PAID, sends confirmation email, sends notification, and generates licenses. Idempotent (skips if already PAID).
+
+3. **`zenorar-api/src/controllers/payments.controller.ts`** — Added `ordersService` import. In `handlePaystackWebhook → charge.success`: captured return value of `verifyAndCompletePaystackPayment`, then fire-and-forget `ordersService.generateLicensesForOrder(payment.orderId)`.
+
+### Recovery for Stuck Orders
+Run the Step 1 SQL above on the Neon DB to find affected orders, then run the Step 3 recovery script on Railway to generate their missing licenses.
+
+### No Breaking Changes
+- Deposit/wallet flows unchanged.
+- `generateLicensesForOrder` is still called the same way internally; only visibility changed (private → public).
