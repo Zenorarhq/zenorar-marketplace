@@ -50,3 +50,7 @@ test-results/
 playwright/.cache/
 .env.test
 e2e/.test-state.json
+
+# Local debug scripts
+scripts/check-web3.js
+scripts/test-product-query.js
