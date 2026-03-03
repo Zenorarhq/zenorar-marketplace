@@ -40,7 +40,7 @@ export default function ProtectionLevelsSection() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   useEffect(() => {
     apiFetch<Thresholds>('/settings/protection-levels').then(res => {

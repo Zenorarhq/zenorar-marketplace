@@ -285,8 +285,8 @@ export default function AdminSettingsPage() {
     otpProviders: true,
     cloudflareR2: true,
     apiKeys: true,
-    legalPages: true,
-    scriptProtection: true,
+    legalPages: false,
+    scriptProtection: false,
     emailNotifications: true,
     sendNotification: true,
   })
