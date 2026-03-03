@@ -26,7 +26,7 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'email', label: 'Email Service', icon: 'mail' },
   { id: 'marketing', label: 'Marketing', icon: 'campaign' },
   { id: 'seo', label: 'SEO', icon: 'search' },
-  { id: 'activity', label: 'Activity Log', icon: 'list' },
+  { id: 'activity', label: 'Activity Log', icon: 'history' },
 ]
 
 export default function AdminSettingsPage() {
@@ -284,6 +284,10 @@ export default function AdminSettingsPage() {
     giftCardProviders: true,
     cloudflareR2: true,
     apiKeys: true,
+    legalPages: true,
+    scriptProtection: true,
+    emailNotifications: true,
+    sendNotification: true,
   })
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -1714,13 +1718,20 @@ export default function AdminSettingsPage() {
               </div>
               {/* Legal Pages Links */}
               <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Legal Pages</h3>
-                <p className="text-sm text-slate-400 mb-4">Manage your legal pages using the Page Builder.</p>
-                <div className="space-y-2">
-                  <a href="/admin/frontend?slug=terms" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Terms of Service</a>
-                  <a href="/admin/frontend?slug=privacy" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Privacy Policy</a>
-                  <a href="/admin/frontend?slug=cookies" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Cookie Policy</a>
-                </div>
+                <button onClick={() => toggleSection('legalPages')} className="w-full flex items-center justify-between">
+                  <h3 className="text-base sm:text-lg font-semibold text-white">Legal Pages</h3>
+                  <Icon name={expandedSections.legalPages ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
+                {expandedSections.legalPages && (
+                  <div className="mt-4">
+                    <p className="text-sm text-slate-400 mb-4">Manage your legal pages using the Page Builder.</p>
+                    <div className="space-y-2">
+                      <a href="/admin/frontend?slug=terms" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Terms of Service</a>
+                      <a href="/admin/frontend?slug=privacy" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Privacy Policy</a>
+                      <a href="/admin/frontend?slug=cookies" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Cookie Policy</a>
+                    </div>
+                  </div>
+                )}
               </div>
               {/* Script Protection Levels */}
               <ProtectionLevelsSection />
@@ -1851,34 +1862,41 @@ export default function AdminSettingsPage() {
           {/* Notification Settings */}
           {activeTab === 'notifications' && (
             <div className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-white font-medium">Email Notifications</h3>
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <button onClick={() => toggleSection('emailNotifications')} className="w-full flex items-center justify-between">
+                  <h3 className="text-white font-medium">Email Notifications</h3>
+                  <Icon name={expandedSections.emailNotifications ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
 
-                {[
-                  { key: 'emailNewOrder', label: 'New Order', description: 'Receive email when a new order is placed' },
-                  { key: 'emailNewUser', label: 'New User Registration', description: 'Receive email when a new user signs up' },
-                  { key: 'emailLowStock', label: 'Low Stock Alert', description: 'Receive email when product stock is low' },
-                  { key: 'emailTicket', label: 'Support Ticket', description: 'Receive email for new support tickets' },
-                ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
-                    <div>
-                      <p className="text-white font-medium">{item.label}</p>
-                      <p className="text-slate-500 text-sm">{item.description}</p>
-                    </div>
-                    <button
-                      onClick={() => setNotificationSettings({ ...notificationSettings, [item.key]: !notificationSettings[item.key as keyof typeof notificationSettings] })}
-                      className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                        notificationSettings[item.key as keyof typeof notificationSettings] ? 'bg-primary' : 'bg-[#2a2a2a]'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                          notificationSettings[item.key as keyof typeof notificationSettings] ? 'left-7' : 'left-1'
-                        }`}
-                      />
-                    </button>
+                {expandedSections.emailNotifications && (
+                  <div className="space-y-4 mt-4">
+                    {[
+                      { key: 'emailNewOrder', label: 'New Order', description: 'Receive email when a new order is placed' },
+                      { key: 'emailNewUser', label: 'New User Registration', description: 'Receive email when a new user signs up' },
+                      { key: 'emailLowStock', label: 'Low Stock Alert', description: 'Receive email when product stock is low' },
+                      { key: 'emailTicket', label: 'Support Ticket', description: 'Receive email for new support tickets' },
+                    ].map((item) => (
+                      <div key={item.key} className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
+                        <div>
+                          <p className="text-white font-medium">{item.label}</p>
+                          <p className="text-slate-500 text-sm">{item.description}</p>
+                        </div>
+                        <button
+                          onClick={() => setNotificationSettings({ ...notificationSettings, [item.key]: !notificationSettings[item.key as keyof typeof notificationSettings] })}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                            notificationSettings[item.key as keyof typeof notificationSettings] ? 'bg-primary' : 'bg-[#2a2a2a]'
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                              notificationSettings[item.key as keyof typeof notificationSettings] ? 'left-7' : 'left-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
 
               <div className="pt-4 border-t border-[#2a2a2a]">
@@ -1920,9 +1938,13 @@ export default function AdminSettingsPage() {
               </div>
 
               {/* Send Notification */}
-              <div className="pt-4 border-t border-[#2a2a2a]">
-                <h3 className="text-white font-medium mb-4">Send Notification</h3>
-                <div className="space-y-4">
+              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+                <button onClick={() => toggleSection('sendNotification')} className="w-full flex items-center justify-between">
+                  <h3 className="text-white font-medium">Send Notification</h3>
+                  <Icon name={expandedSections.sendNotification ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
+                {expandedSections.sendNotification && (
+                <div className="space-y-4 mt-4">
                   {/* Send Mode Toggle */}
                   <div className="flex gap-2">
                     <button
@@ -2092,6 +2114,7 @@ export default function AdminSettingsPage() {
                     {sendingNotif ? 'Sending...' : sendMode === 'targeted' ? `Send to ${targetUsers.length} User(s)` : 'Send to All Users'}
                   </button>
                 </div>
+                )}
               </div>
 
               {/* Sent Notifications History */}

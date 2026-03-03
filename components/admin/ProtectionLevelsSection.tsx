@@ -40,6 +40,7 @@ export default function ProtectionLevelsSection() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isExpanded, setIsExpanded] = useState(true)
 
   useEffect(() => {
     apiFetch<Thresholds>('/settings/protection-levels').then(res => {
@@ -78,56 +79,64 @@ export default function ProtectionLevelsSection() {
 
   return (
     <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-      <h3 className="text-base sm:text-lg font-semibold text-white mb-1">Script Protection Levels</h3>
-      <p className="text-sm text-slate-400 mb-4">Auto-applied based on product price during file upload.</p>
-
-      <div className="space-y-3">
-        {LEVELS.map(level => (
-          <div key={level.key} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-1">
-              {Array.from({ length: level.shield }).map((_, i) => (
-                <Icon key={i} name="shield" size={16} className="text-primary" />
-              ))}
-              <span className="text-sm font-semibold text-white">{level.label}</span>
-            </div>
-            <p className="text-xs text-slate-400 mb-3">{level.description}</p>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">Min Price $</label>
-                <input
-                  type="number"
-                  value={thresholds[level.key].min}
-                  onChange={e => handleChange(level.key, 'min', e.target.value)}
-                  className="w-20 bg-[#111] border border-[#333] rounded px-2 py-1 text-sm text-white"
-                  min={0}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">Max Price $</label>
-                <input
-                  type="number"
-                  value={level.key === 'heavy' && thresholds[level.key].max >= 999999 ? '' : thresholds[level.key].max}
-                  onChange={e => handleChange(level.key, 'max', e.target.value || '999999')}
-                  placeholder={level.key === 'heavy' ? '∞' : ''}
-                  className="w-20 bg-[#111] border border-[#333] rounded px-2 py-1 text-sm text-white placeholder:text-slate-500"
-                  min={0}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
-      {saved && <p className="text-green-400 text-sm mt-3">Settings saved!</p>}
-
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="mt-4 px-4 py-2 bg-primary text-black text-sm font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50"
-      >
-        {saving ? 'Saving...' : 'Save Protection Settings'}
+      <button onClick={() => setIsExpanded(prev => !prev)} className="w-full flex items-center justify-between">
+        <h3 className="text-base sm:text-lg font-semibold text-white">Script Protection Levels</h3>
+        <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
       </button>
+
+      {isExpanded && (
+        <div className="mt-4">
+          <p className="text-sm text-slate-400 mb-4">Auto-applied based on product price during file upload.</p>
+
+          <div className="space-y-3">
+            {LEVELS.map(level => (
+              <div key={level.key} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  {Array.from({ length: level.shield }).map((_, i) => (
+                    <Icon key={i} name="shield" size={16} className="text-primary" />
+                  ))}
+                  <span className="text-sm font-semibold text-white">{level.label}</span>
+                </div>
+                <p className="text-xs text-slate-400 mb-3">{level.description}</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-slate-500">Min Price $</label>
+                    <input
+                      type="number"
+                      value={thresholds[level.key].min}
+                      onChange={e => handleChange(level.key, 'min', e.target.value)}
+                      className="w-20 bg-[#111] border border-[#333] rounded px-2 py-1 text-sm text-white"
+                      min={0}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-slate-500">Max Price $</label>
+                    <input
+                      type="number"
+                      value={level.key === 'heavy' && thresholds[level.key].max >= 999999 ? '' : thresholds[level.key].max}
+                      onChange={e => handleChange(level.key, 'max', e.target.value || '999999')}
+                      placeholder={level.key === 'heavy' ? '∞' : ''}
+                      className="w-20 bg-[#111] border border-[#333] rounded px-2 py-1 text-sm text-white placeholder:text-slate-500"
+                      min={0}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
+          {saved && <p className="text-green-400 text-sm mt-3">Settings saved!</p>}
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="mt-4 px-4 py-2 bg-primary text-black text-sm font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save Protection Settings'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
