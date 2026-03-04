@@ -517,15 +517,16 @@ export class EsimProvisioningService {
       // Get topup plans from database
       const topupResult = await query(
         `SELECT
-           et.id,
-           et.name,
-           et.data_amount_mb,
-           et.price,
-           et.validity_days
-         FROM esim_topups et
-         WHERE et.plan_id = $1
-           AND et.is_active = true
-         ORDER BY et.data_amount_mb ASC`,
+           etp.id,
+           etp.name,
+           etp.data_amount_mb,
+           etp.retail_price as price,
+           etp.validity_days,
+           etp.provider_topup_id
+         FROM esim_topup_plans etp
+         WHERE etp.plan_id = $1
+           AND etp.is_active = true
+         ORDER BY etp.data_amount_mb ASC`,
         [esim.plan_id]
       )
 
@@ -580,7 +581,7 @@ export class EsimProvisioningService {
 
       // Get topup details
       const topupResult = await query(
-        `SELECT * FROM esim_topups WHERE id = $1 AND plan_id = $2 AND is_active = true`,
+        `SELECT * FROM esim_topup_plans WHERE id = $1 AND plan_id = $2 AND is_active = true`,
         [topupId, esim.plan_id]
       )
 
