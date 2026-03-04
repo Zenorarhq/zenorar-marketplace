@@ -12,6 +12,62 @@ interface SyncResult {
   errors: string[]
 }
 
+// Country name mapping for common codes
+const countryNames: Record<string, string> = {
+  US: 'United States',
+  GB: 'United Kingdom',
+  CA: 'Canada',
+  AU: 'Australia',
+  DE: 'Germany',
+  FR: 'France',
+  NL: 'Netherlands',
+  SE: 'Sweden',
+  NO: 'Norway',
+  DK: 'Denmark',
+  FI: 'Finland',
+  ES: 'Spain',
+  IT: 'Italy',
+  PT: 'Portugal',
+  IE: 'Ireland',
+  AT: 'Austria',
+  CH: 'Switzerland',
+  BE: 'Belgium',
+  PL: 'Poland',
+  CZ: 'Czech Republic',
+  HU: 'Hungary',
+  RO: 'Romania',
+  BG: 'Bulgaria',
+  GR: 'Greece',
+  JP: 'Japan',
+  SG: 'Singapore',
+  HK: 'Hong Kong',
+  IL: 'Israel',
+  MX: 'Mexico',
+  BR: 'Brazil',
+  AR: 'Argentina',
+  CL: 'Chile',
+  CO: 'Colombia',
+  PE: 'Peru',
+  ZA: 'South Africa',
+  NG: 'Nigeria',
+  KE: 'Kenya',
+  NZ: 'New Zealand',
+  IN: 'India',
+  PH: 'Philippines',
+  ID: 'Indonesia',
+  MY: 'Malaysia',
+  TH: 'Thailand',
+  VN: 'Vietnam',
+  KR: 'South Korea',
+  TW: 'Taiwan',
+  AE: 'United Arab Emirates',
+  SA: 'Saudi Arabia',
+  EG: 'Egypt',
+  TR: 'Turkey',
+  RU: 'Russia',
+  UA: 'Ukraine'
+}
+
 /**
  * Get Twilio credentials
  */
@@ -47,6 +103,58 @@ async function getTwilioCredentials(): Promise<{ accountSid: string; authToken: 
     }
 
     return { accountSid, authToken }
+  }
+}
+
+/**
+ * Get Plivo credentials
+ */
+async function getPlivoCredentials(): Promise<{ authId: string; authToken: string } | null> {
+  try {
+    const settings = await getSiteSettingsByGroup('api')
+    const authId = settings.plivoAuthId || process.env.PLIVO_AUTH_ID || ''
+    const authToken = settings.plivoAuthToken || process.env.PLIVO_AUTH_TOKEN || ''
+
+    if (!authId || !authToken) {
+      return null
+    }
+
+    return { authId, authToken }
+  } catch {
+    const authId = process.env.PLIVO_AUTH_ID || ''
+    const authToken = process.env.PLIVO_AUTH_TOKEN || ''
+
+    if (!authId || !authToken) {
+      return null
+    }
+
+    return { authId, authToken }
+  }
+}
+
+/**
+ * Get Vonage credentials
+ */
+async function getVonageCredentials(): Promise<{ apiKey: string; apiSecret: string } | null> {
+  try {
+    const settings = await getSiteSettingsByGroup('api')
+    const apiKey = settings.vonageApiKey || process.env.VONAGE_API_KEY || ''
+    const apiSecret = settings.vonageApiSecret || process.env.VONAGE_API_SECRET || ''
+
+    if (!apiKey || !apiSecret) {
+      return null
+    }
+
+    return { apiKey, apiSecret }
+  } catch {
+    const apiKey = process.env.VONAGE_API_KEY || ''
+    const apiSecret = process.env.VONAGE_API_SECRET || ''
+
+    if (!apiKey || !apiSecret) {
+      return null
+    }
+
+    return { apiKey, apiSecret }
   }
 }
 
@@ -89,62 +197,6 @@ async function syncTwilioCountries(): Promise<SyncResult> {
     const data = await response.json()
     const countries = data.countries || []
 
-    // Country name mapping for common codes
-    const countryNames: Record<string, string> = {
-      US: 'United States',
-      GB: 'United Kingdom',
-      CA: 'Canada',
-      AU: 'Australia',
-      DE: 'Germany',
-      FR: 'France',
-      NL: 'Netherlands',
-      SE: 'Sweden',
-      NO: 'Norway',
-      DK: 'Denmark',
-      FI: 'Finland',
-      ES: 'Spain',
-      IT: 'Italy',
-      PT: 'Portugal',
-      IE: 'Ireland',
-      AT: 'Austria',
-      CH: 'Switzerland',
-      BE: 'Belgium',
-      PL: 'Poland',
-      CZ: 'Czech Republic',
-      HU: 'Hungary',
-      RO: 'Romania',
-      BG: 'Bulgaria',
-      GR: 'Greece',
-      JP: 'Japan',
-      SG: 'Singapore',
-      HK: 'Hong Kong',
-      IL: 'Israel',
-      MX: 'Mexico',
-      BR: 'Brazil',
-      AR: 'Argentina',
-      CL: 'Chile',
-      CO: 'Colombia',
-      PE: 'Peru',
-      ZA: 'South Africa',
-      NG: 'Nigeria',
-      KE: 'Kenya',
-      NZ: 'New Zealand',
-      IN: 'India',
-      PH: 'Philippines',
-      ID: 'Indonesia',
-      MY: 'Malaysia',
-      TH: 'Thailand',
-      VN: 'Vietnam',
-      KR: 'South Korea',
-      TW: 'Taiwan',
-      AE: 'United Arab Emirates',
-      SA: 'Saudi Arabia',
-      EG: 'Egypt',
-      TR: 'Turkey',
-      RU: 'Russia',
-      UA: 'Ukraine'
-    }
-
     for (const country of countries) {
       const countryCode = country.country_code || country.country
       const countryName = countryNames[countryCode] || countryCode
@@ -157,10 +209,14 @@ async function syncTwilioCountries(): Promise<SyncResult> {
         )
 
         if (existing.rows.length > 0) {
-          // Update
+          // Update - add twilio to providers if not present
           await query(
             `UPDATE virtual_number_countries
              SET is_active = true,
+                 providers = CASE
+                   WHEN 'twilio' = ANY(providers) THEN providers
+                   ELSE array_append(COALESCE(providers, ARRAY[]::text[]), 'twilio')
+                 END,
                  updated_at = NOW()
              WHERE id = $1`,
             [existing.rows[0].id]
@@ -170,8 +226,190 @@ async function syncTwilioCountries(): Promise<SyncResult> {
           // Insert
           await query(
             `INSERT INTO virtual_number_countries
-               (name, iso_code, provider, is_active)
-             VALUES ($1, $2, 'twilio', true)`,
+               (name, iso_code, providers, is_active)
+             VALUES ($1, $2, ARRAY['twilio'], true)`,
+            [countryName, countryCode]
+          )
+          result.synced++
+        }
+      } catch (err: any) {
+        result.errors.push(`${countryCode}: ${err.message}`)
+      }
+    }
+
+    result.success = true
+  } catch (error: any) {
+    result.errors.push(error.message)
+  }
+
+  return result
+}
+
+/**
+ * Sync available countries from Plivo
+ */
+async function syncPlivoCountries(): Promise<SyncResult> {
+  const result: SyncResult = {
+    provider: 'plivo',
+    success: false,
+    synced: 0,
+    updated: 0,
+    errors: []
+  }
+
+  try {
+    const credentials = await getPlivoCredentials()
+    if (!credentials) {
+      result.errors.push('Plivo credentials not configured')
+      return result
+    }
+
+    const { authId, authToken } = credentials
+    const authHeader = 'Basic ' + Buffer.from(`${authId}:${authToken}`).toString('base64')
+
+    // Plivo doesn't have a direct "list countries" API, but we can check common countries
+    // by attempting to search for numbers in each country
+    const countriesToCheck = ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'NL', 'SE', 'NO', 'DK', 'ES', 'IT', 'IE', 'AT', 'CH', 'BE', 'PL', 'IN', 'SG', 'HK', 'MX', 'BR']
+
+    for (const countryCode of countriesToCheck) {
+      try {
+        // Check if numbers are available in this country
+        const response = await fetch(
+          `https://api.plivo.com/v1/Account/${authId}/PhoneNumber/?country_iso=${countryCode}&limit=1`,
+          {
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+
+        if (!response.ok) {
+          continue // Country not supported or error
+        }
+
+        const data = await response.json()
+        if (!data.objects || data.objects.length === 0) {
+          continue // No numbers available
+        }
+
+        const countryName = countryNames[countryCode] || countryCode
+
+        // Check if country exists
+        const existing = await query(
+          `SELECT id FROM virtual_number_countries WHERE iso_code = $1`,
+          [countryCode]
+        )
+
+        if (existing.rows.length > 0) {
+          // Update - add plivo to providers if not present
+          await query(
+            `UPDATE virtual_number_countries
+             SET is_active = true,
+                 providers = CASE
+                   WHEN 'plivo' = ANY(providers) THEN providers
+                   ELSE array_append(COALESCE(providers, ARRAY[]::text[]), 'plivo')
+                 END,
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [existing.rows[0].id]
+          )
+          result.updated++
+        } else {
+          // Insert
+          await query(
+            `INSERT INTO virtual_number_countries
+               (name, iso_code, providers, is_active)
+             VALUES ($1, $2, ARRAY['plivo'], true)`,
+            [countryName, countryCode]
+          )
+          result.synced++
+        }
+      } catch (err: any) {
+        result.errors.push(`${countryCode}: ${err.message}`)
+      }
+    }
+
+    result.success = true
+  } catch (error: any) {
+    result.errors.push(error.message)
+  }
+
+  return result
+}
+
+/**
+ * Sync available countries from Vonage
+ */
+async function syncVonageCountries(): Promise<SyncResult> {
+  const result: SyncResult = {
+    provider: 'vonage',
+    success: false,
+    synced: 0,
+    updated: 0,
+    errors: []
+  }
+
+  try {
+    const credentials = await getVonageCredentials()
+    if (!credentials) {
+      result.errors.push('Vonage credentials not configured')
+      return result
+    }
+
+    const { apiKey, apiSecret } = credentials
+
+    // Vonage also doesn't have a direct "list countries" API, check common countries
+    const countriesToCheck = ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'NL', 'SE', 'NO', 'DK', 'ES', 'IT', 'IE', 'AT', 'CH', 'BE', 'PL', 'IN', 'SG', 'HK', 'MX', 'BR', 'ZA', 'IL']
+
+    for (const countryCode of countriesToCheck) {
+      try {
+        // Check if numbers are available in this country
+        const response = await fetch(
+          `https://rest.nexmo.com/number/search?api_key=${apiKey}&api_secret=${apiSecret}&country=${countryCode}&size=1`
+        )
+
+        if (!response.ok) {
+          continue
+        }
+
+        const data = await response.json()
+        if (data['error-code'] && data['error-code'] !== '200') {
+          continue
+        }
+
+        if (!data.numbers || data.numbers.length === 0) {
+          continue // No numbers available
+        }
+
+        const countryName = countryNames[countryCode] || countryCode
+
+        // Check if country exists
+        const existing = await query(
+          `SELECT id FROM virtual_number_countries WHERE iso_code = $1`,
+          [countryCode]
+        )
+
+        if (existing.rows.length > 0) {
+          // Update - add vonage to providers if not present
+          await query(
+            `UPDATE virtual_number_countries
+             SET is_active = true,
+                 providers = CASE
+                   WHEN 'vonage' = ANY(providers) THEN providers
+                   ELSE array_append(COALESCE(providers, ARRAY[]::text[]), 'vonage')
+                 END,
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [existing.rows[0].id]
+          )
+          result.updated++
+        } else {
+          // Insert
+          await query(
+            `INSERT INTO virtual_number_countries
+               (name, iso_code, providers, is_active)
+             VALUES ($1, $2, ARRAY['vonage'], true)`,
             [countryName, countryCode]
           )
           result.synced++
@@ -230,12 +468,28 @@ async function seedDefaultPlans(): Promise<{ synced: number }> {
  */
 async function getEnabledProviders(): Promise<string[]> {
   try {
-    const settings = await getSiteSettingsByGroup('virtual-numbers')
+    const [vnSettings, apiSettings] = await Promise.all([
+      getSiteSettingsByGroup('virtual-numbers'),
+      getSiteSettingsByGroup('api')
+    ])
     const enabled: string[] = []
 
-    if (settings.twilioEnabled === true || settings.twilioEnabled === 'true' ||
-        settings.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID) {
+    // Check Twilio
+    if (vnSettings.twilioEnabled === true || vnSettings.twilioEnabled === 'true' ||
+        vnSettings.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID) {
       enabled.push('twilio')
+    }
+
+    // Check Plivo
+    if (apiSettings.plivoEnabled === true || apiSettings.plivoEnabled === 'true' ||
+        apiSettings.plivoAuthId || process.env.PLIVO_AUTH_ID) {
+      enabled.push('plivo')
+    }
+
+    // Check Vonage
+    if (apiSettings.vonageEnabled === true || apiSettings.vonageEnabled === 'true' ||
+        apiSettings.vonageApiKey || process.env.VONAGE_API_KEY) {
+      enabled.push('vonage')
     }
 
     return enabled
@@ -243,6 +497,12 @@ async function getEnabledProviders(): Promise<string[]> {
     const enabled: string[] = []
     if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
       enabled.push('twilio')
+    }
+    if (process.env.PLIVO_AUTH_ID && process.env.PLIVO_AUTH_TOKEN) {
+      enabled.push('plivo')
+    }
+    if (process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET) {
+      enabled.push('vonage')
     }
     return enabled
   }
@@ -273,6 +533,12 @@ export async function syncAllVirtualNumberProviders(): Promise<{
       case 'twilio':
         result = await syncTwilioCountries()
         break
+      case 'plivo':
+        result = await syncPlivoCountries()
+        break
+      case 'vonage':
+        result = await syncVonageCountries()
+        break
       default:
         result = {
           provider: providerName,
@@ -299,6 +565,8 @@ export async function syncAllVirtualNumberProviders(): Promise<{
 export const virtualNumberSyncService = {
   syncAll: syncAllVirtualNumberProviders,
   syncTwilioCountries,
+  syncPlivoCountries,
+  syncVonageCountries,
   seedDefaultPlans,
   getEnabledProviders
 }
