@@ -287,8 +287,14 @@ export default function AdminSettingsPage() {
     apiKeys: true,
     legalPages: false,
     scriptProtection: false,
-    emailNotifications: true,
-    sendNotification: true,
+    emailNotifications: false,
+    sendNotification: false,
+    stripe: false,
+    paystack: false,
+    crypto: false,
+    paypal: false,
+    walletDeposits: false,
+    bankTransfer: false,
   })
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -2451,7 +2457,7 @@ export default function AdminSettingsPage() {
 
               {/* Stripe */}
               <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
                       <Icon name="credit-card" size={20} className="text-purple-400" />
@@ -2461,20 +2467,28 @@ export default function AdminSettingsPage() {
                       <p className="text-slate-500 text-sm">Accept credit card payments</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setPaymentSettings({ ...paymentSettings, stripeEnabled: !paymentSettings.stripeEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      paymentSettings.stripeEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                        paymentSettings.stripeEnabled ? 'left-7' : 'left-1'
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleSection('stripe')}
+                      className="text-slate-400 hover:text-slate-300 transition-colors"
+                    >
+                      <Icon name={expandedSections.stripe ? 'chevron-up' : 'chevron-down'} size={18} />
+                    </button>
+                    <button
+                      onClick={() => setPaymentSettings({ ...paymentSettings, stripeEnabled: !paymentSettings.stripeEnabled })}
+                      className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                        paymentSettings.stripeEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                       }`}
-                    />
-                  </button>
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          paymentSettings.stripeEnabled ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
-                {paymentSettings.stripeEnabled && (
+                {expandedSections.stripe && (
                   <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
                     {/* Test / Live Toggle */}
                     <div className="flex items-center gap-3">
@@ -2555,7 +2569,7 @@ export default function AdminSettingsPage() {
 
               {/* Paystack */}
               <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                       <Icon name="credit-card" size={20} className="text-blue-400" />
@@ -2565,20 +2579,28 @@ export default function AdminSettingsPage() {
                       <p className="text-slate-500 text-sm">Accept payments in Africa (Nigeria, Ghana, Kenya, South Africa)</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setPaymentSettings({ ...paymentSettings, paystackEnabled: !paymentSettings.paystackEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      paymentSettings.paystackEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                        paymentSettings.paystackEnabled ? 'left-7' : 'left-1'
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleSection('paystack')}
+                      className="text-slate-400 hover:text-slate-300 transition-colors"
+                    >
+                      <Icon name={expandedSections.paystack ? 'chevron-up' : 'chevron-down'} size={18} />
+                    </button>
+                    <button
+                      onClick={() => setPaymentSettings({ ...paymentSettings, paystackEnabled: !paymentSettings.paystackEnabled })}
+                      className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                        paymentSettings.paystackEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                       }`}
-                    />
-                  </button>
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          paymentSettings.paystackEnabled ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
-                {paymentSettings.paystackEnabled && (
+                {expandedSections.paystack && (
                   <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
                     {/* Test / Live Toggle */}
                     <div className="flex items-center gap-3">
@@ -2671,7 +2693,7 @@ export default function AdminSettingsPage() {
 
               {/* Enhanced Crypto */}
               <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
                       <Icon name="bitcoin" size={20} className="text-orange-400" />
@@ -2681,21 +2703,29 @@ export default function AdminSettingsPage() {
                       <p className="text-slate-500 text-sm">BTC, ETH, USDT, BNB, USDC, SOL/Phantom</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setPaymentSettings({ ...paymentSettings, cryptoEnabled: !paymentSettings.cryptoEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      paymentSettings.cryptoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                        paymentSettings.cryptoEnabled ? 'left-7' : 'left-1'
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleSection('crypto')}
+                      className="text-slate-400 hover:text-slate-300 transition-colors"
+                    >
+                      <Icon name={expandedSections.crypto ? 'chevron-up' : 'chevron-down'} size={18} />
+                    </button>
+                    <button
+                      onClick={() => setPaymentSettings({ ...paymentSettings, cryptoEnabled: !paymentSettings.cryptoEnabled })}
+                      className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                        paymentSettings.cryptoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                       }`}
-                    />
-                  </button>
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          paymentSettings.cryptoEnabled ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
-                {paymentSettings.cryptoEnabled && (
+                {expandedSections.crypto && (
                   <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
                     {/* Payment Method Toggle */}
                     <div className="space-y-2">
@@ -2918,7 +2948,7 @@ export default function AdminSettingsPage() {
 
               {/* Enhanced PayPal */}
               <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                       <Icon name="wallet" size={20} className="text-blue-400" />
@@ -2928,21 +2958,29 @@ export default function AdminSettingsPage() {
                       <p className="text-slate-500 text-sm">Accept PayPal and credit cards</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setPaymentSettings({ ...paymentSettings, paypalEnabled: !paymentSettings.paypalEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      paymentSettings.paypalEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                        paymentSettings.paypalEnabled ? 'left-7' : 'left-1'
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleSection('paypal')}
+                      className="text-slate-400 hover:text-slate-300 transition-colors"
+                    >
+                      <Icon name={expandedSections.paypal ? 'chevron-up' : 'chevron-down'} size={18} />
+                    </button>
+                    <button
+                      onClick={() => setPaymentSettings({ ...paymentSettings, paypalEnabled: !paymentSettings.paypalEnabled })}
+                      className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                        paymentSettings.paypalEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
                       }`}
-                    />
-                  </button>
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          paymentSettings.paypalEnabled ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
-                {paymentSettings.paypalEnabled && (
+                {expandedSections.paypal && (
                   <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
                     {/* Platform Choice */}
                     <div className="space-y-2">
@@ -3097,31 +3135,33 @@ export default function AdminSettingsPage() {
 
               {/* Wallet Deposits */}
             <div className="bg-[#111111] border border-[#1e1e1e] rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Icon name="wallet" size={16} className="text-primary" />
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Icon name="wallet" size={16} className="text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-semibold">Wallet Deposits</h3>
+                    <p className="text-slate-500 text-xs">Configure which deposit methods customers can use to add funds to their wallet</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-white font-semibold">Wallet Deposits</h3>
-                  <p className="text-slate-500 text-xs">Configure which deposit methods customers can use to add funds to their wallet</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => toggleSection('walletDeposits')}
+                    className="text-slate-400 hover:text-slate-300 transition-colors"
+                  >
+                    <Icon name={expandedSections.walletDeposits ? 'chevron-up' : 'chevron-down'} size={18} />
+                  </button>
+                  <button
+                    onClick={() => setPaymentSettings({ ...paymentSettings, walletDepositsEnabled: !paymentSettings.walletDepositsEnabled })}
+                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${paymentSettings.walletDepositsEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${paymentSettings.walletDepositsEnabled ? 'left-7' : 'left-1'}`} />
+                  </button>
                 </div>
               </div>
 
-              {/* Master toggle */}
-              <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
-                <div>
-                  <p className="text-white font-medium">Enable Wallet Deposits</p>
-                  <p className="text-slate-500 text-sm">Allow customers to add money to their wallet balance</p>
-                </div>
-                <button
-                  onClick={() => setPaymentSettings({ ...paymentSettings, walletDepositsEnabled: !paymentSettings.walletDepositsEnabled })}
-                  className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${paymentSettings.walletDepositsEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
-                >
-                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${paymentSettings.walletDepositsEnabled ? 'left-7' : 'left-1'}`} />
-                </button>
-              </div>
-
-              {paymentSettings.walletDepositsEnabled && (
+              {expandedSections.walletDeposits && (
                 <div className="space-y-4">
                   {/* Min/Max deposit amounts */}
                   <div className="grid grid-cols-2 gap-4">
@@ -3175,10 +3215,18 @@ export default function AdminSettingsPage() {
                   {/* Bank Transfer Account Details */}
                   {paymentSettings.depositBankEnabled && (
                     <div className="mt-6 p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
-                      <h4 className="text-white font-medium mb-4 flex items-center gap-2">
-                        <Icon name="bank" size={18} className="text-primary" />
-                        Bank Transfer Account Details
-                      </h4>
+                      <button
+                        onClick={() => toggleSection('bankTransfer')}
+                        className="w-full flex items-center justify-between"
+                      >
+                        <h4 className="text-white font-medium flex items-center gap-2">
+                          <Icon name="bank" size={18} className="text-primary" />
+                          Bank Transfer Account Details
+                        </h4>
+                        <Icon name={expandedSections.bankTransfer ? 'chevron-up' : 'chevron-down'} size={18} className="text-slate-400" />
+                      </button>
+                      {expandedSections.bankTransfer && (
+                      <div className="mt-4">
                       <p className="text-slate-500 text-xs mb-4">
                         Configure the bank account where customers should send transfers. These details will be shown to users during checkout.
                       </p>
@@ -3240,6 +3288,8 @@ export default function AdminSettingsPage() {
                           />
                         </div>
                       </div>
+                      </div>
+                      )}
                     </div>
                   )}
                 </div>
