@@ -21,9 +21,16 @@ export async function POST(
     const token = request.headers.get('Authorization') || ''
 
     // Delegate to Railway API — it handles access check, R2 signed URL, watermarking, and logging
+    // 90s timeout: first-time watermarking can take 20-60s on cold starts
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 90000)
+
     const railwayRes = await fetch(`${RAILWAY_API}/downloads/${productId}`, {
       headers: { Authorization: token },
+      signal: controller.signal,
     })
+
+    clearTimeout(timeout)
 
     const data = await railwayRes.json()
 
