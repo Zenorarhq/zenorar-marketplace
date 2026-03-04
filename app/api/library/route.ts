@@ -97,6 +97,33 @@ export async function GET(request: Request) {
       [userId]
     )
 
+    // Query user's eSIMs
+    const esimsResult = await query(
+      `
+      SELECT
+        ue.id,
+        ue.iccid,
+        ue.status,
+        ue.data_used_mb,
+        ue.data_remaining_mb,
+        ue.expires_at,
+        ue.created_at as purchase_date,
+        ue.qr_code_data,
+        ep.name as plan_name,
+        ep.data_amount_display,
+        ep.validity_days,
+        ep.countries,
+        er.name as region_name,
+        er.slug as region_slug
+      FROM user_esims ue
+      JOIN esim_plans ep ON ue.plan_id = ep.id
+      LEFT JOIN esim_regions er ON ep.region_id = er.id
+      WHERE ue.user_id = $1
+      ORDER BY ue.created_at DESC
+      `,
+      [userId]
+    )
+
     // Transform product results to library item format
     const productItems = productsResult.rows.map((row: any) => {
       // Map category slugs to library filter types
@@ -195,8 +222,44 @@ export async function GET(request: Request) {
       }
     })
 
+    // Transform eSIMs to library item format
+    const esimItems = esimsResult.rows.map((row: any) => {
+      const dataUsedMb = parseFloat(row.data_used_mb) || 0
+      const dataRemainingMb = parseFloat(row.data_remaining_mb) || 0
+      const totalDataMb = dataUsedMb + dataRemainingMb
+      const usagePercent = totalDataMb > 0 ? Math.round((dataUsedMb / totalDataMb) * 100) : 0
+
+      return {
+        id: row.id,
+        name: row.plan_name,
+        slug: `esim-${row.id}`,
+        description: row.region_name
+          ? `${row.data_amount_display} - ${row.region_name}`
+          : `${row.data_amount_display} - ${row.validity_days} days`,
+        category: 'esims',
+        icon: 'sim-card',
+        purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        status: row.status,
+        iccid: row.iccid,
+        dataAmountDisplay: row.data_amount_display,
+        dataUsedMb,
+        dataRemainingMb,
+        usagePercent,
+        validityDays: row.validity_days,
+        regionName: row.region_name,
+        regionSlug: row.region_slug,
+        countries: row.countries,
+        expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : null,
+        hasQrCode: !!row.qr_code_data,
+      }
+    })
+
     // Combine all library items
-    const libraryItems = [...productItems, ...virtualNumberItems, ...giftCardItems]
+    const libraryItems = [...productItems, ...virtualNumberItems, ...giftCardItems, ...esimItems]
 
     return NextResponse.json({
       success: true,
