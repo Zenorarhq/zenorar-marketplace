@@ -38,6 +38,7 @@ export default function EditProductPage() {
   const [uploadJobStatus, setUploadJobStatus] = useState<'processing' | 'complete' | 'failed'>('processing')
   const [uploadRawStage, setUploadRawStage] = useState('queued')
   const jobProcessedRef = useRef(false)
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -267,6 +268,7 @@ export default function EditProductPage() {
           if (jobStatus === 'complete' && result && !jobProcessedRef.current) {
             jobProcessedRef.current = true
             clearInterval(poll)
+            pollIntervalRef.current = null
             setProductFiles(prev => fileIsLatest
               ? [result, ...prev.map(f => ({ ...f, is_latest: false }))]
               : [...prev, result]
@@ -275,6 +277,7 @@ export default function EditProductPage() {
           } else if (jobStatus === 'failed' && !jobProcessedRef.current) {
             jobProcessedRef.current = true
             clearInterval(poll)
+            pollIntervalRef.current = null
             setUploadError(error || 'Upload failed. Please try again.')
             setUploadJobStatus('failed')
           }
@@ -282,6 +285,7 @@ export default function EditProductPage() {
           // ignore transient poll errors — keep polling
         }
       }, 3000)
+      pollIntervalRef.current = poll
     } catch {
       setUploadError('Upload failed. Please try again.')
       setUploadJobStatus('failed')
@@ -298,6 +302,18 @@ export default function EditProductPage() {
       setSelectedFile(null)
       setFileVersion('1.0.0')
     }
+    setUploadError(null)
+  }
+
+  const handleCancelUpload = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+    jobProcessedRef.current = true
+    setShowUploadModal(false)
+    setUploadingFile(false)
+    setUploadStage('')
     setUploadError(null)
   }
 
@@ -1013,6 +1029,7 @@ export default function EditProductPage() {
         status={uploadJobStatus}
         error={uploadError}
         onClose={handleCloseUploadModal}
+        onCancel={handleCancelUpload}
       />
     </AdminLayout>
   )

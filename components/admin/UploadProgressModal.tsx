@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect, useRef } from 'react'
 import Icon from '@/components/ui/Icon'
 
 const STAGES = [
@@ -17,16 +18,49 @@ interface Props {
   status: 'processing' | 'complete' | 'failed'
   error?: string | null
   onClose: () => void
+  onCancel?: () => void
 }
 
-export default function UploadProgressModal({ isOpen, fileName, stage, status, error, onClose }: Props) {
-  if (!isOpen) return null
+export default function UploadProgressModal({ isOpen, fileName, stage, status, error, onClose, onCancel }: Props) {
+  const [displayPercent, setDisplayPercent] = useState(0)
+  const targetRef = useRef(0)
 
   const isDone   = status === 'complete'
   const isFailed = status === 'failed'
   const currentIdx = STAGES.findIndex(s => s.key === stage)
 
-  const stageProgress = isDone ? 100 : Math.round(((currentIdx + 1) / STAGES.length) * 100)
+  // Update target when stage changes
+  useEffect(() => {
+    if (!isOpen) {
+      setDisplayPercent(0)
+      targetRef.current = 0
+      return
+    }
+    if (isDone) {
+      targetRef.current = 100
+    } else if (!isFailed) {
+      // Each stage gets ~20%, target sits near end of that range so it feels active
+      targetRef.current = Math.min(((currentIdx + 1) / STAGES.length) * 100 - 3, 95)
+    }
+  }, [isOpen, stage, status, isDone, isFailed, currentIdx])
+
+  // Smooth animation tick
+  useEffect(() => {
+    if (!isOpen) return
+    const interval = setInterval(() => {
+      setDisplayPercent(prev => {
+        const target = targetRef.current
+        if (prev >= target) return prev
+        const diff = target - prev
+        // Ease-out: move faster when far away, slower when close
+        const step = Math.max(0.3, diff * 0.08)
+        return Math.min(prev + step, target)
+      })
+    }, 60)
+    return () => clearInterval(interval)
+  }, [isOpen])
+
+  const percent = Math.round(displayPercent)
 
   function stepState(i: number): 'done' | 'active' | 'failed' | 'pending' {
     if (isDone)   return 'done'
@@ -39,6 +73,8 @@ export default function UploadProgressModal({ isOpen, fileName, stage, status, e
     if (i === currentIdx) return 'active'
     return 'pending'
   }
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -55,10 +91,15 @@ export default function UploadProgressModal({ isOpen, fileName, stage, status, e
                 className={`${isDone ? 'text-primary' : isFailed ? 'text-red-400' : 'text-primary animate-spin'}`}
               />
             </div>
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-white">
-                {isDone ? 'Upload Complete' : isFailed ? 'Upload Failed' : 'Processing Upload'}
-              </h2>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-white">
+                  {isDone ? 'Upload Complete' : isFailed ? 'Upload Failed' : 'Processing Upload'}
+                </h2>
+                {!isFailed && (
+                  <span className="text-sm font-semibold tabular-nums text-primary">{percent}%</span>
+                )}
+              </div>
               <p className="text-xs text-slate-500 truncate">{fileName}</p>
             </div>
           </div>
@@ -68,8 +109,8 @@ export default function UploadProgressModal({ isOpen, fileName, stage, status, e
             <div className="mt-4">
               <div className="h-1 bg-[#1f1f1f] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${stageProgress}%` }}
+                  className="h-full bg-primary rounded-full transition-none"
+                  style={{ width: `${displayPercent}%` }}
                 />
               </div>
             </div>
@@ -114,28 +155,36 @@ export default function UploadProgressModal({ isOpen, fileName, stage, status, e
           })}
         </div>
 
-        {/* Footer — only shown when done or failed */}
-        {(isDone || isFailed) && (
-          <div className="px-5 pb-5">
-            {isFailed && error && (
-              <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 mb-3">
-                {error}
-              </p>
-            )}
-            {isDone && (
-              <p className="text-primary text-xs bg-primary/5 border border-primary/20 rounded-lg px-3 py-2.5 mb-3 flex items-center gap-2">
-                <Icon name="check" size={12} />
-                File uploaded and protected successfully.
-              </p>
-            )}
+        {/* Footer */}
+        <div className="px-5 pb-5">
+          {isFailed && error && (
+            <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 mb-3">
+              {error}
+            </p>
+          )}
+          {isDone && (
+            <p className="text-primary text-xs bg-primary/5 border border-primary/20 rounded-lg px-3 py-2.5 mb-3 flex items-center gap-2">
+              <Icon name="check" size={12} />
+              File uploaded and protected successfully.
+            </p>
+          )}
+          {(isDone || isFailed) && (
             <button
               onClick={onClose}
               className="w-full bg-primary hover:bg-primary/90 text-black text-sm font-semibold py-2.5 rounded-lg transition-colors"
             >
               {isDone ? 'Done' : 'Close'}
             </button>
-          </div>
-        )}
+          )}
+          {!isDone && !isFailed && onCancel && (
+            <button
+              onClick={onCancel}
+              className="w-full border border-[#333] hover:border-red-500/50 hover:bg-red-500/10 text-slate-400 hover:text-red-400 text-sm font-medium py-2.5 rounded-lg transition-colors"
+            >
+              Cancel Upload
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
