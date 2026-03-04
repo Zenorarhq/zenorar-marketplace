@@ -2456,24 +2456,21 @@ export default function AdminSettingsPage() {
               </div>
 
               {/* Stripe */}
-              <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                      <Icon name="credit-card" size={20} className="text-purple-400" />
+                  <button
+                    onClick={() => toggleSection('stripe')}
+                    className="flex items-center gap-4 flex-1 text-left"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                      <Icon name="credit-card" size={24} className="text-purple-400" />
                     </div>
                     <div>
-                      <p className="text-white font-medium">Stripe</p>
+                      <p className="text-white font-semibold text-lg">Stripe</p>
                       <p className="text-slate-500 text-sm">Accept credit card payments</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleSection('stripe')}
-                      className="text-slate-400 hover:text-slate-300 transition-colors"
-                    >
-                      <Icon name={expandedSections.stripe ? 'chevron-up' : 'chevron-down'} size={18} />
-                    </button>
+                  </button>
+                  <div className="flex items-center gap-4">
                     <button
                       onClick={() => setPaymentSettings({ ...paymentSettings, stripeEnabled: !paymentSettings.stripeEnabled })}
                       className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
@@ -2486,10 +2483,15 @@ export default function AdminSettingsPage() {
                         }`}
                       />
                     </button>
+                    <Icon
+                      name={expandedSections.stripe ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      className="text-slate-400 flex-shrink-0"
+                    />
                   </div>
                 </div>
                 {expandedSections.stripe && (
-                  <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
                     {/* Test / Live Toggle */}
                     <div className="flex items-center gap-3">
                       <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
@@ -2568,24 +2570,21 @@ export default function AdminSettingsPage() {
               </div>
 
               {/* Paystack */}
-              <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <Icon name="credit-card" size={20} className="text-blue-400" />
+                  <button
+                    onClick={() => toggleSection('paystack')}
+                    className="flex items-center gap-4 flex-1 text-left"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                      <Icon name="credit-card" size={24} className="text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-white font-medium">Paystack</p>
+                      <p className="text-white font-semibold text-lg">Paystack</p>
                       <p className="text-slate-500 text-sm">Accept payments in Africa (Nigeria, Ghana, Kenya, South Africa)</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleSection('paystack')}
-                      className="text-slate-400 hover:text-slate-300 transition-colors"
-                    >
-                      <Icon name={expandedSections.paystack ? 'chevron-up' : 'chevron-down'} size={18} />
-                    </button>
+                  </button>
+                  <div className="flex items-center gap-4">
                     <button
                       onClick={() => setPaymentSettings({ ...paymentSettings, paystackEnabled: !paymentSettings.paystackEnabled })}
                       className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
@@ -2598,10 +2597,15 @@ export default function AdminSettingsPage() {
                         }`}
                       />
                     </button>
+                    <Icon
+                      name={expandedSections.paystack ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      className="text-slate-400 flex-shrink-0"
+                    />
                   </div>
                 </div>
                 {expandedSections.paystack && (
-                  <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
                     {/* Test / Live Toggle */}
                     <div className="flex items-center gap-3">
                       <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
@@ -2692,24 +2696,21 @@ export default function AdminSettingsPage() {
               </div>
 
               {/* Enhanced Crypto */}
-              <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                      <Icon name="bitcoin" size={20} className="text-orange-400" />
+                  <button
+                    onClick={() => toggleSection('crypto')}
+                    className="flex items-center gap-4 flex-1 text-left"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+                      <Icon name="bitcoin" size={24} className="text-orange-400" />
                     </div>
                     <div>
-                      <p className="text-white font-medium">Cryptocurrency Payments</p>
+                      <p className="text-white font-semibold text-lg">Cryptocurrency Payments</p>
                       <p className="text-slate-500 text-sm">BTC, ETH, USDT, BNB, USDC, SOL/Phantom</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleSection('crypto')}
-                      className="text-slate-400 hover:text-slate-300 transition-colors"
-                    >
-                      <Icon name={expandedSections.crypto ? 'chevron-up' : 'chevron-down'} size={18} />
-                    </button>
+                  </button>
+                  <div className="flex items-center gap-4">
                     <button
                       onClick={() => setPaymentSettings({ ...paymentSettings, cryptoEnabled: !paymentSettings.cryptoEnabled })}
                       className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
@@ -2722,11 +2723,16 @@ export default function AdminSettingsPage() {
                         }`}
                       />
                     </button>
+                    <Icon
+                      name={expandedSections.crypto ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      className="text-slate-400 flex-shrink-0"
+                    />
                   </div>
                 </div>
 
                 {expandedSections.crypto && (
-                  <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
                     {/* Payment Method Toggle */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-300">Payment Method</label>
@@ -2947,24 +2953,21 @@ export default function AdminSettingsPage() {
               </div>
 
               {/* Enhanced PayPal */}
-              <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <Icon name="wallet" size={20} className="text-blue-400" />
+                  <button
+                    onClick={() => toggleSection('paypal')}
+                    className="flex items-center gap-4 flex-1 text-left"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                      <Icon name="wallet" size={24} className="text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-white font-medium">PayPal</p>
+                      <p className="text-white font-semibold text-lg">PayPal</p>
                       <p className="text-slate-500 text-sm">Accept PayPal and credit cards</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => toggleSection('paypal')}
-                      className="text-slate-400 hover:text-slate-300 transition-colors"
-                    >
-                      <Icon name={expandedSections.paypal ? 'chevron-up' : 'chevron-down'} size={18} />
-                    </button>
+                  </button>
+                  <div className="flex items-center gap-4">
                     <button
                       onClick={() => setPaymentSettings({ ...paymentSettings, paypalEnabled: !paymentSettings.paypalEnabled })}
                       className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
@@ -2977,11 +2980,16 @@ export default function AdminSettingsPage() {
                         }`}
                       />
                     </button>
+                    <Icon
+                      name={expandedSections.paypal ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      className="text-slate-400 flex-shrink-0"
+                    />
                   </div>
                 </div>
 
                 {expandedSections.paypal && (
-                  <div className="space-y-4 pt-4 border-t border-[#2a2a2a]">
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
                     {/* Platform Choice */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-300">PayPal Platform</label>
@@ -3134,35 +3142,37 @@ export default function AdminSettingsPage() {
               </div>
 
               {/* Wallet Deposits */}
-            <div className="bg-[#111111] border border-[#1e1e1e] rounded-xl p-6 space-y-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Icon name="wallet" size={16} className="text-primary" />
+            <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => toggleSection('walletDeposits')}
+                  className="flex items-center gap-4 flex-1 text-left"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Icon name="wallet" size={24} className="text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">Wallet Deposits</h3>
-                    <p className="text-slate-500 text-xs">Configure which deposit methods customers can use to add funds to their wallet</p>
+                    <p className="text-white font-semibold text-lg">Wallet Deposits</p>
+                    <p className="text-slate-500 text-sm">Configure which deposit methods customers can use to add funds to their wallet</p>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => toggleSection('walletDeposits')}
-                    className="text-slate-400 hover:text-slate-300 transition-colors"
-                  >
-                    <Icon name={expandedSections.walletDeposits ? 'chevron-up' : 'chevron-down'} size={18} />
-                  </button>
+                </button>
+                <div className="flex items-center gap-4">
                   <button
                     onClick={() => setPaymentSettings({ ...paymentSettings, walletDepositsEnabled: !paymentSettings.walletDepositsEnabled })}
                     className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${paymentSettings.walletDepositsEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
                   >
                     <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${paymentSettings.walletDepositsEnabled ? 'left-7' : 'left-1'}`} />
                   </button>
+                  <Icon
+                    name={expandedSections.walletDeposits ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    className="text-slate-400 flex-shrink-0"
+                  />
                 </div>
               </div>
 
               {expandedSections.walletDeposits && (
-                <div className="space-y-4">
+                <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
                   {/* Min/Max deposit amounts */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -3219,17 +3229,23 @@ export default function AdminSettingsPage() {
                         onClick={() => toggleSection('bankTransfer')}
                         className="w-full flex items-center justify-between"
                       >
-                        <h4 className="text-white font-medium flex items-center gap-2">
-                          <Icon name="bank" size={18} className="text-primary" />
-                          Bank Transfer Account Details
-                        </h4>
-                        <Icon name={expandedSections.bankTransfer ? 'chevron-up' : 'chevron-down'} size={18} className="text-slate-400" />
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Icon name="bank" size={20} className="text-primary" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-white font-semibold">Bank Transfer Account Details</p>
+                            <p className="text-slate-500 text-xs">Configure the bank account where customers should send transfers</p>
+                          </div>
+                        </div>
+                        <Icon
+                          name={expandedSections.bankTransfer ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          className="text-slate-400 flex-shrink-0"
+                        />
                       </button>
                       {expandedSections.bankTransfer && (
-                      <div className="mt-4">
-                      <p className="text-slate-500 text-xs mb-4">
-                        Configure the bank account where customers should send transfers. These details will be shown to users during checkout.
-                      </p>
+                      <div className="mt-4 pt-4 border-t border-[#1f1f1f]">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-slate-300">
