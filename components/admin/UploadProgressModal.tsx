@@ -5,8 +5,8 @@ import Icon from '@/components/ui/Icon'
 
 const STAGES = [
   { key: 'queued',      label: 'Queued',                 desc: 'Waiting to start' },
-  { key: 'obfuscating', label: 'Obfuscating code',       desc: 'Protecting source files' },
   { key: 'injecting',   label: 'Injecting license gate', desc: 'Adding license protection' },
+  { key: 'obfuscating', label: 'Obfuscating code',       desc: 'Protecting source files' },
   { key: 'uploading',   label: 'Uploading to storage',   desc: 'Sending to Cloudflare R2' },
   { key: 'saving',      label: 'Saving',                 desc: 'Updating database records' },
 ]
