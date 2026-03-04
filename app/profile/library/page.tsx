@@ -113,7 +113,14 @@ export default function LibraryPage() {
       const result = await libraryApi.downloadProduct(productId)
 
       if (result.success && result.data) {
-        window.open(result.data.url, '_blank')
+        // Use <a> element instead of window.open — browsers block popups after long async waits
+        const a = document.createElement('a')
+        a.href = result.data.url
+        a.download = result.data.filename || ''
+        a.style.display = 'none'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
         showToast(`${productName} download started!`, 'success', 4000)
       } else {
         showToast(result.error || 'Download failed. Please try again.', 'error', 5000)

@@ -168,7 +168,14 @@ export default function OrdersPage() {
       showToast('Preparing your download… this can take up to 60 seconds for large files.', 'info')
       const res = await libraryApi.downloadProduct(productId)
       if (res.success && res.data) {
-        window.open(res.data.url, '_blank')
+        // Use <a> element instead of window.open — browsers block popups after long async waits
+        const a = document.createElement('a')
+        a.href = res.data.url
+        a.download = res.data.filename || ''
+        a.style.display = 'none'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
         showToast('Download started!', 'success', 4000)
       } else {
         setDownloadError(res.error || 'Download temporarily unavailable')
