@@ -490,7 +490,7 @@ export default function LibraryPage() {
                             className="flex items-center gap-2 px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
                           >
                             <Icon name="globe" size={16} />
-                            Activate Domain
+                            Manage Domains
                           </button>
                         )}
                         {item.category === 'esims' && (
@@ -698,11 +698,11 @@ export default function LibraryPage() {
           <div className="bg-surface-dark rounded-2xl p-5 sm:p-8 max-w-md w-full border border-border-dark">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-white">Activate Domain</h3>
+                <h3 className="text-xl font-bold text-white">Manage Domains</h3>
                 <p className="text-sm text-slate-400 mt-1">{domainModal.productName}</p>
               </div>
               <button
-                onClick={() => { setDomainModal(null); setDomainInput(''); setDomainError(null) }}
+                onClick={() => { setDomainModal(null); setDomainError(null) }}
                 className="text-slate-400 hover:text-white"
               >
                 <Icon name="close" size={20} />
@@ -732,32 +732,12 @@ export default function LibraryPage() {
               </div>
             )}
 
-            {/* Add domain form */}
-            <div>
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Add Domain</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={domainInput}
-                  onChange={e => setDomainInput(e.target.value)}
-                  placeholder="example.com"
-                  className="flex-1 bg-black border border-border-dark rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-primary"
-                  onKeyDown={e => e.key === 'Enter' && handleActivateDomain()}
-                />
-                <button
-                  onClick={handleActivateDomain}
-                  disabled={domainLoading || !domainInput.trim()}
-                  className="px-4 py-2.5 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {domainLoading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
-                  ) : 'Add'}
-                </button>
-              </div>
-              {domainError && (
-                <p className="text-red-400 text-sm mt-2">{domainError}</p>
-              )}
-            </div>
+            {domainModal.registeredDomains.length === 0 && (
+              <p className="text-slate-500 text-sm">No domains activated yet. Use the ACTIVATE.html file included in your download to activate a domain.</p>
+            )}
+            {domainError && (
+              <p className="text-red-400 text-sm mt-2">{domainError}</p>
+            )}
           </div>
         </div>
       )}
