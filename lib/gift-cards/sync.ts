@@ -135,18 +135,22 @@ async function syncFromReloadly(countryCode: string = 'US'): Promise<SyncResult>
  */
 async function getEnabledProviders(): Promise<string[]> {
   try {
-    const settings = await getSiteSettingsByGroup('gift-cards')
+    // Settings are saved under 'api' group by admin settings page
+    const settings = await getSiteSettingsByGroup('api')
     const enabled: string[] = []
 
-    if (settings.reloadlyEnabled === true || settings.reloadlyEnabled === 'true') {
+    if (settings.reloadlyEnabled === true || settings.reloadlyEnabled === 'true' ||
+        settings.reloadlyClientId) {
       enabled.push('reloadly')
     }
 
-    if (settings.tangoEnabled === true || settings.tangoEnabled === 'true') {
+    if (settings.tangoEnabled === true || settings.tangoEnabled === 'true' ||
+        settings.tangoPlatformName) {
       enabled.push('tango')
     }
 
-    if (settings.ezpinEnabled === true || settings.ezpinEnabled === 'true') {
+    if (settings.ezpinEnabled === true || settings.ezpinEnabled === 'true' ||
+        settings.ezpinApiKey) {
       enabled.push('ezpin')
     }
 

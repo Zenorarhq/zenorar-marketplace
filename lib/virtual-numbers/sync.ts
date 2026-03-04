@@ -73,9 +73,10 @@ const countryNames: Record<string, string> = {
  */
 async function getTwilioCredentials(): Promise<{ accountSid: string; authToken: string } | null> {
   try {
-    const settings = await getSiteSettingsByGroup('virtual-numbers')
+    // Settings are saved under 'api' group by admin settings page
+    const settings = await getSiteSettingsByGroup('api')
 
-    const isTestMode = settings.twilioTestMode === true || settings.twilioTestMode === 'true'
+    const isTestMode = settings.twilioMode === 'test'
 
     let accountSid: string
     let authToken: string
@@ -84,8 +85,8 @@ async function getTwilioCredentials(): Promise<{ accountSid: string; authToken: 
       accountSid = settings.twilioTestAccountSid || process.env.TWILIO_TEST_ACCOUNT_SID || ''
       authToken = settings.twilioTestAuthToken || process.env.TWILIO_TEST_AUTH_TOKEN || ''
     } else {
-      accountSid = settings.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID || ''
-      authToken = settings.twilioAuthToken || process.env.TWILIO_AUTH_TOKEN || ''
+      accountSid = settings.twilioLiveAccountSid || process.env.TWILIO_ACCOUNT_SID || ''
+      authToken = settings.twilioLiveAuthToken || process.env.TWILIO_AUTH_TOKEN || ''
     }
 
     if (!accountSid || !authToken) {
@@ -468,27 +469,25 @@ async function seedDefaultPlans(): Promise<{ synced: number }> {
  */
 async function getEnabledProviders(): Promise<string[]> {
   try {
-    const [vnSettings, apiSettings] = await Promise.all([
-      getSiteSettingsByGroup('virtual-numbers'),
-      getSiteSettingsByGroup('api')
-    ])
+    // All settings are saved under 'api' group by admin settings page
+    const settings = await getSiteSettingsByGroup('api')
     const enabled: string[] = []
 
     // Check Twilio
-    if (vnSettings.twilioEnabled === true || vnSettings.twilioEnabled === 'true' ||
-        vnSettings.twilioAccountSid || process.env.TWILIO_ACCOUNT_SID) {
+    if (settings.twilioEnabled === true || settings.twilioEnabled === 'true' ||
+        settings.twilioLiveAccountSid || process.env.TWILIO_ACCOUNT_SID) {
       enabled.push('twilio')
     }
 
     // Check Plivo
-    if (apiSettings.plivoEnabled === true || apiSettings.plivoEnabled === 'true' ||
-        apiSettings.plivoAuthId || process.env.PLIVO_AUTH_ID) {
+    if (settings.plivoEnabled === true || settings.plivoEnabled === 'true' ||
+        settings.plivoAuthId || process.env.PLIVO_AUTH_ID) {
       enabled.push('plivo')
     }
 
     // Check Vonage
-    if (apiSettings.vonageEnabled === true || apiSettings.vonageEnabled === 'true' ||
-        apiSettings.vonageApiKey || process.env.VONAGE_API_KEY) {
+    if (settings.vonageEnabled === true || settings.vonageEnabled === 'true' ||
+        settings.vonageApiKey || process.env.VONAGE_API_KEY) {
       enabled.push('vonage')
     }
 

@@ -17,7 +17,8 @@ export interface AlertConfig {
  */
 export async function getAlertConfig(): Promise<AlertConfig> {
   try {
-    const settings = await getSiteSettingsByGroup('gift-cards')
+    // Settings are saved under 'api' group by admin settings page
+    const settings = await getSiteSettingsByGroup('api')
 
     return {
       lowStockThreshold: parseInt(settings.giftCardLowStockThreshold) || 5,

@@ -1,6 +1,7 @@
 // Mobimatter eSIM Provider
 // Documentation: https://docs.mobimatter.com
 
+import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import {
   EsimProviderInterface,
   AvailableEsimPlan,
@@ -9,18 +10,67 @@ import {
   TopUpResult,
 } from '../types'
 
+interface MobimatterCredentials {
+  baseUrl: string
+  merchantId: string
+  apiKey: string
+}
+
+// Cache credentials
+let credentialsCache: { credentials: MobimatterCredentials | null; timestamp: number } | null = null
+const CACHE_TTL = 60 * 1000 // 1 minute
+
 export class MobimatterProvider implements EsimProviderInterface {
   readonly name = 'Mobimatter'
   readonly slug = 'mobimatter'
 
-  private baseUrl: string
-  private merchantId: string
-  private apiKey: string
+  /**
+   * Get credentials from database or environment
+   */
+  private async getCredentials(): Promise<MobimatterCredentials | null> {
+    // Check cache first
+    if (credentialsCache && Date.now() - credentialsCache.timestamp < CACHE_TTL) {
+      return credentialsCache.credentials
+    }
 
-  constructor() {
-    this.baseUrl = process.env.MOBIMATTER_API_URL || 'https://api.mobimatter.com/v1'
-    this.merchantId = process.env.MOBIMATTER_MERCHANT_ID || ''
-    this.apiKey = process.env.MOBIMATTER_API_KEY || ''
+    try {
+      const settings = await getSiteSettingsByGroup('api')
+
+      const enabled = settings.mobimatterEnabled === true || settings.mobimatterEnabled === 'true'
+      const merchantId = settings.mobimatterMerchantId || process.env.MOBIMATTER_MERCHANT_ID || ''
+      const apiKey = settings.mobimatterApiKey || process.env.MOBIMATTER_API_KEY || ''
+
+      // If not explicitly enabled and no credentials, return null
+      if (!enabled && !merchantId && !apiKey) {
+        credentialsCache = { credentials: null, timestamp: Date.now() }
+        return null
+      }
+
+      if (!merchantId || !apiKey) {
+        credentialsCache = { credentials: null, timestamp: Date.now() }
+        return null
+      }
+
+      const baseUrl = process.env.MOBIMATTER_API_URL || 'https://api.mobimatter.com/v1'
+      const credentials: MobimatterCredentials = { baseUrl, merchantId, apiKey }
+      credentialsCache = { credentials, timestamp: Date.now() }
+      return credentials
+    } catch (error) {
+      console.error('Error getting Mobimatter credentials:', error)
+      // Fallback to env vars
+      const merchantId = process.env.MOBIMATTER_MERCHANT_ID || ''
+      const apiKey = process.env.MOBIMATTER_API_KEY || ''
+
+      if (!merchantId || !apiKey) {
+        return null
+      }
+
+      return {
+        baseUrl: process.env.MOBIMATTER_API_URL || 'https://api.mobimatter.com/v1',
+        merchantId,
+        apiKey
+      }
+    }
   }
 
   /**
@@ -31,11 +81,16 @@ export class MobimatterProvider implements EsimProviderInterface {
     endpoint: string,
     body?: Record<string, unknown>
   ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    const credentials = await this.getCredentials()
+    if (!credentials) {
+      throw new Error('Mobimatter not configured')
+    }
+
+    const response = await fetch(`${credentials.baseUrl}${endpoint}`, {
       method,
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'X-Merchant-Id': this.merchantId,
+        'Authorization': `Bearer ${credentials.apiKey}`,
+        'X-Merchant-Id': credentials.merchantId,
         'Content-Type': 'application/json',
       },
       body: body ? JSON.stringify(body) : undefined,
@@ -222,7 +277,8 @@ export class MobimatterProvider implements EsimProviderInterface {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      if (!this.merchantId || !this.apiKey) {
+      const credentials = await this.getCredentials()
+      if (!credentials) {
         return false
       }
       // Try to fetch products as a health check
@@ -231,6 +287,13 @@ export class MobimatterProvider implements EsimProviderInterface {
     } catch {
       return false
     }
+  }
+
+  /**
+   * Clear credentials cache (call after settings update)
+   */
+  clearCache(): void {
+    credentialsCache = null
   }
 
   private mapStatus(status: string): 'active' | 'pending' | 'expired' | 'unknown' {

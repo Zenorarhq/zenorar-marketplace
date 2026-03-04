@@ -52,10 +52,13 @@ class TwilioService {
     }
 
     try {
-      const settings = await getSiteSettingsByGroup('virtual-numbers')
+      // Settings are saved under 'api' group by admin settings page
+      const settings = await getSiteSettingsByGroup('api')
 
       const twilioEnabled = settings.twilioEnabled === true || settings.twilioEnabled === 'true'
-      if (!twilioEnabled) {
+      // If not explicitly set, check if credentials exist (assume enabled)
+      const hasCredentials = settings.twilioLiveAccountSid || settings.twilioTestAccountSid
+      if (!twilioEnabled && !hasCredentials) {
         credentialsCache = { credentials: null, timestamp: Date.now() }
         return null
       }

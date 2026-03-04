@@ -15,7 +15,8 @@ class EzPinProvider implements GiftCardProvider {
 
   private async getCredentials(): Promise<EzPinCredentials | null> {
     try {
-      const settings = await getSiteSettingsByGroup('gift-cards')
+      // Settings are saved under 'api' group by admin settings page
+      const settings = await getSiteSettingsByGroup('api')
 
       const enabled = settings.ezpinEnabled === true || settings.ezpinEnabled === 'true'
       if (!enabled) {
@@ -24,8 +25,8 @@ class EzPinProvider implements GiftCardProvider {
 
       const apiKey = settings.ezpinApiKey || process.env.EZPIN_API_KEY || ''
       const apiSecret = settings.ezpinApiSecret || process.env.EZPIN_API_SECRET || ''
-      const isSandbox = settings.ezpinSandbox === true || settings.ezpinSandbox === 'true' ||
-                        process.env.EZPIN_SANDBOX === 'true'
+      const isSandbox = settings.ezpinMode === 'sandbox' || settings.ezpinSandbox === true ||
+                        settings.ezpinSandbox === 'true' || process.env.EZPIN_SANDBOX === 'true'
 
       if (!apiKey || !apiSecret) {
         return null

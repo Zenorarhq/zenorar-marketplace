@@ -22,7 +22,8 @@ class TangoProvider implements GiftCardProvider {
 
   private async getCredentials(): Promise<TangoCredentials | null> {
     try {
-      const settings = await getSiteSettingsByGroup('gift-cards')
+      // Settings are saved under 'api' group by admin settings page
+      const settings = await getSiteSettingsByGroup('api')
 
       const enabled = settings.tangoEnabled === true || settings.tangoEnabled === 'true'
       if (!enabled) {
@@ -31,8 +32,8 @@ class TangoProvider implements GiftCardProvider {
 
       const platformName = settings.tangoPlatformName || process.env.TANGO_PLATFORM_NAME || ''
       const platformKey = settings.tangoPlatformKey || process.env.TANGO_PLATFORM_KEY || ''
-      const isSandbox = settings.tangoSandbox === true || settings.tangoSandbox === 'true' ||
-                        process.env.TANGO_SANDBOX === 'true'
+      const isSandbox = settings.tangoMode === 'sandbox' || settings.tangoSandbox === true ||
+                        settings.tangoSandbox === 'true' || process.env.TANGO_SANDBOX === 'true'
 
       if (!platformName || !platformKey) {
         return null

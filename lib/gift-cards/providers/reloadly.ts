@@ -23,17 +23,19 @@ class ReloadlyProvider implements GiftCardProvider {
 
   private async getCredentials(): Promise<ReloadlyCredentials | null> {
     try {
-      const settings = await getSiteSettingsByGroup('gift-cards')
+      // Settings are saved under 'api' group by admin settings page
+      const settings = await getSiteSettingsByGroup('api')
 
       const enabled = settings.reloadlyEnabled === true || settings.reloadlyEnabled === 'true'
-      if (!enabled) {
+      const hasCredentials = settings.reloadlyClientId || settings.reloadlyClientSecret
+      if (!enabled && !hasCredentials) {
         return null
       }
 
       const clientId = settings.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || ''
       const clientSecret = settings.reloadlyClientSecret || process.env.RELOADLY_CLIENT_SECRET || ''
-      const isSandbox = settings.reloadlySandbox === true || settings.reloadlySandbox === 'true' ||
-                        process.env.RELOADLY_SANDBOX === 'true'
+      const isSandbox = settings.reloadlyMode === 'sandbox' || settings.reloadlySandbox === true ||
+                        settings.reloadlySandbox === 'true' || process.env.RELOADLY_SANDBOX === 'true'
 
       if (!clientId || !clientSecret) {
         return null

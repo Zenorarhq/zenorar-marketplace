@@ -1,6 +1,7 @@
 // eSIM Go Provider
 // Documentation: https://api.esimgo.com/docs
 
+import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import {
   EsimProviderInterface,
   AvailableEsimPlan,
@@ -8,16 +9,63 @@ import {
   EsimUsageStatus,
 } from '../types'
 
+interface EsimGoCredentials {
+  baseUrl: string
+  apiKey: string
+}
+
+// Cache credentials
+let credentialsCache: { credentials: EsimGoCredentials | null; timestamp: number } | null = null
+const CACHE_TTL = 60 * 1000 // 1 minute
+
 export class EsimGoProvider implements EsimProviderInterface {
   readonly name = 'eSIM Go'
   readonly slug = 'esimgo'
 
-  private baseUrl: string
-  private apiKey: string
+  /**
+   * Get credentials from database or environment
+   */
+  private async getCredentials(): Promise<EsimGoCredentials | null> {
+    // Check cache first
+    if (credentialsCache && Date.now() - credentialsCache.timestamp < CACHE_TTL) {
+      return credentialsCache.credentials
+    }
 
-  constructor() {
-    this.baseUrl = process.env.ESIMGO_API_URL || 'https://api.esimgo.com/v2.2'
-    this.apiKey = process.env.ESIMGO_API_KEY || ''
+    try {
+      const settings = await getSiteSettingsByGroup('api')
+
+      const enabled = settings.esimGoEnabled === true || settings.esimGoEnabled === 'true'
+      const apiKey = settings.esimGoApiKey || process.env.ESIMGO_API_KEY || ''
+
+      // If not explicitly enabled and no API key, return null
+      if (!enabled && !apiKey) {
+        credentialsCache = { credentials: null, timestamp: Date.now() }
+        return null
+      }
+
+      if (!apiKey) {
+        credentialsCache = { credentials: null, timestamp: Date.now() }
+        return null
+      }
+
+      const baseUrl = process.env.ESIMGO_API_URL || 'https://api.esimgo.com/v2.2'
+      const credentials: EsimGoCredentials = { baseUrl, apiKey }
+      credentialsCache = { credentials, timestamp: Date.now() }
+      return credentials
+    } catch (error) {
+      console.error('Error getting eSIM Go credentials:', error)
+      // Fallback to env vars
+      const apiKey = process.env.ESIMGO_API_KEY || ''
+
+      if (!apiKey) {
+        return null
+      }
+
+      return {
+        baseUrl: process.env.ESIMGO_API_URL || 'https://api.esimgo.com/v2.2',
+        apiKey
+      }
+    }
   }
 
   /**
@@ -28,10 +76,15 @@ export class EsimGoProvider implements EsimProviderInterface {
     endpoint: string,
     body?: Record<string, unknown>
   ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    const credentials = await this.getCredentials()
+    if (!credentials) {
+      throw new Error('eSIM Go not configured')
+    }
+
+    const response = await fetch(`${credentials.baseUrl}${endpoint}`, {
       method,
       headers: {
-        'X-Api-Key': this.apiKey,
+        'X-Api-Key': credentials.apiKey,
         'Content-Type': 'application/json',
       },
       body: body ? JSON.stringify(body) : undefined,
@@ -167,11 +220,22 @@ export class EsimGoProvider implements EsimProviderInterface {
    */
   async healthCheck(): Promise<boolean> {
     try {
+      const credentials = await this.getCredentials()
+      if (!credentials) {
+        return false
+      }
       await this.request('GET', '/catalogue')
       return true
     } catch {
       return false
     }
+  }
+
+  /**
+   * Clear credentials cache (call after settings update)
+   */
+  clearCache(): void {
+    credentialsCache = null
   }
 
   private parseDataAmount(amount: string | number, unit: string): number {
