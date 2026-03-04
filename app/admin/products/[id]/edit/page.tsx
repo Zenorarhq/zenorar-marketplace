@@ -8,6 +8,7 @@ import Icon from '@/components/ui/Icon'
 import { productsApi, Product } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
 import MediaPickerModal from '@/components/admin/MediaPickerModal'
+import UploadProgressModal from '@/components/admin/UploadProgressModal'
 import { apiFetch } from '@/lib/api/client'
 import { downloadsApi, ProductFile } from '@/lib/api/downloads'
 
@@ -33,6 +34,9 @@ export default function EditProductPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadJobStatus, setUploadJobStatus] = useState<'processing' | 'complete' | 'failed'>('processing')
+  const [uploadRawStage, setUploadRawStage] = useState('queued')
   const jobProcessedRef = useRef(false)
 
   const [formData, setFormData] = useState({
@@ -223,6 +227,9 @@ export default function EditProductPage() {
     setUploadingFile(true)
     setUploadError(null)
     setUploadStage('Uploading...')
+    setUploadRawStage('queued')
+    setUploadJobStatus('processing')
+    setShowUploadModal(true)
 
     try {
       const form = new FormData()
@@ -255,6 +262,7 @@ export default function EditProductPage() {
 
           const { stage, status: jobStatus, result, error } = statusRes.data
           setUploadStage(stageLabels[stage] ?? 'Processing...')
+          setUploadRawStage(stage)
 
           if (jobStatus === 'complete' && result && !jobProcessedRef.current) {
             jobProcessedRef.current = true
@@ -263,16 +271,12 @@ export default function EditProductPage() {
               ? [result, ...prev.map(f => ({ ...f, is_latest: false }))]
               : [...prev, result]
             )
-            setSelectedFile(null)
-            setFileVersion('1.0.0')
-            setUploadingFile(false)
-            setUploadStage('')
+            setUploadJobStatus('complete')
           } else if (jobStatus === 'failed' && !jobProcessedRef.current) {
             jobProcessedRef.current = true
             clearInterval(poll)
             setUploadError(error || 'Upload failed. Please try again.')
-            setUploadingFile(false)
-            setUploadStage('')
+            setUploadJobStatus('failed')
           }
         } catch {
           // ignore transient poll errors — keep polling
@@ -280,9 +284,21 @@ export default function EditProductPage() {
       }, 3000)
     } catch {
       setUploadError('Upload failed. Please try again.')
+      setUploadJobStatus('failed')
       setUploadingFile(false)
       setUploadStage('')
     }
+  }
+
+  const handleCloseUploadModal = () => {
+    setShowUploadModal(false)
+    setUploadingFile(false)
+    setUploadStage('')
+    if (uploadJobStatus === 'complete') {
+      setSelectedFile(null)
+      setFileVersion('1.0.0')
+    }
+    setUploadError(null)
   }
 
   const handleDeleteFile = async (fileId: string) => {
@@ -988,6 +1004,15 @@ export default function EditProductPage() {
         }}
         allowedTypes={['image']}
         title="Select Product Image"
+      />
+
+      <UploadProgressModal
+        isOpen={showUploadModal}
+        fileName={selectedFile?.name ?? ''}
+        stage={uploadRawStage}
+        status={uploadJobStatus}
+        error={uploadError}
+        onClose={handleCloseUploadModal}
       />
     </AdminLayout>
   )
