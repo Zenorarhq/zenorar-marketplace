@@ -108,6 +108,14 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
   )
 }
 
+// Labels for dynamic ID segments based on their parent path
+const dynamicLabels: Record<string, string> = {
+  orders: 'Order Details',
+  numbers: 'Number Details',
+  tickets: 'Ticket Details',
+  licenses: 'License Details',
+}
+
 function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const segments = pathname.split('/').filter(Boolean)
 
@@ -120,14 +128,16 @@ function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const filteredSegments = segments.filter(segment => !segment.startsWith('('))
 
   let currentPath = ''
-  for (const segment of filteredSegments) {
+  for (let i = 0; i < filteredSegments.length; i++) {
+    const segment = filteredSegments[i]
     currentPath += `/${segment}`
 
-    // Check if it's a dynamic segment (like a product slug)
-    const isDynamic = !pathLabels[segment] && !segment.startsWith('[')
+    // If segment is not a known label, check if parent has a dynamic label
+    const prevSegment = i > 0 ? filteredSegments[i - 1] : ''
+    const label = pathLabels[segment] || dynamicLabels[prevSegment] || formatSegment(segment)
 
     breadcrumbs.push({
-      label: pathLabels[segment] || formatSegment(segment),
+      label,
       href: currentPath,
     })
   }
