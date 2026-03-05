@@ -36,7 +36,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, isLoading, isAuthenticated, isStaff, hasPermission, logout } = useAuth()
-  const [desktopCollapsed, setDesktopCollapsed] = useState(false)
+  const [desktopCollapsed, setDesktopCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('admin_sidebar_collapsed') === 'true'
+    }
+    return false
+  })
   const [showNotifications, setShowNotifications] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
@@ -174,7 +179,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         desktopCollapsed ? 'lg:w-16' : 'lg:w-56'
       }`}>
         {/* Logo */}
-        <div className={`h-16 flex items-center justify-center border-b border-[#1f1f1f] ${
+        <div className={`h-16 flex items-center justify-center border-b border-[#1f1f1f] overflow-hidden ${
           desktopCollapsed ? 'px-2' : 'lg:justify-start lg:px-4 px-2'
         }`}>
           <Link href="/admin" className="flex items-center gap-3">
@@ -220,14 +225,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-2 overflow-visible">
+        <nav className="flex-1 py-4 px-2 overflow-y-auto overflow-x-hidden">
           {visibleNavItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <div key={item.href} className="relative group">
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all justify-center ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all justify-center overflow-hidden ${
                     desktopCollapsed ? '' : 'lg:justify-start'
                   } ${
                     isActive
@@ -247,17 +252,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     )}
                   </div>
                   {/* Label with inline red dot - hidden on mobile, shown on expanded desktop */}
-                  {!desktopCollapsed && (
-                    <span className="text-sm font-medium hidden lg:flex items-center gap-2">
-                      {item.label}
-                      {/* Red dot AFTER TEXT - only on expanded desktop */}
-                      {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
-                        (item.href === '/admin/purchases' && pendingCounts?.orders && pendingCounts.orders > 0) ||
-                        (item.href === '/admin/chat' && unreadChats > 0)) && (
-                        <span className="w-2 h-2 bg-red-500 rounded-full" />
-                      )}
-                    </span>
-                  )}
+                  <span className="text-sm font-medium hidden lg:flex items-center gap-2 whitespace-nowrap">
+                    {item.label}
+                    {/* Red dot AFTER TEXT - only on expanded desktop */}
+                    {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
+                      (item.href === '/admin/purchases' && pendingCounts?.orders && pendingCounts.orders > 0) ||
+                      (item.href === '/admin/chat' && unreadChats > 0)) && (
+                      <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
+                    )}
+                  </span>
                 </Link>
                 {/* Tooltip - shows on mobile always, on desktop only when collapsed */}
                 <div className={`absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white text-sm font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 ${
@@ -273,19 +276,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* User Section */}
         <div className="p-3 border-t border-[#1f1f1f]">
           <div className="relative group">
-            <div className={`flex items-center gap-3 p-2 rounded-lg bg-[#1a1a1a] justify-center ${
+            <div className={`flex items-center gap-3 p-2 rounded-lg bg-[#1a1a1a] justify-center overflow-hidden ${
               desktopCollapsed ? '' : 'lg:justify-start'
             }`}>
               <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center flex-shrink-0">
                 <Icon name="user" size={18} className="text-primary" />
               </div>
-              {/* User info - hidden on mobile, shown on desktop when not collapsed */}
-              {!desktopCollapsed && (
-                <div className="flex-1 min-w-0 hidden lg:block">
-                  <p className="text-white text-sm font-medium truncate">{user?.name || 'User'}</p>
-                  <p className="text-primary text-xs capitalize">{user?.role?.toLowerCase() || 'User'}</p>
-                </div>
-              )}
+              {/* User info - hidden on mobile, shown on desktop, clipped by overflow when collapsed */}
+              <div className="flex-1 min-w-0 hidden lg:block whitespace-nowrap">
+                <p className="text-white text-sm font-medium truncate">{user?.name || 'User'}</p>
+                <p className="text-primary text-xs capitalize">{user?.role?.toLowerCase() || 'User'}</p>
+              </div>
             </div>
             {/* Tooltip for user - shows on mobile always, on desktop only when collapsed */}
             <div className={`absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white text-sm whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 ${
@@ -299,14 +300,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className={`flex items-center gap-3 w-full mt-2 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors justify-center ${
+            className={`flex items-center gap-3 w-full mt-2 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors justify-center overflow-hidden ${
               desktopCollapsed ? '' : 'lg:justify-start'
             }`}
           >
             <Icon name="logout" size={18} className="flex-shrink-0" />
-            {!desktopCollapsed && (
-              <span className="text-sm font-medium hidden lg:block">Logout</span>
-            )}
+            <span className="text-sm font-medium hidden lg:block whitespace-nowrap">Logout</span>
           </button>
         </div>
       </aside>
@@ -320,7 +319,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {/* Left: Toggle */}
           <div className="flex items-center gap-4 flex-1">
             <button
-              onClick={() => setDesktopCollapsed(!desktopCollapsed)}
+              onClick={() => {
+                const next = !desktopCollapsed
+                setDesktopCollapsed(next)
+                localStorage.setItem('admin_sidebar_collapsed', String(next))
+              }}
               className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors hidden lg:flex"
             >
               <Icon name="menu" size={20} />
