@@ -1939,6 +1939,9 @@ function StripeCardForm({
             quantity: item.quantity,
             license: item.license,
             price: item.price,
+            // Pass metadata for virtual numbers, eSIMs, gift cards, etc.
+            metadata: item.product.metadata || undefined,
+            productType: item.product.metadata?.productType || item.product.category || undefined,
           })),
         }),
       })
@@ -2142,6 +2145,9 @@ function PaystackCardForm({
             quantity: item.quantity,
             license: item.license,
             price: item.price,
+            // Pass metadata for virtual numbers, eSIMs, gift cards, etc.
+            metadata: item.product.metadata || undefined,
+            productType: item.product.metadata?.productType || item.product.category || undefined,
           })),
         }),
       })
