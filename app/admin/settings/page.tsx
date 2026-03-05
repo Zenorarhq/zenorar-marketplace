@@ -298,6 +298,11 @@ export default function AdminSettingsPage() {
     trackingAnalytics: false,
     socialSharing: false,
     codeInjection: false,
+    globalMetaTags: false,
+    searchVerification: false,
+    openGraph: false,
+    structuredData: false,
+    robotsTxt: false,
   })
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -5346,102 +5351,166 @@ export default function AdminSettingsPage() {
           {activeTab === 'seo' && (
             <div className="space-y-6">
               {/* Meta Tags */}
-              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Global Meta Tags</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Title Template</label>
-                    <input type="text" value={seoSettings.globalMetaTitleTemplate} onChange={(e) => setSeoSettings({ ...seoSettings, globalMetaTitleTemplate: e.target.value })} placeholder="{{title}} | Zenorar" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                    <p className="text-xs text-slate-500 mt-1">Use {'{{title}}'} as placeholder for page title. Example: {'{{title}}'} | My Store</p>
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button onClick={() => toggleSection('globalMetaTags')} className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Icon name="tag" size={24} className="text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Global Meta Tags</p>
+                      <p className="text-slate-500 text-sm">Title template, meta description, and canonical URL</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Default Meta Description</label>
-                    <textarea value={seoSettings.globalMetaDescription} onChange={(e) => setSeoSettings({ ...seoSettings, globalMetaDescription: e.target.value })} placeholder="Your marketplace description for search engines..." rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  <Icon name={expandedSections.globalMetaTags ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
+                {expandedSections.globalMetaTags && (
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Title Template</label>
+                      <input type="text" value={seoSettings.globalMetaTitleTemplate} onChange={(e) => setSeoSettings({ ...seoSettings, globalMetaTitleTemplate: e.target.value })} placeholder="{{title}} | Zenorar" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      <p className="text-xs text-slate-500 mt-1">Use {'{{title}}'} as placeholder for page title. Example: {'{{title}}'} | My Store</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Default Meta Description</label>
+                      <textarea value={seoSettings.globalMetaDescription} onChange={(e) => setSeoSettings({ ...seoSettings, globalMetaDescription: e.target.value })} placeholder="Your marketplace description for search engines..." rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Canonical URL Prefix</label>
+                      <input type="text" value={seoSettings.canonicalUrlPrefix} onChange={(e) => setSeoSettings({ ...seoSettings, canonicalUrlPrefix: e.target.value })} placeholder="https://zenorar.com" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Canonical URL Prefix</label>
-                    <input type="text" value={seoSettings.canonicalUrlPrefix} onChange={(e) => setSeoSettings({ ...seoSettings, canonicalUrlPrefix: e.target.value })} placeholder="https://zenorar.com" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Search Console */}
-              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Search Engine Verification</h3>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Google Search Console Verification</label>
-                  <input type="text" value={seoSettings.googleSiteVerification} onChange={(e) => setSeoSettings({ ...seoSettings, googleSiteVerification: e.target.value })} placeholder="Google verification code" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                  <p className="text-xs text-slate-500 mt-1">The content value from the meta tag Google gives you.</p>
-                </div>
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button onClick={() => toggleSection('searchVerification')} className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                      <Icon name="check-circle" size={24} className="text-green-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Search Engine Verification</p>
+                      <p className="text-slate-500 text-sm">Google Search Console verification code</p>
+                    </div>
+                  </div>
+                  <Icon name={expandedSections.searchVerification ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
+                {expandedSections.searchVerification && (
+                  <div className="mt-6 pt-6 border-t border-[#1f1f1f]">
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Google Search Console Verification</label>
+                    <input type="text" value={seoSettings.googleSiteVerification} onChange={(e) => setSeoSettings({ ...seoSettings, googleSiteVerification: e.target.value })} placeholder="Google verification code" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    <p className="text-xs text-slate-500 mt-1">The content value from the meta tag Google gives you.</p>
+                  </div>
+                )}
               </div>
 
               {/* Open Graph */}
-              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Open Graph / Social Sharing Defaults</h3>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Title</label>
-                      <input type="text" value={seoSettings.defaultOgTitle} onChange={(e) => setSeoSettings({ ...seoSettings, defaultOgTitle: e.target.value })} placeholder="Zenorar Marketplace" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button onClick={() => toggleSection('openGraph')} className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                      <Icon name="share-2" size={24} className="text-blue-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Open Graph / Social Sharing Defaults</p>
+                      <p className="text-slate-500 text-sm">OG title, description, type, and Twitter card settings</p>
+                    </div>
+                  </div>
+                  <Icon name={expandedSections.openGraph ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
+                {expandedSections.openGraph && (
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Title</label>
+                        <input type="text" value={seoSettings.defaultOgTitle} onChange={(e) => setSeoSettings({ ...seoSettings, defaultOgTitle: e.target.value })} placeholder="Zenorar Marketplace" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Type</label>
+                        <select value={seoSettings.defaultOgType} onChange={(e) => setSeoSettings({ ...seoSettings, defaultOgType: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary/50">
+                          <option value="website">website</option>
+                          <option value="article">article</option>
+                          <option value="product">product</option>
+                        </select>
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Type</label>
-                      <select value={seoSettings.defaultOgType} onChange={(e) => setSeoSettings({ ...seoSettings, defaultOgType: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary/50">
-                        <option value="website">website</option>
-                        <option value="article">article</option>
-                        <option value="product">product</option>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Description</label>
+                      <textarea value={seoSettings.defaultOgDescription} onChange={(e) => setSeoSettings({ ...seoSettings, defaultOgDescription: e.target.value })} placeholder="Description shown when shared on social media..." rows={2} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Twitter Card Type</label>
+                      <select value={seoSettings.twitterCardType} onChange={(e) => setSeoSettings({ ...seoSettings, twitterCardType: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        <option value="summary_large_image">Summary Large Image</option>
+                        <option value="summary">Summary</option>
                       </select>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Description</label>
-                    <textarea value={seoSettings.defaultOgDescription} onChange={(e) => setSeoSettings({ ...seoSettings, defaultOgDescription: e.target.value })} placeholder="Description shown when shared on social media..." rows={2} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Twitter Card Type</label>
-                    <select value={seoSettings.twitterCardType} onChange={(e) => setSeoSettings({ ...seoSettings, twitterCardType: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary/50">
-                      <option value="summary_large_image">Summary Large Image</option>
-                      <option value="summary">Summary</option>
-                    </select>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Structured Data */}
-              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Structured Data (JSON-LD)</h3>
-                <p className="text-sm text-slate-400 mb-4">Used for rich snippets in Google search results.</p>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Organization Name</label>
-                      <input type="text" value={seoSettings.structuredDataOrgName} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataOrgName: e.target.value })} placeholder="Zenorar" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button onClick={() => toggleSection('structuredData')} className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                      <Icon name="database" size={24} className="text-purple-400" />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Organization URL</label>
-                      <input type="text" value={seoSettings.structuredDataOrgUrl} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataOrgUrl: e.target.value })} placeholder="https://zenorar.com" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Structured Data (JSON-LD)</p>
+                      <p className="text-slate-500 text-sm">Used for rich snippets in Google search results</p>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Organization Logo URL</label>
-                    <input type="text" value={seoSettings.structuredDataOrgLogo} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataOrgLogo: e.target.value })} placeholder="https://zenorar.com/logo.png" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                  <Icon name={expandedSections.structuredData ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
+                {expandedSections.structuredData && (
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Organization Name</label>
+                        <input type="text" value={seoSettings.structuredDataOrgName} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataOrgName: e.target.value })} placeholder="Zenorar" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Organization URL</label>
+                        <input type="text" value={seoSettings.structuredDataOrgUrl} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataOrgUrl: e.target.value })} placeholder="https://zenorar.com" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Organization Logo URL</label>
+                      <input type="text" value={seoSettings.structuredDataOrgLogo} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataOrgLogo: e.target.value })} placeholder="https://zenorar.com/logo.png" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Social Profiles</label>
+                      <textarea value={seoSettings.structuredDataSocialProfiles} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataSocialProfiles: e.target.value })} placeholder="https://twitter.com/zenorar&#10;https://facebook.com/zenorar&#10;https://instagram.com/zenorar" rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                      <p className="text-xs text-slate-500 mt-1">One URL per line.</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Social Profiles</label>
-                    <textarea value={seoSettings.structuredDataSocialProfiles} onChange={(e) => setSeoSettings({ ...seoSettings, structuredDataSocialProfiles: e.target.value })} placeholder="https://twitter.com/zenorar&#10;https://facebook.com/zenorar&#10;https://instagram.com/zenorar" rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                    <p className="text-xs text-slate-500 mt-1">One URL per line.</p>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Robots.txt */}
-              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Robots.txt</h3>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Custom Robots.txt Content</label>
-                  <textarea value={seoSettings.robotsTxtContent} onChange={(e) => setSeoSettings({ ...seoSettings, robotsTxtContent: e.target.value })} placeholder="User-agent: *&#10;Allow: /&#10;Disallow: /admin/&#10;Disallow: /api/&#10;Sitemap: https://zenorar.com/sitemap.xml" rows={6} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm" />
-                  <p className="text-xs text-slate-500 mt-1">Leave empty to use defaults. Controls which pages search engines can crawl.</p>
-                </div>
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button onClick={() => toggleSection('robotsTxt')} className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                      <Icon name="file-text" size={24} className="text-orange-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Robots.txt</p>
+                      <p className="text-slate-500 text-sm">Control which pages search engines can crawl</p>
+                    </div>
+                  </div>
+                  <Icon name={expandedSections.robotsTxt ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
+                {expandedSections.robotsTxt && (
+                  <div className="mt-6 pt-6 border-t border-[#1f1f1f]">
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Custom Robots.txt Content</label>
+                    <textarea value={seoSettings.robotsTxtContent} onChange={(e) => setSeoSettings({ ...seoSettings, robotsTxtContent: e.target.value })} placeholder="User-agent: *&#10;Allow: /&#10;Disallow: /admin/&#10;Disallow: /api/&#10;Sitemap: https://zenorar.com/sitemap.xml" rows={6} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm" />
+                    <p className="text-xs text-slate-500 mt-1">Leave empty to use defaults. Controls which pages search engines can crawl.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
