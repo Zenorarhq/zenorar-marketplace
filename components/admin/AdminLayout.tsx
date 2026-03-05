@@ -175,8 +175,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div className="min-h-screen bg-[#0a0a0a] flex overflow-x-hidden">
       {/* Left Sidebar */}
       {/* Mobile: always w-16, Desktop: w-56 or w-16 based on desktopCollapsed */}
-      <aside className={`fixed left-0 top-0 h-full bg-[#111111] border-r border-[#1f1f1f] flex flex-col z-50 transition-all duration-300 w-16 overflow-visible ${
-        desktopCollapsed ? 'lg:w-16' : 'lg:w-56'
+      <aside className={`fixed left-0 top-0 h-full bg-[#111111] border-r border-[#1f1f1f] flex flex-col z-50 transition-[width] duration-300 w-16 overflow-hidden ${
+        desktopCollapsed ? 'lg:w-16' : 'lg:w-64'
       }`}>
         {/* Logo */}
         <div className={`h-16 flex items-center justify-center border-b border-[#1f1f1f] overflow-hidden ${
@@ -311,8 +311,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ml-16 overflow-x-hidden ${
-        desktopCollapsed ? '' : 'lg:ml-56'
+      <div className={`flex-1 flex flex-col transition-[margin] duration-300 ml-16 overflow-x-hidden ${
+        desktopCollapsed ? '' : 'lg:ml-64'
       }`}>
         {/* Top Header */}
         <header className="h-16 bg-[#0a0a0a] border-b border-[#1f1f1f] flex items-center justify-between px-4 lg:px-6 sticky top-0 z-40">
