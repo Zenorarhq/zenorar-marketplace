@@ -7,7 +7,6 @@ import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { libraryApi } from '@/lib/api/library'
 import EsimDetailModal from '@/components/library/EsimDetailModal'
-import IntegrationCodeModal from '@/components/library/IntegrationCodeModal'
 import { apiFetch } from '@/lib/api/client'
 
 interface License {
@@ -47,7 +46,7 @@ export default function LibraryPage() {
   const menuRef = useRef<HTMLDivElement>(null)
   const [apiKeyModal, setApiKeyModal] = useState<{ key: string; productName: string } | null>(null)
   const [copied, setCopied] = useState(false)
-  const [snippetModal, setSnippetModal] = useState<{ productId: string; productName: string } | null>(null)
+  const [licenseModal, setLicenseModal] = useState<{ licenseKey: string; productName: string } | null>(null)
 
   // Domain activation state
   const [domainModal, setDomainModal] = useState<{ licenseId: string; licenseKey: string; productName: string; registeredDomains: string[] } | null>(null)
@@ -475,13 +474,13 @@ export default function LibraryPage() {
                             )}
                           </button>
                         )}
-                        {(item.category === 'scripts' || item.category === 'tools') && (
+                        {(item.category === 'scripts' || item.category === 'tools') && license && (
                           <button
-                            onClick={() => setSnippetModal({ productId: item.id, productName: item.name })}
+                            onClick={() => setLicenseModal({ licenseKey: license.licenseKey, productName: item.name })}
                             className="flex items-center gap-2 px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white hover:bg-[#262626] transition-colors"
                           >
-                            <Icon name="code" size={16} />
-                            Integration Code
+                            <Icon name="key" size={16} />
+                            View License
                           </button>
                         )}
                         {isScriptOrTool && license && (
@@ -663,13 +662,41 @@ export default function LibraryPage() {
         </div>
       )}
 
-      {/* Integration Code Modal */}
-      <IntegrationCodeModal
-        isOpen={!!snippetModal}
-        onClose={() => setSnippetModal(null)}
-        productId={snippetModal?.productId || ''}
-        productName={snippetModal?.productName || ''}
-      />
+      {/* License Key Modal */}
+      {licenseModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-dark rounded-2xl p-5 sm:p-8 max-w-md w-full border border-border-dark">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">License Key</h3>
+              <button onClick={() => { setLicenseModal(null); setCopied(false) }} className="text-slate-400 hover:text-white">
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Product</label>
+                <div className="mt-1 text-white font-medium">{licenseModal.productName}</div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">License Key</label>
+                <div className="mt-1 bg-black border border-border-dark rounded-xl px-4 py-3 text-white font-mono text-sm break-all">
+                  {licenseModal.licenseKey}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(licenseModal.licenseKey)
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }}
+                className="w-full py-3 rounded-xl bg-primary text-black font-bold hover:bg-green-400 transition-colors"
+              >
+                {copied ? 'Copied!' : 'Copy License Key'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Download Toast */}
       {downloadToast && (
