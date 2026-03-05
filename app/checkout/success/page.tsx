@@ -286,7 +286,7 @@ function SuccessPageContent() {
       <div className="min-h-screen bg-background-dark flex flex-col">
         <Header />
         <CategoryNav />
-        <main className="flex-grow max-w-container mx-auto px-8 lg:px-12 pb-24 w-full">
+        <main className="flex-grow max-w-container mx-auto px-4 md:px-8 lg:px-12 pb-24 w-full">
           <div className="max-w-2xl mx-auto py-16 text-center">
             <Icon name="loading" size={48} className="text-primary animate-spin mx-auto mb-4" />
             <p className="text-slate-400">Loading...</p>
@@ -304,7 +304,7 @@ function SuccessPageContent() {
         <Header />
         <CategoryNav />
 
-        <main className="flex-grow max-w-container mx-auto px-8 lg:px-12 pb-24 w-full">
+        <main className="flex-grow max-w-container mx-auto px-4 md:px-8 lg:px-12 pb-24 w-full">
           <div className="max-w-xl mx-auto py-16">
             {/* Header */}
             <div className="text-center mb-8">
@@ -504,7 +504,7 @@ function SuccessPageContent() {
       <Header />
       <CategoryNav />
 
-      <main className="flex-grow max-w-container mx-auto px-8 lg:px-12 pb-24 w-full">
+      <main className="flex-grow max-w-container mx-auto px-4 md:px-8 lg:px-12 pb-24 w-full">
         <div className="max-w-2xl mx-auto py-16 text-center">
           {/* Success Icon */}
           <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-8">

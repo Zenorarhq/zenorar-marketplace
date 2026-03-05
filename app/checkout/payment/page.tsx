@@ -972,7 +972,7 @@ export default function PaymentPage() {
       <Header />
       <CategoryNav />
 
-      <main className="flex-grow max-w-container mx-auto px-8 lg:px-12 pb-24 w-full">
+      <main className="flex-grow max-w-container mx-auto px-4 md:px-8 lg:px-12 pb-24 w-full">
         <div className="py-4">
           <Breadcrumbs
             items={[

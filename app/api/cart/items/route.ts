@@ -8,9 +8,16 @@ export async function POST(request: NextRequest) {
   if (!user) return errorResponse('Unauthorized', 401)
 
   try {
-    const { productId, quantity = 1, license = 'standard', price } = await request.json()
+    const { productId, quantity = 1, license = 'standard' } = await request.json()
     if (!productId) return errorResponse('productId is required', 400)
-    if (!price) return errorResponse('price is required', 400)
+
+    // Look up the actual product price from DB (never trust client price)
+    const productResult = await executeQuery(
+      `SELECT price FROM products WHERE id = $1 AND status = 'ACTIVE'`,
+      [productId]
+    )
+    if (productResult.rows.length === 0) return errorResponse('Product not found', 404)
+    const price = parseFloat(productResult.rows[0].price)
 
     // Find or create cart for user
     let cartResult = await executeQuery(

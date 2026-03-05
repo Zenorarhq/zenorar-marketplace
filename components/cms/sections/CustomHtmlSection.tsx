@@ -1,5 +1,7 @@
 'use client'
 
+import DOMPurify from 'dompurify'
+
 interface CustomHtmlSectionProps {
   props: {
     html?: string
@@ -21,7 +23,7 @@ export default function CustomHtmlSection({ props }: CustomHtmlSectionProps) {
 
   return (
     <div className="py-4 px-4">
-      <div className="max-w-6xl mx-auto" dangerouslySetInnerHTML={{ __html: html }} />
+      <div className="max-w-6xl mx-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
     </div>
   )
 }

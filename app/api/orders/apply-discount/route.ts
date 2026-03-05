@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parseRequestBody } from '@/lib/auth-middleware'
+import { authenticateRequest, parseRequestBody } from '@/lib/auth-middleware'
 import { executeQuery } from '@/lib/db-helpers'
 
 // POST /api/orders/apply-discount — Save discount code and amount to an order
 export async function POST(request: NextRequest) {
+  const user = await authenticateRequest(request)
+  if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await parseRequestBody(request)
     if (!body || !body.orderId || !body.discountCode || body.discountAmount === undefined) {

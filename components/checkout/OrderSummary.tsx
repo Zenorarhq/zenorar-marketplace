@@ -37,7 +37,7 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
   }
 
   return (
-    <div className="sticky top-32 bg-charcoal rounded-2xl border border-border-dark p-8 shadow-2xl">
+    <div className="sticky top-32 bg-charcoal rounded-2xl border border-border-dark p-4 md:p-8 shadow-2xl">
       <h2 className="text-xl font-bold text-white mb-8 flex items-center gap-2">
         <Icon name="shopping-bag" size={24} className="text-primary" />
         Order Summary

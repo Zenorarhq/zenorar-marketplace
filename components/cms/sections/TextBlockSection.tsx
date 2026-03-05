@@ -1,5 +1,7 @@
 'use client'
 
+import DOMPurify from 'dompurify'
+
 interface TextBlockSectionProps {
   props: {
     content?: string
@@ -22,7 +24,7 @@ export default function TextBlockSection({ props }: TextBlockSectionProps) {
   return (
     <section className="py-6 sm:py-8 lg:py-12 px-4">
       <div className={`max-w-4xl mx-auto prose prose-invert prose-sm sm:prose-base lg:prose-lg ${alignmentClasses[alignment]}`}>
-        <div dangerouslySetInnerHTML={{ __html: content }} />
+        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
       </div>
     </section>
   )

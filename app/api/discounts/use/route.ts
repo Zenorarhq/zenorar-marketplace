@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parseRequestBody } from '@/lib/auth-middleware'
+import { authenticateRequest, parseRequestBody } from '@/lib/auth-middleware'
 import { executeQuery } from '@/lib/db-helpers'
 
 // POST /api/discounts/use — Increment usage count for a discount code
 export async function POST(request: NextRequest) {
+  const user = await authenticateRequest(request)
+  if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await parseRequestBody(request)
     if (!body || !body.code) {

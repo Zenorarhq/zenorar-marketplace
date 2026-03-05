@@ -197,7 +197,7 @@ export default function Header() {
             <button
               type="button"
               onClick={openMobileMenu}
-              className="md:hidden flex items-center justify-center p-1.5 text-slate-400 hover:text-primary transition-colors"
+              className="md:hidden flex items-center justify-center p-2.5 text-slate-400 hover:text-primary transition-colors"
               aria-label="Open menu"
             >
               <Icon name="menu" size={24} />
@@ -238,7 +238,7 @@ export default function Header() {
                 onFocus={handleInputFocus}
                 placeholder="Search for products or phone number"
                 autoComplete="off"
-                className={`w-full bg-surface-dark border rounded-lg py-2.5 pl-10 pr-4 text-sm transition-all placeholder:text-slate-500 text-slate-200 relative z-10 ${
+                className={`w-full bg-surface-dark border rounded-lg py-2.5 pl-10 pr-4 text-base transition-all placeholder:text-slate-500 text-slate-200 relative z-10 ${
                   showSearchDropdown
                     ? 'ring-2 ring-primary border-primary shadow-lg'
                     : 'border-border-dark focus:ring-1 focus:ring-primary'
@@ -262,7 +262,7 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
-                className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors relative"
+                className="md:hidden flex items-center justify-center p-2.5 text-slate-400 hover:text-primary transition-colors relative"
                 aria-label="Notifications"
               >
                 <Icon name="bell" size={22} />
@@ -387,7 +387,7 @@ export default function Header() {
               <Link
                 href="/login"
                 prefetch={true}
-                className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors"
+                className="md:hidden flex items-center justify-center p-2.5 text-slate-400 hover:text-primary transition-colors"
                 aria-label="Login"
               >
                 <Icon name="user-circle" size={22} />
@@ -621,7 +621,7 @@ export default function Header() {
                 onFocus={handleInputFocus}
                 placeholder="Search for products or phone number"
                 autoComplete="off"
-                className={`w-full bg-surface-dark border rounded-lg py-2.5 pl-9 pr-4 text-sm transition-all placeholder:text-slate-500 text-slate-200 relative z-10 ${
+                className={`w-full bg-surface-dark border rounded-lg py-2.5 pl-9 pr-4 text-base transition-all placeholder:text-slate-500 text-slate-200 relative z-10 ${
                   showSearchDropdown
                     ? 'ring-2 ring-primary border-primary shadow-lg'
                     : 'border-border-dark focus:ring-1 focus:ring-primary'

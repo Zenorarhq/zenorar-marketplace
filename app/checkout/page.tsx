@@ -244,7 +244,7 @@ export default function CheckoutPage() {
       <CategoryNav />
 
       {/* Main Content */}
-      <main className="flex-grow max-w-container mx-auto px-8 lg:px-12 pb-24 w-full">
+      <main className="flex-grow max-w-container mx-auto px-4 md:px-8 lg:px-12 pb-24 w-full">
         <div className="py-4">
           <Breadcrumbs className="mb-0" />
         </div>
@@ -252,33 +252,33 @@ export default function CheckoutPage() {
         {/* Checkout Steps */}
         <div className="mb-8">
           <nav aria-label="Checkout progress" className="flex items-center justify-center">
-            <ol className="flex items-center gap-4">
+            <ol className="flex items-center gap-2 sm:gap-4">
               {/* Step 1 - Active */}
-              <li className="flex items-center gap-3">
+              <li className="flex items-center gap-1.5 sm:gap-3">
                 <span className="w-8 h-8 rounded-full bg-primary text-black flex items-center justify-center font-bold text-sm" aria-current="step">
                   1
                 </span>
-                <span className="text-primary font-bold text-sm tracking-wide">Shipping</span>
+                <span className="hidden sm:inline text-primary font-bold text-sm tracking-wide">Shipping</span>
               </li>
 
-              <li aria-hidden="true" className="w-12 h-px bg-border-dark" />
+              <li aria-hidden="true" className="w-8 sm:w-12 h-px bg-border-dark" />
 
               {/* Step 2 */}
-              <li className="flex items-center gap-3 opacity-40">
+              <li className="flex items-center gap-1.5 sm:gap-3 opacity-40">
                 <span className="w-8 h-8 rounded-full bg-surface-dark text-slate-400 border border-border-dark flex items-center justify-center font-bold text-sm">
                   2
                 </span>
-                <span className="text-slate-400 font-bold text-sm tracking-wide">Payment</span>
+                <span className="hidden sm:inline text-slate-400 font-bold text-sm tracking-wide">Payment</span>
               </li>
 
-              <li aria-hidden="true" className="w-12 h-px bg-border-dark" />
+              <li aria-hidden="true" className="w-8 sm:w-12 h-px bg-border-dark" />
 
               {/* Step 3 */}
-              <li className="flex items-center gap-3 opacity-40">
+              <li className="flex items-center gap-1.5 sm:gap-3 opacity-40">
                 <span className="w-8 h-8 rounded-full bg-surface-dark text-slate-400 border border-border-dark flex items-center justify-center font-bold text-sm">
                   3
                 </span>
-                <span className="text-slate-400 font-bold text-sm tracking-wide">Review</span>
+                <span className="hidden sm:inline text-slate-400 font-bold text-sm tracking-wide">Review</span>
               </li>
             </ol>
           </nav>
@@ -311,7 +311,7 @@ export default function CheckoutPage() {
                         onChange={handleInputChange}
                         placeholder="John Doe"
                         autoComplete="name"
-                        className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                        className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-base text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
                           errors.fullName ? 'border-red-500' : 'border-border-dark'
                         }`}
                       />
@@ -331,7 +331,7 @@ export default function CheckoutPage() {
                         onChange={handleInputChange}
                         placeholder="john@example.com"
                         autoComplete="email"
-                        className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                        className={`w-full bg-charcoal border rounded-xl py-4 px-5 text-base text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
                           errors.email ? 'border-red-500' : 'border-border-dark'
                         }`}
                       />
@@ -364,7 +364,7 @@ export default function CheckoutPage() {
                         onChange={handleInputChange}
                         placeholder="+1 (555) 000-0000"
                         autoComplete="tel"
-                        className={`w-full bg-charcoal border rounded-xl py-4 pl-14 pr-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
+                        className={`w-full bg-charcoal border rounded-xl py-4 pl-14 pr-5 text-base text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all ${
                           errors.phone ? 'border-red-500' : 'border-border-dark'
                         }`}
                       />
@@ -420,7 +420,7 @@ export default function CheckoutPage() {
                             onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
                             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleApplyDiscount())}
                             placeholder="Enter discount code"
-                            className="w-full bg-charcoal border border-border-dark rounded-xl py-4 pl-12 pr-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all font-mono"
+                            className="w-full bg-charcoal border border-border-dark rounded-xl py-4 pl-12 pr-5 text-slate-200 placeholder:text-slate-600 focus:ring-primary focus:border-primary transition-all text-base font-mono"
                           />
                         </div>
                         <button

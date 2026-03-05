@@ -238,6 +238,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (quantity <= 0) {
       return removeItem(productId, license)
     }
+    quantity = Math.min(quantity, 100)
 
     // Save current state for rollback
     const previousItems = items

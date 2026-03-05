@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { authenticateRequest } from '@/lib/auth-middleware'
 import { executeQuery } from '@/lib/db-helpers'
 
 export const dynamic = 'force-dynamic'
@@ -8,7 +9,18 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await authenticateRequest(request)
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
   const { id } = await params
+
+  // Verify user owns this conversation or is admin/staff
+  const convCheck = await executeQuery(
+    `SELECT id FROM chat_conversations WHERE id = $1 AND ("userId" = $2 OR EXISTS (SELECT 1 FROM users WHERE id = $2 AND (role = 'ADMIN' OR "isStaff" = true)))`,
+    [id, user.id]
+  )
+  if (convCheck.rows.length === 0) return new Response('Forbidden', { status: 403 })
+
   const { searchParams } = new URL(request.url)
   const lastTimestamp = searchParams.get('since') || new Date(0).toISOString()
 

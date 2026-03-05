@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { getSiteSetting } from '@/lib/db-helpers'
+import { authenticateRequest } from '@/lib/auth-middleware'
+import { getSiteSetting, executeQuery } from '@/lib/db-helpers'
 
 // POST /api/payments/stripe/create-intent
 // Creates a Stripe PaymentIntent for one-time card payment
 export async function POST(req: NextRequest) {
-  try {
-    const { amount, currency = 'usd', orderId } = await req.json()
+  const user = await authenticateRequest(req)
+  if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
-    if (!amount || amount <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid amount' },
-        { status: 400 }
-      )
-    }
+  try {
+    const { currency = 'usd', orderId } = await req.json()
 
     if (!orderId) {
       return NextResponse.json(
@@ -21,6 +18,16 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Look up the order's actual total from DB (never trust client amount)
+    const orderResult = await executeQuery(
+      `SELECT total, "discountAmount" FROM orders WHERE id = $1 AND "userId" = $2`,
+      [orderId, user.id]
+    )
+    if (orderResult.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 })
+    }
+    const amount = Number(orderResult.rows[0].total) - Number(orderResult.rows[0].discountAmount || 0)
 
     // Get Stripe secret key from site settings
     const mode = (await getSiteSetting('stripeMode')) || 'test'
