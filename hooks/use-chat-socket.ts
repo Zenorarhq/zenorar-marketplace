@@ -123,6 +123,14 @@ export function useChatSocket() {
     }
   }, [])
 
+  const onAdminNotification = useCallback((callback: (data: { type: string; title: string; message: string; link?: string }) => void) => {
+    const handler = (data: any) => callback(data)
+    socketRef.current?.on('notification:new', handler)
+    return () => {
+      socketRef.current?.off('notification:new', handler)
+    }
+  }, [])
+
   return {
     socket: socketRef,
     joinConversation,
@@ -135,5 +143,6 @@ export function useChatSocket() {
     onConversationAssigned,
     onTyping,
     onReconnect,
+    onAdminNotification,
   }
 }

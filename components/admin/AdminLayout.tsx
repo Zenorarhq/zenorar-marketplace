@@ -9,6 +9,7 @@ import { apiFetch } from '@/lib/api/client'
 import Icon from '@/components/ui/Icon'
 import { formatTimeAgo } from '@/lib/date-utils'
 import type { NotificationType } from '@/lib/api/notifications'
+import { useChatSocket } from '@/hooks/use-chat-socket'
 
 const notifIcons: Record<string, string> = {
   ORDER_PLACED: 'cart', ORDER_CONFIRMED: 'verified', ORDER_SHIPPED: 'delivery',
@@ -155,6 +156,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const queryClient = useQueryClient()
   const unreadNotifs = notifData?.count || 0
   const unreadChats = chatData?.count || 0
+
+  // Real-time notifications via WebSocket
+  const { joinAdmin, onAdminNotification, onNewMessage, onReconnect } = useChatSocket()
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    joinAdmin()
+    const unsub1 = onAdminNotification(() => {
+      queryClient.invalidateQueries({ queryKey: ['admin-notif-count'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-notif-list'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-counts'] })
+    })
+    const unsub2 = onNewMessage(() => {
+      queryClient.invalidateQueries({ queryKey: ['admin-chat-count'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-chat-list'] })
+    })
+    const unsub3 = onReconnect(() => {
+      joinAdmin()
+    })
+    return () => { unsub1(); unsub2(); unsub3() }
+  }, [isAuthenticated])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
