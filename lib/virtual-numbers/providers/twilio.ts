@@ -172,6 +172,12 @@ class TwilioService {
       const typeEndpoint = type === 'tollFree' ? 'TollFree' : type === 'mobile' ? 'Mobile' : 'Local'
       let url = `${this.getBaseUrl(credentials)}/AvailablePhoneNumbers/${countryCode}/${typeEndpoint}.json?PageSize=${limit}`
 
+      // In live mode, only show SMS-enabled numbers (for actual messaging)
+      // In test mode, show all numbers (test numbers often don't have SMS capability)
+      if (!credentials.isTestMode) {
+        url += '&SmsEnabled=true'
+      }
+
       if (areaCode) {
         url += `&AreaCode=${areaCode}`
       }
