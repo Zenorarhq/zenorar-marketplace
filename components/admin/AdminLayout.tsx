@@ -7,6 +7,28 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api/client'
 import Icon from '@/components/ui/Icon'
+import { formatTimeAgo } from '@/lib/date-utils'
+import type { NotificationType } from '@/lib/api/notifications'
+
+const notifIcons: Record<string, string> = {
+  ORDER_PLACED: 'cart', ORDER_CONFIRMED: 'verified', ORDER_SHIPPED: 'delivery',
+  ORDER_DELIVERED: 'package', ORDER_CANCELLED: 'cancel', PAYMENT_RECEIVED: 'credit-card',
+  PAYMENT_FAILED: 'alert', REFUND_PROCESSED: 'refresh', REVIEW_APPROVED: 'star',
+  REVIEW_REJECTED: 'cancel', PRICE_DROP: 'discount', BACK_IN_STOCK: 'bell',
+  PROMOTIONAL: 'gift', SYSTEM: 'info', DEPOSIT_SUCCESS: 'wallet', DEPOSIT_FAILED: 'alert',
+  WALLET_CREDIT_ADDED: 'wallet', TICKET_CREATED: 'ticket',
+}
+const notifColors: Record<string, string> = {
+  ORDER_PLACED: 'bg-blue-500/20 text-blue-400', ORDER_CONFIRMED: 'bg-green-500/20 text-green-400',
+  ORDER_SHIPPED: 'bg-purple-500/20 text-purple-400', ORDER_DELIVERED: 'bg-green-500/20 text-green-400',
+  ORDER_CANCELLED: 'bg-red-500/20 text-red-400', PAYMENT_RECEIVED: 'bg-green-500/20 text-green-400',
+  PAYMENT_FAILED: 'bg-red-500/20 text-red-400', REFUND_PROCESSED: 'bg-yellow-500/20 text-yellow-400',
+  REVIEW_APPROVED: 'bg-yellow-500/20 text-yellow-400', REVIEW_REJECTED: 'bg-red-500/20 text-red-400',
+  PRICE_DROP: 'bg-green-500/20 text-green-400', BACK_IN_STOCK: 'bg-blue-500/20 text-blue-400',
+  PROMOTIONAL: 'bg-purple-500/20 text-purple-400', SYSTEM: 'bg-slate-500/20 text-slate-400',
+  DEPOSIT_SUCCESS: 'bg-green-500/20 text-green-400', DEPOSIT_FAILED: 'bg-red-500/20 text-red-400',
+  WALLET_CREDIT_ADDED: 'bg-green-500/20 text-green-400', TICKET_CREATED: 'bg-blue-500/20 text-blue-400',
+}
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -43,7 +65,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return false
   })
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showChatDropdown, setShowChatDropdown] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+  const chatRef = useRef<HTMLDivElement>(null)
 
   // Track "last seen" counts for nav dot badges — stored in localStorage
   const [lastSeenCounts, setLastSeenCounts] = useState<{ orders: number; deposits: number; chats: number }>(() => {
@@ -88,6 +112,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     enabled: isAuthenticated,
   })
 
+  // Fetch recent chat conversations for dropdown
+  const { data: chatList } = useQuery({
+    queryKey: ['admin-chat-list'],
+    queryFn: async () => {
+      const res = await apiFetch<any[]>('/chat?limit=5&excludeStatus=CLOSED')
+      return res.success ? res.data : null
+    },
+    enabled: isAuthenticated && showChatDropdown,
+  })
+
   // Fetch pending counts for nav badges (deposits, orders, tickets)
   const { data: pendingCounts } = useQuery({
     queryKey: ['admin-pending-counts'],
@@ -122,11 +156,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const unreadNotifs = notifData?.count || 0
   const unreadChats = chatData?.count || 0
 
-  // Close notification dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setShowNotifications(false)
+      }
+      if (chatRef.current && !chatRef.current.contains(e.target as Node)) {
+        setShowChatDropdown(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -400,7 +437,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {/* Bell - Notifications */}
             <div className="relative" ref={notifRef}>
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
+                onClick={() => { setShowNotifications(!showNotifications); setShowChatDropdown(false) }}
                 className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
               >
                 <Icon name="bell" size={20} />
@@ -413,46 +450,162 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
               {/* Notification Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl z-50 overflow-hidden">
-                  <div className="flex items-center justify-between p-4 border-b border-[#1f1f1f]">
-                    <h4 className="text-white font-semibold text-sm">Notifications</h4>
+                <div className="absolute right-0 top-full mt-2 w-[340px] bg-[#0D0D0D] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                  <div className="flex items-center justify-between p-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Icon name="bell" size={16} className="text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold text-sm">Notifications</h4>
+                        {unreadNotifs > 0 && <p className="text-xs text-slate-500">{unreadNotifs} unread</p>}
+                      </div>
+                    </div>
                     {unreadNotifs > 0 && (
-                      <button onClick={markAllRead} className="text-primary text-xs hover:underline">
+                      <button onClick={markAllRead} className="text-primary text-xs font-medium hover:text-green-400 transition-colors">
                         Mark all read
                       </button>
                     )}
                   </div>
-                  <div className="max-h-72 overflow-y-auto">
+                  <div className="max-h-[360px] overflow-y-auto">
                     {notifList?.notifications?.length > 0 ? (
                       notifList.notifications.map((n: any) => (
-                        <div key={n.id} className={`p-3 border-b border-[#1f1f1f] hover:bg-white/5 ${!n.isRead ? 'bg-primary/5' : ''}`}>
-                          <p className="text-white text-sm">{n.title}</p>
-                          <p className="text-slate-400 text-xs mt-0.5">{n.message}</p>
-                          <p className="text-slate-500 text-[10px] mt-1">
-                            {new Date(n.createdAt).toLocaleDateString()}
-                          </p>
+                        <div
+                          key={n.id}
+                          className={`flex items-start gap-3 p-3.5 hover:bg-white/5 transition-colors cursor-pointer ${
+                            !n.isRead ? 'bg-white/[0.02] border-l-2 border-primary' : 'border-l-2 border-transparent'
+                          }`}
+                          onClick={() => {
+                            if (n.link) {
+                              setShowNotifications(false)
+                              router.push(n.link)
+                            }
+                          }}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${notifColors[n.type] || 'bg-slate-500/20 text-slate-400'}`}>
+                            <Icon name={notifIcons[n.type] || 'bell'} size={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`text-sm font-medium truncate ${n.isRead ? 'text-slate-300' : 'text-white'}`}>{n.title}</p>
+                              <span className="text-[10px] text-slate-500 flex-shrink-0 mt-0.5">{formatTimeAgo(n.createdAt)}</span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{n.message}</p>
+                          </div>
                         </div>
                       ))
                     ) : (
-                      <div className="p-6 text-center text-slate-500 text-sm">No notifications</div>
+                      <div className="text-center py-10 px-4">
+                        <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center mx-auto mb-3">
+                          <Icon name="bell" size={20} className="text-slate-600" />
+                        </div>
+                        <p className="text-slate-400 text-sm font-medium">No notifications yet</p>
+                        <p className="text-slate-600 text-xs mt-1">Activity will show up here</p>
+                      </div>
                     )}
+                  </div>
+                  <div className="border-t border-white/10 p-2.5">
+                    <Link
+                      href="/admin/notifications"
+                      onClick={() => setShowNotifications(false)}
+                      className="block w-full text-center text-sm text-primary hover:text-green-400 font-medium py-2 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      View All Notifications
+                    </Link>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Mail - Chat Messages */}
-            <Link
-              href="/admin/chat"
-              className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-            >
-              <Icon name="mail" size={20} />
-              {unreadChats > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1">
-                  {unreadChats > 99 ? '99+' : unreadChats}
-                </span>
+            {/* Mail - Chat Messages Dropdown */}
+            <div className="relative" ref={chatRef}>
+              <button
+                onClick={() => { setShowChatDropdown(!showChatDropdown); setShowNotifications(false) }}
+                className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <Icon name="mail" size={20} />
+                {unreadChats > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1">
+                    {unreadChats > 99 ? '99+' : unreadChats}
+                  </span>
+                )}
+              </button>
+
+              {showChatDropdown && (
+                <div className="absolute right-0 top-full mt-2 w-[340px] bg-[#0D0D0D] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                  <div className="flex items-center justify-between p-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <Icon name="chat" size={16} className="text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-white font-bold text-sm">Messages</h4>
+                        {unreadChats > 0 && <p className="text-xs text-slate-500">{unreadChats} unread</p>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="max-h-[360px] overflow-y-auto">
+                    {chatList && chatList.length > 0 ? (
+                      chatList.map((conv: any) => (
+                        <Link
+                          key={conv.id}
+                          href={`/admin/chat?id=${conv.id}`}
+                          onClick={() => setShowChatDropdown(false)}
+                          className={`flex items-start gap-3 p-3.5 hover:bg-white/5 transition-colors ${
+                            conv.unreadCount > 0 ? 'bg-white/[0.02] border-l-2 border-blue-400' : 'border-l-2 border-transparent'
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-[#1a1a1a] flex items-center justify-center flex-shrink-0">
+                            <Icon name="user" size={16} className="text-slate-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`text-sm font-medium truncate ${conv.unreadCount > 0 ? 'text-white' : 'text-slate-300'}`}>
+                                {conv.user?.name || conv.guestName || conv.guestEmail || 'Guest'}
+                              </p>
+                              <span className="text-[10px] text-slate-500 flex-shrink-0 mt-0.5">
+                                {conv.lastMessageAt ? formatTimeAgo(conv.lastMessageAt) : formatTimeAgo(conv.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{conv.lastMessage || 'No messages yet'}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                conv.status === 'OPEN' ? 'bg-green-500/10 text-green-400' :
+                                conv.status === 'ASSIGNED' ? 'bg-blue-500/10 text-blue-400' :
+                                conv.status === 'WAITING' ? 'bg-yellow-500/10 text-yellow-400' :
+                                'bg-slate-500/10 text-slate-400'
+                              }`}>{conv.status}</span>
+                              {conv.unreadCount > 0 && (
+                                <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-medium">
+                                  {conv.unreadCount} new
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="text-center py-10 px-4">
+                        <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center mx-auto mb-3">
+                          <Icon name="chat" size={20} className="text-slate-600" />
+                        </div>
+                        <p className="text-slate-400 text-sm font-medium">No active conversations</p>
+                        <p className="text-slate-600 text-xs mt-1">Chat messages will appear here</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t border-white/10 p-2.5">
+                    <Link
+                      href="/admin/chat"
+                      onClick={() => setShowChatDropdown(false)}
+                      className="block w-full text-center text-sm text-blue-400 hover:text-blue-300 font-medium py-2 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      View All Conversations
+                    </Link>
+                  </div>
+                </div>
               )}
-            </Link>
+            </div>
           </div>
         </header>
 
