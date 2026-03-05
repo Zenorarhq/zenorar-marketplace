@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
@@ -21,37 +21,56 @@ import {
 } from '@/lib/api/licenses'
 type Tab = 'overview' | 'licenses' | 'trace' | 'downloads'
 
+const tabs: { id: Tab; label: string; icon: string }[] = [
+  { id: 'overview', label: 'Overview', icon: 'dashboard' },
+  { id: 'licenses', label: 'All Licenses', icon: 'key' },
+  { id: 'trace', label: 'Trace Lookup', icon: 'search' },
+  { id: 'downloads', label: 'Downloads', icon: 'download' },
+]
+
 export default function LicensesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const queryClient = useQueryClient()
+  const tabsRef = useRef<HTMLDivElement>(null)
 
-  const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: 'overview', label: 'Overview', icon: 'dashboard' },
-    { id: 'licenses', label: 'All Licenses', icon: 'key' },
-    { id: 'trace', label: 'Trace Lookup', icon: 'search' },
-    { id: 'downloads', label: 'Downloads', icon: 'download' },
-  ]
+  const handleTabClick = (tabId: Tab, index: number) => {
+    setActiveTab(tabId)
+    if (tabsRef.current) {
+      const container = tabsRef.current
+      const tabElements = container.children
+      if (tabElements[index]) {
+        const tab = tabElements[index] as HTMLElement
+        const scrollLeft = tab.offsetLeft - container.offsetWidth / 2 + tab.offsetWidth / 2
+        container.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' })
+      }
+    }
+  }
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-white">License Management</h1>
+        <div>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">License Management</h1>
+          <p className="text-slate-400 text-xs sm:text-sm">Manage licenses, trace lookups, and downloads</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-[#111] rounded-lg p-1 w-fit">
-          {tabs.map((tab) => (
+        <div
+          ref={tabsRef}
+          className="flex gap-2 overflow-x-auto max-w-full"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' as const }}
+        >
+          {tabs.map((tab, index) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              onClick={() => handleTabClick(tab.id, index)}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab.id
-                  ? 'bg-[#1a1a1a] text-white'
-                  : 'text-gray-400 hover:text-white'
+                  ? 'bg-primary text-black'
+                  : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'
               }`}
             >
-              <Icon name={tab.icon} size={16} />
+              <Icon name={tab.icon} size={14} />
               {tab.label}
             </button>
           ))}
