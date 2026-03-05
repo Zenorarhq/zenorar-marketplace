@@ -488,7 +488,7 @@ export default function TicketsPage() {
                   {supportStatus?.supportStatus === 'EXPIRED' && (
                     <div className="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-3">
                       <p className="text-yellow-400 text-sm font-medium mb-1">Your support for {supportStatus.productName} has expired.</p>
-                      <p className="text-slate-400 text-xs mb-2">You can still submit this ticket, but it will be marked as low priority.</p>
+                      <p className="text-slate-400 text-xs mb-2">Please renew your support to submit a product-specific ticket, or switch to General Inquiry.</p>
                       {supportStatus.renewalOptions && (
                         <div className="flex flex-wrap gap-2 mt-2">
                           <span className="text-xs bg-yellow-500/10 border border-yellow-500/20 rounded px-2 py-1 text-yellow-400">6 months — ${supportStatus.renewalOptions.sixMonths.price}</span>
@@ -567,7 +567,7 @@ export default function TicketsPage() {
               </button>
               <button
                 onClick={handleCreateTicket}
-                disabled={isCreating}
+                disabled={isCreating || (ticketAbout === 'product' && supportStatus?.supportStatus === 'EXPIRED')}
                 className="px-4 py-2 sm:px-5 sm:py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
               >
                 {isCreating ? 'Submitting...' : 'Submit Ticket'}

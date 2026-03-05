@@ -161,10 +161,10 @@ export default function CartPage() {
         <div className="py-4">
           <Breadcrumbs className="mb-0" />
         </div>
-        <div className="flex items-center justify-between mb-10">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-10">
           <div>
-            <h1 className="text-4xl font-extrabold text-white mb-2">Shopping Cart</h1>
-            <p className="text-slate-400">{itemCount} item{itemCount !== 1 ? 's' : ''} in your cart</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">Shopping Cart</h1>
+            <p className="text-sm md:text-base text-slate-500">{itemCount} item{itemCount !== 1 ? 's' : ''} in your cart</p>
           </div>
           <button
             onClick={clearCart}
@@ -175,13 +175,13 @@ export default function CartPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-6">
             {(items || []).map((item) => (
               <div
                 key={`${item.product.id}-${item.license}`}
-                className="bg-surface-dark border border-border-dark rounded-2xl p-6 flex gap-6"
+                className="bg-surface-dark border border-border-dark rounded-2xl p-4 md:p-6 flex gap-4 md:gap-6"
               >
                 {/* Product Image */}
                 <div className="w-24 h-24 bg-charcoal rounded-xl overflow-hidden flex-shrink-0">
