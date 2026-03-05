@@ -215,7 +215,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
                         <Icon name="grid-view" size={18} className="text-black" />
                       </div>
-                      <span className="text-white font-bold text-sm">Zenorar</span>
+                      <span className={`text-white font-bold text-sm whitespace-nowrap transition-[opacity,width] duration-200 overflow-hidden ${
+                        desktopCollapsed ? 'opacity-0 w-0' : 'opacity-100'
+                      }`}>Zenorar</span>
                     </div>
                   )}
                 </div>
@@ -252,7 +254,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     )}
                   </div>
                   {/* Label with inline red dot - hidden on mobile, shown on expanded desktop */}
-                  <span className="text-sm font-medium hidden lg:flex items-center gap-2 whitespace-nowrap">
+                  <span className={`text-sm font-medium hidden lg:flex items-center gap-2 whitespace-nowrap transition-[opacity,width] duration-200 overflow-hidden ${
+                    desktopCollapsed ? 'opacity-0 w-0' : 'opacity-100'
+                  }`}>
                     {item.label}
                     {/* Red dot AFTER TEXT - only on expanded desktop */}
                     {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
@@ -282,8 +286,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center flex-shrink-0">
                 <Icon name="user" size={18} className="text-primary" />
               </div>
-              {/* User info - hidden on mobile, shown on desktop, clipped by overflow when collapsed */}
-              <div className="flex-1 min-w-0 hidden lg:block whitespace-nowrap">
+              {/* User info - hidden on mobile, shown on desktop */}
+              <div className={`min-w-0 hidden lg:block whitespace-nowrap transition-[opacity,width] duration-200 overflow-hidden ${
+                desktopCollapsed ? 'opacity-0 w-0' : 'opacity-100 flex-1'
+              }`}>
                 <p className="text-white text-sm font-medium truncate">{user?.name || 'User'}</p>
                 <p className="text-primary text-xs capitalize">{user?.role?.toLowerCase() || 'User'}</p>
               </div>
@@ -305,7 +311,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             }`}
           >
             <Icon name="logout" size={18} className="flex-shrink-0" />
-            <span className="text-sm font-medium hidden lg:block whitespace-nowrap">Logout</span>
+            <span className={`text-sm font-medium hidden lg:block whitespace-nowrap transition-[opacity,width] duration-200 overflow-hidden ${
+              desktopCollapsed ? 'opacity-0 w-0' : 'opacity-100'
+            }`}>Logout</span>
           </button>
         </div>
       </aside>
