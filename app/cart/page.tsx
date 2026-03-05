@@ -101,9 +101,10 @@ export default function CartPage() {
 
     // Validate cart before proceeding
     const validation = await validateCart()
+    console.log('[CART DEBUG] validateCart result:', JSON.stringify(validation))
 
     if (!validation.valid) {
-      setValidationErrors(validation.issues)
+      setValidationErrors(validation.issues || [])
       setIsCheckingOut(false)
       return
     }
@@ -130,7 +131,7 @@ export default function CartPage() {
   // Final total
   const finalTotal = subtotal + calculatedShipping + calculatedTax
 
-  if (items.length === 0) {
+  if (!items || items.length === 0) {
     return (
       <div className="min-h-screen bg-background-dark flex flex-col">
         <Header />
@@ -145,7 +146,7 @@ export default function CartPage() {
               Looks like you haven&apos;t added anything to your cart yet. Start browsing our products to find something you&apos;ll love.
             </p>
             <Link
-              href="/products"
+              href="/scripts"
               className="bg-primary text-black font-bold px-8 py-4 rounded-xl hover:brightness-105 transition-all inline-flex items-center gap-2"
             >
               <Icon name="compass" size={24} />
@@ -341,7 +342,7 @@ export default function CartPage() {
               </div>
 
               {/* Validation Errors */}
-              {validationErrors.length > 0 && (
+              {validationErrors && validationErrors.length > 0 && (
                 <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
                   <p className="text-red-400 font-bold mb-2">Cart Validation Issues:</p>
                   <ul className="text-red-400 text-sm space-y-1">
@@ -374,7 +375,7 @@ export default function CartPage() {
               </button>
 
               <Link
-                href="/products"
+                href="/scripts"
                 className="block text-center text-primary text-sm font-bold mt-4 hover:underline"
               >
                 Continue Shopping

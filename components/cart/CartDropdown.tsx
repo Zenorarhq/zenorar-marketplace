@@ -51,7 +51,7 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
     }
   }, [isOpen, onClose])
 
-  if (!isOpen || items.length === 0) return null
+  if (!isOpen || !items || items.length === 0) return null
 
   return (
     <div

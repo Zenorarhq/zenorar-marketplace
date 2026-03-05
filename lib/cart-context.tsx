@@ -78,6 +78,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (isAuthenticated) {
         try {
           const result = await apiFetch<any[]>('/cart')
+          console.log('[CART DEBUG] /cart raw response:', JSON.stringify(result).slice(0, 500))
           if (!cancelled && result.success && Array.isArray(result.data)) {
             // Map API response to CartItem[]
             const cartItems: CartItem[] = result.data.map((item: any) => ({
@@ -86,7 +87,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
               license: item.license || 'standard',
               price: item.price,
             }))
+            console.log('[CART DEBUG] Mapped cart items:', cartItems.map(i => ({ id: i.product?.id, name: i.product?.name, hasProduct: !!i.product })))
             setItems(cartItems)
+          } else if (!cancelled) {
+            console.warn('[CART DEBUG] Cart API did not return array. success:', result.success, 'isArray:', Array.isArray(result.data))
           }
         } catch (error) {
           console.error('Failed to load cart from API:', error)
@@ -319,6 +323,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // For authenticated users, call backend validation
     try {
       const result = await apiFetch<any>('/cart/validate')
+      console.log('[CART DEBUG] /cart/validate raw response:', JSON.stringify(result))
       if (result.success && result.data) {
         const d = result.data
         return {

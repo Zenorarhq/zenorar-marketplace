@@ -357,7 +357,7 @@ export default function PaymentPage() {
     )
   }
 
-  if (items.length === 0) {
+  if (!items || items.length === 0) {
     return (
       <div className="min-h-screen bg-background-dark flex flex-col">
         <Header />
