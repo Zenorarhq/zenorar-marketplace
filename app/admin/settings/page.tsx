@@ -275,16 +275,16 @@ export default function AdminSettingsPage() {
 
   // Section collapse states (all expanded by default)
   const [expandedSections, setExpandedSections] = useState({
-    apiAccess: true,
-    cronJobs: true,
-    exchangeRates: true,
-    esimProviders: true,
-    voiceEsimProviders: true,
-    virtualNumbers: true,
-    giftCardProviders: true,
-    otpProviders: true,
-    cloudflareR2: true,
-    apiKeys: true,
+    apiAccess: false,
+    cronJobs: false,
+    exchangeRates: false,
+    esimProviders: false,
+    voiceEsimProviders: false,
+    virtualNumbers: false,
+    giftCardProviders: false,
+    otpProviders: false,
+    cloudflareR2: false,
+    apiKeys: false,
     legalPages: false,
     scriptProtection: false,
     emailNotifications: false,
@@ -295,6 +295,9 @@ export default function AdminSettingsPage() {
     paypal: false,
     walletDeposits: false,
     bankTransfer: false,
+    trackingAnalytics: false,
+    socialSharing: false,
+    codeInjection: false,
   })
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -5190,79 +5193,140 @@ export default function AdminSettingsPage() {
           {/* Marketing Settings */}
           {activeTab === 'marketing' && (
             <div className="space-y-6">
-              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Tracking & Analytics</h3>
-                <p className="text-sm text-slate-400 mb-6">Connect your Facebook Pixel and Google Analytics to track conversions from ads.</p>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Facebook Pixel ID</label>
-                    <input
-                      type="text"
-                      value={marketingSettings.facebookPixelId}
-                      onChange={(e) => setMarketingSettings({ ...marketingSettings, facebookPixelId: e.target.value })}
-                      placeholder="123456789012345"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                    <p className="text-xs text-slate-500 mt-1">Find this in your Facebook Events Manager. Leave empty to disable.</p>
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button
+                  onClick={() => toggleSection('trackingAnalytics')}
+                  className="w-full flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                      <Icon name="bar-chart-2" size={24} className="text-blue-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Tracking & Analytics</p>
+                      <p className="text-slate-500 text-sm">Connect your Facebook Pixel and Google Analytics to track conversions from ads</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">GA4 Measurement ID</label>
-                    <input
-                      type="text"
-                      value={marketingSettings.ga4MeasurementId}
-                      onChange={(e) => setMarketingSettings({ ...marketingSettings, ga4MeasurementId: e.target.value })}
-                      placeholder="G-XXXXXXXXXX"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                    <p className="text-xs text-slate-500 mt-1">Find this in Google Analytics → Admin → Data Streams. Leave empty to disable.</p>
+                  <Icon
+                    name={expandedSections.trackingAnalytics ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    className="text-slate-400 flex-shrink-0"
+                  />
+                </button>
+
+                {expandedSections.trackingAnalytics && (
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Facebook Pixel ID</label>
+                      <input
+                        type="text"
+                        value={marketingSettings.facebookPixelId}
+                        onChange={(e) => setMarketingSettings({ ...marketingSettings, facebookPixelId: e.target.value })}
+                        placeholder="123456789012345"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Find this in your Facebook Events Manager. Leave empty to disable.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">GA4 Measurement ID</label>
+                      <input
+                        type="text"
+                        value={marketingSettings.ga4MeasurementId}
+                        onChange={(e) => setMarketingSettings({ ...marketingSettings, ga4MeasurementId: e.target.value })}
+                        placeholder="G-XXXXXXXXXX"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Find this in Google Analytics → Admin → Data Streams. Leave empty to disable.</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
-              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Social Sharing</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Image URL</label>
-                    <input
-                      type="text"
-                      value={marketingSettings.defaultOgImage}
-                      onChange={(e) => setMarketingSettings({ ...marketingSettings, defaultOgImage: e.target.value })}
-                      placeholder="https://example.com/og-image.jpg"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                    <p className="text-xs text-slate-500 mt-1">Fallback image shown when pages are shared on social media. Recommended: 1200x630px.</p>
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button
+                  onClick={() => toggleSection('socialSharing')}
+                  className="w-full flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-pink-500/10 flex items-center justify-center">
+                      <Icon name="share-2" size={24} className="text-pink-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Social Sharing</p>
+                      <p className="text-slate-500 text-sm">Default images and metadata for social media sharing</p>
+                    </div>
                   </div>
-                </div>
+                  <Icon
+                    name={expandedSections.socialSharing ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    className="text-slate-400 flex-shrink-0"
+                  />
+                </button>
+
+                {expandedSections.socialSharing && (
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Default OG Image URL</label>
+                      <input
+                        type="text"
+                        value={marketingSettings.defaultOgImage}
+                        onChange={(e) => setMarketingSettings({ ...marketingSettings, defaultOgImage: e.target.value })}
+                        placeholder="https://example.com/og-image.jpg"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Fallback image shown when pages are shared on social media. Recommended: 1200x630px.</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Custom Code Injection</h3>
-                <p className="text-sm text-slate-400 mb-4">Add custom scripts, meta tags, or tracking codes. These are injected directly into the page HTML.</p>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Custom Head Code</label>
-                    <textarea
-                      value={marketingSettings.customHeadCode}
-                      onChange={(e) => setMarketingSettings({ ...marketingSettings, customHeadCode: e.target.value })}
-                      placeholder="<!-- Scripts, meta tags, or styles for <head> -->"
-                      rows={4}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm"
-                    />
-                    <p className="text-xs text-slate-500 mt-1">Injected before &lt;/head&gt;. Use for TikTok Pixel, Hotjar, Crisp, etc.</p>
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button
+                  onClick={() => toggleSection('codeInjection')}
+                  className="w-full flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <Icon name="code" size={24} className="text-amber-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Custom Code Injection</p>
+                      <p className="text-slate-500 text-sm">Add custom scripts, meta tags, or tracking codes injected into the page HTML</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Custom Body Code</label>
-                    <textarea
-                      value={marketingSettings.customBodyCode}
-                      onChange={(e) => setMarketingSettings({ ...marketingSettings, customBodyCode: e.target.value })}
-                      placeholder="<!-- Scripts for end of <body> -->"
-                      rows={4}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm"
-                    />
-                    <p className="text-xs text-slate-500 mt-1">Injected before &lt;/body&gt;.</p>
+                  <Icon
+                    name={expandedSections.codeInjection ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    className="text-slate-400 flex-shrink-0"
+                  />
+                </button>
+
+                {expandedSections.codeInjection && (
+                  <div className="space-y-4 mt-6 pt-6 border-t border-[#1f1f1f]">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Custom Head Code</label>
+                      <textarea
+                        value={marketingSettings.customHeadCode}
+                        onChange={(e) => setMarketingSettings({ ...marketingSettings, customHeadCode: e.target.value })}
+                        placeholder="<!-- Scripts, meta tags, or styles for <head> -->"
+                        rows={4}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Injected before &lt;/head&gt;. Use for TikTok Pixel, Hotjar, Crisp, etc.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Custom Body Code</label>
+                      <textarea
+                        value={marketingSettings.customBodyCode}
+                        onChange={(e) => setMarketingSettings({ ...marketingSettings, customBodyCode: e.target.value })}
+                        placeholder="<!-- Scripts for end of <body> -->"
+                        rows={4}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Injected before &lt;/body&gt;.</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
