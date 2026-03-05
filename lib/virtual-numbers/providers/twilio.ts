@@ -203,9 +203,10 @@ class TwilioService {
         locality: n.locality,
         region: n.region,
         capabilities: {
-          sms: n.capabilities?.sms || false,
-          voice: n.capabilities?.voice || false,
-          mms: n.capabilities?.mms || false
+          // Twilio returns uppercase SMS/MMS but lowercase voice
+          sms: n.capabilities?.SMS || n.capabilities?.sms || false,
+          voice: n.capabilities?.voice || n.capabilities?.Voice || false,
+          mms: n.capabilities?.MMS || n.capabilities?.mms || false
         }
       }))
     } catch (error) {
