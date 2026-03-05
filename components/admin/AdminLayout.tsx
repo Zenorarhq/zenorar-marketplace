@@ -498,8 +498,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     )}
                   </div>
                   <div className="max-h-[360px] overflow-y-auto">
-                    {notifList?.notifications?.length > 0 ? (
-                      notifList.notifications.map((n: any) => (
+                    {notifList?.length > 0 ? (
+                      notifList.map((n: any) => (
                         <div
                           key={n.id}
                           className={`flex items-start gap-3 p-3.5 hover:bg-white/5 transition-colors cursor-pointer ${
