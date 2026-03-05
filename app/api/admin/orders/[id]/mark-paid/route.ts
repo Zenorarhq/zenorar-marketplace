@@ -35,7 +35,7 @@ export async function POST(
 
     // Verify order exists
     const orderResult = await executeQuery(
-      `SELECT id, order_number, "paymentStatus", status FROM orders WHERE id = $1`,
+      `SELECT id, "orderNumber", "paymentStatus", status FROM orders WHERE id = $1`,
       [orderId]
     )
 
@@ -108,7 +108,7 @@ export async function POST(
 
     // Fetch updated order
     const updatedOrderResult = await executeQuery(
-      `SELECT id, order_number, "paymentStatus", status, "paidAt" FROM orders WHERE id = $1`,
+      `SELECT id, "orderNumber", "paymentStatus", status, "paidAt" FROM orders WHERE id = $1`,
       [orderId]
     )
 
@@ -136,7 +136,7 @@ export async function POST(
       success: true,
       data: {
         orderId: updatedOrder.id,
-        orderNumber: updatedOrder.order_number,
+        orderNumber: updatedOrder.orderNumber,
         paymentStatus: updatedOrder.paymentStatus,
         status: updatedOrder.status,
         paidAt: updatedOrder.paidAt,

@@ -135,6 +135,7 @@ export default function PurchasesPage() {
   const [markingPaid, setMarkingPaid] = useState(false)
   const [adminTxHash, setAdminTxHash] = useState('')
   const [adminPaymentNote, setAdminPaymentNote] = useState('')
+  const [cancellingOrder, setCancellingOrder] = useState(false)
   const itemsPerPage = 10
 
   // Fetch orders
@@ -334,6 +335,22 @@ export default function PurchasesPage() {
       }
     } catch { alert('Network error') }
     finally { setMarkingPaid(false) }
+  }
+
+  async function handleCancelOrder() {
+    if (!detailOrder) return
+    if (!confirm(`Are you sure you want to cancel order #${detailOrder.orderNumber}? This action cannot be undone.`)) return
+    setCancellingOrder(true)
+    try {
+      const result = await ordersApi.cancel(detailOrder.id, 'Cancelled by admin')
+      if (result.success && result.data) {
+        setDetailOrder(result.data)
+        refreshData()
+      } else {
+        alert(result.error || 'Failed to cancel order')
+      }
+    } catch { alert('Network error') }
+    finally { setCancellingOrder(false) }
   }
 
   const loading = ordersLoading || statsLoading
@@ -656,9 +673,23 @@ export default function PurchasesPage() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-white font-bold text-xl">#{detailOrder.orderNumber}</h3>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(detailOrder.status)}`}>
-                      {detailOrder.status.charAt(0) + detailOrder.status.slice(1).toLowerCase()}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const link = document.createElement('a')
+                          link.href = `/api/orders/${detailOrder.id}/invoice`
+                          link.download = `invoice-${detailOrder.orderNumber}.pdf`
+                          link.click()
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:text-white hover:bg-white/10 text-xs transition-colors"
+                      >
+                        <Icon name="download" size={14} />
+                        Invoice
+                      </button>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(detailOrder.status)}`}>
+                        {detailOrder.status.charAt(0) + detailOrder.status.slice(1).toLowerCase()}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-slate-400 text-sm">{formatDate(detailOrder.createdAt, tz)}</p>
                   <p className="text-slate-400 text-sm mt-1">{detailOrder.email} {detailOrder.phone ? `| ${detailOrder.phone}` : ''}</p>
@@ -984,6 +1015,27 @@ export default function PurchasesPage() {
                     <h4 className="text-white font-semibold text-sm mb-3">Customer Note</h4>
                     <p className="text-slate-400 text-sm">{detailOrder.customerNote}</p>
                   </div>
+                )}
+
+                {/* Cancel Order */}
+                {!['CANCELLED', 'DELIVERED', 'REFUNDED'].includes(detailOrder.status) && (
+                  <button
+                    onClick={handleCancelOrder}
+                    disabled={cancellingOrder}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {cancellingOrder ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400"></div>
+                        Cancelling...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="x" size={16} />
+                        Cancel Order
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             ) : (

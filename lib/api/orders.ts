@@ -145,4 +145,8 @@ export const ordersApi = {
       completedOrders: number
     }>('/orders/stats/overview')
   },
+
+  async getPendingCount() {
+    return apiFetch<{ count: number }>('/orders/pending-count')
+  },
 }
