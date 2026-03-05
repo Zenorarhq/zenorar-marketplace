@@ -263,6 +263,10 @@ function UsersTab() {
     const params = new URLSearchParams()
     if (searchQuery) params.set('search', searchQuery)
     if (filters.status && filters.status !== 'all') params.set('status', filters.status)
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+    if (filters.dateTo) params.set('dateTo', filters.dateTo)
+    if (filters.minOrders) params.set('minOrders', filters.minOrders)
+    if (filters.maxOrders) params.set('maxOrders', filters.maxOrders)
     const qs = params.toString() ? `?${params.toString()}` : ''
     try {
       const res = await fetch(`${apiBase}/users/export${qs}`, {
