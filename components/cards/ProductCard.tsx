@@ -156,7 +156,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           </p>
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); addItem(product); showAddedToCartPopup(product) }}
-            className="w-8 h-8 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center hover:bg-primary hover:text-black transition-colors"
+            className="w-8 h-8 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center hover:bg-primary hover:text-black transition-colors touch-manipulation"
             aria-label="Add to cart"
           >
             <Icon name="add-shopping-cart" size={18} />
