@@ -77,6 +77,10 @@ export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
+  const [productsPage, setProductsPage] = useState(1)
+  const [customersPage, setCustomersPage] = useState(1)
+  const [transactionsPage, setTransactionsPage] = useState(1)
+  const PAGE_SIZE = 10
   const periodRef = useRef<HTMLDivElement>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
   const { startDate, endDate } = getPeriodDates(period, customStartDate, customEndDate)
@@ -164,7 +168,7 @@ export default function AnalyticsPage() {
   const { data: productsList = [] } = useQuery({
     queryKey: ['analytics-products-list'],
     queryFn: async () => {
-      const result = await productsApi.list({ sortBy: 'sales', limit: 10 })
+      const result = await productsApi.list({ sortBy: 'sales', limit: 100 })
       return result.success && result.data ? result.data : []
     },
     enabled: activeTab === 'products',
@@ -175,7 +179,7 @@ export default function AnalyticsPage() {
   const { data: recentOrders = [] } = useQuery({
     queryKey: ['analytics-recent-orders'],
     queryFn: async () => {
-      const result = await ordersApi.list({ limit: 10, sortBy: 'createdAt', sortOrder: 'desc' })
+      const result = await ordersApi.list({ limit: 100, sortBy: 'createdAt', sortOrder: 'desc' })
       return result.success && result.data ? result.data : []
     },
     enabled: activeTab === 'customers' || activeTab === 'transactions',
@@ -361,7 +365,12 @@ export default function AnalyticsPage() {
                       {formatCurrency(stats?.totalRevenue || 0)}
                     </p>
                     <p className="text-xs">
-                      <span className="text-slate-500">total earnings</span>
+                      {stats?.revenueChange !== undefined && stats.revenueChange !== 0 ? (
+                        <span className={stats.revenueChange > 0 ? 'text-green-400' : 'text-red-400'}>
+                          {stats.revenueChange > 0 ? '+' : ''}{stats.revenueChange}%
+                        </span>
+                      ) : null}
+                      <span className="text-slate-500">{stats?.revenueChange !== undefined && stats.revenueChange !== 0 ? ' vs prev period' : 'total earnings'}</span>
                     </p>
                   </div>
 
@@ -376,7 +385,12 @@ export default function AnalyticsPage() {
                       {formatNumber(stats?.totalOrders || 0)}
                     </p>
                     <p className="text-xs">
-                      <span className="text-slate-500">all orders</span>
+                      {stats?.ordersChange !== undefined && stats.ordersChange !== 0 ? (
+                        <span className={stats.ordersChange > 0 ? 'text-green-400' : 'text-red-400'}>
+                          {stats.ordersChange > 0 ? '+' : ''}{stats.ordersChange}%
+                        </span>
+                      ) : null}
+                      <span className="text-slate-500">{stats?.ordersChange !== undefined && stats.ordersChange !== 0 ? ' vs prev period' : 'all orders'}</span>
                     </p>
                   </div>
 
@@ -747,36 +761,47 @@ export default function AnalyticsPage() {
               </div>
 
               {productsList.length > 0 ? (
-                <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-[#1f1f1f]">
-                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Product</th>
-                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Price</th>
-                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Stock</th>
-                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {productsList.map((product: any) => (
-                        <tr key={product.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
-                          <td className="px-4 py-3">
-                            <p className="text-white text-sm font-medium truncate max-w-[200px]">{product.name}</p>
-                          </td>
-                          <td className="px-4 py-3 text-white text-sm">{formatCurrency(product.price)}</td>
-                          <td className="px-4 py-3 text-slate-300 text-sm">{product.stock}</td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              product.stock > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                            }`}>
-                              {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
-                            </span>
-                          </td>
+                <>
+                  <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-[#1f1f1f]">
+                          <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Product</th>
+                          <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Price</th>
+                          <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Stock</th>
+                          <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {productsList.slice((productsPage - 1) * PAGE_SIZE, productsPage * PAGE_SIZE).map((product: any) => (
+                          <tr key={product.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                            <td className="px-4 py-3">
+                              <p className="text-white text-sm font-medium truncate max-w-[200px]">{product.name}</p>
+                            </td>
+                            <td className="px-4 py-3 text-white text-sm">{formatCurrency(product.price)}</td>
+                            <td className="px-4 py-3 text-slate-300 text-sm">{product.stock}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                product.stock > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                              }`}>
+                                {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {productsList.length > PAGE_SIZE && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-[#1f1f1f]">
+                      <span className="text-slate-500 text-xs">Page {productsPage} of {Math.ceil(productsList.length / PAGE_SIZE)}</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => setProductsPage(p => Math.max(1, p - 1))} disabled={productsPage <= 1} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Previous</button>
+                        <button onClick={() => setProductsPage(p => Math.min(Math.ceil(productsList.length / PAGE_SIZE), p + 1))} disabled={productsPage >= Math.ceil(productsList.length / PAGE_SIZE)} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Next</button>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-8">
                   <p className="text-slate-400 text-sm">No products found</p>
@@ -853,34 +878,45 @@ export default function AnalyticsPage() {
               </div>
 
               {recentOrders.length > 0 ? (
-                <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-[#1f1f1f]">
-                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Customer</th>
-                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Order</th>
-                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Amount</th>
-                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentOrders.slice(0, 10).map((order: any) => (
-                        <tr key={order.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
-                          <td className="px-4 py-3">
-                            <p className="text-white text-sm truncate max-w-[150px]">{order.email || 'Guest'}</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="text-slate-300 text-sm font-mono truncate max-w-[100px]">{order.orderNumber}</p>
-                          </td>
-                          <td className="px-4 py-3 text-white text-sm">{formatCurrency(order.total)}</td>
-                          <td className="px-4 py-3 text-slate-400 text-sm">
-                            {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </td>
+                <>
+                  <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-[#1f1f1f]">
+                          <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Customer</th>
+                          <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Order</th>
+                          <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Amount</th>
+                          <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Date</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {recentOrders.slice((customersPage - 1) * PAGE_SIZE, customersPage * PAGE_SIZE).map((order: any) => (
+                          <tr key={order.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                            <td className="px-4 py-3">
+                              <p className="text-white text-sm truncate max-w-[150px]">{order.email || 'Guest'}</p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="text-slate-300 text-sm font-mono truncate max-w-[100px]">{order.orderNumber}</p>
+                            </td>
+                            <td className="px-4 py-3 text-white text-sm">{formatCurrency(order.total)}</td>
+                            <td className="px-4 py-3 text-slate-400 text-sm">
+                              {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {recentOrders.length > PAGE_SIZE && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-[#1f1f1f]">
+                      <span className="text-slate-500 text-xs">Page {customersPage} of {Math.ceil(recentOrders.length / PAGE_SIZE)}</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => setCustomersPage(p => Math.max(1, p - 1))} disabled={customersPage <= 1} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Previous</button>
+                        <button onClick={() => setCustomersPage(p => Math.min(Math.ceil(recentOrders.length / PAGE_SIZE), p + 1))} disabled={customersPage >= Math.ceil(recentOrders.length / PAGE_SIZE)} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Next</button>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-8">
                   <p className="text-slate-400 text-sm">No customer data found</p>
@@ -898,41 +934,52 @@ export default function AnalyticsPage() {
             </div>
 
             {recentOrders.length > 0 ? (
-              <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-[#1f1f1f]">
-                      <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Order</th>
-                      <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Amount</th>
-                      <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Status</th>
-                      <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentOrders.slice(0, 10).map((order: any) => (
-                      <tr key={order.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
-                        <td className="px-4 py-3">
-                          <p className="text-white text-sm font-mono truncate max-w-[120px]">{order.orderNumber}</p>
-                        </td>
-                        <td className="px-4 py-3 text-white text-sm">{formatCurrency(order.total)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            order.status === 'DELIVERED' ? 'bg-primary/10 text-primary' :
-                            order.status === 'SHIPPED' ? 'bg-blue-500/10 text-blue-400' :
-                            order.status === 'PROCESSING' ? 'bg-yellow-500/10 text-yellow-400' :
-                            'bg-slate-500/10 text-slate-400'
-                          }`}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 text-sm">
-                          {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </td>
+              <>
+                <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[#1f1f1f]">
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Order</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Amount</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Status</th>
+                        <th className="text-left text-slate-500 text-xs font-medium px-4 py-3">Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {recentOrders.slice((transactionsPage - 1) * PAGE_SIZE, transactionsPage * PAGE_SIZE).map((order: any) => (
+                        <tr key={order.id} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                          <td className="px-4 py-3">
+                            <p className="text-white text-sm font-mono truncate max-w-[120px]">{order.orderNumber}</p>
+                          </td>
+                          <td className="px-4 py-3 text-white text-sm">{formatCurrency(order.total)}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              order.status === 'DELIVERED' ? 'bg-primary/10 text-primary' :
+                              order.status === 'SHIPPED' ? 'bg-blue-500/10 text-blue-400' :
+                              order.status === 'PROCESSING' ? 'bg-yellow-500/10 text-yellow-400' :
+                              'bg-slate-500/10 text-slate-400'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 text-sm">
+                            {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {recentOrders.length > PAGE_SIZE && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-[#1f1f1f]">
+                    <span className="text-slate-500 text-xs">Page {transactionsPage} of {Math.ceil(recentOrders.length / PAGE_SIZE)}</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setTransactionsPage(p => Math.max(1, p - 1))} disabled={transactionsPage <= 1} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Previous</button>
+                      <button onClick={() => setTransactionsPage(p => Math.min(Math.ceil(recentOrders.length / PAGE_SIZE), p + 1))} disabled={transactionsPage >= Math.ceil(recentOrders.length / PAGE_SIZE)} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Next</button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-8">
                 <p className="text-slate-400 text-sm">No transactions found</p>
