@@ -93,7 +93,7 @@ export default function AddToCartPopup({
   return (
     <div
       ref={popupRef}
-      className="fixed inset-x-4 bottom-4 md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 w-auto md:w-[380px] bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10 z-[9999] md:z-[70]"
+      className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-[380px] bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10 z-[70]"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

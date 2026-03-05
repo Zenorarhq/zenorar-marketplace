@@ -396,19 +396,22 @@ export default function Header() {
 
             {/* Mobile/Tablet: Cart */}
             {showCart && (
-              <Link
-                href="/cart"
-                prefetch={true}
-                className="md:hidden flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors relative"
-                aria-label="Cart"
-              >
-                <Icon name="cart" size={22} />
-                {itemCount > 0 && (
-                  <span className="absolute top-0.5 right-0.5 bg-primary text-[9px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                    {itemCount > 9 ? '9+' : itemCount}
-                  </span>
-                )}
-              </Link>
+              <div className="md:hidden relative">
+                <Link
+                  href="/cart"
+                  prefetch={true}
+                  className="flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors relative"
+                  aria-label="Cart"
+                >
+                  <Icon name="cart" size={22} />
+                  {itemCount > 0 && (
+                    <span className="absolute top-0.5 right-0.5 bg-primary text-[9px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                      {itemCount > 9 ? '9+' : itemCount}
+                    </span>
+                  )}
+                </Link>
+                <CartPopupWrapper />
+              </div>
             )}
 
             {/* Desktop Navigation */}
@@ -597,11 +600,6 @@ export default function Header() {
               </div>}
             </nav>
           </div>
-        </div>
-
-        {/* Mobile: Add-to-Cart Popup (desktop version lives inside the hidden md:flex nav) */}
-        <div className="md:hidden">
-          <CartPopupWrapper />
         </div>
 
         {/* Mobile Search Bar */}
