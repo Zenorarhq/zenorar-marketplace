@@ -792,15 +792,56 @@ export default function AnalyticsPage() {
                       </tbody>
                     </table>
                   </div>
-                  {productsList.length > PAGE_SIZE && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t border-[#1f1f1f]">
-                      <span className="text-slate-500 text-xs">Page {productsPage} of {Math.ceil(productsList.length / PAGE_SIZE)}</span>
-                      <div className="flex gap-2">
-                        <button onClick={() => setProductsPage(p => Math.max(1, p - 1))} disabled={productsPage <= 1} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Previous</button>
-                        <button onClick={() => setProductsPage(p => Math.min(Math.ceil(productsList.length / PAGE_SIZE), p + 1))} disabled={productsPage >= Math.ceil(productsList.length / PAGE_SIZE)} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Next</button>
+                  {(() => {
+                    const totalPages = Math.ceil(productsList.length / PAGE_SIZE)
+                    return totalPages > 1 ? (
+                      <div className="border-t border-[#1f1f1f] px-5 py-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-slate-400 text-sm">
+                            Showing {(productsPage - 1) * PAGE_SIZE + 1}-{Math.min(productsPage * PAGE_SIZE, productsList.length)} of {productsList.length}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setProductsPage(p => Math.max(1, p - 1))}
+                              disabled={productsPage === 1}
+                              className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Previous
+                            </button>
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum: number
+                                if (totalPages <= 5) pageNum = i + 1
+                                else if (productsPage <= 3) pageNum = i + 1
+                                else if (productsPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                                else pageNum = productsPage - 2 + i
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    onClick={() => setProductsPage(pageNum)}
+                                    className={`w-8 h-8 rounded-lg text-sm transition-colors ${
+                                      productsPage === pageNum
+                                        ? 'bg-primary text-black font-semibold'
+                                        : 'bg-[#1a1a1a] hover:bg-white/10 text-slate-400'
+                                    }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            <button
+                              onClick={() => setProductsPage(p => Math.min(totalPages, p + 1))}
+                              disabled={productsPage === totalPages}
+                              className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    ) : null
+                  })()}
                 </>
               ) : (
                 <div className="text-center py-8">
@@ -907,15 +948,37 @@ export default function AnalyticsPage() {
                       </tbody>
                     </table>
                   </div>
-                  {recentOrders.length > PAGE_SIZE && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t border-[#1f1f1f]">
-                      <span className="text-slate-500 text-xs">Page {customersPage} of {Math.ceil(recentOrders.length / PAGE_SIZE)}</span>
-                      <div className="flex gap-2">
-                        <button onClick={() => setCustomersPage(p => Math.max(1, p - 1))} disabled={customersPage <= 1} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Previous</button>
-                        <button onClick={() => setCustomersPage(p => Math.min(Math.ceil(recentOrders.length / PAGE_SIZE), p + 1))} disabled={customersPage >= Math.ceil(recentOrders.length / PAGE_SIZE)} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Next</button>
+                  {(() => {
+                    const totalPages = Math.ceil(recentOrders.length / PAGE_SIZE)
+                    return totalPages > 1 ? (
+                      <div className="border-t border-[#1f1f1f] px-5 py-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-slate-400 text-sm">
+                            Showing {(customersPage - 1) * PAGE_SIZE + 1}-{Math.min(customersPage * PAGE_SIZE, recentOrders.length)} of {recentOrders.length}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setCustomersPage(p => Math.max(1, p - 1))} disabled={customersPage === 1} className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum: number
+                                if (totalPages <= 5) pageNum = i + 1
+                                else if (customersPage <= 3) pageNum = i + 1
+                                else if (customersPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                                else pageNum = customersPage - 2 + i
+                                return (
+                                  <button key={pageNum} onClick={() => setCustomersPage(pageNum)}
+                                    className={`w-8 h-8 rounded-lg text-sm transition-colors ${customersPage === pageNum ? 'bg-primary text-black font-semibold' : 'bg-[#1a1a1a] hover:bg-white/10 text-slate-400'}`}>
+                                    {pageNum}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            <button onClick={() => setCustomersPage(p => Math.min(totalPages, p + 1))} disabled={customersPage === totalPages} className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    ) : null
+                  })()}
                 </>
               ) : (
                 <div className="text-center py-8">
@@ -970,15 +1033,37 @@ export default function AnalyticsPage() {
                     </tbody>
                   </table>
                 </div>
-                {recentOrders.length > PAGE_SIZE && (
-                  <div className="flex items-center justify-between px-4 py-3 border-t border-[#1f1f1f]">
-                    <span className="text-slate-500 text-xs">Page {transactionsPage} of {Math.ceil(recentOrders.length / PAGE_SIZE)}</span>
-                    <div className="flex gap-2">
-                      <button onClick={() => setTransactionsPage(p => Math.max(1, p - 1))} disabled={transactionsPage <= 1} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Previous</button>
-                      <button onClick={() => setTransactionsPage(p => Math.min(Math.ceil(recentOrders.length / PAGE_SIZE), p + 1))} disabled={transactionsPage >= Math.ceil(recentOrders.length / PAGE_SIZE)} className="px-3 py-1.5 text-xs rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">Next</button>
+                {(() => {
+                  const totalPages = Math.ceil(recentOrders.length / PAGE_SIZE)
+                  return totalPages > 1 ? (
+                    <div className="border-t border-[#1f1f1f] px-5 py-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-slate-400 text-sm">
+                          Showing {(transactionsPage - 1) * PAGE_SIZE + 1}-{Math.min(transactionsPage * PAGE_SIZE, recentOrders.length)} of {recentOrders.length}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setTransactionsPage(p => Math.max(1, p - 1))} disabled={transactionsPage === 1} className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              let pageNum: number
+                              if (totalPages <= 5) pageNum = i + 1
+                              else if (transactionsPage <= 3) pageNum = i + 1
+                              else if (transactionsPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                              else pageNum = transactionsPage - 2 + i
+                              return (
+                                <button key={pageNum} onClick={() => setTransactionsPage(pageNum)}
+                                  className={`w-8 h-8 rounded-lg text-sm transition-colors ${transactionsPage === pageNum ? 'bg-primary text-black font-semibold' : 'bg-[#1a1a1a] hover:bg-white/10 text-slate-400'}`}>
+                                  {pageNum}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          <button onClick={() => setTransactionsPage(p => Math.min(totalPages, p + 1))} disabled={transactionsPage === totalPages} className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ) : null
+                })()}
               </>
             ) : (
               <div className="text-center py-8">
