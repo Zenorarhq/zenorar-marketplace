@@ -653,6 +653,10 @@ export default function PaymentPage() {
           quantity: item.quantity,
           license: item.license,
           price: item.price,
+          // Pass metadata for virtual numbers, eSIMs, gift cards, etc.
+          metadata: item.product.metadata || undefined,
+          // Pass product type for fulfillment routing
+          productType: item.product.metadata?.productType || item.product.category || undefined,
         })),
       }),
     })

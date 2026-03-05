@@ -285,8 +285,10 @@ export default function VirtualNumbersPage() {
   const handleAddToCart = () => {
     if (!selectedNumber || !selectedPlan || !selectedCountry) return
 
+    // Virtual numbers use dynamic IDs - backend handles these as dynamicItems
+    // Metadata contains all info needed for fulfillment (phone number, plan, country)
     const virtualNumberProduct = {
-      id: `vn-${selectedNumber.phoneNumber}-${Date.now()}`,
+      id: `vn-${selectedNumber.phoneNumber.replace(/\+/g, '')}-${Date.now()}`,
       name: `Virtual Number: ${selectedNumber.friendlyName}`,
       slug: `virtual-number-${selectedNumber.phoneNumber.replace(/\+/g, '')}`,
       description: `${selectedCountry.name} ${selectedNumber.type} number with ${selectedPlan.name} plan`,
@@ -299,13 +301,14 @@ export default function VirtualNumbersPage() {
       tags: ['virtual-number', selectedCountry.isoCode.toLowerCase()],
       image: '/images/products/virtual-number.png',
       metadata: {
-        productType: 'virtual-number',
+        productType: 'virtual_number',  // Backend routes fulfillment based on this
         phoneNumber: selectedNumber.phoneNumber,
         countryId: selectedCountry.id,
         countryName: selectedCountry.name,
         planId: selectedPlan.id,
         planName: selectedPlan.name,
-        numberType: selectedNumber.type
+        numberType: selectedNumber.type,
+        friendlyName: selectedNumber.friendlyName
       }
     }
 
