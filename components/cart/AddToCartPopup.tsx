@@ -71,7 +71,7 @@ export default function AddToCartPopup({
     }
   }, [isOpen, onClose])
 
-  // Handle click outside
+  // Handle click outside — use 'click' not 'mousedown' so inner links/buttons fire first
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
@@ -80,11 +80,11 @@ export default function AddToCartPopup({
     }
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('click', handleClickOutside)
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('click', handleClickOutside)
     }
   }, [isOpen, onClose])
 
