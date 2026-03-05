@@ -45,6 +45,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [showNotifications, setShowNotifications] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
+  // Track "last seen" counts for nav dot badges — stored in localStorage
+  const [lastSeenCounts, setLastSeenCounts] = useState<{ orders: number; deposits: number; chats: number }>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('admin_last_seen_counts')
+        if (stored) return JSON.parse(stored)
+      } catch {}
+    }
+    return { orders: 0, deposits: 0, chats: 0 }
+  })
+
   // Fetch unread notification count
   const { data: notifData } = useQuery({
     queryKey: ['admin-notif-count'],
@@ -128,6 +139,44 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     queryClient.invalidateQueries({ queryKey: ['admin-notif-list'] })
   }
 
+  // Auto-clear dot when admin is currently viewing the page
+  useEffect(() => {
+    const updated = { ...lastSeenCounts }
+    let changed = false
+    if (pathname === '/admin/purchases' && (pendingCounts?.orders || 0) > 0) {
+      updated.orders = pendingCounts?.orders || 0; changed = true
+    }
+    if (pathname === '/admin/wallets' && (pendingCounts?.deposits || 0) > 0) {
+      updated.deposits = pendingCounts?.deposits || 0; changed = true
+    }
+    if (pathname === '/admin/chat' && unreadChats > 0) {
+      updated.chats = unreadChats; changed = true
+    }
+    if (changed) {
+      setLastSeenCounts(updated)
+      localStorage.setItem('admin_last_seen_counts', JSON.stringify(updated))
+    }
+  }, [pathname, pendingCounts?.orders, pendingCounts?.deposits, unreadChats])
+
+  // Determine which nav items should show a notification dot
+  const orderCount = pendingCounts?.orders || 0
+  const depositCount = pendingCounts?.deposits || 0
+  const chatCount = unreadChats || 0
+  const showOrdersDot = orderCount > lastSeenCounts.orders
+  const showDepositsDot = depositCount > lastSeenCounts.deposits
+  const showChatDot = chatCount > lastSeenCounts.chats
+
+  // Clear dot when clicking a nav item — save current count to localStorage
+  const handleNavClick = (href: string) => {
+    let updated = { ...lastSeenCounts }
+    if (href === '/admin/purchases') updated.orders = orderCount
+    else if (href === '/admin/wallets') updated.deposits = depositCount
+    else if (href === '/admin/chat') updated.chats = chatCount
+    else return
+    setLastSeenCounts(updated)
+    localStorage.setItem('admin_last_seen_counts', JSON.stringify(updated))
+  }
+
   // Filter nav items based on permissions
   const visibleNavItems = navItems.filter((item: any) => {
     // If no permission required, show to all staff
@@ -173,6 +222,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex overflow-x-hidden">
+      {/* Slow pulse animation for notification dots */}
+      <style jsx global>{`
+        @keyframes navPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
       {/* Left Sidebar */}
       {/* Mobile: always w-16, Desktop: w-56 or w-16 based on desktopCollapsed */}
       <aside className={`fixed left-0 top-0 h-full bg-[#111111] border-r border-[#1f1f1f] flex flex-col z-50 transition-[width] duration-300 w-16 overflow-hidden ${
@@ -234,6 +290,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <div key={item.href} className="relative group">
                 <Link
                   href={item.href}
+                  onClick={() => handleNavClick(item.href)}
                   className={`flex items-center px-3 py-2.5 rounded-lg mb-1 transition-all justify-center overflow-hidden ${
                     desktopCollapsed ? '' : 'lg:justify-start lg:gap-3'
                   } ${
@@ -244,25 +301,25 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 >
                   <div className="relative flex-shrink-0">
                     <Icon name={item.icon} size={20} />
-                    {/* Red dot ON ICON - shows when collapsed or mobile */}
-                    {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
-                      (item.href === '/admin/purchases' && pendingCounts?.orders && pendingCounts.orders > 0) ||
-                      (item.href === '/admin/chat' && unreadChats > 0)) && (
-                      <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#111111] ${
+                    {/* Pulsing red dot ON ICON - shows when collapsed or mobile */}
+                    {((item.href === '/admin/wallets' && showDepositsDot) ||
+                      (item.href === '/admin/purchases' && showOrdersDot) ||
+                      (item.href === '/admin/chat' && showChatDot)) && (
+                      <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#111111] animate-[navPulse_2s_ease-in-out_infinite] ${
                         desktopCollapsed ? '' : 'lg:hidden'
                       }`} />
                     )}
                   </div>
-                  {/* Label with inline red dot - hidden on mobile, shown on expanded desktop */}
+                  {/* Label with inline pulsing red dot - hidden on mobile, shown on expanded desktop */}
                   <span className={`text-sm font-medium hidden lg:flex items-center gap-2 whitespace-nowrap transition-[opacity,width] duration-200 overflow-hidden ${
                     desktopCollapsed ? 'opacity-0 w-0' : 'opacity-100'
                   }`}>
                     {item.label}
-                    {/* Red dot AFTER TEXT - only on expanded desktop */}
-                    {((item.href === '/admin/wallets' && pendingCounts?.deposits && pendingCounts.deposits > 0) ||
-                      (item.href === '/admin/purchases' && pendingCounts?.orders && pendingCounts.orders > 0) ||
-                      (item.href === '/admin/chat' && unreadChats > 0)) && (
-                      <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
+                    {/* Pulsing red dot AFTER TEXT - only on expanded desktop */}
+                    {((item.href === '/admin/wallets' && showDepositsDot) ||
+                      (item.href === '/admin/purchases' && showOrdersDot) ||
+                      (item.href === '/admin/chat' && showChatDot)) && (
+                      <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0 animate-[navPulse_2s_ease-in-out_infinite]" />
                     )}
                   </span>
                 </Link>
