@@ -8,26 +8,9 @@ import FilterSidebar, { FilterState } from '@/components/filters/FilterSidebar'
 import ProductCard from '@/components/cards/ProductCard'
 import { productsApi } from '@/lib/api/products'
 import { categoriesApi } from '@/lib/api/categories'
-import { Product } from '@/lib/types'
+import { mapProduct } from '@/lib/map-product'
 
 type SortOption = 'popular' | 'newest' | 'price-low' | 'price-high'
-
-function mapProduct(p: any): Product {
-  return {
-    id: p.id,
-    name: p.name,
-    slug: p.slug,
-    description: p.description || p.shortDescription || '',
-    price: p.price,
-    rating: p.avgRating || p.averageRating || 0,
-    reviewCount: p._count?.reviews || p.reviewCount || 0,
-    category: p.category?.name || 'Scripts',
-    icon: 'code',
-    iconColor: 'primary',
-    tags: p.tags || [],
-    images: p.images?.map((img: any) => ({ url: img.url, isPrimary: img.isPrimary })) || [],
-  }
-}
 
 function getSortParams(sortBy: SortOption) {
   switch (sortBy) {
@@ -64,7 +47,7 @@ export default function ScriptsPage() {
   })
 
   // Fetch products with filters
-  const { data: products = [], isLoading } = useQuery({
+  const { data: products = [], isLoading, isError } = useQuery({
     queryKey: ['scripts-products', sortParams.sortBy, sortParams.sortOrder, activeFilters],
     queryFn: async () => {
       const filters: any = {
@@ -177,6 +160,12 @@ export default function ScriptsPage() {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-slate-400">Loading scripts...</p>
               </div>
+            </div>
+          ) : isError ? (
+            <div className="text-center py-24">
+              <Icon name="alert-triangle" size={64} className="text-red-500/60 mx-auto mb-4" />
+              <p className="text-slate-400 text-lg">Failed to load scripts</p>
+              <p className="text-slate-500 text-sm mt-1">Please try refreshing the page.</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-24">

@@ -47,6 +47,7 @@ export default function Footer() {
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [subscribed, setSubscribed] = useState(false)
+  const [subError, setSubError] = useState(false)
   const { siteName, siteDescription, logoUrl, rawSettings, isLoaded } = useSiteSettings()
   const currentYear = new Date().getFullYear()
   const config = parseFooterConfig(rawSettings?.site_footer)
@@ -56,6 +57,7 @@ export default function Footer() {
     if (!email.trim()) return
 
     setIsSubmitting(true)
+    setSubError(false)
     try {
       const res = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
@@ -69,6 +71,7 @@ export default function Footer() {
       }
     } catch (error) {
       console.error('Newsletter subscription error:', error)
+      setSubError(true)
     } finally {
       setIsSubmitting(false)
     }
@@ -194,6 +197,7 @@ export default function Footer() {
                       {isSubmitting ? '...' : 'Join'}
                     </button>
                   </form>
+                  {subError && <p className="text-red-400 text-xs mt-2">Failed to subscribe. Please try again.</p>}
                 )}
               </>
             )}
