@@ -54,10 +54,10 @@ export const authApi = {
   },
 
   // Google OAuth
-  async googleAuth(idToken: string) {
+  async googleAuth(idToken: string, referralCode?: string) {
     const result = await apiFetch<LoginResponse>('/auth/google', {
       method: 'POST',
-      body: JSON.stringify({ idToken }),
+      body: JSON.stringify({ idToken, referralCode }),
     })
     if (result.success && result.data) {
       clearUserStorage()
@@ -77,10 +77,10 @@ export const authApi = {
     })
   },
 
-  async walletAuth(walletAddress: string, signature: string, nonce: string) {
+  async walletAuth(walletAddress: string, signature: string, nonce: string, referralCode?: string) {
     const result = await apiFetch<LoginResponse>('/auth/wallet', {
       method: 'POST',
-      body: JSON.stringify({ walletAddress, signature, nonce }),
+      body: JSON.stringify({ walletAddress, signature, nonce, referralCode }),
     })
     if (result.success && result.data) {
       clearUserStorage()

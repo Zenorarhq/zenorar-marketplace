@@ -180,7 +180,7 @@ export default function SignupPage() {
         throw new Error('No credential received from Google')
       }
       // Send the ID token (credential) to our backend
-      const result = await authApi.googleAuth(credentialResponse.credential)
+      const result = await authApi.googleAuth(credentialResponse.credential, formData.referralCode || undefined)
       if (result.success) {
         refreshUser()
         router.push('/')
@@ -267,7 +267,7 @@ export default function SignupPage() {
       const signer = await provider.getSigner()
       const signature = await signer.signMessage(message)
 
-      const result = await authApi.walletAuth(walletAddress, signature, nonce)
+      const result = await authApi.walletAuth(walletAddress, signature, nonce, formData.referralCode || undefined)
       if (result.success) {
         refreshUser()
         router.push('/')
