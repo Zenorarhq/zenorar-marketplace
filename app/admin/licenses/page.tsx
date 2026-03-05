@@ -278,6 +278,7 @@ function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQue
           <option value="ACTIVE">Active</option>
           <option value="SUSPENDED">Suspended</option>
           <option value="REVOKED">Revoked</option>
+          <option value="EXPIRED">Expired</option>
         </select>
         <select
           value={filters.licenseType || ''}
