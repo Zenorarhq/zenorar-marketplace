@@ -170,7 +170,7 @@ class TwilioService {
 
     try {
       const typeEndpoint = type === 'tollFree' ? 'TollFree' : type === 'mobile' ? 'Mobile' : 'Local'
-      let url = `${this.getBaseUrl(credentials)}/AvailablePhoneNumbers/${countryCode}/${typeEndpoint}.json?SmsEnabled=true&PageSize=${limit}`
+      let url = `${this.getBaseUrl(credentials)}/AvailablePhoneNumbers/${countryCode}/${typeEndpoint}.json?PageSize=${limit}`
 
       if (areaCode) {
         url += `&AreaCode=${areaCode}`
