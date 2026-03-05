@@ -234,8 +234,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <div key={item.href} className="relative group">
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all justify-center overflow-hidden ${
-                    desktopCollapsed ? '' : 'lg:justify-start'
+                  className={`flex items-center px-3 py-2.5 rounded-lg mb-1 transition-all justify-center overflow-hidden ${
+                    desktopCollapsed ? '' : 'lg:justify-start lg:gap-3'
                   } ${
                     isActive
                       ? 'bg-primary/10 text-primary'
@@ -280,8 +280,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* User Section */}
         <div className="p-3 border-t border-[#1f1f1f]">
           <div className="relative group">
-            <div className={`flex items-center gap-3 p-2 rounded-lg bg-[#1a1a1a] justify-center ${
-              desktopCollapsed ? '' : 'lg:justify-start'
+            <div className={`flex items-center p-2 rounded-lg bg-[#1a1a1a] justify-center ${
+              desktopCollapsed ? '' : 'lg:justify-start lg:gap-3'
             }`}>
               <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center flex-shrink-0">
                 <Icon name="user" size={18} className="text-primary" />
@@ -306,8 +306,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className={`flex items-center gap-3 w-full mt-2 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors justify-center overflow-hidden ${
-              desktopCollapsed ? '' : 'lg:justify-start'
+            className={`flex items-center w-full mt-2 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors justify-center overflow-hidden ${
+              desktopCollapsed ? '' : 'lg:justify-start lg:gap-3'
             }`}
           >
             <Icon name="logout" size={18} className="flex-shrink-0" />
