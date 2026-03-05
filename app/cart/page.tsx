@@ -157,11 +157,11 @@ export default function CartPage() {
       <Header />
       <CategoryNav />
 
-      <main className="flex-grow max-w-container mx-auto px-4 md:px-8 lg:px-12 pb-24">
+      <main className="flex-grow max-w-container mx-auto px-4 md:px-8 lg:px-12 pb-24 w-full">
         <div className="py-4">
           <Breadcrumbs className="mb-0" />
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-10">
+        <div className="flex items-center justify-between mb-6 md:mb-10">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-2 tracking-tight">Shopping Cart</h1>
             <p className="text-sm md:text-base text-slate-500">{itemCount} item{itemCount !== 1 ? 's' : ''} in your cart</p>
