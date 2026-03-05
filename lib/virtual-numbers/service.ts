@@ -2,6 +2,7 @@
 
 import { query } from '@/lib/db'
 import { twilioService } from './providers/twilio'
+import { inventoryService } from './inventory'
 import { sendSmsForwardingEmail } from '@/lib/email-service'
 
 export interface ProvisionResult {
@@ -15,6 +16,7 @@ export interface ProvisionResult {
 class VirtualNumberService {
   /**
    * Provision a virtual number for a user after payment
+   * Uses inventory system: checks inventory first, buys from Twilio if needed
    */
   async provisionNumber(
     userId: string,
@@ -22,96 +24,73 @@ class VirtualNumberService {
     planId: string,
     phoneNumber: string,
     orderId: string,
-    numberType: string = 'local'
+    numberType: string = 'local',
+    amountPaid: number = 0,
+    minuteTier?: string,
+    minuteTierPrice?: number
   ): Promise<ProvisionResult> {
     try {
-      // Get country details
-      const countryResult = await query(
-        `SELECT * FROM virtual_number_countries WHERE id = $1`,
-        [countryId]
-      )
-
-      if (countryResult.rows.length === 0) {
-        return { success: false, error: 'Country not found' }
-      }
-
-      const country = countryResult.rows[0]
-
-      // Get plan details
+      // Get plan details to determine duration
+      let durationDays = 30 // default
       const planResult = await query(
-        `SELECT * FROM virtual_number_plans WHERE id = $1`,
+        `SELECT duration_days FROM virtual_number_plans WHERE id = $1`,
         [planId]
       )
 
-      if (planResult.rows.length === 0) {
-        return { success: false, error: 'Plan not found' }
-      }
-
-      const plan = planResult.rows[0]
-
-      // Log provision attempt
-      const logResult = await query(
-        `INSERT INTO virtual_number_provision_log
-           (user_id, order_id, country_id, plan_id, phone_number, provider, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'pending')
-         RETURNING id`,
-        [userId, orderId, countryId, planId, phoneNumber, country.provider]
-      )
-      const provisionLogId = logResult.rows[0].id
-
-      // Attempt to purchase from provider
-      let providerResult
-      if (country.provider === 'twilio') {
-        providerResult = await twilioService.purchaseNumber(phoneNumber)
+      if (planResult.rows.length > 0) {
+        durationDays = planResult.rows[0].duration_days
       } else {
-        // Default to mock for development
-        providerResult = {
-          success: true,
-          numberSid: `PN${Date.now()}`,
-          phoneNumber: phoneNumber
+        // Handle dynamic plans (basic/business with custom duration)
+        if (planId === 'basic' || planId === 'business') {
+          // Duration is passed via metadata, default to 7 days
+          durationDays = 7
         }
       }
 
-      if (!providerResult.success) {
-        // Update log with failure
-        await query(
-          `UPDATE virtual_number_provision_log
-           SET status = 'failed', error_message = $1, updated_at = NOW()
-           WHERE id = $2`,
-          [providerResult.error, provisionLogId]
-        )
+      // Use inventory service to rent the number
+      const rentResult = await inventoryService.rentNumber({
+        phoneNumber,
+        userId,
+        planId,
+        durationDays,
+        amountPaid,
+        minuteTier,
+        minuteTierPrice
+      })
 
-        return { success: false, error: providerResult.error }
+      if (!rentResult.success) {
+        return { success: false, error: rentResult.error }
       }
 
-      // Calculate expiry
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + plan.duration_days)
+      // Get country details for display formatting
+      const countryResult = await query(
+        `SELECT iso_code FROM virtual_number_countries WHERE id = $1`,
+        [countryId]
+      )
+      const countryCode = countryResult.rows[0]?.iso_code || 'US'
+      const displayNumber = this.formatPhoneNumber(phoneNumber, countryCode)
 
-      // Create user virtual number record
-      const displayNumber = this.formatPhoneNumber(phoneNumber, country.iso_code)
-
+      // Create user virtual number record (legacy table for user dashboard)
       const insertResult = await query(
         `INSERT INTO user_virtual_numbers
            (user_id, plan_id, country_id, phone_number, phone_number_display, number_type,
-            provider, provider_number_sid, status, order_id, expires_at, next_billing_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, $10, $10)
+            provider, provider_number_sid, status, order_id, expires_at, next_billing_at,
+            inventory_id)
+         VALUES ($1, $2, $3, $4, $5, $6, 'twilio', $7, 'active', $8, $9, $9, $10)
+         ON CONFLICT (phone_number, user_id) DO UPDATE SET
+           status = 'active',
+           expires_at = $9,
+           order_id = $8,
+           inventory_id = $10,
+           updated_at = NOW()
          RETURNING id`,
         [
           userId, planId, countryId, phoneNumber, displayNumber, numberType,
-          country.provider, providerResult.numberSid, orderId, expiresAt
+          rentResult.inventoryId, orderId, rentResult.expiresAt, rentResult.inventoryId
         ]
       )
 
       const userVirtualNumberId = insertResult.rows[0].id
-
-      // Update provision log
-      await query(
-        `UPDATE virtual_number_provision_log
-         SET status = 'success', user_virtual_number_id = $1, updated_at = NOW()
-         WHERE id = $2`,
-        [userVirtualNumberId, provisionLogId]
-      )
 
       return {
         success: true,

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiFetch } from '@/lib/api/client'
 import * as virtualNumbersApi from '@/lib/api/virtual-numbers'
 import * as otpNumbersApi from '@/lib/api/otp-numbers'
 
@@ -31,6 +33,7 @@ interface AvailableNumber {
     mms: boolean
   }
   monthlyPrice: number
+  source?: 'inventory' | 'twilio'  // inventory = instant activation
 }
 
 interface Plan {
@@ -427,41 +430,88 @@ export default function VirtualNumbersPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                {countries.map((country) => (
-                  <button
-                    key={country.id}
-                    onClick={() => setSelectedCountry(selectedCountry?.id === country.id ? null : country)}
-                    className={`p-4 rounded-2xl border transition-all text-center ${
-                      selectedCountry?.id === country.id
-                        ? 'bg-primary/10 border-primary'
-                        : 'bg-charcoal border-border-dark hover:border-primary/50'
-                    }`}
-                  >
-                    <span className="text-2xl mb-2 block">{country.flagEmoji || '🌍'}</span>
-                    <h3 className="font-bold text-white text-xs mb-1">{country.name}</h3>
-                    <p className="text-xs text-primary font-bold">${country.retailMonthly}/mo</p>
-                  </button>
-                ))}
+                {countries.map((country) => {
+                  const dailyPrice = (country.retailMonthly / 30).toFixed(2)
+                  return (
+                    <button
+                      key={country.id}
+                      onClick={() => setSelectedCountry(selectedCountry?.id === country.id ? null : country)}
+                      className={`p-4 rounded-2xl border transition-all text-center ${
+                        selectedCountry?.id === country.id
+                          ? 'bg-primary/10 border-primary'
+                          : 'bg-charcoal border-border-dark hover:border-primary/50'
+                      }`}
+                    >
+                      <span className="text-2xl mb-2 block">{country.flagEmoji || '🌍'}</span>
+                      <h3 className="font-bold text-white text-xs mb-1">{country.name}</h3>
+                      <p className="text-xs text-primary font-bold">From ${dailyPrice}/day</p>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
 
-          {/* Type Filter */}
-          <div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
-            {(['all', 'local', 'toll-free', 'mobile'] as NumberType[]).map((type) => (
-              <button
-                key={type}
-                onClick={() => setNumberType(type)}
-                className={`flex-shrink-0 px-5 py-2 rounded-xl font-bold text-sm transition-all ${
-                  numberType === type
-                    ? 'bg-primary text-white'
-                    : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
-                }`}
-              >
-                {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
-              </button>
-            ))}
-          </div>
+          {/* Type Filter - Smart ordering based on availability */}
+          {(() => {
+            // Count numbers per type
+            const typeCounts = {
+              local: availableNumbers.filter(n => n.type === 'local').length,
+              'toll-free': availableNumbers.filter(n => n.type === 'toll-free').length,
+              mobile: availableNumbers.filter(n => n.type === 'mobile').length,
+            }
+
+            // Get types with numbers, sorted by count (most first)
+            const availableTypes = (['local', 'toll-free', 'mobile'] as const)
+              .filter(type => typeCounts[type] > 0)
+              .sort((a, b) => typeCounts[b] - typeCounts[a])
+
+            // Only show "All Types" if multiple types have numbers
+            const showAllTab = availableTypes.length > 1
+            const tabs: NumberType[] = showAllTab ? ['all', ...availableTypes] : availableTypes
+
+            // If no numbers at all, show all tabs (loading state)
+            if (availableNumbers.length === 0 && !loadingNumbers) {
+              return (
+                <div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
+                  {(['all', 'local', 'toll-free', 'mobile'] as NumberType[]).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setNumberType(type)}
+                      className={`flex-shrink-0 px-5 py-2 rounded-xl font-bold text-sm transition-all ${
+                        numberType === type
+                          ? 'bg-primary text-white'
+                          : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
+                    </button>
+                  ))}
+                </div>
+              )
+            }
+
+            return (
+              <div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
+                {tabs.map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setNumberType(type)}
+                    className={`flex-shrink-0 px-5 py-2 rounded-xl font-bold text-sm transition-all ${
+                      numberType === type
+                        ? 'bg-primary text-white'
+                        : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
+                    {type !== 'all' && (
+                      <span className="ml-2 text-xs opacity-70">({typeCounts[type]})</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
 
           {/* Numbers Grid */}
           <div className="mb-10">
@@ -490,69 +540,91 @@ export default function VirtualNumbersPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredNumbers.map((number, idx) => (
-                  <div
-                    key={`${number.phoneNumber}-${idx}`}
-                    className="bg-charcoal border border-border-dark hover:border-primary/50 rounded-2xl p-6 transition-all"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl">{selectedCountry?.flagEmoji || '🌍'}</span>
-                        <div>
-                          <h3 className="font-bold text-white">{number.friendlyName}</h3>
-                          <p className="text-sm text-slate-500">
-                            {number.locality || selectedCountry?.name}
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                        number.type === 'toll-free'
-                          ? 'bg-green-500/10 text-green-400'
-                          : number.type === 'mobile'
-                          ? 'bg-blue-500/10 text-blue-400'
-                          : 'bg-primary/10 text-primary'
-                      }`}>
-                        {number.type.toUpperCase()}
-                      </span>
-                    </div>
+                {filteredNumbers.map((number, idx) => {
+                  // Calculate daily price (monthly / 30)
+                  const dailyPrice = (number.monthlyPrice / 30).toFixed(2)
 
-                    <div className="space-y-2 mb-6">
-                      {number.capabilities.sms && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Icon name="check" size={14} className="text-green-400" />
-                          <span className="text-slate-400">SMS Enabled</span>
-                        </div>
-                      )}
-                      {number.capabilities.voice && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Icon name="check" size={14} className="text-green-400" />
-                          <span className="text-slate-400">Voice Calls</span>
-                        </div>
-                      )}
-                      {number.capabilities.mms && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Icon name="check" size={14} className="text-green-400" />
-                          <span className="text-slate-400">MMS Support</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-end justify-between mb-4">
-                      <div>
-                        <span className="text-2xl font-extrabold text-white">${number.monthlyPrice}</span>
-                        <span className="text-slate-500 text-sm">/month</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleGetNumber(number)}
-                      className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-white hover:brightness-105"
+                  return (
+                    <div
+                      key={`${number.phoneNumber}-${idx}`}
+                      className="bg-charcoal border border-border-dark hover:border-primary/50 rounded-2xl p-6 transition-all"
                     >
-                      <Icon name="call" size={18} />
-                      Get Number
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl">{selectedCountry?.flagEmoji || '🌍'}</span>
+                          <div>
+                            <h3 className="font-bold text-white">{number.friendlyName}</h3>
+                            <p className="text-sm text-slate-500">
+                              {number.locality || selectedCountry?.name}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                            number.type === 'toll-free'
+                              ? 'bg-green-500/10 text-green-400'
+                              : number.type === 'mobile'
+                              ? 'bg-blue-500/10 text-blue-400'
+                              : 'bg-primary/10 text-primary'
+                          }`}>
+                            {number.type.toUpperCase()}
+                          </span>
+                          {number.source === 'inventory' && (
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 flex items-center gap-1">
+                              <Icon name="timer" size={10} />
+                              INSTANT
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Capability badges with upselling messages */}
+                      <div className="space-y-2 mb-6">
+                        {number.capabilities.sms && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Icon name="check" size={14} className="text-green-400" />
+                            <span className="text-slate-400">Receive verification codes</span>
+                          </div>
+                        )}
+                        {number.capabilities.voice && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Icon name="check" size={14} className="text-green-400" />
+                            <span className="text-slate-400">Receive calls & voicemail</span>
+                          </div>
+                        )}
+                        {number.capabilities.mms && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Icon name="check" size={14} className="text-green-400" />
+                            <span className="text-slate-400">Receive picture messages</span>
+                          </div>
+                        )}
+                        {number.capabilities.voice && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Icon name="check" size={14} className="text-blue-400" />
+                            <span className="text-slate-400">Forward to your phone</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Daily price display */}
+                      <div className="flex items-end justify-between mb-4">
+                        <div>
+                          <p className="text-slate-500 text-xs mb-1">From</p>
+                          <span className="text-2xl font-extrabold text-white">${dailyPrice}</span>
+                          <span className="text-slate-500 text-sm">/day</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleGetNumber(number)}
+                        className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-white hover:brightness-105"
+                      >
+                        <Icon name="call" size={18} />
+                        Get Number
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -855,74 +927,577 @@ export default function VirtualNumbersPage() {
         </div>
       </div>
 
-      {/* Plan Selection Modal */}
+      {/* Plan Selection Modal - Redesigned with Basic/Business */}
       {showPlanModal && selectedNumber && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-dark rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-white">Choose Your Plan</h3>
-                <p className="text-slate-400 text-sm mt-1">
-                  Number: {selectedNumber.friendlyName}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowPlanModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <Icon name="close" size={24} />
-              </button>
-            </div>
-
-            {loadingPlans ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <div className="space-y-4 mb-6">
-                {plans.map((plan) => (
-                  <button
-                    key={plan.id}
-                    onClick={() => setSelectedPlan(plan)}
-                    className={`w-full p-4 rounded-xl border text-left transition-all ${
-                      selectedPlan?.id === plan.id
-                        ? 'bg-primary/10 border-primary'
-                        : 'bg-charcoal border-border-dark hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-white">{plan.name}</h4>
-                        {plan.isFeatured && (
-                          <span className="text-xs bg-primary text-black px-2 py-0.5 rounded-full font-bold">
-                            POPULAR
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xl font-bold text-white">${plan.basePrice}<span className="text-sm text-slate-400">/mo</span></span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {plan.features.slice(0, 4).map((feature, idx) => (
-                        <span key={idx} className="text-xs text-slate-400 bg-surface-dark px-2 py-1 rounded">
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <button
-              onClick={handleAddToCart}
-              disabled={!selectedPlan}
-              className="w-full py-4 rounded-xl bg-primary text-black font-bold hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Add to Cart - ${selectedPlan?.basePrice || 0}/month
-            </button>
-          </div>
-        </div>
+        <PlanSelectionModal
+          number={selectedNumber}
+          country={selectedCountry}
+          plans={plans}
+          onClose={() => setShowPlanModal(false)}
+          onAddToCart={handleAddToCart}
+          addItem={addItem}
+          router={router}
+        />
       )}
     </main>
   )
+}
+
+// ============================================================
+// Plan Selection Modal Component
+// ============================================================
+
+interface MinuteTier {
+  id: string
+  name: string
+  minutes: number
+  price: number
+}
+
+// Hardcoded minute tiers (will be fetched from API later)
+const MINUTE_TIERS: MinuteTier[] = [
+  { id: 'basic_30', name: 'Basic', minutes: 30, price: 3 },
+  { id: 'standard_60', name: 'Standard', minutes: 60, price: 5 },
+  { id: 'pro_120', name: 'Pro', minutes: 120, price: 10 },
+]
+
+// Duration-based pricing for Basic plans (SMS only)
+const BASIC_PLANS = [
+  { duration: 1, label: '24 Hours', price: 2, smsLimit: 50 },
+  { duration: 7, label: '7 Days', price: 8, smsLimit: 200 },
+  { duration: 30, label: '30 Days', price: 15, smsLimit: 500 },
+]
+
+// Duration-based pricing for Business plans (Calls + SMS Forwarding)
+const BUSINESS_PLANS = [
+  { duration: 1, label: '24 Hours', price: 5, features: ['SMS + Voice', 'Call Forwarding'] },
+  { duration: 7, label: '7 Days', price: 20, features: ['SMS + Voice', 'Call Forwarding', 'Voicemail'] },
+  { duration: 30, label: '30 Days', price: 45, features: ['SMS + Voice', 'Call Forwarding', 'Voicemail', 'Priority Support'] },
+]
+
+interface PlanSelectionModalProps {
+  number: AvailableNumber
+  country: Country | null
+  plans: Plan[]
+  onClose: () => void
+  onAddToCart: () => void
+  addItem: (item: any) => void
+  router: ReturnType<typeof useRouter>
+}
+
+function PlanSelectionModal({
+  number,
+  country,
+  plans,
+  onClose,
+  onAddToCart,
+  addItem,
+  router
+}: PlanSelectionModalProps) {
+  const { user, isAuthenticated, login } = useAuth()
+  const [planCategory, setPlanCategory] = useState<'basic' | 'business'>('basic')
+  const [selectedDuration, setSelectedDuration] = useState<number>(7) // Default 7 days
+  const [selectedMinuteTier, setSelectedMinuteTier] = useState<MinuteTier | null>(MINUTE_TIERS[0])
+
+  // Wallet checkout state
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [loadingBalance, setLoadingBalance] = useState(false)
+  const [processingPayment, setProcessingPayment] = useState(false)
+  const [showLoginForm, setShowLoginForm] = useState(false)
+  const [showTopUpPrompt, setShowTopUpPrompt] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false)
+
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
+
+  // Fetch wallet balance when authenticated
+  useEffect(() => {
+    if (isAuthenticated && walletBalance === null) {
+      fetchWalletBalance()
+    }
+  }, [isAuthenticated])
+
+  const fetchWalletBalance = async () => {
+    setLoadingBalance(true)
+    try {
+      const response = await fetch('/api/wallet', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      })
+      const result = await response.json()
+      if (result.success && result.data) {
+        setWalletBalance(result.data.balance || 0)
+      }
+    } catch (error) {
+      console.error('Failed to fetch wallet balance:', error)
+    } finally {
+      setLoadingBalance(false)
+    }
+  }
+
+  // Calculate total price
+  const calculateTotal = () => {
+    if (planCategory === 'basic') {
+      const plan = BASIC_PLANS.find(p => p.duration === selectedDuration)
+      return plan?.price || 0
+    } else {
+      const plan = BUSINESS_PLANS.find(p => p.duration === selectedDuration)
+      const basePrice = plan?.price || 0
+      const minutePrice = selectedMinuteTier?.price || 0
+      return basePrice + minutePrice
+    }
+  }
+
+  // Handle checkout
+  const handleCheckout = () => {
+    if (!country) return
+
+    const durationPlan = planCategory === 'basic'
+      ? BASIC_PLANS.find(p => p.duration === selectedDuration)
+      : BUSINESS_PLANS.find(p => p.duration === selectedDuration)
+
+    if (!durationPlan) return
+
+    const totalPrice = calculateTotal()
+
+    // Create virtual number product
+    const virtualNumberProduct = {
+      id: `vn-${number.phoneNumber.replace(/\+/g, '')}-${Date.now()}`,
+      name: `Virtual Number: ${number.friendlyName}`,
+      slug: `virtual-number-${number.phoneNumber.replace(/\+/g, '')}`,
+      description: `${country.name} ${number.type} number - ${durationPlan.label} ${planCategory === 'basic' ? 'Basic' : 'Business'} plan`,
+      price: totalPrice,
+      rating: 5,
+      reviewCount: 0,
+      category: 'virtual-numbers',
+      icon: 'phone',
+      iconColor: 'text-primary',
+      tags: ['virtual-number', country.isoCode.toLowerCase()],
+      image: '/images/products/virtual-number.png',
+      metadata: {
+        productType: 'virtual_number',
+        phoneNumber: number.phoneNumber,
+        countryId: country.id,
+        countryName: country.name,
+        numberType: number.type,
+        friendlyName: number.friendlyName,
+        planCategory,
+        durationDays: selectedDuration,
+        durationLabel: durationPlan.label,
+        ...(planCategory === 'basic' && { smsLimit: (durationPlan as typeof BASIC_PLANS[0]).smsLimit }),
+        ...(planCategory === 'business' && selectedMinuteTier && {
+          minuteTier: selectedMinuteTier.id,
+          minuteTierName: selectedMinuteTier.name,
+          minuteIncluded: selectedMinuteTier.minutes,
+          minuteTierPrice: selectedMinuteTier.price,
+        }),
+      }
+    }
+
+    addItem(virtualNumberProduct as any)
+    onClose()
+    router.push('/cart')
+  }
+
+  const totalPrice = calculateTotal()
+  const currentBasicPlan = BASIC_PLANS.find(p => p.duration === selectedDuration)
+  const currentBusinessPlan = BUSINESS_PLANS.find(p => p.duration === selectedDuration)
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-dark rounded-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-bold text-white">Choose Your Plan</h3>
+            <p className="text-slate-400 text-sm mt-1">
+              Number: {number.friendlyName} ({country?.name})
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white"
+          >
+            <Icon name="close" size={24} />
+          </button>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="flex gap-2 mb-6 bg-charcoal p-1 rounded-xl">
+          <button
+            onClick={() => setPlanCategory('basic')}
+            className={`flex-1 px-4 py-3 rounded-lg font-bold text-sm transition-all ${
+              planCategory === 'basic'
+                ? 'bg-primary text-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Icon name="message" size={16} />
+              Basic (SMS Only)
+            </div>
+            <p className="text-xs mt-1 opacity-70">Receive verification codes</p>
+          </button>
+          <button
+            onClick={() => {
+              setPlanCategory('business')
+              if (!selectedMinuteTier) setSelectedMinuteTier(MINUTE_TIERS[0])
+            }}
+            className={`flex-1 px-4 py-3 rounded-lg font-bold text-sm transition-all ${
+              planCategory === 'business'
+                ? 'bg-primary text-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Icon name="call" size={16} />
+              Business (Calls + SMS)
+            </div>
+            <p className="text-xs mt-1 opacity-70">Full phone features</p>
+          </button>
+        </div>
+
+        {/* Duration Selection */}
+        <div className="mb-6">
+          <h4 className="text-white font-bold mb-3">Select Duration</h4>
+          <div className="grid grid-cols-3 gap-3">
+            {(planCategory === 'basic' ? BASIC_PLANS : BUSINESS_PLANS).map((plan) => (
+              <button
+                key={plan.duration}
+                onClick={() => setSelectedDuration(plan.duration)}
+                className={`p-4 rounded-xl border text-center transition-all ${
+                  selectedDuration === plan.duration
+                    ? 'bg-primary/10 border-primary'
+                    : 'bg-charcoal border-border-dark hover:border-primary/50'
+                }`}
+              >
+                <h5 className="font-bold text-white text-lg">{plan.label}</h5>
+                <p className="text-2xl font-extrabold text-primary mt-2">${plan.price}</p>
+                {planCategory === 'basic' && 'smsLimit' in plan && (
+                  <p className="text-slate-500 text-xs mt-1">{plan.smsLimit} SMS</p>
+                )}
+                {planCategory === 'business' && (
+                  <p className="text-slate-500 text-xs mt-1">+ minute package</p>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Minute Tier Selection (Business only) */}
+        {planCategory === 'business' && (
+          <div className="mb-6">
+            <h4 className="text-white font-bold mb-3">Call Forwarding Minutes</h4>
+            <div className="grid grid-cols-3 gap-3">
+              {MINUTE_TIERS.map((tier) => (
+                <button
+                  key={tier.id}
+                  onClick={() => setSelectedMinuteTier(tier)}
+                  className={`p-4 rounded-xl border text-center transition-all ${
+                    selectedMinuteTier?.id === tier.id
+                      ? 'bg-blue-500/10 border-blue-500'
+                      : 'bg-charcoal border-border-dark hover:border-blue-500/50'
+                  }`}
+                >
+                  <h5 className="font-bold text-white">{tier.name}</h5>
+                  <p className="text-lg font-bold text-blue-400 mt-1">{tier.minutes} min</p>
+                  <p className="text-slate-400 text-sm">+${tier.price}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Plan Summary */}
+        <div className="bg-charcoal rounded-xl p-4 mb-6">
+          <h4 className="text-white font-bold mb-3">Plan Summary</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Number</span>
+              <span className="text-white">{number.friendlyName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Plan Type</span>
+              <span className="text-white">{planCategory === 'basic' ? 'Basic (SMS)' : 'Business (Calls + SMS)'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Duration</span>
+              <span className="text-white">{planCategory === 'basic' ? currentBasicPlan?.label : currentBusinessPlan?.label}</span>
+            </div>
+            {planCategory === 'basic' && currentBasicPlan && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">SMS Included</span>
+                <span className="text-white">{currentBasicPlan.smsLimit} messages</span>
+              </div>
+            )}
+            {planCategory === 'business' && selectedMinuteTier && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">Call Minutes</span>
+                <span className="text-white">{selectedMinuteTier.minutes} minutes</span>
+              </div>
+            )}
+            <div className="border-t border-border-dark my-3"></div>
+            <div className="flex justify-between text-lg">
+              <span className="font-bold text-white">Total</span>
+              <span className="font-extrabold text-primary">${totalPrice.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Login Form (inline) */}
+        {showLoginForm && (
+          <div className="bg-charcoal rounded-xl p-4 mb-6">
+            <h4 className="text-white font-bold mb-3">Login to Continue</h4>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault()
+                setLoginLoading(true)
+                setLoginError('')
+                const result = await login(loginEmail, loginPassword)
+                if (result.success) {
+                  setShowLoginForm(false)
+                  fetchWalletBalance()
+                } else {
+                  setLoginError(result.error || 'Login failed')
+                }
+                setLoginLoading(false)
+              }}
+              className="space-y-3"
+            >
+              <input
+                type="email"
+                placeholder="Email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500"
+                required
+              />
+              {loginError && (
+                <p className="text-red-400 text-sm">{loginError}</p>
+              )}
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="flex-1 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 disabled:opacity-50"
+                >
+                  {loginLoading ? 'Logging in...' : 'Login'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLoginForm(false)}
+                  className="px-4 py-3 bg-charcoal border border-border-dark text-slate-400 font-bold rounded-xl hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Top Up Prompt */}
+        {showTopUpPrompt && (
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <Icon name="alert" size={20} className="text-yellow-400 mt-0.5" />
+              <div>
+                <h4 className="text-white font-bold mb-1">Insufficient Balance</h4>
+                <p className="text-slate-400 text-sm mb-3">
+                  Your wallet balance (${walletBalance?.toFixed(2)}) is less than the total (${totalPrice.toFixed(2)}).
+                  Please add funds to continue.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      onClose()
+                      router.push('/profile/wallet?deposit=true')
+                    }}
+                    className="px-4 py-2 bg-primary text-black font-bold rounded-lg text-sm"
+                  >
+                    Add Funds
+                  </button>
+                  <button
+                    onClick={() => setShowTopUpPrompt(false)}
+                    className="px-4 py-2 bg-charcoal border border-border-dark text-slate-400 font-bold rounded-lg text-sm"
+                  >
+                    Use Cart Instead
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {checkoutSuccess && (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <Icon name="check" size={24} className="text-green-400" />
+              <div>
+                <h4 className="text-white font-bold">Purchase Complete!</h4>
+                <p className="text-slate-400 text-sm">Your virtual number is now active.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/profile/virtual-numbers')}
+              className="mt-4 w-full py-3 bg-primary text-black font-bold rounded-xl"
+            >
+              View My Numbers
+            </button>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {checkoutError && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <Icon name="alert" size={20} className="text-red-400" />
+              <p className="text-red-400 text-sm">{checkoutError}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        {!checkoutSuccess && (
+          <div className="flex gap-3">
+            {/* Pay with Credit Button */}
+            <button
+              onClick={handleInstantCheckout}
+              disabled={processingPayment || loadingBalance}
+              className="flex-1 py-4 rounded-xl bg-green-500 text-white font-bold hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {processingPayment ? (
+                <>
+                  <Icon name="loading" size={18} className="animate-spin" />
+                  Processing...
+                </>
+              ) : loadingBalance ? (
+                <>
+                  <Icon name="loading" size={18} className="animate-spin" />
+                  Checking Balance...
+                </>
+              ) : isAuthenticated ? (
+                <>
+                  <Icon name="wallet" size={18} />
+                  Pay ${totalPrice.toFixed(2)} with Credit
+                  {walletBalance !== null && (
+                    <span className="text-xs opacity-70">(${walletBalance.toFixed(2)} available)</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Icon name="wallet" size={18} />
+                  Pay with Credit
+                </>
+              )}
+            </button>
+
+            {/* Add to Cart Button */}
+            <button
+              onClick={handleCheckout}
+              className="px-6 py-4 rounded-xl bg-charcoal border border-border-dark text-white font-bold hover:border-primary/50 transition-all flex items-center justify-center gap-2"
+            >
+              <Icon name="cart" size={18} />
+              Cart
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  // Handle instant checkout with wallet
+  async function handleInstantCheckout() {
+    setCheckoutError(null)
+
+    // If not authenticated, show login form
+    if (!isAuthenticated) {
+      setShowLoginForm(true)
+      return
+    }
+
+    // Check wallet balance
+    if (walletBalance === null) {
+      await fetchWalletBalance()
+      return
+    }
+
+    // If insufficient balance, show top-up prompt
+    if (walletBalance < totalPrice) {
+      setShowTopUpPrompt(true)
+      return
+    }
+
+    // Process instant checkout
+    setProcessingPayment(true)
+
+    try {
+      if (!country) throw new Error('Country not selected')
+
+      const durationPlan = planCategory === 'basic'
+        ? BASIC_PLANS.find(p => p.duration === selectedDuration)
+        : BUSINESS_PLANS.find(p => p.duration === selectedDuration)
+
+      if (!durationPlan) throw new Error('Plan not found')
+
+      // Create order via API
+      const orderData = {
+        items: [{
+          productId: `vn-instant-${Date.now()}`,
+          productType: 'virtual_number',
+          quantity: 1,
+          price: totalPrice,
+          metadata: {
+            phoneNumber: number.phoneNumber,
+            countryId: country.id,
+            countryName: country.name,
+            numberType: number.type,
+            friendlyName: number.friendlyName,
+            planCategory,
+            durationDays: selectedDuration,
+            durationLabel: durationPlan.label,
+            ...(planCategory === 'basic' && { smsLimit: (durationPlan as typeof BASIC_PLANS[0]).smsLimit }),
+            ...(planCategory === 'business' && selectedMinuteTier && {
+              minuteTier: selectedMinuteTier.id,
+              minuteTierName: selectedMinuteTier.name,
+              minuteIncluded: selectedMinuteTier.minutes,
+              minuteTierPrice: selectedMinuteTier.price,
+            }),
+          }
+        }],
+        paymentMethod: 'wallet',
+        total: totalPrice,
+      }
+
+      const result = await apiFetch<{ orderId: string; orderNumber: string }>('/orders/instant', {
+        method: 'POST',
+        body: JSON.stringify(orderData),
+      })
+
+      if (result.success) {
+        setCheckoutSuccess(true)
+        // Refresh wallet balance
+        fetchWalletBalance()
+      } else {
+        setCheckoutError(result.error || 'Failed to process payment')
+      }
+    } catch (error: any) {
+      setCheckoutError(error.message || 'Failed to process payment')
+    } finally {
+      setProcessingPayment(false)
+    }
+  }
 }
