@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Product } from '@/lib/types'
 import Icon from '@/components/ui/Icon'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -27,6 +27,7 @@ const iconColorClasses: Record<string, string> = {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter()
   const { formatPrice } = usePreferences()
   const { isInWishlist, toggleItem } = useWishlist()
   const { addItem, showAddedToCartPopup } = useCart()
@@ -49,8 +50,8 @@ export default function ProductCard({ product }: ProductCardProps) {
   }
 
   return (
-    <Link
-      href={`/products/${product.slug}`}
+    <div
+      onClick={() => router.push(`/products/${product.slug}`)}
       className="bg-white dark:bg-[#121212] rounded-xl border border-slate-200 dark:border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden flex flex-col"
     >
       {/* Image carousel or icon */}
@@ -163,6 +164,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           </button>
         </div>
       </div>
-    </Link>
+    </div>
   )
 }
