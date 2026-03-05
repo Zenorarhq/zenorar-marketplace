@@ -599,6 +599,11 @@ export default function Header() {
           </div>
         </div>
 
+        {/* Mobile: Add-to-Cart Popup (desktop version lives inside the hidden md:flex nav) */}
+        <div className="md:hidden">
+          <CartPopupWrapper />
+        </div>
+
         {/* Mobile Search Bar */}
         {showSearch && <div className="md:hidden border-t border-border-dark bg-background-dark/80 px-3 sm:px-4 py-2">
           <div className="relative z-[60]">

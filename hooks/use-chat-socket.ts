@@ -131,6 +131,22 @@ export function useChatSocket() {
     }
   }, [])
 
+  const onOrderPaid = useCallback((callback: (data: { id: string; orderNumber: string; total: number; email: string }) => void) => {
+    const handler = (data: any) => callback(data)
+    socketRef.current?.on('order:paid', handler)
+    return () => {
+      socketRef.current?.off('order:paid', handler)
+    }
+  }, [])
+
+  const onDepositUpdate = useCallback((callback: (data: { id: string; userId: string; amount: number; status: string; paymentMethod: string }) => void) => {
+    const handler = (data: any) => callback(data)
+    socketRef.current?.on('deposit:updated', handler)
+    return () => {
+      socketRef.current?.off('deposit:updated', handler)
+    }
+  }, [])
+
   return {
     socket: socketRef,
     joinConversation,
@@ -144,5 +160,7 @@ export function useChatSocket() {
     onTyping,
     onReconnect,
     onAdminNotification,
+    onOrderPaid,
+    onDepositUpdate,
   }
 }

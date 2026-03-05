@@ -88,7 +88,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       const res = await apiFetch<{ count: number }>('/notifications/unread')
       return res.success ? res.data : null
     },
-    refetchInterval: 30000,
+    refetchInterval: 5000,
     enabled: isAuthenticated,
   })
 
@@ -109,7 +109,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       const res = await apiFetch<{ count: number }>('/chat/unread')
       return res.success ? res.data : null
     },
-    refetchInterval: 30000,
+    refetchInterval: 5000,
     enabled: isAuthenticated,
   })
 
@@ -136,7 +136,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         orders: ordersRes.data?.count || 0,
       }
     },
-    refetchInterval: 30000,
+    refetchInterval: 5000,
     enabled: isAuthenticated,
   })
 
@@ -158,7 +158,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const unreadChats = chatData?.count || 0
 
   // Real-time notifications via WebSocket
-  const { joinAdmin, onAdminNotification, onNewMessage, onReconnect } = useChatSocket()
+  const { joinAdmin, onAdminNotification, onNewMessage, onOrderPaid, onDepositUpdate, onReconnect } = useChatSocket()
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -172,10 +172,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       queryClient.invalidateQueries({ queryKey: ['admin-chat-count'] })
       queryClient.invalidateQueries({ queryKey: ['admin-chat-list'] })
     })
-    const unsub3 = onReconnect(() => {
+    const unsub3 = onOrderPaid(() => {
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-counts'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-notif-count'] })
+    })
+    const unsub4 = onDepositUpdate(() => {
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-counts'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-notif-count'] })
+    })
+    const unsub5 = onReconnect(() => {
       joinAdmin()
     })
-    return () => { unsub1(); unsub2(); unsub3() }
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5() }
   }, [isAuthenticated])
 
   // Close dropdowns when clicking outside
