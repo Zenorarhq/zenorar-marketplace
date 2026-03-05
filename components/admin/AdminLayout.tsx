@@ -280,7 +280,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* User Section */}
         <div className="p-3 border-t border-[#1f1f1f]">
           <div className="relative group">
-            <div className={`flex items-center gap-3 p-2 rounded-lg bg-[#1a1a1a] justify-center overflow-hidden ${
+            <div className={`flex items-center gap-3 p-2 rounded-lg bg-[#1a1a1a] justify-center ${
               desktopCollapsed ? '' : 'lg:justify-start'
             }`}>
               <div className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center flex-shrink-0">
