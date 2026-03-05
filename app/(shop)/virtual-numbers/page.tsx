@@ -285,6 +285,11 @@ export default function VirtualNumbersPage() {
   const handleAddToCart = () => {
     if (!selectedNumber || !selectedPlan || !selectedCountry) return
 
+    // Parse prices as numbers (API might return strings)
+    const planPrice = parseFloat(String(selectedPlan.basePrice)) || 0
+    const countryPrice = parseFloat(String(selectedCountry.retailMonthly)) || 0
+    const totalPrice = planPrice + countryPrice
+
     // Virtual numbers use dynamic IDs - backend handles these as dynamicItems
     // Metadata contains all info needed for fulfillment (phone number, plan, country)
     const virtualNumberProduct = {
@@ -292,7 +297,7 @@ export default function VirtualNumbersPage() {
       name: `Virtual Number: ${selectedNumber.friendlyName}`,
       slug: `virtual-number-${selectedNumber.phoneNumber.replace(/\+/g, '')}`,
       description: `${selectedCountry.name} ${selectedNumber.type} number with ${selectedPlan.name} plan`,
-      price: selectedPlan.basePrice + (selectedCountry.retailMonthly || 0),
+      price: totalPrice,
       rating: 5,
       reviewCount: 0,
       category: 'virtual-numbers',
