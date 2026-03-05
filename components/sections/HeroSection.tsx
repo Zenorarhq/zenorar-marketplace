@@ -74,7 +74,7 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
         if (Array.isArray(data) && data.length > 0) return data
       }
     } catch {}
-    if (!isLoaded) return []     // No slides found and still loading — render nothing
+    if (!isLoaded) return DEFAULT_BANNERS  // Show defaults while settings load
     return DEFAULT_BANNERS       // Loaded but no CMS slides configured — show defaults
   }, [rawSettings.home_hero_slides, isLoaded])
 
