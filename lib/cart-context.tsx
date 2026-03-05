@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Product, CartItem } from './types'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiFetch } from '@/lib/api/client'
+import { trackAddToCart } from '@/lib/tracking'
 import type { CartSummary } from '@/lib/api'
 
 interface CartContextType {
@@ -78,7 +79,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (isAuthenticated) {
         try {
           const result = await apiFetch<any[]>('/cart')
-          console.log('[CART DEBUG] /cart raw response:', JSON.stringify(result).slice(0, 500))
           if (!cancelled && result.success && Array.isArray(result.data)) {
             // Map API response to CartItem[]
             const cartItems: CartItem[] = result.data.map((item: any) => ({
@@ -87,10 +87,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               license: item.license || 'standard',
               price: item.price,
             }))
-            console.log('[CART DEBUG] Mapped cart items:', cartItems.map(i => ({ id: i.product?.id, name: i.product?.name, hasProduct: !!i.product })))
             setItems(cartItems)
-          } else if (!cancelled) {
-            console.warn('[CART DEBUG] Cart API did not return array. success:', result.success, 'isArray:', Array.isArray(result.data))
           }
         } catch (error) {
           console.error('Failed to load cart from API:', error)
@@ -174,9 +171,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   const addItem = useCallback(async (product: Product, license: 'standard' | 'extended' | 'pro' = 'standard', customPrice?: number) => {
-    const price = customPrice ?? (license === 'extended'
-      ? (product.priceRange?.max || product.price)
-      : (product.priceRange?.min || product.price))
+    const price = Number(customPrice ?? (license === 'pro'
+      ? (product.proPrice || product.price)
+      : license === 'extended'
+        ? (product.priceRange?.max || product.price)
+        : (product.priceRange?.min || product.price)))
 
     // Optimistic update — capture the new quantity for API sync
     let newQuantity = 1
@@ -224,8 +223,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // Sync to API if authenticated
     if (isAuthenticated) {
-      const licenseParam = license || 'standard'
-      const result = await apiFetch(`/cart/items/product/${productId}?license=${licenseParam}`, {
+      const query = license ? `?license=${license}` : ''
+      const result = await apiFetch(`/cart/items/product/${productId}${query}`, {
         method: 'DELETE',
       })
       if (!result.success) {
@@ -323,12 +322,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // For authenticated users, call backend validation
     try {
       const result = await apiFetch<any>('/cart/validate')
-      console.log('[CART DEBUG] /cart/validate raw response:', JSON.stringify(result))
       if (result.success && result.data) {
-        const d = result.data
+        const data = result.data
         return {
-          valid: d.valid ?? d.isValid ?? false,
-          issues: d.issues ?? (d.errors || []).map((e: string) => ({ productId: '', issue: e })),
+          valid: data.valid ?? data.isValid ?? false,
+          issues: data.issues ?? (data.errors || []).map((e: string) => ({ productId: '', issue: e }))
         }
       }
       return { valid: false, issues: [{ productId: '', issue: 'Failed to validate cart' }] }
@@ -342,6 +340,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setPopupProduct(product)
     setPopupPrice(price ?? null)
     setShowPopup(true)
+    trackAddToCart({ id: product.id, name: product.name, price: product.price }, 1, price ?? product.price)
   }, [])
 
   const hidePopup = useCallback(() => {
@@ -350,22 +349,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setPopupPrice(null)
   }, [])
 
-  const buyNow = useCallback((product: Product, license: 'standard' | 'extended' | 'pro' = 'standard', customPrice?: number) => {
-    const price = customPrice ?? (license === 'extended'
-      ? (product.priceRange?.max || product.price)
-      : (product.priceRange?.min || product.price))
+  const buyNow = useCallback(async (product: Product, license: 'standard' | 'extended' | 'pro' = 'standard', customPrice?: number) => {
+    const price = Number(customPrice ?? (license === 'pro'
+      ? (product.proPrice || product.price)
+      : license === 'extended'
+        ? (product.priceRange?.max || product.price)
+        : (product.priceRange?.min || product.price)))
 
     // Clear cart and add only this item
     setItems([{ product, quantity: 1, license, price }])
 
     // Sync to API if authenticated
     if (isAuthenticated) {
-      apiFetch('/cart', { method: 'DELETE' }).then(() => {
-        apiFetch('/cart/items', {
+      try {
+        await apiFetch('/cart', { method: 'DELETE' })
+        await apiFetch('/cart/items', {
           method: 'POST',
           body: JSON.stringify({ productId: product.id, quantity: 1, license, price }),
         })
-      }).catch(console.warn)
+      } catch (error) {
+        console.warn('Failed to sync buyNow to API:', error)
+      }
     }
 
     // Redirect to checkout

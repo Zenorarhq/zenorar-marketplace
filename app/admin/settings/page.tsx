@@ -476,268 +476,312 @@ export default function AdminSettingsPage() {
   const [testingPayment, setTestingPayment] = useState<string | null>(null)
   const [paymentTestResult, setPaymentTestResult] = useState<{ provider: string; success: boolean; message: string } | null>(null)
 
-  // Load all settings from API on mount
+  // Load general settings from API on mount
   useEffect(() => {
-    const loadAllSettings = async () => {
-      await Promise.allSettled([
-        settingsApi.getSettingsByGroup('general').then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setGeneralSettings((prev) => ({
-              ...prev,
-              siteName: d.siteName ?? prev.siteName,
-              siteDescription: d.siteDescription ?? prev.siteDescription,
-              supportEmail: d.supportEmail ?? prev.supportEmail,
-              timezone: d.timezone ?? prev.timezone,
-              currency: d.currency ?? prev.currency,
-              maintenanceMode: d.maintenanceMode ?? prev.maintenanceMode,
-              logoUrl: d.logoUrl ?? prev.logoUrl,
-              logoMediaId: d.logoMediaId ?? prev.logoMediaId,
-              faviconUrl: d.faviconUrl ?? prev.faviconUrl,
-              faviconMediaId: d.faviconMediaId ?? prev.faviconMediaId,
-              promoBannerCode: d.promoBannerCode ?? prev.promoBannerCode,
-            }))
-          }
-        }),
-        settingsApi.getSettingsByGroup('security').then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setSecuritySettings((prev) => ({
-              ...prev,
-              twoFactorAuth: d.twoFactorAuth ?? prev.twoFactorAuth,
-              sessionTimeout: d.sessionTimeout ?? prev.sessionTimeout,
-              loginAttempts: d.loginAttempts ?? prev.loginAttempts,
-              passwordExpiry: d.passwordExpiry ?? prev.passwordExpiry,
-              ipWhitelist: d.ipWhitelist ?? prev.ipWhitelist,
-            }))
-          }
-        }),
-        settingsApi.getSettingsByGroup('notifications').then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setNotificationSettings((prev) => ({
-              ...prev,
-              emailNewOrder: d.emailNewOrder ?? prev.emailNewOrder,
-              emailNewUser: d.emailNewUser ?? prev.emailNewUser,
-              emailLowStock: d.emailLowStock ?? prev.emailLowStock,
-              emailTicket: d.emailTicket ?? prev.emailTicket,
-              pushEnabled: d.pushEnabled ?? prev.pushEnabled,
-              slackWebhook: d.slackWebhook ?? prev.slackWebhook,
-            }))
-          }
-        }),
-        settingsApi.getSettingsByGroup('payments').then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setPaymentSettings((prev) => ({
-              ...prev,
-              walletEnabled: d.walletEnabled ?? prev.walletEnabled,
-              stripeEnabled: d.stripeEnabled ?? prev.stripeEnabled,
-              stripeMode: d.stripeMode ?? prev.stripeMode,
-              stripeTestPublicKey: d.stripeTestPublicKey ?? prev.stripeTestPublicKey,
-              stripeTestSecretKey: d.stripeTestSecretKey ?? prev.stripeTestSecretKey,
-              stripeTestWebhookSecret: d.stripeTestWebhookSecret ?? prev.stripeTestWebhookSecret,
-              stripeLivePublicKey: d.stripeLivePublicKey ?? prev.stripeLivePublicKey,
-              stripeLiveSecretKey: d.stripeLiveSecretKey ?? prev.stripeLiveSecretKey,
-              stripeLiveWebhookSecret: d.stripeLiveWebhookSecret ?? prev.stripeLiveWebhookSecret,
-              paystackEnabled: d.paystackEnabled ?? prev.paystackEnabled,
-              paystackMode: d.paystackMode ?? prev.paystackMode,
-              paystackTestPublicKey: d.paystackTestPublicKey ?? prev.paystackTestPublicKey,
-              paystackTestSecretKey: d.paystackTestSecretKey ?? prev.paystackTestSecretKey,
-              paystackTestWebhookSecret: d.paystackTestWebhookSecret ?? prev.paystackTestWebhookSecret,
-              paystackLivePublicKey: d.paystackLivePublicKey ?? prev.paystackLivePublicKey,
-              paystackLiveSecretKey: d.paystackLiveSecretKey ?? prev.paystackLiveSecretKey,
-              paystackLiveWebhookSecret: d.paystackLiveWebhookSecret ?? prev.paystackLiveWebhookSecret,
-              cryptoEnabled: d.cryptoEnabled ?? prev.cryptoEnabled,
-              cryptoMethod: d.cryptoMethod ?? prev.cryptoMethod,
-              receivingWalletAddress: d.receivingWalletAddress ?? prev.receivingWalletAddress,
-              btcAddress: d.btcAddress ?? prev.btcAddress,
-              ethAddress: d.ethAddress ?? prev.ethAddress,
-              usdtEthAddress: d.usdtEthAddress ?? prev.usdtEthAddress,
-              usdtBscAddress: d.usdtBscAddress ?? prev.usdtBscAddress,
-              usdtTronAddress: d.usdtTronAddress ?? prev.usdtTronAddress,
-              bnbAddress: d.bnbAddress ?? prev.bnbAddress,
-              usdcAddress: d.usdcAddress ?? prev.usdcAddress,
-              solAddress: d.solAddress ?? prev.solAddress,
-              cryptoProcessor: d.cryptoProcessor ?? prev.cryptoProcessor,
-              cryptoApiKey: d.cryptoApiKey ?? prev.cryptoApiKey,
-              cryptoWebhookSecret: d.cryptoWebhookSecret ?? prev.cryptoWebhookSecret,
-              paypalEnabled: d.paypalEnabled ?? prev.paypalEnabled,
-              paypalMode: d.paypalMode ?? prev.paypalMode,
-              paypalPlatform: d.paypalPlatform ?? prev.paypalPlatform,
-              paypalTestClientId: d.paypalTestClientId ?? prev.paypalTestClientId,
-              paypalTestSecretKey: d.paypalTestSecretKey ?? prev.paypalTestSecretKey,
-              paypalLiveClientId: d.paypalLiveClientId ?? prev.paypalLiveClientId,
-              paypalLiveSecretKey: d.paypalLiveSecretKey ?? prev.paypalLiveSecretKey,
-              autoWithdraw: d.autoWithdraw ?? prev.autoWithdraw,
-              withdrawThreshold: d.withdrawThreshold ?? prev.withdrawThreshold,
-              walletDepositsEnabled: d.walletDepositsEnabled ?? prev.walletDepositsEnabled,
-              depositMinAmount: d.depositMinAmount ?? prev.depositMinAmount,
-              depositMaxAmount: d.depositMaxAmount ?? prev.depositMaxAmount,
-              depositCardEnabled: d.depositCardEnabled ?? prev.depositCardEnabled,
-              depositPaystackEnabled: d.depositPaystackEnabled ?? prev.depositPaystackEnabled,
-              depositPaypalEnabled: d.depositPaypalEnabled ?? prev.depositPaypalEnabled,
-              depositCryptoEnabled: d.depositCryptoEnabled ?? prev.depositCryptoEnabled,
-              depositBankEnabled: d.depositBankEnabled ?? prev.depositBankEnabled,
-              bankAccountName: d.bankAccountName ?? prev.bankAccountName,
-              bankAccountNumber: d.bankAccountNumber ?? prev.bankAccountNumber,
-              bankBankName: d.bankBankName ?? prev.bankBankName,
-              bankRoutingNumber: d.bankRoutingNumber ?? prev.bankRoutingNumber,
-              bankInstructions: d.bankInstructions ?? prev.bankInstructions,
-            }))
-          }
-        }),
-        settingsApi.getSettingsByGroup('api').then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setExchangeRateKeys((prev) => ({
-              exchangerate_api_key: d.exchangerate_api_key ?? prev.exchangerate_api_key,
-              coingecko_api_key: d.coingecko_api_key ?? prev.coingecko_api_key,
-            }))
-            setApiSettings((prev) => ({
-              ...prev,
-              apiEnabled: d.apiEnabled ?? prev.apiEnabled,
-              rateLimit: d.rateLimit ?? prev.rateLimit,
-              webhookUrl: d.webhookUrl ?? prev.webhookUrl,
-            }))
-            setEsimSettings((prev) => ({
-              esimDefaultProvider: d.esimDefaultProvider ?? prev.esimDefaultProvider,
-              esimGoEnabled: d.esimGoEnabled ?? prev.esimGoEnabled,
-              esimGoApiKey: d.esimGoApiKey ?? prev.esimGoApiKey,
-              airaloEnabled: d.airaloEnabled ?? prev.airaloEnabled,
-              airaloMode: d.airaloMode ?? prev.airaloMode,
-              airaloSandboxClientId: d.airaloSandboxClientId ?? prev.airaloSandboxClientId,
-              airaloSandboxClientSecret: d.airaloSandboxClientSecret ?? prev.airaloSandboxClientSecret,
-              airaloProductionClientId: d.airaloProductionClientId ?? prev.airaloProductionClientId,
-              airaloProductionClientSecret: d.airaloProductionClientSecret ?? prev.airaloProductionClientSecret,
-              mobimatterEnabled: d.mobimatterEnabled ?? prev.mobimatterEnabled,
-              mobimatterMerchantId: d.mobimatterMerchantId ?? prev.mobimatterMerchantId,
-              mobimatterApiKey: d.mobimatterApiKey ?? prev.mobimatterApiKey,
-            }))
-            setVoiceEsimSettings((prev) => ({
-              voiceEsimDefaultProvider: d.voiceEsimDefaultProvider ?? prev.voiceEsimDefaultProvider,
-              telnyxEnabled: d.telnyxEnabled ?? prev.telnyxEnabled,
-              telnyxApiKey: d.telnyxApiKey ?? prev.telnyxApiKey,
-              alosimEnabled: d.alosimEnabled ?? prev.alosimEnabled,
-              alosimApiKey: d.alosimApiKey ?? prev.alosimApiKey,
-              twiseEnabled: d.twiseEnabled ?? prev.twiseEnabled,
-              twiseApiKey: d.twiseApiKey ?? prev.twiseApiKey,
-            }))
-            setVirtualNumberSettings((prev) => ({
-              virtualNumbersEnabled: d.virtualNumbersEnabled ?? prev.virtualNumbersEnabled,
-              virtualNumbersProvider: d.virtualNumbersProvider ?? prev.virtualNumbersProvider,
-              twilioEnabled: d.twilioEnabled ?? prev.twilioEnabled,
-              twilioMode: d.twilioMode ?? prev.twilioMode,
-              twilioTestAccountSid: d.twilioTestAccountSid ?? prev.twilioTestAccountSid,
-              twilioTestAuthToken: d.twilioTestAuthToken ?? prev.twilioTestAuthToken,
-              twilioTestPhoneNumber: d.twilioTestPhoneNumber ?? prev.twilioTestPhoneNumber,
-              twilioLiveAccountSid: d.twilioLiveAccountSid ?? prev.twilioLiveAccountSid,
-              twilioLiveAuthToken: d.twilioLiveAuthToken ?? prev.twilioLiveAuthToken,
-              twilioLivePhoneNumber: d.twilioLivePhoneNumber ?? prev.twilioLivePhoneNumber,
-              plivoEnabled: d.plivoEnabled ?? prev.plivoEnabled,
-              plivoAuthId: d.plivoAuthId ?? prev.plivoAuthId,
-              plivoAuthToken: d.plivoAuthToken ?? prev.plivoAuthToken,
-              vonageEnabled: d.vonageEnabled ?? prev.vonageEnabled,
-              vonageApiKey: d.vonageApiKey ?? prev.vonageApiKey,
-              vonageApiSecret: d.vonageApiSecret ?? prev.vonageApiSecret,
-            }))
-            setGiftCardSettings((prev) => ({
-              giftCardDefaultProvider: d.giftCardDefaultProvider ?? prev.giftCardDefaultProvider,
-              reloadlyEnabled: d.reloadlyEnabled ?? prev.reloadlyEnabled,
-              reloadlyMode: d.reloadlyMode ?? prev.reloadlyMode,
-              reloadlyClientId: d.reloadlyClientId ?? prev.reloadlyClientId,
-              reloadlyClientSecret: d.reloadlyClientSecret ?? prev.reloadlyClientSecret,
-              ezgiftcardEnabled: d.ezgiftcardEnabled ?? prev.ezgiftcardEnabled,
-              ezgiftcardApiKey: d.ezgiftcardApiKey ?? prev.ezgiftcardApiKey,
-              bitrefillEnabled: d.bitrefillEnabled ?? prev.bitrefillEnabled,
-              bitrefillApiKey: d.bitrefillApiKey ?? prev.bitrefillApiKey,
-              bitrefillApiSecret: d.bitrefillApiSecret ?? prev.bitrefillApiSecret,
-              tangoEnabled: d.tangoEnabled ?? prev.tangoEnabled,
-              tangoMode: d.tangoMode ?? prev.tangoMode,
-              tangoSandboxPlatformName: d.tangoSandboxPlatformName ?? prev.tangoSandboxPlatformName,
-              tangoSandboxPlatformKey: d.tangoSandboxPlatformKey ?? prev.tangoSandboxPlatformKey,
-              tangoProductionPlatformName: d.tangoProductionPlatformName ?? prev.tangoProductionPlatformName,
-              tangoProductionPlatformKey: d.tangoProductionPlatformKey ?? prev.tangoProductionPlatformKey,
-              ezpinEnabled: d.ezpinEnabled ?? prev.ezpinEnabled,
-              ezpinSandbox: d.ezpinSandbox ?? prev.ezpinSandbox,
-              ezpinApiKey: d.ezpinApiKey ?? prev.ezpinApiKey,
-              ezpinApiSecret: d.ezpinApiSecret ?? prev.ezpinApiSecret,
-            }))
-            setOtpSettings((prev) => ({
-              otpDefaultProvider: d.otpDefaultProvider ?? prev.otpDefaultProvider,
-              smspoolEnabled: d.smspoolEnabled ?? prev.smspoolEnabled,
-              smspoolApiKey: d.smspoolApiKey ?? prev.smspoolApiKey,
-              fivesimEnabled: d.fivesimEnabled ?? prev.fivesimEnabled,
-              fivesimApiKey: d.fivesimApiKey ?? prev.fivesimApiKey,
-            }))
-          }
-        }),
-        settingsApi.getSettingsByGroup('cron').then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setCronSettings((prev) => ({
-              cronEnabled: d.cronEnabled ?? prev.cronEnabled,
-              cronSecret: d.cronSecret ?? prev.cronSecret,
-            }))
-          }
-        }),
-        settingsApi.getSettingsByGroup('referral').then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setReferralSettings((prev) => ({
-              referralProgramEnabled: d.referralProgramEnabled ?? prev.referralProgramEnabled,
-              referrerRewardAmount: d.referrerRewardAmount ?? prev.referrerRewardAmount,
-              refereeRewardAmount: d.refereeRewardAmount ?? prev.refereeRewardAmount,
-              minFirstPurchase: d.minFirstPurchase ?? prev.minFirstPurchase,
-            }))
-          }
-        }),
-        settingsApi.getSettingsByGroup('marketing').then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setMarketingSettings((prev) => ({
-              ...prev,
-              facebookPixelId: d.facebookPixelId ?? prev.facebookPixelId,
-              ga4MeasurementId: d.ga4MeasurementId ?? prev.ga4MeasurementId,
-              defaultOgImage: d.defaultOgImage ?? prev.defaultOgImage,
-              customHeadCode: d.customHeadCode ?? prev.customHeadCode,
-              customBodyCode: d.customBodyCode ?? prev.customBodyCode,
-            }))
-          }
-        }),
-        settingsApi.getSettingsByGroup('seo').then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setSeoSettings((prev) => {
-              const updated = { ...prev }
-              for (const key of Object.keys(prev)) {
-                if (d[key] !== undefined && d[key] !== null) (updated as any)[key] = d[key]
-              }
-              return updated
-            })
-          }
-        }),
-        settingsApi.getR2Settings().then((res) => {
-          if (res.success && res.data) {
-            const d = res.data
-            setR2Settings({
-              accountId: d.accountId || '',
-              accessKeyId: d.accessKeyId || '',
-              secretAccessKey: '',
-              bucketName: d.bucketName || 'zenorar-scripts',
-              isConfigured: d.isConfigured,
-            })
-            setR2SecretPlaceholder(d.secretAccessKey || '')
-          }
-        }),
-        apiFetch<any[]>('/apikeys').then((res) => {
-          if (res.success) setApiKeys(res.data || [])
-        }),
-      ])
-      setSettingsLoading(false)
-    }
-    loadAllSettings()
+    settingsApi.getSettingsByGroup('general').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setGeneralSettings((prev) => ({
+          ...prev,
+          siteName: d.siteName ?? prev.siteName,
+          siteDescription: d.siteDescription ?? prev.siteDescription,
+          supportEmail: d.supportEmail ?? prev.supportEmail,
+          timezone: d.timezone ?? prev.timezone,
+          currency: d.currency ?? prev.currency,
+          maintenanceMode: d.maintenanceMode ?? prev.maintenanceMode,
+          logoUrl: d.logoUrl ?? prev.logoUrl,
+          logoMediaId: d.logoMediaId ?? prev.logoMediaId,
+          faviconUrl: d.faviconUrl ?? prev.faviconUrl,
+          faviconMediaId: d.faviconMediaId ?? prev.faviconMediaId,
+          promoBannerCode: d.promoBannerCode ?? prev.promoBannerCode,
+        }))
+      }
+    })
+  }, [])
+
+  // Load security settings from API on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('security').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setSecuritySettings((prev) => ({
+          ...prev,
+          twoFactorAuth: d.twoFactorAuth ?? prev.twoFactorAuth,
+          sessionTimeout: d.sessionTimeout ?? prev.sessionTimeout,
+          loginAttempts: d.loginAttempts ?? prev.loginAttempts,
+          passwordExpiry: d.passwordExpiry ?? prev.passwordExpiry,
+          ipWhitelist: d.ipWhitelist ?? prev.ipWhitelist,
+        }))
+      }
+    })
+  }, [])
+
+  // Load notification settings from API on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('notifications').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setNotificationSettings((prev) => ({
+          ...prev,
+          emailNewOrder: d.emailNewOrder ?? prev.emailNewOrder,
+          emailNewUser: d.emailNewUser ?? prev.emailNewUser,
+          emailLowStock: d.emailLowStock ?? prev.emailLowStock,
+          emailTicket: d.emailTicket ?? prev.emailTicket,
+          pushEnabled: d.pushEnabled ?? prev.pushEnabled,
+          slackWebhook: d.slackWebhook ?? prev.slackWebhook,
+        }))
+      }
+    })
+    // Load sent notifications
     fetchSentNotifications()
+    // Load payment settings
+    settingsApi.getSettingsByGroup('payments').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setPaymentSettings((prev) => ({
+          ...prev,
+          // Web3 Wallet
+          walletEnabled: d.walletEnabled ?? prev.walletEnabled,
+          // Stripe
+          stripeEnabled: d.stripeEnabled ?? prev.stripeEnabled,
+          stripeMode: d.stripeMode ?? prev.stripeMode,
+          stripeTestPublicKey: d.stripeTestPublicKey ?? prev.stripeTestPublicKey,
+          stripeTestSecretKey: d.stripeTestSecretKey ?? prev.stripeTestSecretKey,
+          stripeTestWebhookSecret: d.stripeTestWebhookSecret ?? prev.stripeTestWebhookSecret,
+          stripeLivePublicKey: d.stripeLivePublicKey ?? prev.stripeLivePublicKey,
+          stripeLiveSecretKey: d.stripeLiveSecretKey ?? prev.stripeLiveSecretKey,
+          stripeLiveWebhookSecret: d.stripeLiveWebhookSecret ?? prev.stripeLiveWebhookSecret,
+          // Paystack
+          paystackEnabled: d.paystackEnabled ?? prev.paystackEnabled,
+          paystackMode: d.paystackMode ?? prev.paystackMode,
+          paystackTestPublicKey: d.paystackTestPublicKey ?? prev.paystackTestPublicKey,
+          paystackTestSecretKey: d.paystackTestSecretKey ?? prev.paystackTestSecretKey,
+          paystackTestWebhookSecret: d.paystackTestWebhookSecret ?? prev.paystackTestWebhookSecret,
+          paystackLivePublicKey: d.paystackLivePublicKey ?? prev.paystackLivePublicKey,
+          paystackLiveSecretKey: d.paystackLiveSecretKey ?? prev.paystackLiveSecretKey,
+          paystackLiveWebhookSecret: d.paystackLiveWebhookSecret ?? prev.paystackLiveWebhookSecret,
+          // Enhanced Crypto
+          cryptoEnabled: d.cryptoEnabled ?? prev.cryptoEnabled,
+          cryptoMethod: d.cryptoMethod ?? prev.cryptoMethod,
+          receivingWalletAddress: d.receivingWalletAddress ?? prev.receivingWalletAddress,
+          btcAddress: d.btcAddress ?? prev.btcAddress,
+          ethAddress: d.ethAddress ?? prev.ethAddress,
+          usdtEthAddress: d.usdtEthAddress ?? prev.usdtEthAddress,
+          usdtBscAddress: d.usdtBscAddress ?? prev.usdtBscAddress,
+          usdtTronAddress: d.usdtTronAddress ?? prev.usdtTronAddress,
+          bnbAddress: d.bnbAddress ?? prev.bnbAddress,
+          usdcAddress: d.usdcAddress ?? prev.usdcAddress,
+          solAddress: d.solAddress ?? prev.solAddress,
+          cryptoProcessor: d.cryptoProcessor ?? prev.cryptoProcessor,
+          cryptoApiKey: d.cryptoApiKey ?? prev.cryptoApiKey,
+          cryptoWebhookSecret: d.cryptoWebhookSecret ?? prev.cryptoWebhookSecret,
+          // PayPal
+          paypalEnabled: d.paypalEnabled ?? prev.paypalEnabled,
+          paypalMode: d.paypalMode ?? prev.paypalMode,
+          paypalPlatform: d.paypalPlatform ?? prev.paypalPlatform,
+          paypalTestClientId: d.paypalTestClientId ?? prev.paypalTestClientId,
+          paypalTestSecretKey: d.paypalTestSecretKey ?? prev.paypalTestSecretKey,
+          paypalLiveClientId: d.paypalLiveClientId ?? prev.paypalLiveClientId,
+          paypalLiveSecretKey: d.paypalLiveSecretKey ?? prev.paypalLiveSecretKey,
+          // General
+          autoWithdraw: d.autoWithdraw ?? prev.autoWithdraw,
+          withdrawThreshold: d.withdrawThreshold ?? prev.withdrawThreshold,
+          // Wallet Deposits
+          walletDepositsEnabled: d.walletDepositsEnabled ?? prev.walletDepositsEnabled,
+          depositMinAmount: d.depositMinAmount ?? prev.depositMinAmount,
+          depositMaxAmount: d.depositMaxAmount ?? prev.depositMaxAmount,
+          depositCardEnabled: d.depositCardEnabled ?? prev.depositCardEnabled,
+          depositPaystackEnabled: d.depositPaystackEnabled ?? prev.depositPaystackEnabled,
+          depositPaypalEnabled: d.depositPaypalEnabled ?? prev.depositPaypalEnabled,
+          depositCryptoEnabled: d.depositCryptoEnabled ?? prev.depositCryptoEnabled,
+          depositBankEnabled: d.depositBankEnabled ?? prev.depositBankEnabled,
+          // Bank Transfer Account Details
+          bankAccountName: d.bankAccountName ?? prev.bankAccountName,
+          bankAccountNumber: d.bankAccountNumber ?? prev.bankAccountNumber,
+          bankBankName: d.bankBankName ?? prev.bankBankName,
+          bankRoutingNumber: d.bankRoutingNumber ?? prev.bankRoutingNumber,
+          bankInstructions: d.bankInstructions ?? prev.bankInstructions,
+        }))
+      }
+    })
+    // Load API settings (Exchange Rates, eSIM, Virtual Numbers)
+    settingsApi.getSettingsByGroup('api').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setExchangeRateKeys((prev) => ({
+          exchangerate_api_key: d.exchangerate_api_key ?? prev.exchangerate_api_key,
+          coingecko_api_key: d.coingecko_api_key ?? prev.coingecko_api_key,
+        }))
+        setApiSettings((prev) => ({
+          ...prev,
+          apiEnabled: d.apiEnabled ?? prev.apiEnabled,
+          rateLimit: d.rateLimit ?? prev.rateLimit,
+          webhookUrl: d.webhookUrl ?? prev.webhookUrl,
+        }))
+        // Data eSIM Provider settings
+        setEsimSettings((prev) => ({
+          esimDefaultProvider: d.esimDefaultProvider ?? prev.esimDefaultProvider,
+          esimGoEnabled: d.esimGoEnabled ?? prev.esimGoEnabled,
+          esimGoApiKey: d.esimGoApiKey ?? prev.esimGoApiKey,
+          airaloEnabled: d.airaloEnabled ?? prev.airaloEnabled,
+          airaloMode: d.airaloMode ?? prev.airaloMode,
+          airaloSandboxClientId: d.airaloSandboxClientId ?? prev.airaloSandboxClientId,
+          airaloSandboxClientSecret: d.airaloSandboxClientSecret ?? prev.airaloSandboxClientSecret,
+          airaloProductionClientId: d.airaloProductionClientId ?? prev.airaloProductionClientId,
+          airaloProductionClientSecret: d.airaloProductionClientSecret ?? prev.airaloProductionClientSecret,
+          mobimatterEnabled: d.mobimatterEnabled ?? prev.mobimatterEnabled,
+          mobimatterMerchantId: d.mobimatterMerchantId ?? prev.mobimatterMerchantId,
+          mobimatterApiKey: d.mobimatterApiKey ?? prev.mobimatterApiKey,
+        }))
+        // Voice eSIM Provider settings
+        setVoiceEsimSettings((prev) => ({
+          voiceEsimDefaultProvider: d.voiceEsimDefaultProvider ?? prev.voiceEsimDefaultProvider,
+          telnyxEnabled: d.telnyxEnabled ?? prev.telnyxEnabled,
+          telnyxApiKey: d.telnyxApiKey ?? prev.telnyxApiKey,
+          alosimEnabled: d.alosimEnabled ?? prev.alosimEnabled,
+          alosimApiKey: d.alosimApiKey ?? prev.alosimApiKey,
+          twiseEnabled: d.twiseEnabled ?? prev.twiseEnabled,
+          twiseApiKey: d.twiseApiKey ?? prev.twiseApiKey,
+        }))
+        // Virtual Numbers settings
+        setVirtualNumberSettings((prev) => ({
+          virtualNumbersEnabled: d.virtualNumbersEnabled ?? prev.virtualNumbersEnabled,
+          virtualNumbersProvider: d.virtualNumbersProvider ?? prev.virtualNumbersProvider,
+          // Twilio
+          twilioEnabled: d.twilioEnabled ?? prev.twilioEnabled,
+          twilioMode: d.twilioMode ?? prev.twilioMode,
+          twilioTestAccountSid: d.twilioTestAccountSid ?? prev.twilioTestAccountSid,
+          twilioTestAuthToken: d.twilioTestAuthToken ?? prev.twilioTestAuthToken,
+          twilioTestPhoneNumber: d.twilioTestPhoneNumber ?? prev.twilioTestPhoneNumber,
+          twilioLiveAccountSid: d.twilioLiveAccountSid ?? prev.twilioLiveAccountSid,
+          twilioLiveAuthToken: d.twilioLiveAuthToken ?? prev.twilioLiveAuthToken,
+          twilioLivePhoneNumber: d.twilioLivePhoneNumber ?? prev.twilioLivePhoneNumber,
+          // Plivo
+          plivoEnabled: d.plivoEnabled ?? prev.plivoEnabled,
+          plivoAuthId: d.plivoAuthId ?? prev.plivoAuthId,
+          plivoAuthToken: d.plivoAuthToken ?? prev.plivoAuthToken,
+          // Vonage
+          vonageEnabled: d.vonageEnabled ?? prev.vonageEnabled,
+          vonageApiKey: d.vonageApiKey ?? prev.vonageApiKey,
+          vonageApiSecret: d.vonageApiSecret ?? prev.vonageApiSecret,
+        }))
+        // Gift Card Providers settings
+        setGiftCardSettings((prev) => ({
+          giftCardDefaultProvider: d.giftCardDefaultProvider ?? prev.giftCardDefaultProvider,
+          // Reloadly
+          reloadlyEnabled: d.reloadlyEnabled ?? prev.reloadlyEnabled,
+          reloadlyMode: d.reloadlyMode ?? prev.reloadlyMode,
+          reloadlyClientId: d.reloadlyClientId ?? prev.reloadlyClientId,
+          reloadlyClientSecret: d.reloadlyClientSecret ?? prev.reloadlyClientSecret,
+          // EZGiftCard
+          ezgiftcardEnabled: d.ezgiftcardEnabled ?? prev.ezgiftcardEnabled,
+          ezgiftcardApiKey: d.ezgiftcardApiKey ?? prev.ezgiftcardApiKey,
+          // Bitrefill
+          bitrefillEnabled: d.bitrefillEnabled ?? prev.bitrefillEnabled,
+          bitrefillApiKey: d.bitrefillApiKey ?? prev.bitrefillApiKey,
+          bitrefillApiSecret: d.bitrefillApiSecret ?? prev.bitrefillApiSecret,
+          // Tango Card
+          tangoEnabled: d.tangoEnabled ?? prev.tangoEnabled,
+          tangoMode: d.tangoMode ?? prev.tangoMode,
+          tangoSandboxPlatformName: d.tangoSandboxPlatformName ?? prev.tangoSandboxPlatformName,
+          tangoSandboxPlatformKey: d.tangoSandboxPlatformKey ?? prev.tangoSandboxPlatformKey,
+          tangoProductionPlatformName: d.tangoProductionPlatformName ?? prev.tangoProductionPlatformName,
+          tangoProductionPlatformKey: d.tangoProductionPlatformKey ?? prev.tangoProductionPlatformKey,
+          // EZ Pin
+          ezpinEnabled: d.ezpinEnabled ?? prev.ezpinEnabled,
+          ezpinSandbox: d.ezpinSandbox ?? prev.ezpinSandbox,
+          ezpinApiKey: d.ezpinApiKey ?? prev.ezpinApiKey,
+          ezpinApiSecret: d.ezpinApiSecret ?? prev.ezpinApiSecret,
+        }))
+
+        // OTP Providers settings
+        setOtpSettings((prev) => ({
+          otpDefaultProvider: d.otpDefaultProvider ?? prev.otpDefaultProvider,
+          // SMSPool
+          smspoolEnabled: d.smspoolEnabled ?? prev.smspoolEnabled,
+          smspoolApiKey: d.smspoolApiKey ?? prev.smspoolApiKey,
+          // 5sim
+          fivesimEnabled: d.fivesimEnabled ?? prev.fivesimEnabled,
+          fivesimApiKey: d.fivesimApiKey ?? prev.fivesimApiKey,
+        }))
+      }
+    })
+    // Load cron settings
+    settingsApi.getSettingsByGroup('cron').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setCronSettings((prev) => ({
+          cronEnabled: d.cronEnabled ?? prev.cronEnabled,
+          cronSecret: d.cronSecret ?? prev.cronSecret,
+        }))
+      }
+    })
+    // Load referral settings
+    settingsApi.getSettingsByGroup('referral').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setReferralSettings((prev) => ({
+          referralProgramEnabled: d.referralProgramEnabled ?? prev.referralProgramEnabled,
+          referrerRewardAmount: d.referrerRewardAmount ?? prev.referrerRewardAmount,
+          refereeRewardAmount: d.refereeRewardAmount ?? prev.refereeRewardAmount,
+          minFirstPurchase: d.minFirstPurchase ?? prev.minFirstPurchase,
+        }))
+      }
+    })
+    // Load marketing settings
+    settingsApi.getSettingsByGroup('marketing').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setMarketingSettings((prev) => ({
+          ...prev,
+          facebookPixelId: d.facebookPixelId ?? prev.facebookPixelId,
+          ga4MeasurementId: d.ga4MeasurementId ?? prev.ga4MeasurementId,
+          defaultOgImage: d.defaultOgImage ?? prev.defaultOgImage,
+          customHeadCode: d.customHeadCode ?? prev.customHeadCode,
+          customBodyCode: d.customBodyCode ?? prev.customBodyCode,
+        }))
+      }
+    })
+  }, [])
+
+  // Load SEO settings on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('seo').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setSeoSettings((prev) => {
+          const updated = { ...prev }
+          for (const key of Object.keys(prev)) {
+            if (d[key] !== undefined && d[key] !== null) (updated as any)[key] = d[key]
+          }
+          return updated
+        })
+      }
+    }).catch(() => {})
+  }, [])
+
+  // Load R2 settings on mount
+  useEffect(() => {
+    settingsApi.getR2Settings().then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setR2Settings({
+          accountId: d.accountId || '',
+          accessKeyId: d.accessKeyId || '',
+          secretAccessKey: '',
+          bucketName: d.bucketName || 'zenorar-scripts',
+          isConfigured: d.isConfigured,
+        })
+        setR2SecretPlaceholder(d.secretAccessKey || '')
+      }
+    })
+  }, [])
+
+  // Load API keys on mount
+  useEffect(() => {
+    apiFetch<any[]>('/apikeys').then((res) => {
+      if (res.success) setApiKeys(res.data || [])
+    }).catch(() => {})
   }, [])
 
   // Generate new API key
@@ -1414,17 +1458,6 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Tab Content */}
-        {settingsLoading && activeTab !== 'profile' ? (
-          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 sm:p-6 mb-6">
-            <div className="flex items-center justify-center py-20">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-slate-500 text-sm">Loading settings...</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-        <>
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 sm:p-6 mb-6">
           {/* Success/Error Message */}
           {message && (
@@ -5610,8 +5643,6 @@ export default function AdminSettingsPage() {
             </div>
           )}
         </div>
-        </>
-        )}
 
         {/* Save Button */}
         <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6">

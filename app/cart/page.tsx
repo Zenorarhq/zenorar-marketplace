@@ -10,21 +10,21 @@ import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
+import { usePreferences } from '@/contexts/PreferencesContext'
 import { discountsApi, type ValidateDiscountResponse } from '@/lib/api/discounts'
 import { settingsApi } from '@/lib/api/settings'
 
 export default function CartPage() {
   const router = useRouter()
   const { items, itemCount, total, updateQuantity, removeItem, clearCart, validateCart } = useCart()
+  const { formatPrice } = usePreferences()
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState<ValidateDiscountResponse | null>(null)
   const [promoError, setPromoError] = useState('')
   const [isValidating, setIsValidating] = useState(false)
 
-  // Tax and shipping settings
+  // Tax settings
   const [taxRate, setTaxRate] = useState(0)
-  const [shippingCost, setShippingCost] = useState(0)
-  const [freeShippingThreshold, setFreeShippingThreshold] = useState(0)
 
   // Cart validation
   const [validationErrors, setValidationErrors] = useState<Array<{ productId: string; issue: string }>>([])
@@ -49,13 +49,11 @@ export default function CartPage() {
     }
   }, [])
 
-  // Load tax and shipping settings
+  // Load tax settings
   useEffect(() => {
     settingsApi.getPublicSettings().then((res) => {
       if (res.success && res.data) {
         setTaxRate(parseFloat(res.data.taxRate || '0'))
-        setShippingCost(parseFloat(res.data.shippingCost || '0'))
-        setFreeShippingThreshold(parseFloat(res.data.freeShippingThreshold || '0'))
       }
     })
   }, [])
@@ -101,16 +99,15 @@ export default function CartPage() {
 
     // Validate cart before proceeding
     const validation = await validateCart()
-    console.log('[CART DEBUG] validateCart result:', JSON.stringify(validation))
 
     if (!validation.valid) {
-      setValidationErrors(validation.issues || [])
+      setValidationErrors(validation.issues)
       setIsCheckingOut(false)
       return
     }
 
     // Save tax and shipping to session for checkout page
-    sessionStorage.setItem('shipping_amount', calculatedShipping.toFixed(2))
+    sessionStorage.setItem('shipping_amount', '0.00')
     sessionStorage.setItem('tax_amount', calculatedTax.toFixed(2))
     sessionStorage.setItem('tax_rate', taxRate.toString())
 
@@ -121,15 +118,11 @@ export default function CartPage() {
   const discountAmount = discount?.discountAmount ?? 0
   const subtotal = total - discountAmount
 
-  // Calculate shipping (free if subtotal exceeds threshold)
-  const calculatedShipping = (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) ? 0 : shippingCost
-
-  // Calculate tax on (subtotal + shipping)
-  const taxableAmount = subtotal + calculatedShipping
-  const calculatedTax = taxableAmount * (taxRate / 100)
+  // Calculate tax on subtotal (digital marketplace — no shipping)
+  const calculatedTax = subtotal * (taxRate / 100)
 
   // Final total
-  const finalTotal = subtotal + calculatedShipping + calculatedTax
+  const finalTotal = subtotal + calculatedTax
 
   if (!items || items.length === 0) {
     return (
@@ -185,7 +178,7 @@ export default function CartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-6">
-            {items.map((item) => (
+            {(items || []).map((item) => (
               <div
                 key={`${item.product.id}-${item.license}`}
                 className="bg-surface-dark border border-border-dark rounded-2xl p-6 flex gap-6"
@@ -251,7 +244,7 @@ export default function CartPage() {
 
                     {/* Price */}
                     <div className="text-xl font-bold text-white">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      {formatPrice(item.price * item.quantity)}
                     </div>
                   </div>
                 </div>
@@ -267,7 +260,7 @@ export default function CartPage() {
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-slate-400">
                   <span>Subtotal</span>
-                  <span className="text-white font-medium">${total.toFixed(2)}</span>
+                  <span className="text-white font-medium">{formatPrice(total)}</span>
                 </div>
                 {discount && (
                   <div className="flex justify-between text-slate-400">
@@ -275,27 +268,19 @@ export default function CartPage() {
                       Discount
                       <span className="text-xs text-primary">({discount.code})</span>
                     </span>
-                    <span className="text-primary font-medium">-${discountAmount.toFixed(2)}</span>
+                    <span className="text-primary font-medium">-{formatPrice(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-slate-400">
-                  <span>Shipping</span>
-                  {calculatedShipping === 0 && freeShippingThreshold > 0 ? (
-                    <span className="text-primary font-medium">FREE</span>
-                  ) : (
-                    <span className="text-white font-medium">${calculatedShipping.toFixed(2)}</span>
-                  )}
-                </div>
-                <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
-                  <span className="text-white font-medium">${calculatedTax.toFixed(2)}</span>
+                  <span className="text-white font-medium">{formatPrice(calculatedTax)}</span>
                 </div>
               </div>
 
               <div className="border-t border-border-dark pt-4 mb-8">
                 <div className="flex justify-between">
                   <span className="text-lg font-bold text-white">Total</span>
-                  <span className="text-2xl font-extrabold text-white">${finalTotal.toFixed(2)}</span>
+                  <span className="text-2xl font-extrabold text-white">{formatPrice(finalTotal)}</span>
                 </div>
               </div>
 
