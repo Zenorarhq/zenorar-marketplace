@@ -8,6 +8,11 @@ export interface UserFilters {
   limit?: number
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
+  dateFrom?: string
+  dateTo?: string
+  status?: 'all' | 'active' | 'blocked'
+  minOrders?: number
+  maxOrders?: number
 }
 
 export interface UserStats {
@@ -138,6 +143,44 @@ export const usersApi = {
   } = {}): Promise<ApiResponse<any>> {
     const query = buildQueryString(filters)
     return apiFetch<any>(`/users/guest-orders${query}`)
+  },
+
+  /**
+   * Bulk delete users
+   */
+  async bulkDelete(ids: string[]): Promise<ApiResponse<{ deleted: number; total: number }>> {
+    return apiFetch<{ deleted: number; total: number }>('/users/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    })
+  },
+
+  /**
+   * Bulk block/unblock users
+   */
+  async bulkBlock(ids: string[], block: boolean, reason?: string): Promise<ApiResponse<{ updated: number; total: number }>> {
+    return apiFetch<{ updated: number; total: number }>('/users/bulk-block', {
+      method: 'POST',
+      body: JSON.stringify({ ids, block, reason }),
+    })
+  },
+
+  /**
+   * Bulk send email to users
+   */
+  async bulkEmail(ids: string[], subject: string, message: string): Promise<ApiResponse<{ sent: number; total: number }>> {
+    return apiFetch<{ sent: number; total: number }>('/users/bulk-email', {
+      method: 'POST',
+      body: JSON.stringify({ ids, subject, message }),
+    })
+  },
+
+  /**
+   * Export users as CSV (triggers file download)
+   */
+  exportCsvUrl(filters: UserFilters = {}): string {
+    const query = buildQueryString(filters)
+    return `/users/export${query}`
   },
 
   /**

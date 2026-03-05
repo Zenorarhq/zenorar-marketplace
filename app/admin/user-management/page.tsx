@@ -93,19 +93,30 @@ function UsersTab() {
   const [showOrdersModal, setShowOrdersModal] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [emailForm, setEmailForm] = useState({ subject: '', message: '' })
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [showBulkEmail, setShowBulkEmail] = useState(false)
+  const [bulkEmailForm, setBulkEmailForm] = useState({ subject: '', message: '' })
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<{ dateFrom?: string; dateTo?: string; status?: string; minOrders?: string; maxOrders?: string }>({})
+  const [bulkLoading, setBulkLoading] = useState(false)
   const limit = 20
 
   const { data, isLoading } = useQuery<UsersListResponse>({
-    queryKey: ['admin-users', currentPage, searchQuery],
+    queryKey: ['admin-users', currentPage, searchQuery, filters],
     queryFn: async () => {
-      const filters: any = {
+      const params: any = {
         page: currentPage,
         limit,
         search: searchQuery || undefined,
-        isStaff: false, // Only show customers, not staff
-        role: 'VIEWER', // Only show VIEWER role (true customers)
+        isStaff: false,
+        role: 'VIEWER',
+        dateFrom: filters.dateFrom || undefined,
+        dateTo: filters.dateTo || undefined,
+        status: filters.status && filters.status !== 'all' ? filters.status : undefined,
+        minOrders: filters.minOrders ? parseInt(filters.minOrders) : undefined,
+        maxOrders: filters.maxOrders ? parseInt(filters.maxOrders) : undefined,
       }
-      const result = await usersApi.list(filters)
+      const result = await usersApi.list(params)
       if (result.success && result.data) return result.data
       throw new Error(result.error || 'Failed to load users')
     },
@@ -187,6 +198,89 @@ function UsersTab() {
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.length === users.length) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(users.map(u => u.id))
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (!confirm(`Delete ${selectedIds.length} user(s)? This cannot be undone.`)) return
+    setBulkLoading(true)
+    const result = await usersApi.bulkDelete(selectedIds)
+    setBulkLoading(false)
+    if (result.success) {
+      setSelectedIds([])
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-user-stats'] })
+      alert(result.message || 'Users deleted')
+    } else {
+      alert(result.error || 'Failed to delete users')
+    }
+  }
+
+  async function handleBulkBlock(block: boolean) {
+    const action = block ? 'block' : 'unblock'
+    if (!confirm(`${block ? 'Block' : 'Unblock'} ${selectedIds.length} user(s)?`)) return
+    setBulkLoading(true)
+    const result = await usersApi.bulkBlock(selectedIds, block)
+    setBulkLoading(false)
+    if (result.success) {
+      setSelectedIds([])
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      alert(result.message || `Users ${action}ed`)
+    } else {
+      alert(result.error || `Failed to ${action} users`)
+    }
+  }
+
+  async function handleBulkSendEmail() {
+    if (!bulkEmailForm.subject || !bulkEmailForm.message) {
+      alert('Please fill in both subject and message')
+      return
+    }
+    setBulkLoading(true)
+    const result = await usersApi.bulkEmail(selectedIds, bulkEmailForm.subject, bulkEmailForm.message)
+    setBulkLoading(false)
+    if (result.success) {
+      setShowBulkEmail(false)
+      setBulkEmailForm({ subject: '', message: '' })
+      alert(result.message || 'Emails sent')
+    } else {
+      alert(result.error || 'Failed to send emails')
+    }
+  }
+
+  async function handleExportCsv() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+    const params = new URLSearchParams()
+    if (searchQuery) params.set('search', searchQuery)
+    if (filters.status && filters.status !== 'all') params.set('status', filters.status)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    try {
+      const res = await fetch(`${apiBase}/users/export${qs}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'users-export.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Failed to export users')
+    }
+  }
+
   const users = data?.users || []
   const pagination = data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 }
 
@@ -213,18 +307,82 @@ function UsersTab() {
         </div>
       )}
 
-      <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4">
-        <div className="relative">
-          <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search customers..."
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
-            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-          />
+      <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search customers..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+            />
+          </div>
+          <button onClick={() => setShowFilters(!showFilters)} className={`px-3 py-2 rounded-lg border text-sm flex items-center gap-1.5 ${showFilters ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-[#1a1a1a] border-[#2a2a2a] text-slate-400 hover:text-white'}`}>
+            <Icon name="filter" size={16} />
+            <span className="hidden sm:inline">Filters</span>
+          </button>
+          <button onClick={handleExportCsv} className="px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-400 hover:text-white text-sm flex items-center gap-1.5">
+            <Icon name="download" size={16} />
+            <span className="hidden sm:inline">Export CSV</span>
+          </button>
         </div>
+
+        {/* Advanced Filters Panel */}
+        {showFilters && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-2 border-t border-[#1f1f1f]">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Joined From</label>
+              <input type="date" value={filters.dateFrom || ''} onChange={(e) => { setFilters({ ...filters, dateFrom: e.target.value }); setCurrentPage(1) }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-1.5 px-2 text-sm text-white focus:outline-none focus:border-primary/50" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Joined To</label>
+              <input type="date" value={filters.dateTo || ''} onChange={(e) => { setFilters({ ...filters, dateTo: e.target.value }); setCurrentPage(1) }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-1.5 px-2 text-sm text-white focus:outline-none focus:border-primary/50" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Status</label>
+              <select value={filters.status || 'all'} onChange={(e) => { setFilters({ ...filters, status: e.target.value }); setCurrentPage(1) }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-1.5 px-2 text-sm text-white focus:outline-none focus:border-primary/50">
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="blocked">Blocked</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Min Orders</label>
+              <input type="number" min="0" value={filters.minOrders || ''} onChange={(e) => { setFilters({ ...filters, minOrders: e.target.value }); setCurrentPage(1) }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-1.5 px-2 text-sm text-white focus:outline-none focus:border-primary/50" placeholder="0" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Max Orders</label>
+              <input type="number" min="0" value={filters.maxOrders || ''} onChange={(e) => { setFilters({ ...filters, maxOrders: e.target.value }); setCurrentPage(1) }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-1.5 px-2 text-sm text-white focus:outline-none focus:border-primary/50" placeholder="999" />
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Bulk Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-primary/10 border border-primary/20 rounded-lg px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-primary font-medium">{selectedIds.length} user(s) selected</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setShowBulkEmail(true); setBulkEmailForm({ subject: '', message: '' }) }} disabled={bulkLoading} className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm hover:bg-purple-500/20 disabled:opacity-50">
+              Email
+            </button>
+            <button onClick={() => handleBulkBlock(true)} disabled={bulkLoading} className="px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm hover:bg-orange-500/20 disabled:opacity-50">
+              Block
+            </button>
+            <button onClick={() => handleBulkBlock(false)} disabled={bulkLoading} className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm hover:bg-green-500/20 disabled:opacity-50">
+              Unblock
+            </button>
+            <button onClick={handleBulkDelete} disabled={bulkLoading} className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm hover:bg-red-500/20 disabled:opacity-50">
+              Delete
+            </button>
+            <button onClick={() => setSelectedIds([])} className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-400 text-sm hover:text-white">
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg overflow-hidden">
         {isLoading ? (
@@ -239,16 +397,22 @@ function UsersTab() {
               <table className="w-full">
                 <thead className="bg-[#0a0a0a] border-b border-[#1f1f1f]">
                   <tr>
+                    <th className="px-3 py-3 w-10">
+                      <input type="checkbox" checked={selectedIds.length === users.length && users.length > 0} onChange={toggleSelectAll} className="rounded border-[#2a2a2a] bg-[#1a1a1a] text-primary focus:ring-primary/50" />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">User</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Role</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Joined</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1f1f1f]">
                   {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-[#1a1a1a]">
+                    <tr key={user.id} className={`hover:bg-[#1a1a1a] ${selectedIds.includes(user.id) ? 'bg-primary/5' : ''}`}>
+                      <td className="px-3 py-3 w-10">
+                        <input type="checkbox" checked={selectedIds.includes(user.id)} onChange={() => toggleSelect(user.id)} className="rounded border-[#2a2a2a] bg-[#1a1a1a] text-primary focus:ring-primary/50" />
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
@@ -260,9 +424,8 @@ function UsersTab() {
                       <td className="px-4 py-3 text-slate-400">{user.email}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          user.role === 'ADMIN' ? 'bg-red-500/10 text-red-400' :
-                          user.role === 'EDITOR' ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-500/10 text-slate-400'
-                        }`}>{user.role}</span>
+                          (user as any).isBlocked ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'
+                        }`}>{(user as any).isBlocked ? 'Blocked' : 'Active'}</span>
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-sm">{new Date(user.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-right">
@@ -377,6 +540,34 @@ function UsersTab() {
                 >
                   Send Email
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Email Modal */}
+      {showBulkEmail && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowBulkEmail(false)}>
+          <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg max-w-2xl w-full m-4" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-[#1f1f1f] flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white">Email {selectedIds.length} User(s)</h2>
+              <button onClick={() => setShowBulkEmail(false)} className="text-slate-400 hover:text-white">
+                <Icon name="close" size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Subject</label>
+                <input type="text" value={bulkEmailForm.subject} onChange={(e) => setBulkEmailForm({ ...bulkEmailForm, subject: e.target.value })} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50" placeholder="Email subject" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Message</label>
+                <textarea value={bulkEmailForm.message} onChange={(e) => setBulkEmailForm({ ...bulkEmailForm, message: e.target.value })} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50 min-h-[200px]" placeholder="Your message" />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setShowBulkEmail(false)} className="px-4 py-2 rounded-lg border border-[#2a2a2a] text-white hover:bg-[#1a1a1a]">Cancel</button>
+                <button onClick={handleBulkSendEmail} disabled={bulkLoading} className="px-4 py-2 rounded-lg bg-primary text-black font-medium hover:bg-primary/90 disabled:opacity-50">{bulkLoading ? 'Sending...' : 'Send Email'}</button>
               </div>
             </div>
           </div>
@@ -1061,8 +1252,13 @@ function GuestPurchasesTab() {
 
 // Newsletter Tab Component
 function NewsletterTab() {
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailForm, setEmailForm] = useState({ subject: '', message: '' })
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-newsletter', currentPage, searchQuery],
@@ -1077,6 +1273,79 @@ function NewsletterTab() {
   const total = data?.total || 0
   const totalPages = data?.totalPages || 1
 
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.length === subscribers.length) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(subscribers.map((s: any) => s.id.toString()))
+    }
+  }
+
+  async function handleRemove(id: string, email: string) {
+    if (!confirm(`Remove subscriber "${email}"?`)) return
+    const result = await newsletterApi.removeSubscriber(id)
+    if (result.success) {
+      queryClient.invalidateQueries({ queryKey: ['admin-newsletter'] })
+    } else {
+      alert(result.error || 'Failed to remove subscriber')
+    }
+  }
+
+  async function handleBulkRemove() {
+    if (!confirm(`Remove ${selectedIds.length} subscriber(s)?`)) return
+    setBulkLoading(true)
+    const result = await newsletterApi.bulkRemove(selectedIds)
+    setBulkLoading(false)
+    if (result.success) {
+      setSelectedIds([])
+      queryClient.invalidateQueries({ queryKey: ['admin-newsletter'] })
+      alert(result.message || 'Subscribers removed')
+    } else {
+      alert(result.error || 'Failed to remove subscribers')
+    }
+  }
+
+  async function handleSendBulkEmail() {
+    if (!emailForm.subject || !emailForm.message) {
+      alert('Please fill in both subject and message')
+      return
+    }
+    setBulkLoading(true)
+    const result = await newsletterApi.sendBulkEmail(emailForm.subject, emailForm.message)
+    setBulkLoading(false)
+    if (result.success) {
+      setShowEmailModal(false)
+      setEmailForm({ subject: '', message: '' })
+      alert(result.message || 'Emails sent')
+    } else {
+      alert(result.error || 'Failed to send emails')
+    }
+  }
+
+  async function handleExportCsv() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+    try {
+      const res = await fetch(`${apiBase}/newsletter/export`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'newsletter-subscribers.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Failed to export subscribers')
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Stat */}
@@ -1085,9 +1354,9 @@ function NewsletterTab() {
         <p className="text-3xl font-bold text-white">{total}</p>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+      {/* Search + Actions */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
@@ -1097,7 +1366,30 @@ function NewsletterTab() {
             className="w-full pl-9 pr-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
+        <button onClick={() => { setShowEmailModal(true); setEmailForm({ subject: '', message: '' }) }} className="px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm flex items-center gap-1.5 hover:bg-primary/20">
+          <Icon name="mail" size={16} />
+          <span>Send to All</span>
+        </button>
+        <button onClick={handleExportCsv} className="px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-400 hover:text-white text-sm flex items-center gap-1.5">
+          <Icon name="download" size={16} />
+          <span>Export CSV</span>
+        </button>
       </div>
+
+      {/* Bulk Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-primary/10 border border-primary/20 rounded-lg px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-primary font-medium">{selectedIds.length} subscriber(s) selected</span>
+          <div className="flex items-center gap-2">
+            <button onClick={handleBulkRemove} disabled={bulkLoading} className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm hover:bg-red-500/20 disabled:opacity-50">
+              Remove Selected
+            </button>
+            <button onClick={() => setSelectedIds([])} className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-slate-400 text-sm hover:text-white">
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
@@ -1115,16 +1407,28 @@ function NewsletterTab() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#1f1f1f]">
+                  <th className="px-3 py-3 w-10">
+                    <input type="checkbox" checked={selectedIds.length === subscribers.length && subscribers.length > 0} onChange={toggleSelectAll} className="rounded border-[#2a2a2a] bg-[#1a1a1a] text-primary focus:ring-primary/50" />
+                  </th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Email</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Subscribed</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1f1f1f]">
-                {subscribers.map((sub) => (
-                  <tr key={sub.id} className="hover:bg-white/[0.02]">
+                {subscribers.map((sub: any) => (
+                  <tr key={sub.id} className={`hover:bg-white/[0.02] ${selectedIds.includes(sub.id.toString()) ? 'bg-primary/5' : ''}`}>
+                    <td className="px-3 py-3 w-10">
+                      <input type="checkbox" checked={selectedIds.includes(sub.id.toString())} onChange={() => toggleSelect(sub.id.toString())} className="rounded border-[#2a2a2a] bg-[#1a1a1a] text-primary focus:ring-primary/50" />
+                    </td>
                     <td className="px-4 py-3 text-sm text-white">{sub.email}</td>
                     <td className="px-4 py-3 text-sm text-slate-400">
                       {new Date(sub.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => handleRemove(sub.id.toString(), sub.email)} className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Remove Subscriber">
+                        <Icon name="delete" size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -1142,6 +1446,35 @@ function NewsletterTab() {
           </>
         )}
       </div>
+
+      {/* Send Email to All Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEmailModal(false)}>
+          <div className="bg-[#111111] border border-[#1f1f1f] rounded-lg max-w-2xl w-full m-4" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-[#1f1f1f] flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white">Send Email to All Subscribers</h2>
+              <button onClick={() => setShowEmailModal(false)} className="text-slate-400 hover:text-white">
+                <Icon name="close" size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-400">This will send an email to all {total} subscriber(s).</p>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Subject</label>
+                <input type="text" value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50" placeholder="Email subject" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Message</label>
+                <textarea value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 px-4 text-white focus:outline-none focus:border-primary/50 min-h-[200px]" placeholder="Your message" />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setShowEmailModal(false)} className="px-4 py-2 rounded-lg border border-[#2a2a2a] text-white hover:bg-[#1a1a1a]">Cancel</button>
+                <button onClick={handleSendBulkEmail} disabled={bulkLoading} className="px-4 py-2 rounded-lg bg-primary text-black font-medium hover:bg-primary/90 disabled:opacity-50">{bulkLoading ? 'Sending...' : 'Send to All'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
