@@ -33,7 +33,6 @@ export default function AdminSettingsPage() {
   const { user, updateUser, refreshUser } = useAuth()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [saving, setSaving] = useState(false)
-  const [settingsLoading, setSettingsLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Auto-clear message after 4 seconds
@@ -874,6 +873,7 @@ export default function AdminSettingsPage() {
 
   // Fetch sent notifications from backend
   const fetchSentNotifications = async () => {
+    setLoadingSent(true)
     try {
       const data = await apiFetch<any[]>('/notifications/sent')
       if (data.success) {
@@ -882,6 +882,7 @@ export default function AdminSettingsPage() {
     } catch (error) {
       console.error('Failed to fetch sent notifications:', error)
     }
+    setLoadingSent(false)
   }
 
   // Fetch recipients for a batch
@@ -1690,7 +1691,10 @@ export default function AdminSettingsPage() {
                   <p className="text-slate-500 text-sm">Temporarily disable the marketplace for visitors</p>
                 </div>
                 <button
-                  onClick={() => setGeneralSettings({ ...generalSettings, maintenanceMode: !generalSettings.maintenanceMode })}
+                  onClick={() => {
+                    if (!generalSettings.maintenanceMode && !confirm('Enable maintenance mode? This will disable the marketplace for all visitors.')) return
+                    setGeneralSettings({ ...generalSettings, maintenanceMode: !generalSettings.maintenanceMode })
+                  }}
                   className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                     generalSettings.maintenanceMode ? 'bg-primary' : 'bg-[#2a2a2a]'
                   }`}
@@ -2159,6 +2163,7 @@ export default function AdminSettingsPage() {
                             method: 'POST',
                             body: JSON.stringify({
                               userIds: targetUsers.map(u => u.id),
+                              type: sendNotif.type,
                               title: sendNotif.title,
                               message: sendNotif.message,
                             }),
