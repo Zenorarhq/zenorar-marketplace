@@ -37,7 +37,7 @@ interface FormErrors {
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth()
   const { items, total } = useCart()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -56,6 +56,17 @@ export default function CheckoutPage() {
     phone: '',
     deliveryMethod: 'standard',
   })
+
+  // Auto-fill name and email from account when logged in
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        fullName: prev.fullName || user.name || '',
+        email: prev.email || user.email || '',
+      }))
+    }
+  }, [user])
 
   // Redirect to cart if cart is empty
   useEffect(() => {
