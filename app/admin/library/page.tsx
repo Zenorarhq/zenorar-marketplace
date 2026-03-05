@@ -108,6 +108,7 @@ export default function AdminLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['media-files'] })
       setEditingUpload(null)
     },
+    onError: (error: any) => { alert(error.message || 'Failed to update file') },
   })
 
   // Delete mutation
@@ -117,6 +118,7 @@ export default function AdminLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['media-files'] })
       queryClient.invalidateQueries({ queryKey: ['media-stats'] })
     },
+    onError: (error: any) => { alert(error.message || 'Failed to delete file') },
   })
 
   // Upload mutation
@@ -126,6 +128,7 @@ export default function AdminLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['media-files'] })
       queryClient.invalidateQueries({ queryKey: ['media-stats'] })
     },
+    onError: (error: any) => { alert(error.message || 'Failed to upload file') },
   })
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,17 +138,25 @@ export default function AdminLibraryPage() {
   }
 
   const handleUpload = async () => {
+    const failedFiles: string[] = []
     for (const file of uploadingFiles) {
-      await uploadMutation.mutateAsync(file)
+      try {
+        await uploadMutation.mutateAsync(file)
+      } catch {
+        failedFiles.push(file.name)
+      }
     }
     setUploadingFiles([])
     setShowUploadModal(false)
+    if (failedFiles.length > 0) {
+      alert(`Failed to upload: ${failedFiles.join(', ')}`)
+    }
   }
 
   const handleEditClick = (file: MediaFile) => {
     setEditingUpload(file)
     setEditForm({
-      title: file.name || '',
+      title: file.title || file.name || '',
       alt: file.alt || '',
       description: file.description || '',
     })
@@ -363,6 +374,7 @@ export default function AdminLibraryPage() {
                         >
                           <Icon name="edit" size={16} />
                         </button>
+                        {upload.type === 'image' && (
                         <button
                           onClick={() => setPreviewingUpload(upload as any)}
                           className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -370,6 +382,7 @@ export default function AdminLibraryPage() {
                         >
                           <Icon name="eye" size={16} />
                         </button>
+                        )}
                         <button
                           onClick={() => handleDelete(upload.id)}
                           className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"

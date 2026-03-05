@@ -80,8 +80,12 @@ export default function AdminChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const notifSoundRef = useRef<HTMLAudioElement | null>(null)
   const transferRef = useRef<HTMLDivElement>(null)
+  const activeIdRef = useRef<string | null>(null)
 
   const { joinConversation, leaveConversation, joinAdmin, emitTyping, onNewMessage, onConversationNew, onConversationStatus, onConversationAssigned, onTyping } = useChatSocket()
+
+  // Keep activeIdRef in sync so socket callbacks always see latest value
+  useEffect(() => { activeIdRef.current = activeId }, [activeId])
 
   // Init notification sound
   useEffect(() => {
@@ -232,7 +236,7 @@ export default function AdminChatPage() {
         loadConversations()
         loadStats()
         // Only notify if message is not in the currently viewed conversation
-        if (msg.conversationId !== activeId) {
+        if (msg.conversationId !== activeIdRef.current) {
           playNotifSound()
           showBrowserNotif('New message', `${msg.senderName || 'Customer'}: ${msg.content}`)
         }
@@ -254,7 +258,7 @@ export default function AdminChatPage() {
     joinConversation(activeId)
 
     const unsubMessage = onNewMessage((msg: ChatSocketMessage) => {
-      if (msg.conversationId !== activeId) return
+      if (msg.conversationId !== activeIdRef.current) return
 
       setActiveConv(prev => {
         if (!prev) return prev
@@ -398,7 +402,30 @@ export default function AdminChatPage() {
     if (!uploadRes.success || !uploadRes.data) return
 
     const attachment = uploadRes.data
-    await chatApi.sendMessage(activeId, '', [attachment])
+    const localId = 'local-' + Date.now()
+    setActiveConv(prev => {
+      if (!prev) return prev
+      const localMsg: ChatMessage = {
+        id: localId,
+        conversationId: activeId!,
+        senderType: 'AGENT',
+        senderId: user?.id || null,
+        senderName: user?.name || null,
+        content: '',
+        attachments: [attachment],
+        isRead: true,
+        createdAt: new Date().toISOString(),
+      }
+      return { ...prev, messages: [...prev.messages, localMsg] }
+    })
+
+    const res = await chatApi.sendMessage(activeId, '', [attachment])
+    if (res.success && res.data) {
+      setActiveConv(prev => {
+        if (!prev) return prev
+        return { ...prev, messages: prev.messages.map(m => m.id === localId ? { ...m, id: res.data!.id, createdAt: res.data!.createdAt } : m) }
+      })
+    }
 
     if (fileInputRef.current) fileInputRef.current.value = ''
   }

@@ -142,7 +142,7 @@ export default function PurchasesPage() {
   const { data: orders = [], isLoading: ordersLoading, error: ordersError } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: async () => {
-      const result = await ordersApi.list({ limit: 100 })
+      const result = await ordersApi.list({ limit: 500 })
       if (result.success && result.data) return result.data
       throw new Error(result.error || 'Failed to load orders')
     },
@@ -262,6 +262,7 @@ export default function PurchasesPage() {
 
   async function handleStatusUpdate(newStatus: string) {
     if (!detailOrder) return
+    if (!confirm(`Change order status to ${newStatus}?`)) return
     setUpdatingStatus(true)
     try {
       const result = await ordersApi.updateStatus(detailOrder.id, newStatus, statusNote || undefined)

@@ -9,6 +9,23 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+
+    // Verify access: must be conversation owner, matching session, or admin
+    const user = await authenticateRequest(request)
+    const sessionId = request.headers.get('x-session-id')
+    const convCheck = await executeQuery(
+      'SELECT "userId", "sessionId" FROM chat_conversations WHERE id = $1',
+      [id]
+    )
+    if (convCheck.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Conversation not found' }, { status: 404 })
+    }
+    const conv = convCheck.rows[0]
+    const isAdmin = user && (user.role === 'ADMIN' || user.role === 'EDITOR')
+    if (!isAdmin && conv.userId !== user?.id && conv.sessionId !== sessionId) {
+      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 })
+    }
+
     const { searchParams } = new URL(request.url)
     const after = searchParams.get('after') // For polling: only get messages after this timestamp
 
