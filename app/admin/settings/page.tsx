@@ -33,7 +33,6 @@ export default function AdminSettingsPage() {
   const { user, updateUser, refreshUser } = useAuth()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [saving, setSaving] = useState(false)
-  const [settingsLoading, setSettingsLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Auto-clear message after 4 seconds

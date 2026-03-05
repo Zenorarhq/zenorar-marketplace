@@ -10,21 +10,21 @@ import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
-import { usePreferences } from '@/contexts/PreferencesContext'
 import { discountsApi, type ValidateDiscountResponse } from '@/lib/api/discounts'
 import { settingsApi } from '@/lib/api/settings'
 
 export default function CartPage() {
   const router = useRouter()
   const { items, itemCount, total, updateQuantity, removeItem, clearCart, validateCart } = useCart()
-  const { formatPrice } = usePreferences()
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState<ValidateDiscountResponse | null>(null)
   const [promoError, setPromoError] = useState('')
   const [isValidating, setIsValidating] = useState(false)
 
-  // Tax settings
+  // Tax and shipping settings
   const [taxRate, setTaxRate] = useState(0)
+  const [shippingCost, setShippingCost] = useState(0)
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(0)
 
   // Cart validation
   const [validationErrors, setValidationErrors] = useState<Array<{ productId: string; issue: string }>>([])
@@ -49,11 +49,13 @@ export default function CartPage() {
     }
   }, [])
 
-  // Load tax settings
+  // Load tax and shipping settings
   useEffect(() => {
     settingsApi.getPublicSettings().then((res) => {
       if (res.success && res.data) {
         setTaxRate(parseFloat(res.data.taxRate || '0'))
+        setShippingCost(parseFloat(res.data.shippingCost || '0'))
+        setFreeShippingThreshold(parseFloat(res.data.freeShippingThreshold || '0'))
       }
     })
   }, [])
@@ -107,7 +109,7 @@ export default function CartPage() {
     }
 
     // Save tax and shipping to session for checkout page
-    sessionStorage.setItem('shipping_amount', '0.00')
+    sessionStorage.setItem('shipping_amount', calculatedShipping.toFixed(2))
     sessionStorage.setItem('tax_amount', calculatedTax.toFixed(2))
     sessionStorage.setItem('tax_rate', taxRate.toString())
 
@@ -118,13 +120,17 @@ export default function CartPage() {
   const discountAmount = discount?.discountAmount ?? 0
   const subtotal = total - discountAmount
 
-  // Calculate tax on subtotal (digital marketplace — no shipping)
-  const calculatedTax = subtotal * (taxRate / 100)
+  // Calculate shipping (free if subtotal exceeds threshold)
+  const calculatedShipping = (freeShippingThreshold > 0 && subtotal >= freeShippingThreshold) ? 0 : shippingCost
+
+  // Calculate tax on (subtotal + shipping)
+  const taxableAmount = subtotal + calculatedShipping
+  const calculatedTax = taxableAmount * (taxRate / 100)
 
   // Final total
-  const finalTotal = subtotal + calculatedTax
+  const finalTotal = subtotal + calculatedShipping + calculatedTax
 
-  if (!items || items.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="min-h-screen bg-background-dark flex flex-col">
         <Header />
@@ -139,7 +145,7 @@ export default function CartPage() {
               Looks like you haven&apos;t added anything to your cart yet. Start browsing our products to find something you&apos;ll love.
             </p>
             <Link
-              href="/scripts"
+              href="/products"
               className="bg-primary text-black font-bold px-8 py-4 rounded-xl hover:brightness-105 transition-all inline-flex items-center gap-2"
             >
               <Icon name="compass" size={24} />
@@ -178,7 +184,7 @@ export default function CartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-6">
-            {(items || []).map((item) => (
+            {items.map((item) => (
               <div
                 key={`${item.product.id}-${item.license}`}
                 className="bg-surface-dark border border-border-dark rounded-2xl p-6 flex gap-6"
@@ -244,7 +250,7 @@ export default function CartPage() {
 
                     {/* Price */}
                     <div className="text-xl font-bold text-white">
-                      {formatPrice(item.price * item.quantity)}
+                      ${(item.price * item.quantity).toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -260,7 +266,7 @@ export default function CartPage() {
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-slate-400">
                   <span>Subtotal</span>
-                  <span className="text-white font-medium">{formatPrice(total)}</span>
+                  <span className="text-white font-medium">${total.toFixed(2)}</span>
                 </div>
                 {discount && (
                   <div className="flex justify-between text-slate-400">
@@ -268,19 +274,27 @@ export default function CartPage() {
                       Discount
                       <span className="text-xs text-primary">({discount.code})</span>
                     </span>
-                    <span className="text-primary font-medium">-{formatPrice(discountAmount)}</span>
+                    <span className="text-primary font-medium">-${discountAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-slate-400">
+                  <span>Shipping</span>
+                  {calculatedShipping === 0 && freeShippingThreshold > 0 ? (
+                    <span className="text-primary font-medium">FREE</span>
+                  ) : (
+                    <span className="text-white font-medium">${calculatedShipping.toFixed(2)}</span>
+                  )}
+                </div>
+                <div className="flex justify-between text-slate-400">
                   <span>Tax</span>
-                  <span className="text-white font-medium">{formatPrice(calculatedTax)}</span>
+                  <span className="text-white font-medium">${calculatedTax.toFixed(2)}</span>
                 </div>
               </div>
 
               <div className="border-t border-border-dark pt-4 mb-8">
                 <div className="flex justify-between">
                   <span className="text-lg font-bold text-white">Total</span>
-                  <span className="text-2xl font-extrabold text-white">{formatPrice(finalTotal)}</span>
+                  <span className="text-2xl font-extrabold text-white">${finalTotal.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -327,7 +341,7 @@ export default function CartPage() {
               </div>
 
               {/* Validation Errors */}
-              {validationErrors && validationErrors.length > 0 && (
+              {validationErrors.length > 0 && (
                 <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
                   <p className="text-red-400 font-bold mb-2">Cart Validation Issues:</p>
                   <ul className="text-red-400 text-sm space-y-1">
@@ -360,7 +374,7 @@ export default function CartPage() {
               </button>
 
               <Link
-                href="/scripts"
+                href="/products"
                 className="block text-center text-primary text-sm font-bold mt-4 hover:underline"
               >
                 Continue Shopping
