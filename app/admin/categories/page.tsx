@@ -158,7 +158,7 @@ export default function CategoriesPage() {
       {/* Categories Grid - Dashboard Style */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
         {categoriesTree.filter(cat => !cat.parentId).map((category) => {
-          const icon = getCategoryIcon(category.name)
+          const icon = category.icon || getCategoryIcon(category.name)
           const color = getCategoryColor(category.name)
           return (
             <div key={category.id} className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
@@ -218,7 +218,7 @@ export default function CategoriesPage() {
                     return item.parentId && expandedCategories.has(item.parentId)
                   })
                   .map((category: any) => {
-                  const icon = getCategoryIcon(category.name)
+                  const icon = category.icon || getCategoryIcon(category.name)
                   const color = getCategoryColor(category.name)
                   const isSubcategory = category.level === 1
                   const hasChildren = category.level === 0 && category.childrenCount > 0

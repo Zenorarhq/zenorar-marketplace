@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { authenticateRequest } from '@/lib/auth-middleware'
 import { executeQuery } from '@/lib/db-helpers'
 import crypto from 'crypto'
 
@@ -7,6 +8,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await authenticateRequest(request)
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+    const isAdmin = user.role?.toUpperCase() === 'ADMIN' || user.role?.toUpperCase() === 'EDITOR'
+    if (!isAdmin) {
+      return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 })
+    }
+
     const { id: productId } = await params
     const body = await request.json()
     const { url, alt, isPrimary } = body

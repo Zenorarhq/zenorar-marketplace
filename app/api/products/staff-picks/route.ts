@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       FROM products p
       LEFT JOIN categories c ON p."categoryId" = c.id
       LEFT JOIN reviews r ON r."productId" = p.id
-      WHERE p.status = 'ACTIVE' AND p."isStaffPick" = true
+      WHERE p.status = 'ACTIVE' AND p.is_staff_pick = true
       GROUP BY p.id, c.name
       ORDER BY p."createdAt" DESC
       LIMIT ${limit}

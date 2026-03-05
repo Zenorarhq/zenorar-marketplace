@@ -57,12 +57,12 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
         slug: category.slug,
         description: category.description || '',
         image: category.image || '',
-        icon: (category as any).icon || 'code',
+        icon: category.icon || 'code',
       })
       // Set parent category state
-      const hasParent = !!(category as any).parentId
+      const hasParent = !!category.parentId
       setIsMainCategory(!hasParent)
-      setParentCategoryId(hasParent ? (category as any).parentId : null)
+      setParentCategoryId(hasParent ? category.parentId! : null)
     } else {
       setFormData({
         name: '',

@@ -127,7 +127,7 @@ export default function ProductsPage() {
         queryClient.invalidateQueries({ queryKey: ['admin-staff-picks'] })
       }
     } catch {
-      // silently fail
+      alert('Failed to update staff pick status')
     }
   }
 
