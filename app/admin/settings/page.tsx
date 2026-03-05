@@ -33,6 +33,7 @@ export default function AdminSettingsPage() {
   const { user, updateUser, refreshUser } = useAuth()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [saving, setSaving] = useState(false)
+  const [settingsLoading, setSettingsLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Auto-clear message after 4 seconds
@@ -1805,9 +1806,9 @@ export default function AdminSettingsPage() {
                   <div className="mt-4">
                     <p className="text-sm text-slate-400 mb-4">Manage your legal pages using the Page Builder.</p>
                     <div className="space-y-2">
-                      <a href="/admin/frontend?slug=terms" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Terms of Service</a>
-                      <a href="/admin/frontend?slug=privacy" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Privacy Policy</a>
-                      <a href="/admin/frontend?slug=cookies" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="document" size={16} /> Edit Cookie Policy</a>
+                      <a href="/admin/frontend?slug=terms" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="description" size={16} /> Edit Terms of Service</a>
+                      <a href="/admin/frontend?slug=privacy" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="description" size={16} /> Edit Privacy Policy</a>
+                      <a href="/admin/frontend?slug=cookies" className="flex items-center gap-2 text-primary hover:underline text-sm"><Icon name="description" size={16} /> Edit Cookie Policy</a>
                     </div>
                   </div>
                 )}
@@ -2814,7 +2815,7 @@ export default function AdminSettingsPage() {
                         {/* ETH */}
                         <div className="space-y-1.5">
                           <label className="text-sm text-slate-400 flex items-center gap-2">
-                            <Icon name="circle" size={14} className="text-purple-400" />
+                            <Icon name="globe" size={14} className="text-purple-400" />
                             Ethereum (ETH)
                           </label>
                           <input
@@ -2829,7 +2830,7 @@ export default function AdminSettingsPage() {
                         {/* USDT (ERC20) */}
                         <div className="space-y-1.5">
                           <label className="text-sm text-slate-400 flex items-center gap-2">
-                            <Icon name="dollar-sign" size={14} className="text-green-400" />
+                            <Icon name="dollar" size={14} className="text-green-400" />
                             USDT (Ethereum ERC20)
                           </label>
                           <input
@@ -2844,7 +2845,7 @@ export default function AdminSettingsPage() {
                         {/* USDT (BEP20) */}
                         <div className="space-y-1.5">
                           <label className="text-sm text-slate-400 flex items-center gap-2">
-                            <Icon name="dollar-sign" size={14} className="text-yellow-400" />
+                            <Icon name="dollar" size={14} className="text-yellow-400" />
                             USDT (BSC BEP20)
                           </label>
                           <input
@@ -2859,7 +2860,7 @@ export default function AdminSettingsPage() {
                         {/* USDT (TRC20) */}
                         <div className="space-y-1.5">
                           <label className="text-sm text-slate-400 flex items-center gap-2">
-                            <Icon name="dollar-sign" size={14} className="text-red-400" />
+                            <Icon name="dollar" size={14} className="text-red-400" />
                             USDT (Tron TRC20)
                           </label>
                           <input
@@ -2874,7 +2875,7 @@ export default function AdminSettingsPage() {
                         {/* BNB */}
                         <div className="space-y-1.5">
                           <label className="text-sm text-slate-400 flex items-center gap-2">
-                            <Icon name="circle" size={14} className="text-yellow-400" />
+                            <Icon name="globe" size={14} className="text-yellow-400" />
                             BNB (Binance Coin)
                           </label>
                           <input
@@ -2889,7 +2890,7 @@ export default function AdminSettingsPage() {
                         {/* USDC */}
                         <div className="space-y-1.5">
                           <label className="text-sm text-slate-400 flex items-center gap-2">
-                            <Icon name="dollar-sign" size={14} className="text-blue-400" />
+                            <Icon name="dollar" size={14} className="text-blue-400" />
                             USDC (USD Coin)
                           </label>
                           <input
@@ -3487,7 +3488,7 @@ export default function AdminSettingsPage() {
 
                     <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
                       <div className="flex items-start gap-3">
-                        <Icon name="alert-triangle" size={18} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                        <Icon name="alert" size={18} className="text-amber-400 mt-0.5 flex-shrink-0" />
                         <div>
                           <p className="text-amber-400 font-medium text-sm">External Cron Service</p>
                           <p className="text-amber-400/80 text-xs mt-1">
@@ -3511,7 +3512,7 @@ export default function AdminSettingsPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                          <Icon name="trending-up" size={20} className="text-green-400" />
+                          <Icon name="chart" size={20} className="text-green-400" />
                         </div>
                         <div className="text-left">
                           <h3 className="text-white font-semibold text-lg">Exchange Rate APIs</h3>
@@ -3795,7 +3796,7 @@ export default function AdminSettingsPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
-                          <Icon name="phone-call" size={20} className="text-teal-400" />
+                          <Icon name="call" size={20} className="text-teal-400" />
                         </div>
                         <div className="text-left">
                           <h3 className="text-white font-semibold text-lg">Voice eSIM Providers</h3>
@@ -3830,7 +3831,7 @@ export default function AdminSettingsPage() {
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
-                            <Icon name="phone-call" size={20} className="text-teal-400" />
+                            <Icon name="call" size={20} className="text-teal-400" />
                           </div>
                           <div>
                             <p className="text-white font-medium">Telnyx</p>
@@ -3876,7 +3877,7 @@ export default function AdminSettingsPage() {
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                            <Icon name="phone-call" size={20} className="text-cyan-400" />
+                            <Icon name="call" size={20} className="text-cyan-400" />
                           </div>
                           <div>
                             <p className="text-white font-medium">aloSIM</p>
@@ -3922,7 +3923,7 @@ export default function AdminSettingsPage() {
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                            <Icon name="phone-call" size={20} className="text-indigo-400" />
+                            <Icon name="call" size={20} className="text-indigo-400" />
                           </div>
                           <div>
                             <p className="text-white font-medium">Twise</p>
@@ -4755,7 +4756,7 @@ export default function AdminSettingsPage() {
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                                <Icon name="message-square" size={20} className="text-blue-400" />
+                                <Icon name="message" size={20} className="text-blue-400" />
                               </div>
                               <div>
                                 <p className="text-white font-medium">SMSPool</p>
@@ -4801,7 +4802,7 @@ export default function AdminSettingsPage() {
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                                <Icon name="hash" size={20} className="text-green-400" />
+                                <Icon name="tag" size={20} className="text-green-400" />
                               </div>
                               <div>
                                 <p className="text-white font-medium">5sim</p>
@@ -5205,7 +5206,7 @@ export default function AdminSettingsPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                      <Icon name="bar-chart-2" size={24} className="text-blue-400" />
+                      <Icon name="analytics" size={24} className="text-blue-400" />
                     </div>
                     <div className="text-left">
                       <p className="text-white font-semibold text-lg">Tracking & Analytics</p>
@@ -5254,7 +5255,7 @@ export default function AdminSettingsPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-pink-500/10 flex items-center justify-center">
-                      <Icon name="share-2" size={24} className="text-pink-400" />
+                      <Icon name="share" size={24} className="text-pink-400" />
                     </div>
                     <div className="text-left">
                       <p className="text-white font-semibold text-lg">Social Sharing</p>
@@ -5411,7 +5412,7 @@ export default function AdminSettingsPage() {
                 <button onClick={() => toggleSection('openGraph')} className="w-full flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                      <Icon name="share-2" size={24} className="text-blue-400" />
+                      <Icon name="share" size={24} className="text-blue-400" />
                     </div>
                     <div className="text-left">
                       <p className="text-white font-semibold text-lg">Open Graph / Social Sharing Defaults</p>
@@ -5495,7 +5496,7 @@ export default function AdminSettingsPage() {
                 <button onClick={() => toggleSection('robotsTxt')} className="w-full flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                      <Icon name="file-text" size={24} className="text-orange-400" />
+                      <Icon name="file" size={24} className="text-orange-400" />
                     </div>
                     <div className="text-left">
                       <p className="text-white font-semibold text-lg">Robots.txt</p>
