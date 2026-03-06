@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
@@ -97,6 +97,7 @@ export default function VirtualNumbersPage() {
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([])
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null)
   const [numberType, setNumberType] = useState<NumberType>('all')
+  const prevCountryIdRef = useRef<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [showPlanModal, setShowPlanModal] = useState(false)
@@ -161,11 +162,24 @@ export default function VirtualNumbersPage() {
     fetchPlans()
   }, [])
 
-  // Fetch available numbers when country changes
+  // Fetch available numbers when country or type changes
   useEffect(() => {
     if (!selectedCountry) {
       setAvailableNumbers([])
+      prevCountryIdRef.current = null
       return
+    }
+
+    const countryChanged = prevCountryIdRef.current !== selectedCountry.id
+    prevCountryIdRef.current = selectedCountry.id
+
+    // Clear previous numbers immediately to prevent stale tab logic
+    setAvailableNumbers([])
+
+    // Reset to 'all' when country changes to ensure numbers are visible
+    if (countryChanged && numberType !== 'all') {
+      setNumberType('all')
+      return // Effect will re-run with 'all' type
     }
 
     async function fetchNumbers() {
@@ -470,8 +484,8 @@ export default function VirtualNumbersPage() {
             const showAllTab = availableTypes.length > 1
             const tabs: NumberType[] = showAllTab ? ['all', ...availableTypes] : availableTypes
 
-            // If no numbers at all, show all tabs (loading state)
-            if (availableNumbers.length === 0 && !loadingNumbers) {
+            // If no numbers at all or loading, show all tabs
+            if (availableNumbers.length === 0 || loadingNumbers) {
               return (
                 <div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
                   {(['all', 'local', 'toll-free', 'mobile'] as NumberType[]).map((type) => (
