@@ -107,7 +107,8 @@ export function setAccessToken(token: string) {
 export function getAccessToken(): string | null {
   if (accessToken) return accessToken
   if (typeof window !== 'undefined') {
-    accessToken = localStorage.getItem('auth_token')
+    accessToken = localStorage.getItem('admin_auth_token')
+      || localStorage.getItem('auth_token')
   }
   return accessToken
 }
