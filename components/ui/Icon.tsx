@@ -210,6 +210,10 @@ import {
   ArrowRightDoubleIcon,
   Login01Icon,
   Logout01Icon,
+  UndoIcon,
+  RedoIcon,
+  Tablet01Icon,
+  GridTableIcon,
 } from 'hugeicons-react'
 
 // Map of icon names to HugeIcon components
@@ -244,6 +248,8 @@ const iconMap = {
   'chevron-up': ArrowUp01Icon,
   'expand-more': ArrowDown01Icon,
   'expand-less': ArrowUp01Icon,
+  'expand_more': ArrowDown01Icon,
+  'expand_less': ArrowUp01Icon,
 
   // Actions
   add: Add01Icon,
@@ -267,6 +273,8 @@ const iconMap = {
   link: Link01Icon,
   'external-link': LinkSquare02Icon,
   'link-external-01': LinkSquare02Icon,
+  undo: UndoIcon,
+  redo: RedoIcon,
   refresh: RefreshIcon,
   'refresh-cw': RefreshIcon,
   loading: Loading01Icon,
@@ -407,6 +415,7 @@ const iconMap = {
 
   // Devices
   smartphone: SmartPhone01Icon,
+  tablet: Tablet01Icon,
   laptop: LaptopIcon,
   'laptop-mac': LaptopIcon,
   desktop: ComputerIcon,
@@ -488,6 +497,7 @@ const iconMap = {
   'dark-mode': Moon01Icon,
 
   // Layout
+  'view-column': GridTableIcon,
   'layout-left': LeftToRightListNumberIcon,
   layers: Layers01Icon,
   web: GlobeIcon,
