@@ -69,7 +69,43 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
     }
   }, [isOpen, variant])
 
-  if (!isOpen || !items || items.length === 0) return null
+  if (!isOpen) return null
+
+  const isEmpty = !items || items.length === 0
+
+  if (isEmpty) {
+    return (
+      <div
+        ref={dropdownRef}
+        className={variant === 'modal'
+          ? "relative w-[calc(100vw-2rem)] sm:w-[380px] bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10 z-[101]"
+          : "absolute right-0 top-full mt-2 w-[380px] bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10 z-[70]"
+        }
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <Icon name="cart" size={20} className="text-primary" />
+            </div>
+            <h2 className="text-white text-lg font-bold">My Cart</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10"
+          >
+            <Icon name="close" size={20} />
+          </button>
+        </div>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+            <Icon name="cart" size={32} className="text-slate-600" />
+          </div>
+          <h3 className="text-white font-bold text-base mb-1">Your cart is empty</h3>
+          <p className="text-slate-400 text-sm">Looks like you haven't added anything to your cart yet. <Link href="/products" onClick={onClose} className="text-primary hover:underline">Browse products</Link>.</p>
+        </div>
+      </div>
+    )
+  }
 
   const content = (
     <div
