@@ -82,6 +82,7 @@ export default function TabsSection({ props }: TabsSectionProps) {
 
   const tabButtons = (
     <div
+      role="tablist"
       className={`flex ${tabPosition === 'left' ? 'flex-col' : `flex-row ${tabAlignmentClasses[tabAlignment]}`} gap-1`}
     >
       {tabs.map((tab, index) => {
@@ -89,6 +90,8 @@ export default function TabsSection({ props }: TabsSectionProps) {
         return (
           <button
             key={index}
+            role="tab"
+            aria-selected={isActive}
             onClick={() => setActiveTab(index)}
             className={`px-4 py-2.5 text-sm font-medium transition-colors ${borderRadiusClasses[borderRadius]} ${tabAlignment === 'stretch' && tabPosition === 'top' ? 'flex-1' : ''}`}
             style={{
@@ -106,6 +109,7 @@ export default function TabsSection({ props }: TabsSectionProps) {
 
   const contentPanel = (
     <div
+      role="tabpanel"
       className={`p-5 ${borderRadiusClasses[borderRadius]} text-slate-300 text-sm leading-relaxed`}
       style={{ backgroundColor: contentBackgroundColor || '#141414' }}
     >

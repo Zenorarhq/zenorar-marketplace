@@ -90,6 +90,7 @@ export default function ImageSection({ props }: ImageSectionProps) {
     <img
       src={src}
       alt={alt}
+      loading="lazy"
       className={`w-full ${radiusClasses[borderRadius]} ${shadowClasses[shadow]} ${objectFitClasses[objectFit]}`}
     />
   )

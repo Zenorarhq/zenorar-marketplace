@@ -78,9 +78,10 @@ export default function SocialLinksSection({ props }: SocialLinksSectionProps) {
               href={link.url || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${sizeConfig.container} rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center hover:text-primary hover:border-primary/50 transition-colors`}
+              className={`${sizeConfig.container} rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center hover:text-primary hover:border-primary/50 hover:scale-110 transition-all`}
               style={{ color: iconColor || undefined }}
               title={link.platform}
+              aria-label={link.platform || 'Social link'}
             >
               {PLATFORM_ICONS[link.platform?.toLowerCase() || ''] ? (
                 <svg width={sizeConfig.svg} height={sizeConfig.svg} viewBox="0 0 24 24" fill="currentColor">

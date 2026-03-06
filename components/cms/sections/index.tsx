@@ -95,8 +95,18 @@ const containerComponents: Record<string, React.ComponentType<ContainerComponent
   'column': ColumnSection,
 }
 
+// Universal margin classes applied at renderer level so all components get margin support
+const marginClasses: Record<string, string> = {
+  none: '',
+  small: 'my-2',
+  medium: 'my-4',
+  large: 'my-8',
+}
+
 export default function SectionRenderer({ section, isEditing }: SectionRendererProps) {
   const isContainer = containerTypes.includes(section.type)
+  const margin = section.props?.margin as string | undefined
+  const marginClass = margin && marginClasses[margin] ? marginClasses[margin] : ''
 
   // Handle container components (can have children)
   if (isContainer) {
@@ -122,7 +132,11 @@ export default function SectionRenderer({ section, isEditing }: SectionRendererP
       </>
     ) : null
 
-    return <ContainerComponent props={section.props}>{children}</ContainerComponent>
+    return (
+      <div className={marginClass || undefined}>
+        <ContainerComponent props={section.props}>{children}</ContainerComponent>
+      </div>
+    )
   }
 
   // Handle leaf components (no children)
@@ -137,7 +151,11 @@ export default function SectionRenderer({ section, isEditing }: SectionRendererP
     )
   }
 
-  return <LeafComponent props={section.props} />
+  return (
+    <div className={marginClass || undefined}>
+      <LeafComponent props={section.props} />
+    </div>
+  )
 }
 
 export {

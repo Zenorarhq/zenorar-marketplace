@@ -94,6 +94,7 @@ export default function ImageBoxSection({ props }: ImageBoxSectionProps) {
     <img
       src={imageUrl}
       alt={imageAlt}
+      loading="lazy"
       className={`w-full ${isHorizontal ? 'w-1/2 flex-shrink-0' : ''} ${imageHeightClasses[imageHeight]} ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`}
     />
   ) : (
@@ -129,7 +130,7 @@ export default function ImageBoxSection({ props }: ImageBoxSectionProps) {
 
   if (linkUrl) {
     return (
-      <a href={linkUrl} target={linkTarget} rel={linkTarget === '_blank' ? 'noopener noreferrer' : undefined} className="block hover:opacity-90 transition-opacity">
+      <a href={linkUrl} target={linkTarget} rel={linkTarget === '_blank' ? 'noopener noreferrer' : undefined} className="block hover:opacity-90 hover:-translate-y-1 hover:shadow-lg transition-all">
         {content}
       </a>
     )

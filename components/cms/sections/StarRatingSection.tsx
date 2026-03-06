@@ -75,7 +75,7 @@ export default function StarRatingSection({ props }: StarRatingSectionProps) {
       style={{ backgroundColor: backgroundColor || undefined }}
     >
       <div className={`flex flex-col ${alignment === 'left' ? 'items-start' : alignment === 'right' ? 'items-end' : 'items-center'} gap-1`}>
-        <div className={`flex ${alignmentClasses[alignment]} items-center gap-2 ${sizeClasses[size]}`}>
+        <div className={`flex ${alignmentClasses[alignment]} items-center gap-2 ${sizeClasses[size]}`} role="img" aria-label={`Rating: ${clampedRating} out of ${maxStars} stars`}>
           {numberPosition === 'left' && numberEl}
           <div className="flex items-center">
             {Array.from({ length: adjustedFull }).map((_, i) => (

@@ -102,7 +102,7 @@ export default function FeaturesGridSection({ props }: FeaturesGridSectionProps)
             const card = (
               <div
                 key={index}
-                className={`${cardRadiusClasses[cardBorderRadius]} p-5 sm:p-6 lg:p-8 hover:border-primary/30 transition-colors ${cardBorder ? 'border border-[#1f1f1f]' : ''} ${alignClasses[alignment]}`}
+                className={`${cardRadiusClasses[cardBorderRadius]} p-5 sm:p-6 lg:p-8 hover:border-primary/30 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-1 transition-all ${cardBorder ? 'border border-[#1f1f1f]' : ''} ${alignClasses[alignment]}`}
                 style={{ backgroundColor: cardBackgroundColor || '#141414' }}
               >
                 {showIcons && feature.icon && (
@@ -112,7 +112,7 @@ export default function FeaturesGridSection({ props }: FeaturesGridSectionProps)
                   </div>
                 )}
                 {feature.imageUrl && (
-                  <img src={feature.imageUrl} alt={feature.title || ''} className="w-full h-32 object-cover rounded-lg mb-3 sm:mb-4" />
+                  <img src={feature.imageUrl} alt={feature.title || ''} loading="lazy" className="w-full h-32 object-cover rounded-lg mb-3 sm:mb-4" />
                 )}
                 {feature.title && (
                   <h3

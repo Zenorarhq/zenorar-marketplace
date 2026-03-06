@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface ProgressItem {
   label?: string
@@ -46,12 +46,23 @@ export default function ProgressBarSection({ props }: ProgressBarSectionProps) {
   } = props
 
   const [mounted, setMounted] = useState(!animated)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (animated) {
-      const timer = setTimeout(() => setMounted(true), 100)
-      return () => clearTimeout(timer)
-    }
+    if (!animated) return
+    const el = containerRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setMounted(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.2 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [animated])
 
   const barHeightClasses: Record<string, string> = {
@@ -87,6 +98,7 @@ export default function ProgressBarSection({ props }: ProgressBarSectionProps) {
 
   return (
     <div
+      ref={containerRef}
       className={`${paddingClasses[padding]} ${hideOnMobile ? 'hidden md:block' : ''} ${customClassName || ''}`}
       style={{ backgroundColor: backgroundColor || undefined }}
     >

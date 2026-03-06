@@ -92,6 +92,7 @@ export default function FaqAccordionSection({ props }: FaqAccordionSectionProps)
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
                 className="flex items-center justify-between w-full p-5 text-left"
+                aria-expanded={openIndex === i}
               >
                 <span
                   className="text-white font-medium text-sm pr-4"

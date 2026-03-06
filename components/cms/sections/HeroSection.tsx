@@ -115,7 +115,7 @@ export default function HeroSection({ props }: HeroSectionProps) {
           {ctaText && ctaLink && (
             <Link
               href={ctaLink}
-              className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 bg-primary text-black font-semibold rounded-lg hover:brightness-110 transition-all text-sm sm:text-base lg:text-lg"
+              className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 bg-primary text-black font-semibold rounded-lg hover:brightness-110 hover:scale-105 transition-all text-sm sm:text-base lg:text-lg"
               style={{
                 backgroundColor: buttonColor || undefined,
                 color: buttonTextColor || undefined,
@@ -128,7 +128,7 @@ export default function HeroSection({ props }: HeroSectionProps) {
           {secondButtonText && secondButtonLink && (
             <Link
               href={secondButtonLink}
-              className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 bg-transparent text-white border-2 border-white/30 font-semibold rounded-lg hover:border-white/60 transition-all text-sm sm:text-base lg:text-lg"
+              className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 bg-transparent text-white border-2 border-white/30 font-semibold rounded-lg hover:border-white/60 hover:scale-105 transition-all text-sm sm:text-base lg:text-lg"
             >
               {secondButtonText}
             </Link>

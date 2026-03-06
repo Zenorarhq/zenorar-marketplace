@@ -70,7 +70,7 @@ export default function ProductShowcaseSection({ props }: ProductShowcaseSection
             {productIds.map((id, index) => (
               <div
                 key={index}
-                className={`border border-[#1f1f1f] ${cardRadiusClasses[cardBorderRadius]} overflow-hidden group hover:border-primary/30 transition-colors`}
+                className={`border border-[#1f1f1f] ${cardRadiusClasses[cardBorderRadius]} overflow-hidden group hover:border-primary/30 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-1 transition-all`}
                 style={{ backgroundColor: cardBackgroundColor || '#141414' }}
               >
                 <div className="aspect-square bg-[#1a1a1a] flex items-center justify-center">

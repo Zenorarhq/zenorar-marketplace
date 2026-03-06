@@ -93,7 +93,7 @@ export default function PricingTableSection({ props }: PricingTableSectionProps)
             {plans.map((plan, index) => (
               <div
                 key={index}
-                className={`relative rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 ${
+                className={`relative rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-1 transition-all ${
                   plan.highlighted
                     ? 'border-2'
                     : 'border border-[#1f1f1f]'

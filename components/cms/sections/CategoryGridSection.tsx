@@ -76,6 +76,7 @@ export default function CategoryGridSection({ props }: CategoryGridSectionProps)
               <Link
                 key={index}
                 href={category.link || '#'}
+                aria-label={category.name || 'Category'}
                 className={`group relative aspect-square border border-[#1f1f1f] ${cardRadiusClasses[cardBorderRadius]} overflow-hidden hover:border-primary/30 transition-colors`}
                 style={{ backgroundColor: cardBackgroundColor || '#141414' }}
               >
@@ -83,6 +84,7 @@ export default function CategoryGridSection({ props }: CategoryGridSectionProps)
                   <img
                     src={category.image}
                     alt={category.name || ''}
+                    loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (

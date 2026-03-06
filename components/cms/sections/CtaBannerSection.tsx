@@ -109,7 +109,7 @@ export default function CtaBannerSection({ props }: CtaBannerSectionProps) {
           {buttonText && buttonLink && (
             <Link
               href={buttonLink}
-              className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 bg-black text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-black/80 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 bg-black text-white font-semibold text-sm sm:text-base rounded-lg hover:bg-black/80 hover:scale-105 transition-all"
               style={{
                 backgroundColor: buttonColor || undefined,
                 color: buttonTextColor || undefined,
@@ -122,7 +122,7 @@ export default function CtaBannerSection({ props }: CtaBannerSectionProps) {
           {secondButtonText && secondButtonLink && (
             <Link
               href={secondButtonLink}
-              className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 bg-transparent text-black border-2 border-black/30 font-semibold text-sm sm:text-base rounded-lg hover:border-black/60 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 lg:px-8 lg:py-4 bg-transparent text-black border-2 border-black/30 font-semibold text-sm sm:text-base rounded-lg hover:border-black/60 hover:scale-105 transition-all"
             >
               {secondButtonText}
             </Link>

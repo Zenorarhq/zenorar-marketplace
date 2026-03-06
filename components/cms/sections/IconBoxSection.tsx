@@ -126,7 +126,7 @@ export default function IconBoxSection({ props }: IconBoxSectionProps) {
 
   if (linkUrl) {
     return (
-      <a href={linkUrl} target={linkTarget} rel={linkTarget === '_blank' ? 'noopener noreferrer' : undefined} className="block hover:opacity-90 transition-opacity">
+      <a href={linkUrl} target={linkTarget} rel={linkTarget === '_blank' ? 'noopener noreferrer' : undefined} className="block hover:opacity-90 hover:-translate-y-1 hover:shadow-lg transition-all">
         {content}
       </a>
     )

@@ -164,6 +164,7 @@ export default function ColumnSection({ props, children }: ColumnSectionProps) {
                 src={imageUrl}
                 alt={imageAlt || title || ''}
                 className="w-full h-48 object-cover rounded-lg mb-4"
+                loading="lazy"
               />
             )}
             {title && (

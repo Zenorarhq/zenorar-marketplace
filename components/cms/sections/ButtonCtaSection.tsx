@@ -88,7 +88,7 @@ export default function ButtonCtaSection({ props }: ButtonCtaSectionProps) {
         href={link}
         target={target}
         rel={target === '_blank' ? 'noopener noreferrer' : undefined}
-        className={`${fullWidth ? 'block w-full text-center' : 'inline-flex items-center gap-2'} ${sizeClass[size]} ${variantClass[variant]} ${radiusClasses[borderRadius]} ${borderWidthClasses[borderWidth]} font-semibold transition-colors`}
+        className={`${fullWidth ? 'block w-full text-center' : 'inline-flex items-center gap-2'} ${sizeClass[size]} ${variantClass[variant]} ${radiusClasses[borderRadius]} ${borderWidthClasses[borderWidth]} font-semibold transition-all hover:scale-105`}
         style={btnStyle}
       >
         {icon && <Icon name={icon} size={size === 'small' ? 16 : size === 'large' ? 24 : 20} />}
