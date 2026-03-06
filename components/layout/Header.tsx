@@ -428,7 +428,7 @@ export default function Header() {
 
             {/* Mobile/Tablet: Cart */}
             {showCart && (
-              <div className="md:hidden relative" ref={cartDropdownRef}>
+              <div className="md:hidden relative">
                 <button
                   type="button"
                   onClick={() => setShowCartDropdown(!showCartDropdown)}
@@ -442,10 +442,6 @@ export default function Header() {
                     </span>
                   )}
                 </button>
-                <CartDropdown
-                  isOpen={showCartDropdown}
-                  onClose={() => setShowCartDropdown(false)}
-                />
                 <CartPopupWrapper />
               </div>
             )}
@@ -694,6 +690,15 @@ export default function Header() {
             variant="modal"
             isOpen={showNotificationsDropdown}
             onClose={() => setShowNotificationsDropdown(false)}
+          />
+        </div>
+
+        {/* Mobile Cart Modal */}
+        <div className="md:hidden">
+          <CartDropdown
+            variant="modal"
+            isOpen={showCartDropdown}
+            onClose={() => setShowCartDropdown(false)}
           />
         </div>
 

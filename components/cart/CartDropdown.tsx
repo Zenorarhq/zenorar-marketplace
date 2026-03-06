@@ -10,9 +10,10 @@ import { usePreferences } from '@/contexts/PreferencesContext'
 interface CartDropdownProps {
   isOpen: boolean
   onClose: () => void
+  variant?: 'dropdown' | 'modal'
 }
 
-export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
+export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: CartDropdownProps) {
   const { items, total, itemCount, removeItem } = useCart()
   const { formatPrice } = usePreferences()
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -51,12 +52,29 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
     }
   }, [isOpen, onClose])
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen && variant === 'modal') {
+      document.body.style.overflow = 'hidden'
+    } else if (variant === 'modal') {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      if (variant === 'modal') {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [isOpen, variant])
+
   if (!isOpen || !items || items.length === 0) return null
 
-  return (
+  const content = (
     <div
       ref={dropdownRef}
-      className="absolute right-0 top-full mt-2 w-[380px] bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10 z-[70]"
+      className={variant === 'modal'
+        ? "relative w-[calc(100vw-2rem)] sm:w-[380px] bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10 z-[101]"
+        : "absolute right-0 top-full mt-2 w-[380px] bg-[#0D0D0D] rounded-2xl p-6 shadow-2xl border border-white/10 z-[70]"
+      }
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -147,4 +165,15 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
       </div>
     </div>
   )
+
+  if (variant === 'modal') {
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-20">
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+        {content}
+      </div>
+    )
+  }
+
+  return content
 }

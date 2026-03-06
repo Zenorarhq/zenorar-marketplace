@@ -109,6 +109,20 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef, variant
     }
   }, [isOpen, onClose, triggerRef])
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen && variant === 'modal') {
+      document.body.style.overflow = 'hidden'
+    } else if (variant === 'modal') {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      if (variant === 'modal') {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [isOpen, variant])
+
   // Handle escape key
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -368,8 +382,8 @@ export default function PreferencesDialog({ isOpen, onClose, triggerRef, variant
 
   if (variant === 'modal') {
     return (
-      <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20">
-        <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-20">
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
         <div
           ref={dialogRef}
           className="relative w-[320px] bg-[#0D0D0D] rounded-2xl p-5 shadow-2xl border border-white/10 flex flex-col max-h-[80vh] overflow-y-auto z-[101]"
