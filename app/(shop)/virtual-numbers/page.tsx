@@ -1432,7 +1432,7 @@ function PlanSelectionModal({
               </div>
             </div>
             <button
-              onClick={() => router.push('/profile/virtual-numbers')}
+              onClick={() => router.push('/profile/library?filter=virtual-numbers')}
               className="mt-4 w-full py-3 bg-primary text-black font-bold rounded-xl"
             >
               View My Numbers

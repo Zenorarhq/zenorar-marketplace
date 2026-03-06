@@ -130,6 +130,8 @@ export async function POST(req: NextRequest) {
             sms_limit: item.metadata?.smsLimit,
             minute_tier: item.metadata?.minuteTier,
             minute_included: item.metadata?.minuteIncluded,
+            minute_tier_price: item.metadata?.minuteTierPrice,
+            amount_paid: item.price,
           })
         ]
       )

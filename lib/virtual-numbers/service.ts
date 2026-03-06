@@ -27,23 +27,27 @@ class VirtualNumberService {
     numberType: string = 'local',
     amountPaid: number = 0,
     minuteTier?: string,
-    minuteTierPrice?: number
+    minuteTierPrice?: number,
+    durationDaysOverride?: number
   ): Promise<ProvisionResult> {
     try {
       // Get plan details to determine duration
-      let durationDays = 30 // default
-      const planResult = await query(
-        `SELECT duration_days FROM virtual_number_plans WHERE id = $1`,
-        [planId]
-      )
+      let durationDays = durationDaysOverride || 30 // use override if provided
 
-      if (planResult.rows.length > 0) {
-        durationDays = planResult.rows[0].duration_days
-      } else {
-        // Handle dynamic plans (basic/business with custom duration)
-        if (planId === 'basic' || planId === 'business') {
-          // Duration is passed via metadata, default to 7 days
-          durationDays = 7
+      if (!durationDaysOverride) {
+        const planResult = await query(
+          `SELECT duration_days FROM virtual_number_plans WHERE id = $1`,
+          [planId]
+        )
+
+        if (planResult.rows.length > 0) {
+          durationDays = planResult.rows[0].duration_days
+        } else {
+          // Handle dynamic plans (basic/business with custom duration)
+          if (planId === 'basic' || planId === 'business') {
+            // Default to 7 days if no override provided
+            durationDays = 7
+          }
         }
       }
 

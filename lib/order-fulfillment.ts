@@ -704,6 +704,10 @@ async function processVirtualNumberItem(
     const countryId = metadata.country_id || metadata.countryId
     const planId = metadata.plan_id || metadata.planId
     const numberType = metadata.number_type || metadata.numberType || 'local'
+    const durationDays = metadata.duration_days || metadata.durationDays
+    const amountPaid = metadata.amount_paid || metadata.amountPaid || 0
+    const minuteTier = metadata.minute_tier || metadata.minuteTier
+    const minuteTierPrice = metadata.minute_tier_price || metadata.minuteTierPrice
 
     if (!phoneNumber || !countryId || !planId) {
       throw new Error('Missing required virtual number metadata (phone_number, country_id, plan_id)')
@@ -715,7 +719,11 @@ async function processVirtualNumberItem(
       planId,
       phoneNumber,
       orderId,
-      numberType
+      numberType,
+      amountPaid,
+      minuteTier,
+      minuteTierPrice,
+      durationDays
     )
 
     if (!provisionResult.success) {
