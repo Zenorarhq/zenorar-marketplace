@@ -504,16 +504,15 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                       <span className="font-medium text-sm text-slate-400">Retry</span>
                     </button>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center [&>div]:!w-full [&>div]:!h-full [&>div>div]:!w-full [&>div>div]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full [&_iframe]:!min-h-[48px]">
+                    <div className="flex items-center justify-center">
                       <GoogleLogin
                         onSuccess={handleGoogleSuccess}
                         onError={handleGoogleError}
                         type="standard"
                         theme="filled_black"
-                        size="large"
+                        size="medium"
                         text={activeTab === 'login' ? 'signin_with' : 'signup_with'}
-                        shape="rectangular"
-                        width="200"
+                        shape="pill"
                       />
                     </div>
                   )}
