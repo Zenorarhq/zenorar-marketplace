@@ -10,6 +10,10 @@ import {
   PricingInfo,
 } from './base'
 import { twilioService } from './twilio'
+import { VonageProviderAdapter } from './vonage'
+import { PlivoProviderAdapter } from './plivo'
+import { BandwidthProviderAdapter } from './bandwidth'
+import { TelnyxProviderAdapter } from './telnyx'
 
 // Provider instances cache
 const providerInstances: Map<string, VirtualNumberProvider> = new Map()
@@ -132,8 +136,12 @@ class TwilioProviderAdapter implements VirtualNumberProvider {
   }
 }
 
-// Initialize Twilio adapter
+// Initialize all provider adapters
 providerInstances.set('twilio', new TwilioProviderAdapter())
+providerInstances.set('vonage', new VonageProviderAdapter())
+providerInstances.set('plivo', new PlivoProviderAdapter())
+providerInstances.set('bandwidth', new BandwidthProviderAdapter())
+providerInstances.set('telnyx', new TelnyxProviderAdapter())
 
 /**
  * Provider Manager - Handles multi-provider operations

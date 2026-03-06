@@ -1580,16 +1580,36 @@ function PlanSelectionModal({
       return
     }
 
-    // Check wallet balance
-    if (walletBalance === null) {
+    // Check wallet balance - fetch if null and proceed
+    let currentBalance = walletBalance
+    if (currentBalance === null) {
       setLoadingBalance(true)
-      await fetchWalletBalance()
-      // Will re-check on next click
-      return
+      try {
+        const response = await fetch('/api/wallet', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+        })
+        const result = await response.json()
+        if (result.success && result.data) {
+          currentBalance = result.data.balance || 0
+          setWalletBalance(currentBalance)
+        } else {
+          setCheckoutError('Failed to fetch wallet balance')
+          setLoadingBalance(false)
+          return
+        }
+      } catch (error) {
+        console.error('Failed to fetch wallet balance:', error)
+        setCheckoutError('Failed to fetch wallet balance')
+        setLoadingBalance(false)
+        return
+      }
+      setLoadingBalance(false)
     }
 
     // If insufficient balance, show deposit modal immediately
-    if (walletBalance < totalPrice) {
+    if (currentBalance < totalPrice) {
       setShowDepositModal(true)
       return
     }

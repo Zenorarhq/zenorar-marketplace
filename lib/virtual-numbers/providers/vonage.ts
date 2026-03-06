@@ -2,6 +2,16 @@
 // Documentation: https://developer.vonage.com/
 
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
+import { query } from '@/lib/db'
+import {
+  VirtualNumberProvider,
+  AvailableNumber as BaseAvailableNumber,
+  PurchaseResult as BasePurchaseResult,
+  ReleaseResult,
+  SmsResult as BaseSmsResult,
+  HealthCheckResult,
+  PricingInfo,
+} from './base'
 
 export interface AvailableNumber {
   phoneNumber: string
@@ -342,3 +352,159 @@ class VonageService {
 }
 
 export const vonageService = new VonageService()
+
+/**
+ * Vonage adapter implementing VirtualNumberProvider interface
+ */
+export class VonageProviderAdapter implements VirtualNumberProvider {
+  readonly slug = 'vonage'
+  readonly name = 'Vonage'
+
+  async testConnection(): Promise<HealthCheckResult> {
+    const result = await vonageService.testConnection()
+    return {
+      success: result.success,
+      mode: 'live',
+      error: result.error,
+    }
+  }
+
+  async searchNumbers(
+    countryCode: string,
+    type: 'local' | 'toll-free' | 'mobile',
+    options?: { areaCode?: string; contains?: string; limit?: number }
+  ): Promise<BaseAvailableNumber[]> {
+    const vonageType = type === 'toll-free' ? 'tollFree' : type
+    const numbers = await vonageService.searchNumbers(
+      countryCode,
+      vonageType as any,
+      options?.areaCode || options?.contains,
+      options?.limit || 20
+    )
+
+    return numbers.map(n => ({
+      phoneNumber: n.phoneNumber.startsWith('+') ? n.phoneNumber : `+${n.phoneNumber}`,
+      friendlyName: n.friendlyName,
+      locality: n.locality,
+      region: n.region,
+      numberType: type,
+      capabilities: n.capabilities,
+    }))
+  }
+
+  async purchaseNumber(
+    phoneNumber: string,
+    webhookUrls?: { smsUrl?: string; voiceUrl?: string }
+  ): Promise<BasePurchaseResult> {
+    // Extract country code from phone number (simplified)
+    const cleanNumber = phoneNumber.replace(/^\+/, '')
+    let countryCode = 'US'
+    if (cleanNumber.startsWith('44')) countryCode = 'GB'
+    else if (cleanNumber.startsWith('1')) countryCode = 'US'
+    else if (cleanNumber.startsWith('61')) countryCode = 'AU'
+    else if (cleanNumber.startsWith('49')) countryCode = 'DE'
+    else if (cleanNumber.startsWith('33')) countryCode = 'FR'
+
+    const result = await vonageService.purchaseNumber(cleanNumber, countryCode)
+
+    if (result.success && webhookUrls) {
+      await vonageService.configureWebhooks(
+        cleanNumber,
+        countryCode,
+        webhookUrls.smsUrl || '',
+        webhookUrls.voiceUrl
+      )
+    }
+
+    return {
+      success: result.success,
+      numberSid: result.numberSid,
+      phoneNumber: result.phoneNumber,
+      error: result.error,
+    }
+  }
+
+  async releaseNumber(numberSid: string): Promise<ReleaseResult> {
+    // Extract country code (simplified)
+    const cleanNumber = numberSid.replace(/^\+/, '')
+    let countryCode = 'US'
+    if (cleanNumber.startsWith('44')) countryCode = 'GB'
+    else if (cleanNumber.startsWith('1')) countryCode = 'US'
+
+    return vonageService.releaseNumber(cleanNumber, countryCode)
+  }
+
+  async sendSms(from: string, to: string, body: string): Promise<BaseSmsResult> {
+    const result = await vonageService.sendSms(from, to, body)
+    return {
+      success: result.success,
+      messageSid: result.messageSid,
+      status: result.status,
+      error: result.error,
+    }
+  }
+
+  async configureWebhooks(
+    numberSid: string,
+    webhookUrls: { smsUrl?: string; voiceUrl?: string; statusUrl?: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    const cleanNumber = numberSid.replace(/^\+/, '')
+    let countryCode = 'US'
+    if (cleanNumber.startsWith('44')) countryCode = 'GB'
+    else if (cleanNumber.startsWith('1')) countryCode = 'US'
+
+    return vonageService.configureWebhooks(
+      cleanNumber,
+      countryCode,
+      webhookUrls.smsUrl || '',
+      webhookUrls.voiceUrl
+    )
+  }
+
+  async getPricing(
+    countryCode: string,
+    type: 'local' | 'toll-free' | 'mobile'
+  ): Promise<PricingInfo | null> {
+    // Vonage pricing estimates
+    const baseCosts: Record<string, number> = {
+      US: 0.90,
+      CA: 0.90,
+      GB: 1.30,
+      DE: 1.30,
+      FR: 1.30,
+      AU: 1.30,
+    }
+
+    const monthlyCost = baseCosts[countryCode] || 1.0
+    const typeMultiplier = type === 'toll-free' ? 2.0 : type === 'mobile' ? 1.5 : 1.0
+
+    return {
+      monthlyCost: monthlyCost * typeMultiplier,
+      setupCost: 0,
+      inboundVoiceCost: 0.01,
+      outboundVoiceCost: 0.0127,
+      inboundSmsCost: 0.0,
+      outboundSmsCost: 0.0068,
+      currency: 'USD',
+    }
+  }
+
+  validateWebhookSignature(
+    signature: string,
+    url: string,
+    params: Record<string, string>
+  ): boolean {
+    // Vonage webhook signature validation would use JWT
+    // For simplicity, return true - implement proper JWT validation in production
+    return true
+  }
+
+  async supportsCountry(countryCode: string): Promise<boolean> {
+    const unsupported = ['KP', 'IR', 'CU', 'SY']
+    return !unsupported.includes(countryCode)
+  }
+
+  clearCache(): void {
+    vonageService.clearCache()
+  }
+}

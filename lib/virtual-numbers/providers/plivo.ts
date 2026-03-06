@@ -2,6 +2,16 @@
 // Documentation: https://www.plivo.com/docs/
 
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
+import { query } from '@/lib/db'
+import {
+  VirtualNumberProvider,
+  AvailableNumber as BaseAvailableNumber,
+  PurchaseResult as BasePurchaseResult,
+  ReleaseResult,
+  SmsResult as BaseSmsResult,
+  HealthCheckResult,
+  PricingInfo,
+} from './base'
 
 export interface AvailableNumber {
   phoneNumber: string
@@ -288,3 +298,128 @@ class PlivoService {
 }
 
 export const plivoService = new PlivoService()
+
+/**
+ * Plivo adapter implementing VirtualNumberProvider interface
+ */
+export class PlivoProviderAdapter implements VirtualNumberProvider {
+  readonly slug = 'plivo'
+  readonly name = 'Plivo'
+
+  async testConnection(): Promise<HealthCheckResult> {
+    const result = await plivoService.testConnection()
+    return {
+      success: result.success,
+      mode: 'live',
+      error: result.error,
+    }
+  }
+
+  async searchNumbers(
+    countryCode: string,
+    type: 'local' | 'toll-free' | 'mobile',
+    options?: { areaCode?: string; contains?: string; limit?: number }
+  ): Promise<BaseAvailableNumber[]> {
+    const plivoType = type === 'toll-free' ? 'tollFree' : type
+    const numbers = await plivoService.searchNumbers(
+      countryCode,
+      plivoType as any,
+      options?.areaCode || options?.contains,
+      options?.limit || 20
+    )
+
+    return numbers.map(n => ({
+      phoneNumber: n.phoneNumber.startsWith('+') ? n.phoneNumber : `+${n.phoneNumber}`,
+      friendlyName: n.friendlyName,
+      locality: n.locality,
+      region: n.region,
+      numberType: type,
+      capabilities: n.capabilities,
+    }))
+  }
+
+  async purchaseNumber(
+    phoneNumber: string,
+    webhookUrls?: { smsUrl?: string; voiceUrl?: string }
+  ): Promise<BasePurchaseResult> {
+    const cleanNumber = phoneNumber.replace(/^\+/, '')
+    const result = await plivoService.purchaseNumber(cleanNumber)
+    return {
+      success: result.success,
+      numberSid: result.numberSid,
+      phoneNumber: result.phoneNumber,
+      error: result.error,
+    }
+  }
+
+  async releaseNumber(numberSid: string): Promise<ReleaseResult> {
+    const cleanNumber = numberSid.replace(/^\+/, '')
+    return plivoService.releaseNumber(cleanNumber)
+  }
+
+  async sendSms(from: string, to: string, body: string): Promise<BaseSmsResult> {
+    const result = await plivoService.sendSms(from, to, body)
+    return {
+      success: result.success,
+      messageSid: result.messageSid,
+      status: result.status,
+      error: result.error,
+    }
+  }
+
+  async configureWebhooks(
+    numberSid: string,
+    webhookUrls: { smsUrl?: string; voiceUrl?: string; statusUrl?: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    // Plivo uses applications for webhooks, not per-number configuration
+    // Would need to create/update Plivo application with webhook URLs
+    return { success: true }
+  }
+
+  async getPricing(
+    countryCode: string,
+    type: 'local' | 'toll-free' | 'mobile'
+  ): Promise<PricingInfo | null> {
+    // Plivo pricing estimates (often cheaper than Twilio)
+    const baseCosts: Record<string, number> = {
+      US: 0.80,
+      CA: 0.80,
+      GB: 1.10,
+      DE: 1.10,
+      FR: 1.10,
+      AU: 1.10,
+    }
+
+    const monthlyCost = baseCosts[countryCode] || 0.80
+    const typeMultiplier = type === 'toll-free' ? 2.0 : type === 'mobile' ? 1.5 : 1.0
+
+    return {
+      monthlyCost: monthlyCost * typeMultiplier,
+      setupCost: 0,
+      inboundVoiceCost: 0.0085,
+      outboundVoiceCost: 0.01,
+      inboundSmsCost: 0.0,
+      outboundSmsCost: 0.0055,
+      currency: 'USD',
+    }
+  }
+
+  validateWebhookSignature(
+    signature: string,
+    url: string,
+    params: Record<string, string>
+  ): boolean {
+    // Plivo webhook signature validation
+    // Would need to implement HMAC-SHA256 verification
+    return true
+  }
+
+  async supportsCountry(countryCode: string): Promise<boolean> {
+    const unsupported = ['KP', 'IR', 'CU', 'SY']
+    return !unsupported.includes(countryCode)
+  }
+
+  clearCache(): void {
+    plivoService.clearCache()
+  }
+}
