@@ -7,6 +7,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiFetch } from '@/lib/api/client'
+import { getBalance } from '@/lib/api/wallet'
 import * as virtualNumbersApi from '@/lib/api/virtual-numbers'
 import * as otpNumbersApi from '@/lib/api/otp-numbers'
 import AuthDialog from '@/components/dialogs/AuthDialog'
@@ -1147,12 +1148,7 @@ function PlanSelectionModal({
   const fetchWalletBalance = async () => {
     setLoadingBalance(true)
     try {
-      const response = await fetch('/api/wallet', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      })
-      const result = await response.json()
+      const result = await getBalance()
       if (result.success && result.data) {
         setWalletBalance(result.data.balance || 0)
       }
@@ -1408,12 +1404,7 @@ function PlanSelectionModal({
             // Refresh balance after deposit modal closes
             setLoadingBalance(true)
             try {
-              const response = await fetch('/api/wallet', {
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-                },
-              })
-              const result = await response.json()
+              const result = await getBalance()
               if (result.success && result.data) {
                 const newBalance = result.data.balance || 0
                 setWalletBalance(newBalance)
@@ -1462,11 +1453,11 @@ function PlanSelectionModal({
         {/* Action Buttons */}
         {!checkoutSuccess && (
           <div className="flex gap-3">
-            {/* Pay with Wallet Button */}
+            {/* Pay with Wallet Button - 3/5 width */}
             <button
               onClick={handleInstantCheckout}
               disabled={processingPayment || loadingBalance}
-              className="flex-1 py-4 rounded-xl bg-green-500 text-white font-bold hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-3/5 py-4 rounded-xl bg-green-500 text-white font-bold hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {processingPayment ? (
                 <>
@@ -1482,9 +1473,6 @@ function PlanSelectionModal({
                 <>
                   <Icon name="wallet" size={18} />
                   Pay ${totalPrice.toFixed(2)} with Wallet
-                  {walletBalance !== null && (
-                    <span className="text-xs opacity-70">(${walletBalance.toFixed(2)} available)</span>
-                  )}
                 </>
               ) : (
                 <>
@@ -1494,10 +1482,10 @@ function PlanSelectionModal({
               )}
             </button>
 
-            {/* Add to Cart Button */}
+            {/* Add to Cart Button - 2/5 width */}
             <button
               onClick={handleCheckout}
-              className="px-6 py-4 rounded-xl bg-charcoal border border-border-dark text-white font-bold hover:border-primary/50 transition-all flex items-center justify-center gap-2"
+              className="w-2/5 py-4 rounded-xl bg-charcoal border border-border-dark text-white font-bold hover:border-primary/50 transition-all flex items-center justify-center gap-2"
             >
               <Icon name="cart" size={18} />
               Cart
@@ -1585,12 +1573,7 @@ function PlanSelectionModal({
     if (currentBalance === null) {
       setLoadingBalance(true)
       try {
-        const response = await fetch('/api/wallet', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-          },
-        })
-        const result = await response.json()
+        const result = await getBalance()
         if (result.success && result.data) {
           currentBalance = result.data.balance || 0
           setWalletBalance(currentBalance)
