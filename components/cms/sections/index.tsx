@@ -25,6 +25,16 @@ import SocialLinksSection from './SocialLinksSection'
 import NewsletterSection from './NewsletterSection'
 import StatsCounterSection from './StatsCounterSection'
 import MapSection from './MapSection'
+import HeadingSection from './HeadingSection'
+import IconSection from './IconSection'
+import IconBoxSection from './IconBoxSection'
+import ImageBoxSection from './ImageBoxSection'
+import IconListSection from './IconListSection'
+import TabsSection from './TabsSection'
+import CountdownSection from './CountdownSection'
+import ProgressBarSection from './ProgressBarSection'
+import StarRatingSection from './StarRatingSection'
+import AlertSection from './AlertSection'
 
 interface SectionRendererProps {
   section: Section
@@ -68,6 +78,16 @@ const leafComponents: Record<string, React.ComponentType<LeafComponentProps>> = 
   'newsletter': NewsletterSection,
   'stats-counter': StatsCounterSection,
   'map': MapSection,
+  'heading': HeadingSection,
+  'icon': IconSection,
+  'icon-box': IconBoxSection,
+  'image-box': ImageBoxSection,
+  'icon-list': IconListSection,
+  'tabs': TabsSection,
+  'countdown': CountdownSection,
+  'progress-bar': ProgressBarSection,
+  'star-rating': StarRatingSection,
+  'alert': AlertSection,
 }
 
 const containerComponents: Record<string, React.ComponentType<ContainerComponentProps>> = {
@@ -145,4 +165,14 @@ export {
   NewsletterSection,
   StatsCounterSection,
   MapSection,
+  HeadingSection,
+  IconSection,
+  IconBoxSection,
+  ImageBoxSection,
+  IconListSection,
+  TabsSection,
+  CountdownSection,
+  ProgressBarSection,
+  StarRatingSection,
+  AlertSection,
 }
