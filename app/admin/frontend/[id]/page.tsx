@@ -152,7 +152,7 @@ export default function PageEditorPage() {
     }
   }, [page, redo])
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts for undo/redo/save
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -163,10 +163,29 @@ export default function PageEditorPage() {
           handleUndo()
         }
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        if (page) savePage(page).catch(() => {})
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleUndo, handleRedo])
+  }, [handleUndo, handleRedo, page])
+
+  // Warn on tab close with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) { e.preventDefault(); e.returnValue = '' }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [hasUnsavedChanges])
+
+  // History debounce timer ref + cleanup on unmount
+  const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    return () => { if (historyTimerRef.current) clearTimeout(historyTimerRef.current) }
+  }, [])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -207,11 +226,12 @@ export default function PageEditorPage() {
     loadData()
   }, [loadData])
 
-  // Helper: update page content + push to undo history
+  // Helper: update page content + push to undo history (debounced)
   const updateContent = useCallback((updatedContent: Section[]) => {
     if (!page) return
-    updateContent(updatedContent)
-    pushHistory(updatedContent)
+    setPage({ ...page, content: updatedContent })
+    if (historyTimerRef.current) clearTimeout(historyTimerRef.current)
+    historyTimerRef.current = setTimeout(() => pushHistory(updatedContent), 500)
   }, [page, pushHistory])
 
   const generateSectionId = () => {
@@ -535,7 +555,7 @@ export default function PageEditorPage() {
       await pagesApi.publish(page.id)
       setPage({ ...page, status: 'PUBLISHED', publishedAt: new Date().toISOString() })
     } catch (err) {
-      console.error('Failed to publish:', err)
+      alert('Failed to publish: ' + (err instanceof Error ? err.message : 'Unknown error'))
     }
   }
 
@@ -545,7 +565,7 @@ export default function PageEditorPage() {
       await pagesApi.unpublish(page.id)
       setPage({ ...page, status: 'DRAFT', publishedAt: null })
     } catch (err) {
-      console.error('Failed to unpublish:', err)
+      alert('Failed to unpublish: ' + (err instanceof Error ? err.message : 'Unknown error'))
     }
   }
 

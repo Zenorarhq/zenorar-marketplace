@@ -46,7 +46,7 @@ export default function SectionToolbar({
         <Icon name="copy" size={16} />
       </button>
       <button
-        onClick={(e) => { e.stopPropagation(); onDelete() }}
+        onClick={(e) => { e.stopPropagation(); if (!confirm('Delete this section?')) return; onDelete() }}
         className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
         title="Delete"
       >
