@@ -46,8 +46,11 @@ export default function LiveChat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const chatWindowRef = useRef<HTMLDivElement>(null)
   const lastMessageTimeRef = useRef<string>('')
+  const isOpenRef = useRef(false)
 
   const { user, isLoading: authLoading } = useAuth()
+  const userRef = useRef(user)
+  useEffect(() => { userRef.current = user }, [user])
   const tz = useTimezone()
   const [assignedAgent, setAssignedAgent] = useState<{ name: string; avatar: string | null } | null>(null)
 
@@ -153,23 +156,24 @@ export default function LiveChat() {
     const unsubMessage = onNewMessage((msg: ChatSocketMessage) => {
       if (msg.conversationId !== conversationId) return
       // Skip own messages — already added locally by handleSendMessage
-      if (user?.id && msg.senderId === user.id) return
+      if (userRef.current?.id && msg.senderId === userRef.current.id) return
 
       setMessages(prev => {
         // Dedup: skip if we already have this message
         if (prev.some(m => m.id === msg.id)) return prev
 
+        const isOwn = userRef.current?.id && msg.senderId === userRef.current.id
         const newMsg: DisplayMessage = {
           id: msg.id,
           content: msg.content,
-          senderType: (user?.id && msg.senderId === user.id) ? 'USER' : msg.senderType,
+          senderType: isOwn ? 'USER' : msg.senderType,
           senderName: msg.senderName,
           attachments: msg.attachments,
           createdAt: msg.createdAt,
         }
 
-        // Count messages from others as unread if chat is closed
-        if (!(user?.id && msg.senderId === user.id) && msg.senderType !== 'SYSTEM') {
+        // Count messages from others as unread only if chat window is closed
+        if (!isOpenRef.current && !isOwn && msg.senderType !== 'SYSTEM') {
           setUnreadCount(c => c + 1)
         }
 
@@ -228,15 +232,17 @@ export default function LiveChat() {
           const mapped: DisplayMessage[] = newMsgs.map(m => ({
             id: m.id,
             content: m.content,
-            senderType: (user?.id && m.senderId === user.id) ? 'USER' : m.senderType,
+            senderType: (userRef.current?.id && m.senderId === userRef.current.id) ? 'USER' : m.senderType,
             senderName: m.senderName,
             attachments: m.attachments,
             createdAt: m.createdAt,
           }))
-          // Count new messages from others as unread if chat is closed
-          const otherCount = newMsgs.filter(m => !(user?.id && m.senderId === user.id) && m.senderType !== 'SYSTEM').length
-          if (otherCount > 0) {
-            setUnreadCount(c => c + otherCount)
+          // Count new messages from others as unread only if chat window is closed
+          if (!isOpenRef.current) {
+            const otherCount = newMsgs.filter(m => !(userRef.current?.id && m.senderId === userRef.current.id) && m.senderType !== 'SYSTEM').length
+            if (otherCount > 0) {
+              setUnreadCount(c => c + otherCount)
+            }
           }
           return [...prev, ...mapped]
         })
@@ -250,6 +256,7 @@ export default function LiveChat() {
 
   const handleOpen = () => {
     setIsOpen(true)
+    isOpenRef.current = true
     setUnreadCount(0)
     if (conversationId) {
       setView('chat')
@@ -262,6 +269,7 @@ export default function LiveChat() {
 
   const handleClose = () => {
     setIsOpen(false)
+    isOpenRef.current = false
     setView('closed')
   }
 
@@ -349,6 +357,7 @@ export default function LiveChat() {
       setIsLoading(false)
       if (res.success && res.data) {
         setConversationId(res.data.id)
+        if (user) localStorage.setItem('chat_conversation_id', res.data.id)
         await chatApi.sendMessage(res.data.id, '', [attachment])
         setTimeout(() => loadMessages(res.data!.id), 500)
       }
