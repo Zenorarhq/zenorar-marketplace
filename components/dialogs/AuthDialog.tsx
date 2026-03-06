@@ -504,7 +504,7 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                       <span className="font-medium text-sm text-slate-400">Retry</span>
                     </button>
                   ) : (
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-center px-4">
                       <GoogleLogin
                         onSuccess={handleGoogleSuccess}
                         onError={handleGoogleError}
