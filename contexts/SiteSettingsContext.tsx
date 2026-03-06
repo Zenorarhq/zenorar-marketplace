@@ -37,7 +37,7 @@ function loadRawCached(): Record<string, any> {
 
 function saveRawCache(raw: Record<string, any>) {
   try {
-    localStorage.setItem(RAW_CACHE_KEY, JSON.stringify({ site_footer: raw.site_footer, home_page_layout: raw.home_page_layout, home_hero_slides: raw.home_hero_slides }))
+    localStorage.setItem(RAW_CACHE_KEY, JSON.stringify({ site_footer: raw.site_footer, home_hero_slides: raw.home_hero_slides }))
   } catch {}
 }
 
