@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -11,12 +12,15 @@ import { useNotifications } from '@/hooks/use-notifications'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import PreferencesDialog from '@/components/dialogs/PreferencesDialog'
+import AuthDialog from '@/components/dialogs/AuthDialog'
 import SearchDropdown from '@/components/search/SearchDropdown'
 import CartPopupWrapper from '@/components/cart/CartPopupWrapper'
 import CartDropdown from '@/components/cart/CartDropdown'
 import NotificationsDropdown from '@/components/notifications/NotificationsDropdown'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import { navCategories } from '@/lib/mock-data'
+import { getBalance } from '@/lib/api/wallet'
+import { formatPrice } from '@/lib/currency'
 
 function MobileNavItem({ item, pathname, onClose }: { item: { label: string; url: string; children?: { label: string; url: string }[] }; pathname: string; onClose: () => void }) {
   const [expanded, setExpanded] = useState(false)
@@ -57,6 +61,18 @@ export default function Header() {
   const { unreadCount } = useNotifications()
   const { siteName, logoUrl, rawSettings, isLoaded } = useSiteSettings()
 
+  // Fetch wallet balance when authenticated
+  const { data: walletData } = useQuery({
+    queryKey: ['wallet-balance'],
+    queryFn: async () => {
+      const result = await getBalance()
+      return result.success ? result.data : null
+    },
+    enabled: isAuthenticated,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnWindowFocus: true,
+  })
+
   // Parse CMS header config
   const headerConfig = (() => {
     try {
@@ -82,6 +98,7 @@ export default function Header() {
   const [showMobileUserMenu, setShowMobileUserMenu] = useState(false)
   const [showCartDropdown, setShowCartDropdown] = useState(false)
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false)
+  const [showAuthDialog, setShowAuthDialog] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const mobileUserMenuRef = useRef<HTMLDivElement>(null)
@@ -315,6 +332,21 @@ export default function Header() {
 
                 {showMobileUserMenu && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
+                    {/* Wallet Balance */}
+                    <Link
+                      href="/profile/wallet"
+                      onClick={() => setShowMobileUserMenu(false)}
+                      className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon name="wallet" size={16} className="text-primary" />
+                        <span className="text-sm text-slate-400">Balance</span>
+                      </div>
+                      <span className="text-sm font-bold text-primary">
+                        {formatPrice(walletData?.balance || 0, preferences.currency)}
+                      </span>
+                    </Link>
+                    <div className="border-t border-border-dark" />
                     <Link
                       href="/profile/orders"
                       onClick={() => setShowMobileUserMenu(false)}
@@ -384,14 +416,14 @@ export default function Header() {
                 )}
               </div>
             ) : (
-              <Link
-                href="/login"
-                prefetch={true}
+              <button
+                type="button"
+                onClick={() => setShowAuthDialog(true)}
                 className="md:hidden flex items-center justify-center p-2.5 text-slate-400 hover:text-primary transition-colors"
                 aria-label="Login"
               >
                 <Icon name="user-circle" size={22} />
-              </Link>
+              </button>
             )}
 
             {/* Mobile/Tablet: Cart */}
@@ -486,6 +518,21 @@ export default function Header() {
 
                   {showUserMenu && (
                     <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
+                      {/* Wallet Balance */}
+                      <Link
+                        href="/profile/wallet"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon name="wallet" size={16} className="text-primary" />
+                          <span className="text-sm text-slate-400">Balance</span>
+                        </div>
+                        <span className="text-sm font-bold text-primary">
+                          {formatPrice(walletData?.balance || 0, preferences.currency)}
+                        </span>
+                      </Link>
+                      <div className="border-t border-border-dark" />
                       <Link
                         href="/profile/orders"
                         onClick={() => setShowUserMenu(false)}
@@ -555,14 +602,14 @@ export default function Header() {
                   )}
                 </div>
               ) : (
-                <Link
-                  href="/login"
-                  prefetch={true}
+                <button
+                  type="button"
+                  onClick={() => setShowAuthDialog(true)}
                   className="flex items-center justify-center hover:text-primary transition-colors"
                   aria-label="Login"
                 >
                   <Icon name="user-circle" size={20} />
-                </Link>
+                </button>
               )}
 
               {/* Cart */}
@@ -657,6 +704,12 @@ export default function Header() {
             onClose={() => setShowNotificationsDropdown(false)}
           />
         </div>
+
+        {/* Auth Dialog for unauthenticated users */}
+        <AuthDialog
+          isOpen={showAuthDialog}
+          onClose={() => setShowAuthDialog(false)}
+        />
       </header>
 
       {/* Mobile Menu - Using Portal-like pattern outside header */}
