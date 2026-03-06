@@ -425,6 +425,13 @@ export default function Header() {
                     </span>
                   )}
                 </button>
+                {showCartDropdown && (
+                  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60]" onClick={() => setShowCartDropdown(false)} />
+                )}
+                <CartDropdown
+                  isOpen={showCartDropdown}
+                  onClose={() => setShowCartDropdown(false)}
+                />
                 <CartPopupWrapper />
               </div>
             )}
@@ -670,15 +677,6 @@ export default function Header() {
             variant="modal"
             isOpen={showNotificationsDropdown}
             onClose={() => setShowNotificationsDropdown(false)}
-          />
-        </div>
-
-        {/* Mobile Cart Modal */}
-        <div className="md:hidden">
-          <CartDropdown
-            variant="modal"
-            isOpen={showCartDropdown}
-            onClose={() => setShowCartDropdown(false)}
           />
         </div>
 
