@@ -102,7 +102,7 @@ export default function Header() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const mobileUserMenuRef = useRef<HTMLDivElement>(null)
-  const cartDropdownRef = useRef<HTMLDivElement>(null)
+
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -188,20 +188,6 @@ export default function Header() {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showMobileUserMenu])
-
-  // Close cart dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (cartDropdownRef.current && !cartDropdownRef.current.contains(event.target as Node)) {
-        setShowCartDropdown(false)
-      }
-    }
-    if (showCartDropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showCartDropdown])
-
 
   return (
     <>
@@ -607,7 +593,7 @@ export default function Header() {
               )}
 
               {/* Cart */}
-              {showCart && <div className="relative" ref={cartDropdownRef}>
+              {showCart && <div className="relative">
                 <button
                   type="button"
                   onClick={() => setShowCartDropdown(!showCartDropdown)}
