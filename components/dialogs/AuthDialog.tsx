@@ -473,7 +473,7 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
 
               {/* Social Login */}
               <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="relative flex items-center justify-center bg-surface-light border border-border-dark rounded-2xl transition-all overflow-hidden h-[48px]">
+                <div className="relative flex items-center justify-center bg-surface-light border border-border-dark rounded-2xl transition-all overflow-hidden h-[48px] px-3">
                   {isGoogleLoading ? (
                     <div className="flex items-center justify-center gap-2 w-full">
                       <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
