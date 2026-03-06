@@ -18,10 +18,13 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
   const { formatPrice } = usePreferences()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Handle click outside
+  // Handle click outside (only if this instance is actually visible in the DOM)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (!dropdownRef.current) return
+      // Skip if this instance is hidden (inside a display:none container)
+      if (dropdownRef.current.getClientRects().length === 0) return
+      if (!dropdownRef.current.contains(event.target as Node)) {
         onClose()
       }
     }
