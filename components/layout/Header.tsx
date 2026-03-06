@@ -336,12 +336,9 @@ export default function Header() {
                     <Link
                       href="/profile/wallet"
                       onClick={() => setShowMobileUserMenu(false)}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                      className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 transition-colors"
                     >
-                      <div className="flex items-center gap-2">
-                        <Icon name="wallet" size={16} className="text-primary" />
-                        <span className="text-sm text-slate-400">Balance</span>
-                      </div>
+                      <Icon name="wallet" size={16} className="text-primary" />
                       <span className="text-sm font-bold text-primary">
                         {formatPrice(walletData?.balance || 0, preferences.currency)}
                       </span>
@@ -522,12 +519,9 @@ export default function Header() {
                       <Link
                         href="/profile/wallet"
                         onClick={() => setShowUserMenu(false)}
-                        className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                        className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 transition-colors"
                       >
-                        <div className="flex items-center gap-2">
-                          <Icon name="wallet" size={16} className="text-primary" />
-                          <span className="text-sm text-slate-400">Balance</span>
-                        </div>
+                        <Icon name="wallet" size={16} className="text-primary" />
                         <span className="text-sm font-bold text-primary">
                           {formatPrice(walletData?.balance || 0, preferences.currency)}
                         </span>
