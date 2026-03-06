@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import Icon from '@/components/ui/Icon'
 import { ComponentTemplate } from '@/lib/cms/api'
@@ -62,7 +62,18 @@ function DraggableComponent({
 
 export default function ComponentPalette({ components, onAddSection }: ComponentPaletteProps) {
   const [search, setSearch] = useState('')
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
+  const allCategories = ['navigation', 'layout', 'marketing', 'content', 'ecommerce', 'other']
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cms-collapsed-categories')
+      if (saved !== null) return new Set(JSON.parse(saved))
+    }
+    return new Set(allCategories)
+  })
+
+  useEffect(() => {
+    localStorage.setItem('cms-collapsed-categories', JSON.stringify([...collapsedCategories]))
+  }, [collapsedCategories])
 
   const toggleCategory = (category: string) => {
     setCollapsedCategories(prev => {
