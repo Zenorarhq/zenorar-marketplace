@@ -367,6 +367,7 @@ const iconMap = {
 
   // User & Account
   'user-group': UserGroupIcon,
+  users: UserGroupIcon,
   group: UserGroupIcon,
   people: UserGroupIcon,
   'user-add': UserAdd01Icon,
