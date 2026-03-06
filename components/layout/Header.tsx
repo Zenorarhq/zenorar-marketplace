@@ -428,10 +428,10 @@ export default function Header() {
 
             {/* Mobile/Tablet: Cart */}
             {showCart && (
-              <div className="md:hidden relative">
-                <Link
-                  href="/cart"
-                  prefetch={true}
+              <div className="md:hidden relative" ref={cartDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowCartDropdown(!showCartDropdown)}
                   className="flex items-center justify-center p-2 text-slate-400 hover:text-primary transition-colors relative"
                   aria-label="Cart"
                 >
@@ -441,7 +441,11 @@ export default function Header() {
                       {itemCount > 9 ? '9+' : itemCount}
                     </span>
                   )}
-                </Link>
+                </button>
+                <CartDropdown
+                  isOpen={showCartDropdown}
+                  onClose={() => setShowCartDropdown(false)}
+                />
                 <CartPopupWrapper />
               </div>
             )}
@@ -614,31 +618,19 @@ export default function Header() {
 
               {/* Cart */}
               {showCart && <div className="relative" ref={cartDropdownRef}>
-                <div className="flex items-center gap-0.5">
-                  <Link
-                    href="/cart"
-                    prefetch={true}
-                    className="flex items-center justify-center hover:text-primary transition-colors relative"
-                    aria-label="Cart"
-                  >
-                    <Icon name="cart" size={20} />
-                    {itemCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-primary text-[10px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                        {itemCount > 99 ? '99+' : itemCount}
-                      </span>
-                    )}
-                  </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowCartDropdown(!showCartDropdown)}
+                  className="flex items-center justify-center hover:text-primary transition-colors relative"
+                  aria-label="Cart"
+                >
+                  <Icon name="cart" size={20} />
                   {itemCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowCartDropdown(!showCartDropdown)}
-                      className="hover:text-primary transition-colors"
-                      aria-label="Toggle cart dropdown"
-                    >
-                      <Icon name="chevron-down" size={14} className={`transition-transform ${showCartDropdown ? 'rotate-180' : ''}`} />
-                    </button>
+                    <span className="absolute -top-1.5 -right-1.5 bg-primary text-[10px] text-black font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                      {itemCount > 99 ? '99+' : itemCount}
+                    </span>
                   )}
-                </div>
+                </button>
                 <CartDropdown
                   isOpen={showCartDropdown}
                   onClose={() => setShowCartDropdown(false)}
