@@ -6,7 +6,7 @@ import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, localApiFetch } from '@/lib/api/client'
 import { getBalance } from '@/lib/api/wallet'
 import * as virtualNumbersApi from '@/lib/api/virtual-numbers'
 import * as otpNumbersApi from '@/lib/api/otp-numbers'
@@ -1539,7 +1539,7 @@ function PlanSelectionModal({
         total: totalPrice,
       }
 
-      const result = await apiFetch<{ orderId: string; orderNumber: string }>('/orders/instant', {
+      const result = await localApiFetch<{ orderId: string; orderNumber: string }>('/orders/instant', {
         method: 'POST',
         body: JSON.stringify(orderData),
       })
