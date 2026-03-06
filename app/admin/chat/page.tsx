@@ -304,11 +304,26 @@ export default function AdminChatPage() {
 
     const unsubAssigned = onConversationAssigned((data) => {
       if (data.conversationId !== activeId) return
-      setActiveConv(prev => prev ? {
-        ...prev,
-        status: 'ASSIGNED',
-        assignedTo: { id: data.agentId, name: data.agentName || '', avatar: data.agentAvatar || null },
-      } : prev)
+      setActiveConv(prev => {
+        if (!prev) return prev
+        const transferMsg = {
+          id: 'system-transfer-' + Date.now(),
+          conversationId: activeId,
+          senderId: null,
+          senderName: null,
+          senderType: 'SYSTEM' as const,
+          content: `Conversation transferred to ${data.agentName || 'another agent'}`,
+          attachments: [],
+          isRead: true,
+          createdAt: new Date().toISOString(),
+        }
+        return {
+          ...prev,
+          status: 'ASSIGNED' as ChatStatus,
+          assignedTo: { id: data.agentId, name: data.agentName || '', avatar: data.agentAvatar || null },
+          messages: [...prev.messages, transferMsg],
+        }
+      })
     })
 
     const unsubTyping = onTyping((data) => {

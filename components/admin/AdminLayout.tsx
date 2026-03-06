@@ -1,5 +1,4 @@
 'use client'
-
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -10,7 +9,6 @@ import Icon from '@/components/ui/Icon'
 import { formatTimeAgo } from '@/lib/date-utils'
 import type { NotificationType } from '@/lib/api/notifications'
 import { useChatSocket } from '@/hooks/use-chat-socket'
-
 const notifIcons: Record<string, string> = {
   ORDER_PLACED: 'cart', ORDER_CONFIRMED: 'verified', ORDER_SHIPPED: 'delivery',
   ORDER_DELIVERED: 'package', ORDER_CANCELLED: 'cancel', PAYMENT_RECEIVED: 'credit-card',
@@ -30,11 +28,9 @@ const notifColors: Record<string, string> = {
   DEPOSIT_SUCCESS: 'bg-green-500/20 text-green-400', DEPOSIT_FAILED: 'bg-red-500/20 text-red-400',
   WALLET_CREDIT_ADDED: 'bg-green-500/20 text-green-400', TICKET_CREATED: 'bg-blue-500/20 text-blue-400',
 }
-
 interface AdminLayoutProps {
   children: React.ReactNode
 }
-
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard', permission: 'view_analytics' },
   { href: '/admin/products', label: 'Products', icon: 'box', permission: 'view_products' },
@@ -54,7 +50,6 @@ const navItems = [
   { href: '/admin/referrals', label: 'Referrals', icon: 'user-group', permission: 'view_analytics' },
   { href: '/admin/settings', label: 'Settings', icon: 'settings', permission: 'manage_settings' },
 ]
-
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -69,7 +64,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [showChatDropdown, setShowChatDropdown] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
-
+  const [navTooltip, setNavTooltip] = useState<{ label: string; top: number } | null>(null)
   // Track "last seen" counts for nav dot badges — stored in localStorage
   const [lastSeenCounts, setLastSeenCounts] = useState<{ orders: number; deposits: number; chats: number }>(() => {
     if (typeof window !== 'undefined') {
@@ -80,7 +75,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
     return { orders: 0, deposits: 0, chats: 0 }
   })
-
   // Fetch unread notification count
   const { data: notifData } = useQuery({
     queryKey: ['admin-notif-count'],
@@ -91,7 +85,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     refetchInterval: 5000,
     enabled: isAuthenticated,
   })
-
   // Fetch recent notifications for dropdown
   const { data: notifList } = useQuery({
     queryKey: ['admin-notif-list'],
@@ -101,7 +94,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     },
     enabled: isAuthenticated && showNotifications,
   })
-
   // Fetch unread chat count
   const { data: chatData } = useQuery({
     queryKey: ['admin-chat-count'],
@@ -112,7 +104,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     refetchInterval: 5000,
     enabled: isAuthenticated,
   })
-
   // Fetch recent chat conversations for dropdown
   const { data: chatList } = useQuery({
     queryKey: ['admin-chat-list'],
@@ -122,7 +113,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     },
     enabled: isAuthenticated && showChatDropdown,
   })
-
   // Fetch pending counts for nav badges (deposits, orders, tickets)
   const { data: pendingCounts } = useQuery({
     queryKey: ['admin-pending-counts'],
@@ -139,7 +129,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     refetchInterval: 5000,
     enabled: isAuthenticated,
   })
-
   // Fetch branding settings for logo
   const { data: brandingData } = useQuery({
     queryKey: ['branding-settings'],
@@ -149,17 +138,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
-
   const siteLogo = brandingData?.logoUrl || null
   const favicon = brandingData?.faviconUrl || null
-
   const queryClient = useQueryClient()
   const unreadNotifs = notifData?.count || 0
   const unreadChats = chatData?.count || 0
-
   // Real-time notifications via WebSocket
   const { joinAdmin, onAdminNotification, onNewMessage, onOrderPaid, onDepositUpdate, onReconnect } = useChatSocket()
-
   useEffect(() => {
     if (!isAuthenticated) return
     joinAdmin()
@@ -168,8 +153,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       queryClient.invalidateQueries({ queryKey: ['admin-notif-list'] })
       queryClient.invalidateQueries({ queryKey: ['admin-pending-counts'] })
     })
-    const unsub2 = onNewMessage(() => {
-      queryClient.invalidateQueries({ queryKey: ['admin-chat-count'] })
+    const unsub2 = onNewMessage((msg) => {
+      if (msg.senderType === 'USER') {
+        queryClient.setQueryData(['admin-chat-count'], (old: any) =>
+          old ? { count: (old.count || 0) + 1 } : { count: 1 }
+        )
+      }
       queryClient.invalidateQueries({ queryKey: ['admin-chat-list'] })
     })
     const unsub3 = onOrderPaid(() => {
@@ -185,7 +174,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     })
     return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5() }
   }, [isAuthenticated])
-
   // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -199,24 +187,36 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
   const markAllRead = async () => {
     await apiFetch('/notifications/read-all', { method: 'POST' })
     queryClient.invalidateQueries({ queryKey: ['admin-notif-count'] })
     queryClient.invalidateQueries({ queryKey: ['admin-notif-list'] })
   }
-
-  // Auto-clear dot when admin is currently viewing the page
+  // Auto-clear dot when admin is viewing the page, and reset when counts drop
   useEffect(() => {
     const updated = { ...lastSeenCounts }
     let changed = false
-    if (pathname === '/admin/purchases' && (pendingCounts?.orders || 0) > 0) {
-      updated.orders = pendingCounts?.orders || 0; changed = true
+    const curOrders = pendingCounts?.orders || 0
+    const curDeposits = pendingCounts?.deposits || 0
+    // When on the page, save current count so dot clears
+    if (pathname === '/admin/purchases' && curOrders > 0) {
+      updated.orders = curOrders; changed = true
     }
-    if (pathname === '/admin/wallets' && (pendingCounts?.deposits || 0) > 0) {
-      updated.deposits = pendingCounts?.deposits || 0; changed = true
+    if (pathname === '/admin/wallets' && curDeposits > 0) {
+      updated.deposits = curDeposits; changed = true
     }
     if (pathname === '/admin/chat' && unreadChats > 0) {
+      updated.chats = unreadChats; changed = true
+    }
+    // Reset when counts drop below last-seen (items were processed/read)
+    // so the next increase will trigger the dot again
+    if (curOrders < lastSeenCounts.orders) {
+      updated.orders = curOrders; changed = true
+    }
+    if (curDeposits < lastSeenCounts.deposits) {
+      updated.deposits = curDeposits; changed = true
+    }
+    if (unreadChats < lastSeenCounts.chats) {
       updated.chats = unreadChats; changed = true
     }
     if (changed) {
@@ -224,7 +224,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       localStorage.setItem('admin_last_seen_counts', JSON.stringify(updated))
     }
   }, [pathname, pendingCounts?.orders, pendingCounts?.deposits, unreadChats])
-
   // Determine which nav items should show a notification dot
   const orderCount = pendingCounts?.orders || 0
   const depositCount = pendingCounts?.deposits || 0
@@ -232,7 +231,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const showOrdersDot = orderCount > lastSeenCounts.orders
   const showDepositsDot = depositCount > lastSeenCounts.deposits
   const showChatDot = chatCount > lastSeenCounts.chats
-
   // Clear dot when clicking a nav item — save current count to localStorage
   const handleNavClick = (href: string) => {
     let updated = { ...lastSeenCounts }
@@ -243,7 +241,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setLastSeenCounts(updated)
     localStorage.setItem('admin_last_seen_counts', JSON.stringify(updated))
   }
-
   // Filter nav items based on permissions
   const visibleNavItems = navItems.filter((item: any) => {
     // If no permission required, show to all staff
@@ -254,7 +251,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     if (item.permissions) return item.permissions.some((p: string) => hasPermission(p))
     return false
   })
-
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push('/admin/login')
@@ -263,12 +259,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       router.push('/admin/login')
     }
   }, [isLoading, isAuthenticated, isStaff, router])
-
   const handleLogout = () => {
     logout()
     router.push('/admin/login')
   }
-
   // Show loading spinner while checking auth
   if (isLoading) {
     return (
@@ -277,7 +271,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </div>
     )
   }
-
   // Don't render anything if not authenticated or not staff (will redirect)
   if (!isAuthenticated || !isStaff) {
     return (
@@ -286,7 +279,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </div>
     )
   }
-
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex overflow-x-hidden">
       {/* Slow pulse animation for notification dots */}
@@ -348,7 +340,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             )}
           </Link>
         </div>
-
         {/* Navigation */}
         <nav className="flex-1 py-4 px-2 overflow-y-auto overflow-x-hidden">
           {visibleNavItems.map((item) => {
@@ -358,6 +349,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <Link
                   href={item.href}
                   onClick={() => handleNavClick(item.href)}
+                  onMouseEnter={(e) => {
+                    if (desktopCollapsed || window.innerWidth < 1024) {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      setNavTooltip({ label: item.label, top: rect.top + rect.height / 2 })
+                    }
+                  }}
+                  onMouseLeave={() => setNavTooltip(null)}
                   className={`flex items-center px-3 py-2.5 rounded-lg mb-1 transition-all justify-center overflow-hidden ${
                     desktopCollapsed ? '' : 'lg:justify-start lg:gap-3'
                   } ${
@@ -400,7 +398,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             )
           })}
         </nav>
-
         {/* User Section */}
         <div className="p-3 border-t border-[#1f1f1f]">
           <div className="relative group">
@@ -426,7 +423,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <p className="text-primary text-xs capitalize">{user?.role?.toLowerCase() || 'User'}</p>
             </div>
           </div>
-
           {/* Logout Button */}
           <button
             onClick={handleLogout}
@@ -441,7 +437,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </button>
         </div>
       </aside>
-
+      {/* Sidebar tooltip (fixed to escape overflow-hidden) */}
+      {navTooltip && (
+        <div
+          className="fixed z-[60] ml-2 px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white text-sm font-medium whitespace-nowrap pointer-events-none"
+          style={{ left: 68, top: navTooltip.top, transform: 'translateY(-50%)' }}
+        >
+          {navTooltip.label}
+        </div>
+      )}
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col transition-[margin] duration-300 ml-16 overflow-x-hidden ${
         desktopCollapsed ? '' : 'lg:ml-64'
@@ -461,7 +465,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <Icon name="menu" size={20} />
             </button>
           </div>
-
           {/* Right: Notifications & Messages */}
           <div className="flex items-center gap-2 ml-4">
             {/* Bell - Notifications */}
@@ -477,7 +480,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   </span>
                 )}
               </button>
-
               {/* Notification Dropdown */}
               {showNotifications && (
                 <div className="absolute right-0 top-full mt-2 w-[340px] bg-[#0D0D0D] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
@@ -506,10 +508,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                             !n.isRead ? 'bg-white/[0.02] border-l-2 border-primary' : 'border-l-2 border-transparent'
                           }`}
                           onClick={() => {
-                            if (n.link) {
-                              setShowNotifications(false)
-                              router.push(n.link)
+                            if (!n.isRead) {
+                              apiFetch(`/notifications/${n.id}/read`, { method: 'POST' }).then(() => {
+                                queryClient.invalidateQueries({ queryKey: ['admin-notif-count'] })
+                                queryClient.invalidateQueries({ queryKey: ['admin-notif-list'] })
+                              })
                             }
+                            setShowNotifications(false)
+                            if (n.link) router.push(n.link)
                           }}
                         >
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${notifColors[n.type] || 'bg-slate-500/20 text-slate-400'}`}>
@@ -546,7 +552,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
               )}
             </div>
-
             {/* Mail - Chat Messages Dropdown */}
             <div className="relative" ref={chatRef}>
               <button
@@ -560,7 +565,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   </span>
                 )}
               </button>
-
               {showChatDropdown && (
                 <div className="absolute right-0 top-full mt-2 w-[340px] bg-[#0D0D0D] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
                   <div className="flex items-center justify-between p-4 border-b border-white/10">
@@ -638,7 +642,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
           </div>
         </header>
-
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="p-4 lg:p-6">

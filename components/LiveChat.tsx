@@ -47,6 +47,7 @@ export default function LiveChat() {
   const chatWindowRef = useRef<HTMLDivElement>(null)
   const lastMessageTimeRef = useRef<string>('')
   const isOpenRef = useRef(false)
+  const notifSoundRef = useRef<HTMLAudioElement | null>(null)
 
   const { user, isLoading: authLoading } = useAuth()
   const userRef = useRef(user)
@@ -84,6 +85,11 @@ export default function LiveChat() {
         setOfflineMessage(res.data.offlineMessage)
       }
     })
+  }, [])
+
+  // Init notification sound for incoming agent messages
+  useEffect(() => {
+    notifSoundRef.current = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbsGczHjqIxN3LdUQkOH250OalWiQcSKjJ3rloLBg7hbzZz4RGIzR3stPRkFooG0eYvNvQiUoeNXS43tiNShUxcq7Z1JJUJiVTibrb0o5MHzJuqNfUlVAnKU6Rw9vPhEwcL26r2tKWUiIlToq929COTBwwbKfY1JVTJylQkcLbz4RMHC5tq9nUl1MnKk+Tw9vPhUwfMG6r')
   }, [])
 
   // Check for active conversation once auth is resolved
@@ -173,8 +179,11 @@ export default function LiveChat() {
         }
 
         // Count messages from others as unread only if chat window is closed
-        if (!isOpenRef.current && !isOwn && msg.senderType !== 'SYSTEM') {
-          setUnreadCount(c => c + 1)
+        if (!isOwn && msg.senderType !== 'SYSTEM') {
+          notifSoundRef.current?.play().catch(() => {})
+          if (!isOpenRef.current) {
+            setUnreadCount(c => c + 1)
+          }
         }
 
         return [...prev, newMsg]
@@ -201,6 +210,12 @@ export default function LiveChat() {
       if (data.conversationId !== conversationId) return
       if (data.agentName) {
         setAssignedAgent({ name: data.agentName, avatar: data.agentAvatar || null })
+        setMessages(prev => [...prev, {
+          id: 'system-transfer-' + Date.now(),
+          content: `You have been transferred to ${data.agentName}`,
+          senderType: 'SYSTEM' as const,
+          createdAt: new Date().toISOString(),
+        }])
       }
     })
 
@@ -470,7 +485,7 @@ export default function LiveChat() {
                   value={guestName}
                   onChange={e => setGuestName(e.target.value)}
                   placeholder="Your name (optional)"
-                  className="w-full bg-charcoal border border-border-dark rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm"
+                  className="w-full bg-charcoal border border-border-dark rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-base sm:text-sm"
                 />
                 <input
                   type="email"
@@ -478,7 +493,7 @@ export default function LiveChat() {
                   onChange={e => setGuestEmail(e.target.value)}
                   placeholder="Your email *"
                   required
-                  className="w-full bg-charcoal border border-border-dark rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm"
+                  className="w-full bg-charcoal border border-border-dark rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-base sm:text-sm"
                 />
                 <button
                   type="submit"
@@ -676,7 +691,7 @@ export default function LiveChat() {
                     placeholder="Type your message..."
                     disabled={isLoading}
                     rows={1}
-                    className="flex-1 bg-charcoal border border-border-dark rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm resize-none overflow-hidden"
+                    className="flex-1 bg-charcoal border border-border-dark rounded-xl py-3 px-4 text-white placeholder:text-slate-500 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-base sm:text-sm resize-none overflow-hidden"
                   />
                   <button
                     type="submit"
