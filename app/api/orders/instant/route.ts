@@ -61,15 +61,15 @@ export async function POST(req: NextRequest) {
 
     // Get user's wallet balance
     const walletResult = await query(
-      `SELECT balance FROM wallets WHERE "userId" = $1`,
+      `SELECT id, balance FROM user_wallets WHERE user_id = $1`,
       [userId]
     )
 
     if (walletResult.rows.length === 0) {
       // Create wallet if doesn't exist
       await query(
-        `INSERT INTO wallets ("userId", balance, currency, "createdAt", "updatedAt")
-         VALUES ($1, 0, 'USD', NOW(), NOW())`,
+        `INSERT INTO user_wallets (id, user_id, balance, currency, created_at, updated_at)
+         VALUES (gen_random_uuid()::text, $1, 0, 'USD', NOW(), NOW())`,
         [userId]
       )
       return NextResponse.json(
@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
+
+    const walletId = walletResult.rows[0].id
 
     const walletBalance = parseFloat(walletResult.rows[0].balance)
     if (walletBalance < total) {
@@ -142,21 +144,19 @@ export async function POST(req: NextRequest) {
     const balanceAfter = walletBalance - total
 
     await query(
-      `UPDATE wallets SET balance = $1, "updatedAt" = NOW() WHERE "userId" = $2`,
+      `UPDATE user_wallets SET balance = $1, updated_at = NOW() WHERE user_id = $2`,
       [balanceAfter, userId]
     )
 
     // Record wallet transaction
     await query(
       `INSERT INTO wallet_transactions (
-         id, "walletId", type, amount, "balanceBefore", "balanceAfter",
-         description, "orderId", "createdAt"
+         id, wallet_id, type, amount, balance_before, balance_after,
+         description, order_id, created_at
        ) VALUES (
-         gen_random_uuid()::text,
-         (SELECT id FROM wallets WHERE "userId" = $1),
-         'DEBIT', $2, $3, $4, $5, $6, NOW()
+         gen_random_uuid()::text, $1, 'DEBIT', $2, $3, $4, $5, $6, NOW()
        )`,
-      [userId, total, balanceBefore, balanceAfter, `Order #${finalOrderNumber}`, orderId]
+      [walletId, total, balanceBefore, balanceAfter, `Order #${finalOrderNumber}`, orderId]
     )
 
     // Run fulfillment

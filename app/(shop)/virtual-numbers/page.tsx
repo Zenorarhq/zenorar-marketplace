@@ -12,6 +12,7 @@ import * as virtualNumbersApi from '@/lib/api/virtual-numbers'
 import * as otpNumbersApi from '@/lib/api/otp-numbers'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
+import { usePreferences } from '@/contexts/PreferencesContext'
 
 type NumberType = 'all' | 'local' | 'toll-free' | 'mobile'
 type TabType = 'monthly' | 'otp'
@@ -177,6 +178,7 @@ function SmartTypeTabs({
 export default function VirtualNumbersPage() {
   const router = useRouter()
   const { addItem } = useCart()
+  const { formatPrice } = usePreferences()
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('monthly')
@@ -570,7 +572,7 @@ export default function VirtualNumbersPage() {
                     >
                       <span className="text-2xl mb-2 block">{country.flagEmoji || '🌍'}</span>
                       <h3 className="font-bold text-white text-xs mb-1">{country.name}</h3>
-                      <p className="text-xs text-primary font-bold">Starting From $2</p>
+                      <p className="text-xs text-primary font-bold">Starting From {formatPrice(2)}</p>
                     </button>
                 ))}
               </div>
@@ -682,7 +684,7 @@ export default function VirtualNumbersPage() {
                       <div className="flex items-end justify-between mb-4">
                         <div>
                           <p className="text-slate-500 text-xs mb-1">Starting From</p>
-                          <span className="text-2xl font-extrabold text-white">${startingPrice}</span>
+                          <span className="text-2xl font-extrabold text-white">{formatPrice(startingPrice)}</span>
                         </div>
                       </div>
 
@@ -885,7 +887,7 @@ export default function VirtualNumbersPage() {
                   {loadingOtpPrice ? (
                     <div className="animate-pulse bg-slate-700 h-8 w-20 rounded"></div>
                   ) : otpPrice !== null ? (
-                    <span className="text-2xl font-extrabold text-white">${otpPrice.toFixed(2)}</span>
+                    <span className="text-2xl font-extrabold text-white">{formatPrice(otpPrice)}</span>
                   ) : (
                     <p className="text-slate-400">—</p>
                   )}
@@ -1072,6 +1074,7 @@ function PlanSelectionModal({
   router
 }: PlanSelectionModalProps) {
   const { user, isAuthenticated, login } = useAuth()
+  const { formatPrice } = usePreferences()
   const [planCategory, setPlanCategory] = useState<'basic' | 'business'>('basic')
   const [selectedDuration, setSelectedDuration] = useState<number>(7) // Default 7 days
 
@@ -1257,8 +1260,8 @@ function PlanSelectionModal({
             onClick={() => setPlanCategory('basic')}
             className={`flex-1 px-4 py-3 rounded-lg font-bold text-sm transition-all ${
               planCategory === 'basic'
-                ? 'bg-primary text-black'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-primary text-black border-2 border-primary'
+                : 'text-slate-400 hover:text-white border border-border-dark hover:border-slate-500'
             }`}
           >
             <div className="flex items-center justify-center gap-2">
@@ -1282,8 +1285,8 @@ function PlanSelectionModal({
             }}
             className={`flex-1 px-4 py-3 rounded-lg font-bold text-sm transition-all ${
               planCategory === 'business'
-                ? 'bg-primary text-black'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-primary text-black border-2 border-primary'
+                : 'text-slate-400 hover:text-white border border-border-dark hover:border-slate-500'
             }`}
           >
             <div className="flex items-center justify-center gap-2">
@@ -1309,7 +1312,7 @@ function PlanSelectionModal({
                 }`}
               >
                 <h5 className="font-bold text-white text-lg">{plan.label}</h5>
-                <p className="text-2xl font-extrabold text-primary mt-2">${plan.price}</p>
+                <p className="text-2xl font-extrabold text-primary mt-2">{formatPrice(plan.price)}</p>
                 {planCategory === 'basic' && 'smsLimit' in plan && (
                   <p className="text-slate-500 text-xs mt-1">{plan.smsLimit} SMS</p>
                 )}
@@ -1342,7 +1345,7 @@ function PlanSelectionModal({
                   }`}
                 >
                   <p className="text-base font-bold text-white">{tier.minutes} min</p>
-                  <p className="text-blue-400 text-sm font-medium">+${tier.price}</p>
+                  <p className="text-blue-400 text-sm font-medium">+{formatPrice(tier.price)}</p>
                 </button>
               ))}
             </div>
@@ -1380,7 +1383,7 @@ function PlanSelectionModal({
             <div className="border-t border-border-dark my-3"></div>
             <div className="flex justify-between text-lg">
               <span className="font-bold text-white">Total</span>
-              <span className="font-extrabold text-primary">${totalPrice.toFixed(2)}</span>
+              <span className="font-extrabold text-primary">{formatPrice(totalPrice)}</span>
             </div>
           </div>
         </div>
@@ -1472,7 +1475,7 @@ function PlanSelectionModal({
               ) : isAuthenticated ? (
                 <>
                   <Icon name="wallet" size={18} />
-                  Pay ${totalPrice.toFixed(2)} with Wallet
+                  Pay {formatPrice(totalPrice)} with Wallet
                 </>
               ) : (
                 <>
