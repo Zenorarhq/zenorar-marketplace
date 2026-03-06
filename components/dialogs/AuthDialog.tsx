@@ -363,17 +363,17 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
         ref={dialogRef}
         className="relative w-full max-w-[440px] max-h-[90vh] bg-surface-dark border border-border-dark rounded-2xl shadow-2xl overflow-y-auto custom-scrollbar"
       >
-        {/* Close button */}
+        {/* Close button - positioned outside content area */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2.5 bg-surface-light hover:bg-[#333] border border-border-dark text-slate-400 hover:text-white rounded-xl transition-all z-10"
+          className="absolute top-3 right-3 p-2 bg-surface-light hover:bg-[#333] border border-border-dark text-slate-400 hover:text-white rounded-lg transition-all z-10"
           aria-label="Close"
         >
-          <Icon name="close" size={18} />
+          <Icon name="close" size={16} />
         </button>
 
-        <div className="p-6 sm:p-8 pt-14">
+        <div className="p-6 sm:p-8 mt-10">
           {/* 2FA Verification Step */}
           {twoFaRequired ? (
             <>
@@ -472,28 +472,28 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
               )}
 
               {/* Social Login */}
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center justify-center bg-surface-light border border-border-dark rounded-2xl transition-all overflow-hidden min-h-[52px]">
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="flex items-center justify-center bg-surface-light border border-border-dark rounded-2xl transition-all overflow-hidden min-h-[48px]">
                   {isGoogleLoading ? (
-                    <div className="flex items-center justify-center gap-3 py-3.5 w-full">
+                    <div className="flex items-center justify-center gap-2 py-3 w-full">
                       <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M23.766 12.2764C23.766 11.4607 23.6999 10.6406 23.5588 9.83807H12.24V14.4591H18.7217C18.4528 15.9494 17.5885 17.2678 16.323 18.1056V21.1039H20.19C22.4608 19.0139 23.766 15.9274 23.766 12.2764Z" fill="#4285F4" />
                         <path d="M12.24 24.0008C15.4765 24.0008 18.2058 22.9382 20.19 21.1039L16.323 18.1056C15.2424 18.8375 13.8643 19.252 12.2435 19.252C9.11388 19.252 6.45946 17.1399 5.50705 14.3003H1.5166V17.3912C3.55371 21.4434 7.7029 24.0008 12.24 24.0008Z" fill="#34A853" />
                         <path d="M5.50253 14.3003C5.00236 12.8099 5.00236 11.1961 5.50253 9.70575V6.61481H1.5166C-0.18551 10.0056 -0.18551 14.0004 1.5166 17.3912L5.50253 14.3003Z" fill="#FBBC05" />
                         <path d="M12.24 4.74966C13.9509 4.7232 15.6044 5.36697 16.8434 6.54867L20.2695 3.12262C18.1001 1.0855 15.2208 -0.034466 12.24 0.000808666C7.7029 0.000808666 3.55371 2.55822 1.5166 6.61481L5.50253 9.70575C6.45064 6.86173 9.10947 4.74966 12.24 4.74966Z" fill="#EA4335" />
                       </svg>
-                      <span className="font-medium text-sm text-white">Signing in...</span>
+                      <span className="font-medium text-xs text-white">Signing in...</span>
                     </div>
                   ) : !isGoogleReady ? (
-                    <div className="flex items-center justify-center gap-3 py-3.5 w-full">
-                      <Icon name="loading" size={20} className="animate-spin text-slate-400" />
-                      <span className="font-medium text-sm text-slate-400">Loading...</span>
+                    <div className="flex items-center justify-center gap-2 py-3 w-full">
+                      <Icon name="loading" size={18} className="animate-spin text-slate-400" />
+                      <span className="font-medium text-xs text-slate-400">Loading...</span>
                     </div>
                   ) : isGoogleFailed ? (
                     <button
                       type="button"
                       onClick={retryGoogleLoad}
-                      className="flex items-center justify-center gap-3 py-3.5 w-full hover:bg-[#222] transition-colors"
+                      className="flex items-center justify-center gap-2 py-3 w-full hover:bg-[#222] transition-colors"
                     >
                       <svg className="w-5 h-5 opacity-50" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M23.766 12.2764C23.766 11.4607 23.6999 10.6406 23.5588 9.83807H12.24V14.4591H18.7217C18.4528 15.9494 17.5885 17.2678 16.323 18.1056V21.1039H20.19C22.4608 19.0139 23.766 15.9274 23.766 12.2764Z" fill="#4285F4" />
@@ -501,19 +501,19 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                         <path d="M5.50253 14.3003C5.00236 12.8099 5.00236 11.1961 5.50253 9.70575V6.61481H1.5166C-0.18551 10.0056 -0.18551 14.0004 1.5166 17.3912L5.50253 14.3003Z" fill="#FBBC05" />
                         <path d="M12.24 4.74966C13.9509 4.7232 15.6044 5.36697 16.8434 6.54867L20.2695 3.12262C18.1001 1.0855 15.2208 -0.034466 12.24 0.000808666C7.7029 0.000808666 3.55371 2.55822 1.5166 6.61481L5.50253 9.70575C6.45064 6.86173 9.10947 4.74966 12.24 4.74966Z" fill="#EA4335" />
                       </svg>
-                      <span className="font-medium text-sm text-slate-400">Retry Google Sign In</span>
+                      <span className="font-medium text-xs text-slate-400">Retry</span>
                     </button>
                   ) : (
-                    <GoogleLogin
-                      onSuccess={handleGoogleSuccess}
-                      onError={handleGoogleError}
-                      type="standard"
-                      theme="filled_black"
-                      size="large"
-                      text={activeTab === 'login' ? 'signin_with' : 'signup_with'}
-                      shape="rectangular"
-                      width="400"
-                    />
+                    <div className="w-full flex items-center justify-center [&>div]:!w-full [&_iframe]:!w-full">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={handleGoogleError}
+                        type="icon"
+                        theme="filled_black"
+                        size="large"
+                        shape="circle"
+                      />
+                    </div>
                   )}
                 </div>
 
@@ -521,14 +521,14 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                   type="button"
                   onClick={handleWalletLogin}
                   disabled={isWalletLoading}
-                  className="w-full flex items-center justify-center gap-3 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3.5 rounded-2xl transition-all group disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 bg-surface-light hover:bg-[#222] border border-border-dark hover:border-slate-600 text-white py-3 rounded-2xl transition-all group disabled:opacity-50"
                 >
                   {isWalletLoading ? (
-                    <Icon name="loading" size={20} className="animate-spin" />
+                    <Icon name="loading" size={18} className="animate-spin" />
                   ) : (
-                    <Icon name="wallet" size={20} className="text-white group-hover:text-primary transition-colors" />
+                    <Icon name="wallet" size={18} className="text-white group-hover:text-primary transition-colors" />
                   )}
-                  <span className="font-medium text-sm">Continue with Wallet</span>
+                  <span className="font-medium text-sm">Wallet</span>
                 </button>
               </div>
 
