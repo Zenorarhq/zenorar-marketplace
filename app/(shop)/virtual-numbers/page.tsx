@@ -88,23 +88,24 @@ const SERVICE_ICONS: Record<string, string> = {
 
 // ============================================================
 // Smart Type Tabs Component - Auto-orders and hides empty tabs
+// Uses masterNumbers (from "All Types" fetch) to determine which tabs to show
 // ============================================================
 function SmartTypeTabs({
-  availableNumbers,
+  masterNumbers,
   loadingNumbers,
   numberType,
   setNumberType,
 }: {
-  availableNumbers: AvailableNumber[]
+  masterNumbers: AvailableNumber[] // Master list from "All Types" fetch
   loadingNumbers: boolean
   numberType: NumberType
   setNumberType: (type: NumberType) => void
 }) {
-  // Count numbers per type
+  // Count numbers per type FROM MASTER LIST (not filtered list)
   const typeCounts = {
-    local: availableNumbers.filter(n => n.type === 'local').length,
-    'toll-free': availableNumbers.filter(n => n.type === 'toll-free').length,
-    mobile: availableNumbers.filter(n => n.type === 'mobile').length,
+    local: masterNumbers.filter(n => n.type === 'local').length,
+    'toll-free': masterNumbers.filter(n => n.type === 'toll-free').length,
+    mobile: masterNumbers.filter(n => n.type === 'mobile').length,
   }
 
   // Get types with numbers, sorted by count (most first)
@@ -114,34 +115,10 @@ function SmartTypeTabs({
 
   // Only show "All Types" if multiple types have numbers
   const showAllTab = availableTypes.length > 1
-  const tabs: NumberType[] = showAllTab ? ['all', ...availableTypes] : availableTypes
+  const tabs: NumberType[] = showAllTab ? ['all', ...availableTypes] : availableTypes.length > 0 ? availableTypes : ['all']
 
-  // Auto-select best tab when numbers change
-  useEffect(() => {
-    // Don't auto-select while loading
-    if (loadingNumbers) return
-
-    // If there are no numbers, reset to 'all'
-    if (availableNumbers.length === 0) {
-      return
-    }
-
-    // If current selection is 'all' and we have types, keep 'all'
-    if (numberType === 'all' && showAllTab) {
-      return
-    }
-
-    // If current selection has 0 numbers, switch to the type with most numbers
-    if (numberType !== 'all' && typeCounts[numberType as keyof typeof typeCounts] === 0) {
-      if (availableTypes.length > 0) {
-        // Select the type with the most numbers
-        setNumberType(showAllTab ? 'all' : availableTypes[0])
-      }
-    }
-  }, [availableNumbers, loadingNumbers])
-
-  // While loading, show skeleton tabs
-  if (loadingNumbers) {
+  // While loading and no master data yet, show skeleton tabs
+  if (loadingNumbers && masterNumbers.length === 0) {
     return (
       <div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
         {[1, 2, 3].map((i) => (
@@ -154,19 +131,22 @@ function SmartTypeTabs({
     )
   }
 
-  // If no numbers at all, don't show tabs
-  if (availableNumbers.length === 0) {
+  // If no numbers at all in master list, don't show tabs
+  if (masterNumbers.length === 0) {
     return null
   }
 
-  // If only one type has numbers, show just that type (no tabs needed, but show for context)
+  // If only one type has numbers, show just that type as selected (no need for tabs)
   if (availableTypes.length === 1) {
     return (
       <div className="flex gap-3 mb-8">
-        <div className="px-5 py-2 rounded-xl bg-primary text-white font-bold text-sm">
+        <button
+          onClick={() => setNumberType(availableTypes[0])}
+          className="px-5 py-2 rounded-xl bg-primary text-white font-bold text-sm"
+        >
           {availableTypes[0].charAt(0).toUpperCase() + availableTypes[0].slice(1).replace('-', ' ')}
           <span className="ml-2 text-xs opacity-70">({typeCounts[availableTypes[0]]})</span>
-        </div>
+        </button>
       </div>
     )
   }
@@ -204,6 +184,7 @@ export default function VirtualNumbersPage() {
   const [countries, setCountries] = useState<Country[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([])
+  const [allTypesNumbers, setAllTypesNumbers] = useState<AvailableNumber[]>([]) // Master list from "All Types" fetch
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null)
   const [numberType, setNumberType] = useState<NumberType>('all')
   const prevCountryIdRef = useRef<string | null>(null)
@@ -275,6 +256,7 @@ export default function VirtualNumbersPage() {
   useEffect(() => {
     if (!selectedCountry) {
       setAvailableNumbers([])
+      setAllTypesNumbers([])
       prevCountryIdRef.current = null
       return
     }
@@ -282,24 +264,46 @@ export default function VirtualNumbersPage() {
     const countryChanged = prevCountryIdRef.current !== selectedCountry.id
     prevCountryIdRef.current = selectedCountry.id
 
-    // Clear previous numbers immediately to prevent stale tab logic
-    setAvailableNumbers([])
-
-    // Reset to 'all' when country changes to ensure numbers are visible
-    if (countryChanged && numberType !== 'all') {
-      setNumberType('all')
-      return // Effect will re-run with 'all' type
+    // Reset to 'all' when country changes to ensure we fetch all types first
+    if (countryChanged) {
+      setAllTypesNumbers([])
+      setAvailableNumbers([])
+      if (numberType !== 'all') {
+        setNumberType('all')
+        return // Effect will re-run with 'all' type
+      }
     }
 
     async function fetchNumbers() {
       setLoadingNumbers(true)
       try {
-        const result = await virtualNumbersApi.searchAvailableNumbers({
-          countryCode: selectedCountry!.isoCode,
-          type: numberType === 'all' ? undefined : numberType as any
-        })
-        if (result.success && result.data) {
-          setAvailableNumbers(result.data)
+        if (numberType === 'all') {
+          // Fetch ALL types to get master list and counts
+          const result = await virtualNumbersApi.searchAvailableNumbers({
+            countryCode: selectedCountry!.isoCode,
+            type: undefined // Fetch all types
+          })
+          if (result.success && result.data) {
+            setAllTypesNumbers(result.data) // Store as master list
+            setAvailableNumbers(result.data)
+          }
+        } else {
+          // When filtering by type, use the master list if available
+          if (allTypesNumbers.length > 0) {
+            // Filter from master list (instant, no API call)
+            const filtered = allTypesNumbers.filter(n => n.type === numberType)
+            setAvailableNumbers(filtered)
+            setLoadingNumbers(false)
+            return
+          }
+          // Fallback: fetch from API if no master list
+          const result = await virtualNumbersApi.searchAvailableNumbers({
+            countryCode: selectedCountry!.isoCode,
+            type: numberType as any
+          })
+          if (result.success && result.data) {
+            setAvailableNumbers(result.data)
+          }
         }
       } catch (error) {
         console.error('Error fetching numbers:', error)
@@ -308,7 +312,7 @@ export default function VirtualNumbersPage() {
       }
     }
     fetchNumbers()
-  }, [selectedCountry, numberType])
+  }, [selectedCountry, numberType, allTypesNumbers.length])
 
   // ===== OTP EFFECTS =====
 
@@ -574,7 +578,7 @@ export default function VirtualNumbersPage() {
 
           {/* Type Filter - Smart ordering based on availability */}
           <SmartTypeTabs
-            availableNumbers={availableNumbers}
+            masterNumbers={allTypesNumbers}
             loadingNumbers={loadingNumbers}
             numberType={numberType}
             setNumberType={setNumberType}
