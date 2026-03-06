@@ -210,13 +210,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
     // Reset when counts drop below last-seen (items were processed/read)
     // so the next increase will trigger the dot again
-    if (curOrders < lastSeenCounts.orders) {
+    if (pendingCounts && curOrders < lastSeenCounts.orders) {
       updated.orders = curOrders; changed = true
     }
-    if (curDeposits < lastSeenCounts.deposits) {
+    if (pendingCounts && curDeposits < lastSeenCounts.deposits) {
       updated.deposits = curDeposits; changed = true
     }
-    if (unreadChats < lastSeenCounts.chats) {
+    if (chatData && unreadChats < lastSeenCounts.chats) {
       updated.chats = unreadChats; changed = true
     }
     if (changed) {
