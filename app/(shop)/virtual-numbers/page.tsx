@@ -444,9 +444,7 @@ export default function VirtualNumbersPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                {countries.map((country) => {
-                  const dailyPrice = (country.retailMonthly / 30).toFixed(2)
-                  return (
+                {countries.map((country) => (
                     <button
                       key={country.id}
                       onClick={() => setSelectedCountry(selectedCountry?.id === country.id ? null : country)}
@@ -458,10 +456,9 @@ export default function VirtualNumbersPage() {
                     >
                       <span className="text-2xl mb-2 block">{country.flagEmoji || '🌍'}</span>
                       <h3 className="font-bold text-white text-xs mb-1">{country.name}</h3>
-                      <p className="text-xs text-primary font-bold">From ${dailyPrice}/day</p>
+                      <p className="text-xs text-primary font-bold">From $2</p>
                     </button>
-                  )
-                })}
+                ))}
               </div>
             )}
           </div>
@@ -555,8 +552,8 @@ export default function VirtualNumbersPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredNumbers.map((number, idx) => {
-                  // Calculate daily price (monthly / 30)
-                  const dailyPrice = (number.monthlyPrice / 30).toFixed(2)
+                  // Use the smallest plan price (24hr Basic = $2)
+                  const startingPrice = 2
 
                   return (
                     <div
@@ -620,12 +617,11 @@ export default function VirtualNumbersPage() {
                         )}
                       </div>
 
-                      {/* Daily price display */}
+                      {/* Starting price display */}
                       <div className="flex items-end justify-between mb-4">
                         <div>
                           <p className="text-slate-500 text-xs mb-1">From</p>
-                          <span className="text-2xl font-extrabold text-white">${dailyPrice}</span>
-                          <span className="text-slate-500 text-sm">/day</span>
+                          <span className="text-2xl font-extrabold text-white">${startingPrice}</span>
                         </div>
                       </div>
 
