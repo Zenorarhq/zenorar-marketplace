@@ -140,7 +140,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     name: 'spacer',
     category: 'layout',
     description: 'Vertical spacing between sections',
-    icon: 'unfold-more',
+    icon: 'expand-more',
     schema: {
       type: 'object',
       properties: {
@@ -447,7 +447,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     name: 'button-cta',
     category: 'content',
     description: 'Standalone call-to-action button',
-    icon: 'smart-button',
+    icon: 'bolt',
     schema: {
       type: 'object',
       properties: {
@@ -628,7 +628,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     name: 'heading',
     category: 'content',
     description: 'Standalone heading with full typography control',
-    icon: 'title',
+    icon: 'description',
     schema: {
       type: 'object',
       properties: {
@@ -686,7 +686,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     name: 'icon-box',
     category: 'content',
     description: 'Icon with title and description card',
-    icon: 'widgets',
+    icon: 'sparkles',
     schema: {
       type: 'object',
       properties: {
@@ -786,7 +786,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     name: 'tabs',
     category: 'content',
     description: 'Tabbed content panels',
-    icon: 'tab',
+    icon: 'layout-left',
     schema: {
       type: 'object',
       properties: {
@@ -816,7 +816,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     name: 'progress-bar',
     category: 'content',
     description: 'Horizontal progress bars with labels',
-    icon: 'linear-scale',
+    icon: 'chart',
     schema: {
       type: 'object',
       properties: {
@@ -846,7 +846,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     name: 'star-rating',
     category: 'content',
     description: 'Star rating display',
-    icon: 'star-rate',
+    icon: 'star',
     schema: {
       type: 'object',
       properties: {
