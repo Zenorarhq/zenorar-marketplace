@@ -196,12 +196,6 @@ export default function LiveChat() {
       if (data.conversationId !== conversationId) return
       if (data.status === 'CLOSED' || data.status === 'RESOLVED') {
         localStorage.removeItem('chat_conversation_id')
-        setMessages(prev => [...prev, {
-          id: 'system-' + Date.now(),
-          content: `Conversation ${data.status.toLowerCase()}`,
-          senderType: 'SYSTEM',
-          createdAt: new Date().toISOString(),
-        }])
         if (!ratingSubmitted) setShowRating(true)
       }
     })
@@ -210,12 +204,6 @@ export default function LiveChat() {
       if (data.conversationId !== conversationId) return
       if (data.agentName) {
         setAssignedAgent({ name: data.agentName, avatar: data.agentAvatar || null })
-        setMessages(prev => [...prev, {
-          id: 'system-transfer-' + Date.now(),
-          content: `You have been transferred to ${data.agentName}`,
-          senderType: 'SYSTEM' as const,
-          createdAt: new Date().toISOString(),
-        }])
       }
     })
 
