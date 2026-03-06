@@ -9,6 +9,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiFetch } from '@/lib/api/client'
 import * as virtualNumbersApi from '@/lib/api/virtual-numbers'
 import * as otpNumbersApi from '@/lib/api/otp-numbers'
+import AuthDialog from '@/components/dialogs/AuthDialog'
+import DepositModal from '@/components/wallet/DepositModal'
 
 type NumberType = 'all' | 'local' | 'toll-free' | 'mobile'
 type TabType = 'monthly' | 'otp'
@@ -1116,23 +1118,27 @@ function PlanSelectionModal({
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
   const [processingPayment, setProcessingPayment] = useState(false)
-  const [showLoginForm, setShowLoginForm] = useState(false)
-  const [showTopUpPrompt, setShowTopUpPrompt] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [checkoutSuccess, setCheckoutSuccess] = useState(false)
 
-  // Login form state
-  const [loginEmail, setLoginEmail] = useState('')
-  const [loginPassword, setLoginPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
-  const [loginLoading, setLoginLoading] = useState(false)
+  // Auth and deposit modals
+  const [showAuthDialog, setShowAuthDialog] = useState(false)
+  const [showDepositModal, setShowDepositModal] = useState(false)
+  const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
 
-  // Fetch wallet balance when authenticated
-  useEffect(() => {
-    if (isAuthenticated && walletBalance === null) {
-      fetchWalletBalance()
+  // Calculate total price - must be before effects that use it
+  const calculateTotal = () => {
+    if (planCategory === 'basic') {
+      const plan = pricing.basic.find(p => p.duration === selectedDuration)
+      return plan?.price || 0
+    } else {
+      const plan = pricing.business.find(p => p.duration === selectedDuration)
+      const basePrice = plan?.price || 0
+      const minutePrice = selectedMinuteTier?.price || 0
+      return basePrice + minutePrice
     }
-  }, [isAuthenticated])
+  }
+  const totalPrice = calculateTotal()
 
   const fetchWalletBalance = async () => {
     setLoadingBalance(true)
@@ -1153,18 +1159,26 @@ function PlanSelectionModal({
     }
   }
 
-  // Calculate total price
-  const calculateTotal = () => {
-    if (planCategory === 'basic') {
-      const plan = pricing.basic.find(p => p.duration === selectedDuration)
-      return plan?.price || 0
-    } else {
-      const plan = pricing.business.find(p => p.duration === selectedDuration)
-      const basePrice = plan?.price || 0
-      const minutePrice = selectedMinuteTier?.price || 0
-      return basePrice + minutePrice
+  // Fetch wallet balance when authenticated
+  useEffect(() => {
+    if (isAuthenticated && walletBalance === null) {
+      fetchWalletBalance()
     }
-  }
+  }, [isAuthenticated])
+
+  // Auto-continue checkout after auth success
+  useEffect(() => {
+    if (pendingWalletCheckout && isAuthenticated && walletBalance !== null) {
+      setPendingWalletCheckout(false)
+      // Check balance and proceed
+      if (walletBalance >= totalPrice) {
+        processWalletPayment()
+      } else {
+        // Show deposit modal immediately
+        setShowDepositModal(true)
+      }
+    }
+  }, [pendingWalletCheckout, isAuthenticated, walletBalance, totalPrice])
 
   // Handle checkout
   const handleCheckout = () => {
@@ -1175,8 +1189,6 @@ function PlanSelectionModal({
       : pricing.business.find(p => p.duration === selectedDuration)
 
     if (!durationPlan) return
-
-    const totalPrice = calculateTotal()
 
     // Create virtual number product
     const virtualNumberProduct = {
@@ -1217,7 +1229,6 @@ function PlanSelectionModal({
     router.push('/cart')
   }
 
-  const totalPrice = calculateTotal()
   const currentBasicPlan = pricing.basic.find(p => p.duration === selectedDuration)
   const currentBusinessPlan = pricing.business.find(p => p.duration === selectedDuration)
 
@@ -1374,97 +1385,46 @@ function PlanSelectionModal({
           </div>
         </div>
 
-        {/* Login Form (inline) */}
-        {showLoginForm && (
-          <div className="bg-charcoal rounded-xl p-4 mb-6">
-            <h4 className="text-white font-bold mb-3">Login to Continue</h4>
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault()
-                setLoginLoading(true)
-                setLoginError('')
-                const result = await login(loginEmail, loginPassword)
-                if (result.success) {
-                  setShowLoginForm(false)
-                  fetchWalletBalance()
-                } else {
-                  setLoginError(result.error || 'Login failed')
-                }
-                setLoginLoading(false)
-              }}
-              className="space-y-3"
-            >
-              <input
-                type="email"
-                placeholder="Email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500"
-                required
-              />
-              {loginError && (
-                <p className="text-red-400 text-sm">{loginError}</p>
-              )}
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  disabled={loginLoading}
-                  className="flex-1 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 disabled:opacity-50"
-                >
-                  {loginLoading ? 'Logging in...' : 'Login'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowLoginForm(false)}
-                  className="px-4 py-3 bg-charcoal border border-border-dark text-slate-400 font-bold rounded-xl hover:text-white"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+        {/* Auth Dialog */}
+        <AuthDialog
+          isOpen={showAuthDialog}
+          onClose={() => setShowAuthDialog(false)}
+          onSuccess={() => {
+            setShowAuthDialog(false)
+            setPendingWalletCheckout(true)
+            fetchWalletBalance()
+          }}
+        />
 
-        {/* Top Up Prompt */}
-        {showTopUpPrompt && (
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <Icon name="alert" size={20} className="text-yellow-400 mt-0.5" />
-              <div>
-                <h4 className="text-white font-bold mb-1">Insufficient Balance</h4>
-                <p className="text-slate-400 text-sm mb-3">
-                  Your wallet balance (${walletBalance?.toFixed(2)}) is less than the total (${totalPrice.toFixed(2)}).
-                  Please add funds to continue.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      onClose()
-                      router.push('/profile/wallet?deposit=true')
-                    }}
-                    className="px-4 py-2 bg-primary text-black font-bold rounded-lg text-sm"
-                  >
-                    Add Funds
-                  </button>
-                  <button
-                    onClick={() => setShowTopUpPrompt(false)}
-                    className="px-4 py-2 bg-charcoal border border-border-dark text-slate-400 font-bold rounded-lg text-sm"
-                  >
-                    Use Cart Instead
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Deposit Modal */}
+        <DepositModal
+          isOpen={showDepositModal}
+          onClose={async () => {
+            setShowDepositModal(false)
+            // Refresh balance after deposit modal closes
+            setLoadingBalance(true)
+            try {
+              const response = await fetch('/api/wallet', {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+                },
+              })
+              const result = await response.json()
+              if (result.success && result.data) {
+                const newBalance = result.data.balance || 0
+                setWalletBalance(newBalance)
+                // Auto-complete purchase if now have enough balance
+                if (newBalance >= totalPrice) {
+                  processWalletPayment()
+                }
+              }
+            } catch (error) {
+              console.error('Failed to fetch wallet balance:', error)
+            } finally {
+              setLoadingBalance(false)
+            }
+          }}
+        />
 
         {/* Success Message */}
         {checkoutSuccess && (
@@ -1498,7 +1458,7 @@ function PlanSelectionModal({
         {/* Action Buttons */}
         {!checkoutSuccess && (
           <div className="flex gap-3">
-            {/* Pay with Credit Button */}
+            {/* Pay with Wallet Button */}
             <button
               onClick={handleInstantCheckout}
               disabled={processingPayment || loadingBalance}
@@ -1517,7 +1477,7 @@ function PlanSelectionModal({
               ) : isAuthenticated ? (
                 <>
                   <Icon name="wallet" size={18} />
-                  Pay ${totalPrice.toFixed(2)} with Credit
+                  Pay ${totalPrice.toFixed(2)} with Wallet
                   {walletBalance !== null && (
                     <span className="text-xs opacity-70">(${walletBalance.toFixed(2)} available)</span>
                   )}
@@ -1525,7 +1485,7 @@ function PlanSelectionModal({
               ) : (
                 <>
                   <Icon name="wallet" size={18} />
-                  Pay with Credit
+                  Pay with Wallet
                 </>
               )}
             </button>
@@ -1544,30 +1504,10 @@ function PlanSelectionModal({
     </div>
   )
 
-  // Handle instant checkout with wallet
-  async function handleInstantCheckout() {
-    setCheckoutError(null)
-
-    // If not authenticated, show login form
-    if (!isAuthenticated) {
-      setShowLoginForm(true)
-      return
-    }
-
-    // Check wallet balance
-    if (walletBalance === null) {
-      await fetchWalletBalance()
-      return
-    }
-
-    // If insufficient balance, show top-up prompt
-    if (walletBalance < totalPrice) {
-      setShowTopUpPrompt(true)
-      return
-    }
-
-    // Process instant checkout
+  // Process wallet payment (extracted for reuse after auth/deposit)
+  async function processWalletPayment() {
     setProcessingPayment(true)
+    setCheckoutError(null)
 
     try {
       if (!country) throw new Error('Country not selected')
@@ -1624,5 +1564,33 @@ function PlanSelectionModal({
     } finally {
       setProcessingPayment(false)
     }
+  }
+
+  // Handle instant checkout with wallet
+  async function handleInstantCheckout() {
+    setCheckoutError(null)
+
+    // If not authenticated, show auth dialog
+    if (!isAuthenticated) {
+      setShowAuthDialog(true)
+      return
+    }
+
+    // Check wallet balance
+    if (walletBalance === null) {
+      setLoadingBalance(true)
+      await fetchWalletBalance()
+      // Will re-check on next click
+      return
+    }
+
+    // If insufficient balance, show deposit modal immediately
+    if (walletBalance < totalPrice) {
+      setShowDepositModal(true)
+      return
+    }
+
+    // Process payment
+    await processWalletPayment()
   }
 }
