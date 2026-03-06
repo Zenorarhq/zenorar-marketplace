@@ -456,7 +456,7 @@ export default function VirtualNumbersPage() {
                     >
                       <span className="text-2xl mb-2 block">{country.flagEmoji || '🌍'}</span>
                       <h3 className="font-bold text-white text-xs mb-1">{country.name}</h3>
-                      <p className="text-xs text-primary font-bold">From $2</p>
+                      <p className="text-xs text-primary font-bold">Starting From $2</p>
                     </button>
                 ))}
               </div>
@@ -620,7 +620,7 @@ export default function VirtualNumbersPage() {
                       {/* Starting price display */}
                       <div className="flex items-end justify-between mb-4">
                         <div>
-                          <p className="text-slate-500 text-xs mb-1">From</p>
+                          <p className="text-slate-500 text-xs mb-1">Starting From</p>
                           <span className="text-2xl font-extrabold text-white">${startingPrice}</span>
                         </div>
                       </div>
