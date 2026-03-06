@@ -268,11 +268,14 @@ const iconMap = {
   'external-link': LinkSquare02Icon,
   'link-external-01': LinkSquare02Icon,
   refresh: RefreshIcon,
+  'refresh-cw': RefreshIcon,
   loading: Loading01Icon,
   spinner: Loading01Icon,
   x: Cancel01Icon,
+  ban: Cancel01Icon,
   trash: Delete01Icon,
   dollar: Wallet01Icon,
+  'trending-up': ArrowUpRight01Icon,
 
   // Communication
   mail: Mail01Icon,
@@ -337,6 +340,7 @@ const iconMap = {
   sort: Sorting01Icon,
   'grid-view': GridViewIcon,
   'list-view': Menu09Icon,
+  list: Menu09Icon,
 
   // Tech & Development
   code: CodeIcon,
