@@ -1609,7 +1609,7 @@ function PlanSelectionModal({
     }
 
     // If insufficient balance, show deposit modal immediately
-    if (currentBalance < totalPrice) {
+    if (currentBalance === null || currentBalance < totalPrice) {
       setShowDepositModal(true)
       return
     }
