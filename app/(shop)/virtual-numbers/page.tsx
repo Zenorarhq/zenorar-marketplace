@@ -964,26 +964,32 @@ interface MinuteTier {
   price: number
 }
 
-// Hardcoded minute tiers (will be fetched from API later)
-const MINUTE_TIERS: MinuteTier[] = [
-  { id: 'basic_30', name: 'Basic', minutes: 30, price: 3 },
-  { id: 'standard_60', name: 'Standard', minutes: 60, price: 5 },
-  { id: 'pro_120', name: 'Pro', minutes: 120, price: 10 },
-]
+interface DynamicPricing {
+  basic: { duration: number; label: string; price: number; smsLimit: number }[]
+  business: { duration: number; label: string; price: number; features: string[] }[]
+  minuteTiers: { id: string; minutes: number; price: number }[]
+  startingPrice: number
+}
 
-// Duration-based pricing for Basic plans (SMS only)
-const BASIC_PLANS = [
-  { duration: 1, label: '24 Hours', price: 2, smsLimit: 50 },
-  { duration: 7, label: '7 Days', price: 8, smsLimit: 200 },
-  { duration: 30, label: '30 Days', price: 15, smsLimit: 500 },
-]
-
-// Duration-based pricing for Business plans (Calls + SMS Forwarding)
-const BUSINESS_PLANS = [
-  { duration: 1, label: '24 Hours', price: 5, features: ['SMS + Voice', 'Call Forwarding'] },
-  { duration: 7, label: '7 Days', price: 20, features: ['SMS + Voice', 'Call Forwarding', 'Voicemail'] },
-  { duration: 30, label: '30 Days', price: 45, features: ['SMS + Voice', 'Call Forwarding', 'Voicemail', 'Priority Support'] },
-]
+// Default fallback pricing (used while loading or if API fails)
+const DEFAULT_PRICING: DynamicPricing = {
+  basic: [
+    { duration: 1, label: '24 Hours', price: 2, smsLimit: 50 },
+    { duration: 7, label: '7 Days', price: 8, smsLimit: 200 },
+    { duration: 30, label: '30 Days', price: 15, smsLimit: 500 },
+  ],
+  business: [
+    { duration: 1, label: '24 Hours', price: 5, features: ['SMS + Voice', 'Call Forwarding'] },
+    { duration: 7, label: '7 Days', price: 20, features: ['SMS + Voice', 'Call Forwarding', 'Voicemail'] },
+    { duration: 30, label: '30 Days', price: 45, features: ['SMS + Voice', 'Call Forwarding', 'Voicemail', 'Priority Support'] },
+  ],
+  minuteTiers: [
+    { id: 'tier_30', minutes: 30, price: 5 },
+    { id: 'tier_60', minutes: 60, price: 10 },
+    { id: 'tier_120', minutes: 120, price: 20 },
+  ],
+  startingPrice: 2,
+}
 
 interface PlanSelectionModalProps {
   number: AvailableNumber
@@ -1007,7 +1013,50 @@ function PlanSelectionModal({
   const { user, isAuthenticated, login } = useAuth()
   const [planCategory, setPlanCategory] = useState<'basic' | 'business'>('basic')
   const [selectedDuration, setSelectedDuration] = useState<number>(7) // Default 7 days
-  const [selectedMinuteTier, setSelectedMinuteTier] = useState<MinuteTier | null>(MINUTE_TIERS[0])
+
+  // Dynamic pricing state
+  const [pricing, setPricing] = useState<DynamicPricing>(DEFAULT_PRICING)
+  const [loadingPricing, setLoadingPricing] = useState(true)
+
+  // Derived minute tier state
+  const [selectedMinuteTier, setSelectedMinuteTier] = useState<MinuteTier | null>(null)
+
+  // Fetch pricing when modal opens
+  useEffect(() => {
+    const fetchPricing = async () => {
+      setLoadingPricing(true)
+      try {
+        const countryCode = country?.isoCode || 'US'
+        const response = await fetch(`/api/virtual-numbers/pricing?country=${countryCode}&type=${number.type}`)
+        const result = await response.json()
+        if (result.success && result.data) {
+          setPricing(result.data)
+          // Set default minute tier from fetched data
+          if (result.data.minuteTiers?.length > 0) {
+            setSelectedMinuteTier({
+              id: result.data.minuteTiers[0].id,
+              name: `${result.data.minuteTiers[0].minutes} min`,
+              minutes: result.data.minuteTiers[0].minutes,
+              price: result.data.minuteTiers[0].price,
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch pricing:', error)
+        // Keep default pricing on error
+        if (DEFAULT_PRICING.minuteTiers.length > 0) {
+          setSelectedMinuteTier({
+            id: DEFAULT_PRICING.minuteTiers[0].id,
+            name: `${DEFAULT_PRICING.minuteTiers[0].minutes} min`,
+            minutes: DEFAULT_PRICING.minuteTiers[0].minutes,
+            price: DEFAULT_PRICING.minuteTiers[0].price,
+          })
+        }
+      }
+      setLoadingPricing(false)
+    }
+    fetchPricing()
+  }, [country, number.type])
 
   // Wallet checkout state
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
@@ -1053,10 +1102,10 @@ function PlanSelectionModal({
   // Calculate total price
   const calculateTotal = () => {
     if (planCategory === 'basic') {
-      const plan = BASIC_PLANS.find(p => p.duration === selectedDuration)
+      const plan = pricing.basic.find(p => p.duration === selectedDuration)
       return plan?.price || 0
     } else {
-      const plan = BUSINESS_PLANS.find(p => p.duration === selectedDuration)
+      const plan = pricing.business.find(p => p.duration === selectedDuration)
       const basePrice = plan?.price || 0
       const minutePrice = selectedMinuteTier?.price || 0
       return basePrice + minutePrice
@@ -1068,8 +1117,8 @@ function PlanSelectionModal({
     if (!country) return
 
     const durationPlan = planCategory === 'basic'
-      ? BASIC_PLANS.find(p => p.duration === selectedDuration)
-      : BUSINESS_PLANS.find(p => p.duration === selectedDuration)
+      ? pricing.basic.find(p => p.duration === selectedDuration)
+      : pricing.business.find(p => p.duration === selectedDuration)
 
     if (!durationPlan) return
 
@@ -1099,7 +1148,7 @@ function PlanSelectionModal({
         planCategory,
         durationDays: selectedDuration,
         durationLabel: durationPlan.label,
-        ...(planCategory === 'basic' && { smsLimit: (durationPlan as typeof BASIC_PLANS[0]).smsLimit }),
+        ...(planCategory === 'basic' && 'smsLimit' in durationPlan && { smsLimit: durationPlan.smsLimit }),
         ...(planCategory === 'business' && selectedMinuteTier && {
           minuteTier: selectedMinuteTier.id,
           minuteTierName: selectedMinuteTier.name,
@@ -1115,8 +1164,8 @@ function PlanSelectionModal({
   }
 
   const totalPrice = calculateTotal()
-  const currentBasicPlan = BASIC_PLANS.find(p => p.duration === selectedDuration)
-  const currentBusinessPlan = BUSINESS_PLANS.find(p => p.duration === selectedDuration)
+  const currentBasicPlan = pricing.basic.find(p => p.duration === selectedDuration)
+  const currentBusinessPlan = pricing.business.find(p => p.duration === selectedDuration)
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -1156,7 +1205,15 @@ function PlanSelectionModal({
           <button
             onClick={() => {
               setPlanCategory('business')
-              if (!selectedMinuteTier) setSelectedMinuteTier(MINUTE_TIERS[0])
+              if (!selectedMinuteTier && pricing.minuteTiers.length > 0) {
+                const tier = pricing.minuteTiers[0]
+                setSelectedMinuteTier({
+                  id: tier.id,
+                  name: `${tier.minutes} min`,
+                  minutes: tier.minutes,
+                  price: tier.price,
+                })
+              }
             }}
             className={`flex-1 px-4 py-3 rounded-lg font-bold text-sm transition-all ${
               planCategory === 'business'
@@ -1176,7 +1233,7 @@ function PlanSelectionModal({
         <div className="mb-6">
           <h4 className="text-white font-bold mb-3">Select Duration</h4>
           <div className="grid grid-cols-3 gap-3">
-            {(planCategory === 'basic' ? BASIC_PLANS : BUSINESS_PLANS).map((plan) => (
+            {(planCategory === 'basic' ? pricing.basic : pricing.business).map((plan) => (
               <button
                 key={plan.duration}
                 onClick={() => setSelectedDuration(plan.duration)}
@@ -1203,20 +1260,24 @@ function PlanSelectionModal({
         {planCategory === 'business' && (
           <div className="mb-6">
             <h4 className="text-white font-bold mb-3">Call Forwarding Minutes</h4>
-            <div className="grid grid-cols-3 gap-3">
-              {MINUTE_TIERS.map((tier) => (
+            <div className="grid grid-cols-3 gap-2">
+              {pricing.minuteTiers.map((tier) => (
                 <button
                   key={tier.id}
-                  onClick={() => setSelectedMinuteTier(tier)}
-                  className={`p-4 rounded-xl border text-center transition-all ${
+                  onClick={() => setSelectedMinuteTier({
+                    id: tier.id,
+                    name: `${tier.minutes} min`,
+                    minutes: tier.minutes,
+                    price: tier.price,
+                  })}
+                  className={`px-3 py-2 rounded-lg border text-center transition-all ${
                     selectedMinuteTier?.id === tier.id
                       ? 'bg-blue-500/10 border-blue-500'
                       : 'bg-charcoal border-border-dark hover:border-blue-500/50'
                   }`}
                 >
-                  <h5 className="font-bold text-white">{tier.name}</h5>
-                  <p className="text-lg font-bold text-blue-400 mt-1">{tier.minutes} min</p>
-                  <p className="text-slate-400 text-sm">+${tier.price}</p>
+                  <p className="text-base font-bold text-white">{tier.minutes} min</p>
+                  <p className="text-blue-400 text-sm font-medium">+${tier.price}</p>
                 </button>
               ))}
             </div>
@@ -1458,8 +1519,8 @@ function PlanSelectionModal({
       if (!country) throw new Error('Country not selected')
 
       const durationPlan = planCategory === 'basic'
-        ? BASIC_PLANS.find(p => p.duration === selectedDuration)
-        : BUSINESS_PLANS.find(p => p.duration === selectedDuration)
+        ? pricing.basic.find(p => p.duration === selectedDuration)
+        : pricing.business.find(p => p.duration === selectedDuration)
 
       if (!durationPlan) throw new Error('Plan not found')
 
@@ -1479,7 +1540,7 @@ function PlanSelectionModal({
             planCategory,
             durationDays: selectedDuration,
             durationLabel: durationPlan.label,
-            ...(planCategory === 'basic' && { smsLimit: (durationPlan as typeof BASIC_PLANS[0]).smsLimit }),
+            ...(planCategory === 'basic' && 'smsLimit' in durationPlan && { smsLimit: durationPlan.smsLimit }),
             ...(planCategory === 'business' && selectedMinuteTier && {
               minuteTier: selectedMinuteTier.id,
               minuteTierName: selectedMinuteTier.name,

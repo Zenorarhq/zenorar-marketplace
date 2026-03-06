@@ -12,8 +12,9 @@ import Icon from '@/components/ui/Icon'
 import EmailConfigSection from '@/components/admin/EmailConfigSection'
 import ProtectionLevelsSection from '@/components/admin/ProtectionLevelsSection'
 import PinSetupForm from '@/components/admin/PinSetupForm'
+import VirtualNumberPricingSection from '@/components/admin/VirtualNumberPricingSection'
 
-type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'email' | 'marketing' | 'seo' | 'activity'
+type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'virtual-numbers' | 'email' | 'marketing' | 'seo' | 'activity'
 
 const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'profile', label: 'Profile', icon: 'user' },
@@ -23,6 +24,7 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'payments', label: 'Payments', icon: 'credit-card' },
   { id: 'referral', label: 'Referral Program', icon: 'gift' },
   { id: 'api', label: 'API Keys', icon: 'key' },
+  { id: 'virtual-numbers', label: 'Virtual Numbers', icon: 'phone' },
   { id: 'email', label: 'Email Service', icon: 'mail' },
   { id: 'marketing', label: 'Marketing', icon: 'campaign' },
   { id: 'seo', label: 'SEO', icon: 'search' },
@@ -5191,6 +5193,13 @@ export default function AdminSettingsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Virtual Numbers Settings */}
+          {activeTab === 'virtual-numbers' && (
+            <div className="space-y-6">
+              <VirtualNumberPricingSection />
             </div>
           )}
 
