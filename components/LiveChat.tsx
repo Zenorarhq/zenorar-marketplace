@@ -321,6 +321,7 @@ export default function LiveChat() {
       createdAt: new Date().toISOString(),
     }
     setMessages(prev => [...prev, localMsg])
+    lastMessageTimeRef.current = localMsg.createdAt
 
     const res = await chatApi.sendMessage(conversationId, content)
     if (res.success && res.data) {
@@ -374,6 +375,7 @@ export default function LiveChat() {
       createdAt: new Date().toISOString(),
     }
     setMessages(prev => [...prev, localMsg])
+    lastMessageTimeRef.current = localMsg.createdAt
 
     const res = await chatApi.sendMessage(conversationId, '', [attachment])
     if (res.success && res.data) {
