@@ -84,6 +84,113 @@ const SERVICE_ICONS: Record<string, string> = {
   twitch: '📺',
 }
 
+// ============================================================
+// Smart Type Tabs Component - Auto-orders and hides empty tabs
+// ============================================================
+function SmartTypeTabs({
+  availableNumbers,
+  loadingNumbers,
+  numberType,
+  setNumberType,
+}: {
+  availableNumbers: AvailableNumber[]
+  loadingNumbers: boolean
+  numberType: NumberType
+  setNumberType: (type: NumberType) => void
+}) {
+  // Count numbers per type
+  const typeCounts = {
+    local: availableNumbers.filter(n => n.type === 'local').length,
+    'toll-free': availableNumbers.filter(n => n.type === 'toll-free').length,
+    mobile: availableNumbers.filter(n => n.type === 'mobile').length,
+  }
+
+  // Get types with numbers, sorted by count (most first)
+  const availableTypes = (['local', 'toll-free', 'mobile'] as const)
+    .filter(type => typeCounts[type] > 0)
+    .sort((a, b) => typeCounts[b] - typeCounts[a])
+
+  // Only show "All Types" if multiple types have numbers
+  const showAllTab = availableTypes.length > 1
+  const tabs: NumberType[] = showAllTab ? ['all', ...availableTypes] : availableTypes
+
+  // Auto-select best tab when numbers change
+  useEffect(() => {
+    // Don't auto-select while loading
+    if (loadingNumbers) return
+
+    // If there are no numbers, reset to 'all'
+    if (availableNumbers.length === 0) {
+      return
+    }
+
+    // If current selection is 'all' and we have types, keep 'all'
+    if (numberType === 'all' && showAllTab) {
+      return
+    }
+
+    // If current selection has 0 numbers, switch to the type with most numbers
+    if (numberType !== 'all' && typeCounts[numberType as keyof typeof typeCounts] === 0) {
+      if (availableTypes.length > 0) {
+        // Select the type with the most numbers
+        setNumberType(showAllTab ? 'all' : availableTypes[0])
+      }
+    }
+  }, [availableNumbers, loadingNumbers])
+
+  // While loading, show skeleton tabs
+  if (loadingNumbers) {
+    return (
+      <div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="flex-shrink-0 px-5 py-2 rounded-xl bg-charcoal border border-border-dark animate-pulse h-10 w-24"
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // If no numbers at all, don't show tabs
+  if (availableNumbers.length === 0) {
+    return null
+  }
+
+  // If only one type has numbers, show just that type (no tabs needed, but show for context)
+  if (availableTypes.length === 1) {
+    return (
+      <div className="flex gap-3 mb-8">
+        <div className="px-5 py-2 rounded-xl bg-primary text-white font-bold text-sm">
+          {availableTypes[0].charAt(0).toUpperCase() + availableTypes[0].slice(1).replace('-', ' ')}
+          <span className="ml-2 text-xs opacity-70">({typeCounts[availableTypes[0]]})</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
+      {tabs.map((type) => (
+        <button
+          key={type}
+          onClick={() => setNumberType(type)}
+          className={`flex-shrink-0 px-5 py-2 rounded-xl font-bold text-sm transition-all ${
+            numberType === type
+              ? 'bg-primary text-white'
+              : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
+          }`}
+        >
+          {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
+          {type !== 'all' && (
+            <span className="ml-2 text-xs opacity-70">({typeCounts[type as keyof typeof typeCounts]})</span>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function VirtualNumbersPage() {
   const router = useRouter()
   const { addItem } = useCart()
@@ -464,65 +571,12 @@ export default function VirtualNumbersPage() {
           </div>
 
           {/* Type Filter - Smart ordering based on availability */}
-          {(() => {
-            // Count numbers per type
-            const typeCounts = {
-              local: availableNumbers.filter(n => n.type === 'local').length,
-              'toll-free': availableNumbers.filter(n => n.type === 'toll-free').length,
-              mobile: availableNumbers.filter(n => n.type === 'mobile').length,
-            }
-
-            // Get types with numbers, sorted by count (most first)
-            const availableTypes = (['local', 'toll-free', 'mobile'] as const)
-              .filter(type => typeCounts[type] > 0)
-              .sort((a, b) => typeCounts[b] - typeCounts[a])
-
-            // Only show "All Types" if multiple types have numbers
-            const showAllTab = availableTypes.length > 1
-            const tabs: NumberType[] = showAllTab ? ['all', ...availableTypes] : availableTypes
-
-            // If no numbers at all or loading, show all tabs
-            if (availableNumbers.length === 0 || loadingNumbers) {
-              return (
-                <div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
-                  {(['all', 'local', 'toll-free', 'mobile'] as NumberType[]).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setNumberType(type)}
-                      className={`flex-shrink-0 px-5 py-2 rounded-xl font-bold text-sm transition-all ${
-                        numberType === type
-                          ? 'bg-primary text-white'
-                          : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
-                    </button>
-                  ))}
-                </div>
-              )
-            }
-
-            return (
-              <div className="flex gap-3 mb-8 overflow-x-auto no-scrollbar">
-                {tabs.map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setNumberType(type)}
-                    className={`flex-shrink-0 px-5 py-2 rounded-xl font-bold text-sm transition-all ${
-                      numberType === type
-                        ? 'bg-primary text-white'
-                        : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
-                    {type !== 'all' && (
-                      <span className="ml-2 text-xs opacity-70">({typeCounts[type]})</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )
-          })()}
+          <SmartTypeTabs
+            availableNumbers={availableNumbers}
+            loadingNumbers={loadingNumbers}
+            numberType={numberType}
+            setNumberType={setNumberType}
+          />
 
           {/* Numbers Grid */}
           <div className="mb-10">
