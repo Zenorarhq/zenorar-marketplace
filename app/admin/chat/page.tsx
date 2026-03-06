@@ -81,6 +81,8 @@ export default function AdminChatPage() {
   const notifSoundRef = useRef<HTMLAudioElement | null>(null)
   const transferRef = useRef<HTMLDivElement>(null)
   const activeIdRef = useRef<string | null>(null)
+  const processedMsgIds = useRef(new Set<string>())
+  const lastAssignRef = useRef<{ agentId: string; time: number }>({ agentId: '', time: 0 })
 
   const { joinConversation, leaveConversation, joinAdmin, emitTyping, onNewMessage, onConversationNew, onConversationStatus, onConversationAssigned, onTyping } = useChatSocket()
 
@@ -259,6 +261,9 @@ export default function AdminChatPage() {
 
     const unsubMessage = onNewMessage((msg: ChatSocketMessage) => {
       if (msg.conversationId !== activeIdRef.current) return
+      // Skip if already processed (admin receives events from both conversation + admin rooms)
+      if (processedMsgIds.current.has(msg.id)) return
+      processedMsgIds.current.add(msg.id)
 
       setActiveConv(prev => {
         if (!prev) return prev
@@ -304,6 +309,10 @@ export default function AdminChatPage() {
 
     const unsubAssigned = onConversationAssigned((data) => {
       if (data.conversationId !== activeId) return
+      // Skip duplicate (admin receives from both conversation + admin rooms)
+      const now = Date.now()
+      if (data.agentId === lastAssignRef.current.agentId && now - lastAssignRef.current.time < 2000) return
+      lastAssignRef.current = { agentId: data.agentId, time: now }
       setActiveConv(prev => {
         if (!prev) return prev
         const transferMsg = {
@@ -342,6 +351,8 @@ export default function AdminChatPage() {
       unsubAssigned()
       unsubTyping()
       setUserTyping(false)
+      processedMsgIds.current.clear()
+      lastAssignRef.current = { agentId: '', time: 0 }
     }
   }, [activeId, joinConversation, leaveConversation, onNewMessage, onConversationStatus, onConversationAssigned, onTyping])
 
