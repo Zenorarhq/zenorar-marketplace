@@ -82,8 +82,10 @@ export default function Footer() {
     return <footer className="border-t border-border-dark bg-surface-dark pt-12 sm:pt-16 pb-8" />
   }
 
-  const paddingClass = ({ compact: 'pt-8 sm:pt-10 pb-4', default: 'pt-12 sm:pt-16 pb-8', spacious: 'pt-16 sm:pt-20 pb-12' } as Record<string, string>)[config?.padding || 'default'] || 'pt-12 sm:pt-16 pb-8'
-  const gapClass = ({ tight: 'gap-4 md:gap-6', default: 'gap-8 md:gap-12', wide: 'gap-12 md:gap-16' } as Record<string, string>)[config?.columnGap || 'default'] || 'gap-8 md:gap-12'
+  const paddingMap: Record<string, string> = { compact: 'pt-8 sm:pt-10 pb-4', default: 'pt-12 sm:pt-16 pb-8', spacious: 'pt-16 sm:pt-20 pb-12' }
+  const paddingClass = paddingMap[config?.padding || 'default'] || 'pt-12 sm:pt-16 pb-8'
+  const gapMap: Record<string, string> = { tight: 'gap-4 md:gap-6', default: 'gap-8 md:gap-12', wide: 'gap-12 md:gap-16' }
+  const gapClass = gapMap[config?.columnGap || 'default'] || 'gap-8 md:gap-12'
   const bottomLinks = config?.bottomLinks && config.bottomLinks.length > 0
     ? config.bottomLinks
     : [{ label: 'Terms', url: '/terms' }, { label: 'Privacy', url: '/privacy' }, { label: 'Cookies', url: '/cookies' }]
@@ -176,7 +178,7 @@ export default function Footer() {
                 </h4>
                 {subscribed ? (
                   <p className="text-primary text-sm">Thanks for subscribing!</p>
-                ) : (
+                ) : (<>
                   <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
                     <label htmlFor="newsletter-email" className="sr-only">Email address</label>
                     <input
@@ -198,7 +200,7 @@ export default function Footer() {
                     </button>
                   </form>
                   {subError && <p className="text-red-400 text-xs mt-2">Failed to subscribe. Please try again.</p>}
-                )}
+                </>)}
               </>
             )}
           </div>
