@@ -1,4 +1,5 @@
 // CMS API Client for Page Builder
+import { getAccessToken } from '@/lib/api/client'
 
 const API_BASE = '/api/cms'
 
@@ -97,25 +98,7 @@ export interface ApiResponse<T> {
   }
 }
 
-// Token management — reuses the marketplace auth token
-let accessToken: string | null = null
-
-export function setAccessToken(token: string) {
-  accessToken = token
-}
-
-export function getAccessToken(): string | null {
-  if (accessToken) return accessToken
-  if (typeof window !== 'undefined') {
-    accessToken = localStorage.getItem('admin_auth_token')
-      || localStorage.getItem('auth_token')
-  }
-  return accessToken
-}
-
-export function clearAccessToken() {
-  accessToken = null
-}
+// Token management — delegates to the main API client (single source of truth)
 
 // API fetch helper
 async function apiFetch<T>(
@@ -158,31 +141,6 @@ async function apiFetch<T>(
       error: error instanceof Error ? error.message : 'Network error',
     }
   }
-}
-
-// Auth API
-export const authApi = {
-  async login(email: string, password: string) {
-    const result = await apiFetch<{ user: User; accessToken: string; refreshToken: string }>(
-      '/auth/login',
-      {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      }
-    )
-    if (result.success && result.data) {
-      setAccessToken(result.data.accessToken)
-    }
-    return result
-  },
-
-  async me() {
-    return apiFetch<User>('/auth/me')
-  },
-
-  logout() {
-    clearAccessToken()
-  },
 }
 
 // Pages API
