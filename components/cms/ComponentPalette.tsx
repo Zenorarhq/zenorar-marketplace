@@ -62,6 +62,16 @@ function DraggableComponent({
 
 export default function ComponentPalette({ components, onAddSection }: ComponentPaletteProps) {
   const [search, setSearch] = useState('')
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
+
+  const toggleCategory = (category: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev)
+      if (next.has(category)) next.delete(category)
+      else next.add(category)
+      return next
+    })
+  }
 
   // Filter components by search
   const filteredComponents = search.trim()
@@ -127,29 +137,42 @@ export default function ComponentPalette({ components, onAddSection }: Component
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {sortedCategories.map((category) => (
-          <div key={category}>
-            <div className="flex items-center gap-2 mb-3">
-              <Icon
-                name={categoryIcons[category] || 'layers'}
-                size={14}
-                className="text-slate-500"
-              />
-              <h4 className="text-slate-400 text-xs font-medium uppercase tracking-wider">
-                {categoryLabels[category] || category}
-              </h4>
-            </div>
-            <div className="space-y-2">
-              {groupedComponents[category].map((component) => (
-                <DraggableComponent
-                  key={component.id}
-                  component={component}
-                  onAdd={() => onAddSection(component.name)}
+        {sortedCategories.map((category) => {
+          const isCollapsed = collapsedCategories.has(category)
+          return (
+            <div key={category}>
+              <button
+                onClick={() => toggleCategory(category)}
+                className="flex items-center gap-2 mb-3 w-full group"
+              >
+                <Icon
+                  name={categoryIcons[category] || 'layers'}
+                  size={14}
+                  className="text-slate-500"
                 />
-              ))}
+                <h4 className="text-slate-400 text-xs font-medium uppercase tracking-wider flex-1 text-left">
+                  {categoryLabels[category] || category}
+                </h4>
+                <Icon
+                  name="chevron-down"
+                  size={14}
+                  className={`text-slate-500 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                />
+              </button>
+              {!isCollapsed && (
+                <div className="space-y-2">
+                  {groupedComponents[category].map((component) => (
+                    <DraggableComponent
+                      key={component.id}
+                      component={component}
+                      onAdd={() => onAddSection(component.name)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

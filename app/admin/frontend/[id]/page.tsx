@@ -125,11 +125,27 @@ export default function PageEditorPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [targetContainerId, setTargetContainerId] = useState<string | null>(null) // Which container to add new sections to
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [showPalette, setShowPalette] = useState(true)
-  const [showProperties, setShowProperties] = useState(true)
+  const [showPalette, setShowPalette] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cms-show-palette')
+      return saved !== null ? saved === 'true' : true
+    }
+    return true
+  })
+  const [showProperties, setShowProperties] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cms-show-properties')
+      return saved !== null ? saved === 'true' : true
+    }
+    return true
+  })
   const { scheduleSave, isSaving: saving, lastSavedAt: lastSaved, saveError, hasUnsavedChanges } = useAutoSave()
   const [viewMode, setViewMode] = useState<'visual' | 'list' | 'preview'>('visual')
   const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
+
+  // Persist panel toggle state
+  useEffect(() => { localStorage.setItem('cms-show-palette', String(showPalette)) }, [showPalette])
+  useEffect(() => { localStorage.setItem('cms-show-properties', String(showProperties)) }, [showProperties])
 
   // Undo/Redo history
   const { pushState: pushHistory, undo, redo, canUndo, canRedo } = useEditorHistory(page?.content || [])
