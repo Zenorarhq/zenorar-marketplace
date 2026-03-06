@@ -9,7 +9,8 @@ import { PreferencesProvider } from '@/contexts/PreferencesContext'
 import { WishlistProvider } from '@/hooks/use-wishlist'
 import { NotificationsProvider } from '@/hooks/use-notifications'
 import { SiteSettingsProvider } from '@/contexts/SiteSettingsContext'
-import LiveChat from '@/components/LiveChat'
+import dynamic from 'next/dynamic'
+const LiveChat = dynamic(() => import('@/components/LiveChat'), { ssr: false })
 import EmailPromptWrapper from '@/components/auth/EmailPromptWrapper'
 import TrackingScripts from '@/components/tracking/TrackingScripts'
 

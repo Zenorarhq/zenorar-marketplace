@@ -1,21 +1,23 @@
 'use client'
 
 import { useMemo, ComponentType } from 'react'
+import dynamic from 'next/dynamic'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import HeroSection from '@/components/sections/HeroSection'
-import MostPopular from '@/components/sections/MostPopular'
-import PromoBanner from '@/components/sections/PromoBanner'
-import ScriptCategories from '@/components/sections/ScriptCategories'
-import StaffPicks from '@/components/sections/StaffPicks'
-import TrustBanner from '@/components/sections/TrustBanner'
-import Connectivity from '@/components/sections/Connectivity'
-import TextBlock from '@/components/sections/TextBlock'
-import ImageBanner from '@/components/sections/ImageBanner'
-import ProductShowcase from '@/components/sections/ProductShowcase'
-import Testimonials from '@/components/sections/Testimonials'
+const MostPopular = dynamic(() => import('@/components/sections/MostPopular'))
+const PromoBanner = dynamic(() => import('@/components/sections/PromoBanner'))
+const ScriptCategories = dynamic(() => import('@/components/sections/ScriptCategories'))
+const StaffPicks = dynamic(() => import('@/components/sections/StaffPicks'))
+const TrustBanner = dynamic(() => import('@/components/sections/TrustBanner'))
+const Connectivity = dynamic(() => import('@/components/sections/Connectivity'))
+const TextBlock = dynamic(() => import('@/components/sections/TextBlock'))
+const ImageBanner = dynamic(() => import('@/components/sections/ImageBanner'))
+const ProductShowcase = dynamic(() => import('@/components/sections/ProductShowcase'))
+const Testimonials = dynamic(() => import('@/components/sections/Testimonials'))
 
 // Map section IDs/types to their components
-const SECTION_MAP: Record<string, ComponentType<{ config?: any }>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SECTION_MAP: Record<string, ComponentType<any>> = {
   'hero-slider': HeroSection,
   'most-popular': MostPopular,
   'trust-banner': TrustBanner,

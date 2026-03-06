@@ -109,9 +109,16 @@ export default async function RootLayout({
     <html lang="en" className="dark">
       <head>
         <link
+          rel="preload"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-25..0&display=swap"
-          rel="stylesheet"
+          as="style"
         />
+        <script dangerouslySetInnerHTML={{ __html: `
+          var l = document.createElement('link');
+          l.rel = 'stylesheet';
+          l.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-25..0&display=swap';
+          document.head.appendChild(l);
+        `}} />
         {jsonLd && (
           <script
             type="application/ld+json"
