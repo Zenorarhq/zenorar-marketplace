@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -20,6 +20,9 @@ import ComponentPalette from '@/components/cms/ComponentPalette'
 import SectionList from '@/components/cms/SectionList'
 import PropertiesPanel from '@/components/cms/PropertiesPanel'
 import PageRenderer from '@/components/cms/PageRenderer'
+import EditorCanvas from '@/components/page-builder/EditorCanvas'
+import useEditorHistory from '@/components/page-builder/hooks/useEditorHistory'
+import useAutoSave from '@/components/page-builder/hooks/useAutoSave'
 import { pagesApi, componentsApi, Page, Section, ComponentTemplate } from '@/lib/cms/api'
 
 // Container types that can have children
@@ -117,7 +120,6 @@ export default function PageEditorPage() {
   const [page, setPage] = useState<Page | null>(null)
   const [components, setComponents] = useState<ComponentTemplate[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
@@ -125,9 +127,46 @@ export default function PageEditorPage() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [showPalette, setShowPalette] = useState(true)
   const [showProperties, setShowProperties] = useState(true)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
-  const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
+  const { scheduleSave, isSaving: saving, lastSavedAt: lastSaved, saveError, hasUnsavedChanges } = useAutoSave()
+  const [viewMode, setViewMode] = useState<'visual' | 'list' | 'preview'>('visual')
+  const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
+
+  // Undo/Redo history
+  const { pushState: pushHistory, undo, redo, canUndo, canRedo } = useEditorHistory(page?.content || [])
+
+  const handleUndo = useCallback(() => {
+    if (!page) return
+    const prev = undo()
+    if (prev) {
+      setPage({ ...page, content: prev })
+      savePage({ ...page, content: prev })
+    }
+  }, [page, undo])
+
+  const handleRedo = useCallback(() => {
+    if (!page) return
+    const next = redo()
+    if (next) {
+      setPage({ ...page, content: next })
+      savePage({ ...page, content: next })
+    }
+  }, [page, redo])
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) {
+          handleRedo()
+        } else {
+          handleUndo()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleUndo, handleRedo])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -167,6 +206,13 @@ export default function PageEditorPage() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Helper: update page content + push to undo history
+  const updateContent = useCallback((updatedContent: Section[]) => {
+    if (!page) return
+    updateContent(updatedContent)
+    pushHistory(updatedContent)
+  }, [page, pushHistory])
 
   const generateSectionId = () => {
     // Generate a simple unique ID without external dependency
@@ -209,13 +255,41 @@ export default function PageEditorPage() {
         updatedContent = [...(page.content || []), newSection]
       }
 
-      setPage({ ...page, content: updatedContent })
+      updateContent(updatedContent)
       setSelectedSectionId(newSection.id)
 
       // Auto-save
-      await savePage({ ...page, content: updatedContent })
+      scheduleSave(async () => savePage({ ...page, content: updatedContent }))
     },
     [page, components, targetContainerId]
+  )
+
+  const handleAddSectionAtIndex = useCallback(
+    async (componentName: string, insertIndex?: number) => {
+      if (!page) return
+      const template = components.find((c) => c.name === componentName)
+      if (!template) return
+
+      const content = page.content || []
+      const idx = insertIndex !== undefined ? insertIndex : content.length
+      const newSection: Section = {
+        id: generateSectionId(),
+        type: componentName,
+        order: idx,
+        props: { ...template.defaultProps },
+      }
+
+      const updatedContent = [
+        ...content.slice(0, idx),
+        newSection,
+        ...content.slice(idx),
+      ].map((s, i) => ({ ...s, order: i }))
+
+      updateContent(updatedContent)
+      setSelectedSectionId(newSection.id)
+      scheduleSave(async () => savePage({ ...page, content: updatedContent }))
+    },
+    [page, components]
   )
 
   const handleDeleteSection = useCallback(
@@ -228,7 +302,7 @@ export default function PageEditorPage() {
       // Reorder root level sections
       const reorderedContent = updatedContent.map((s, i) => ({ ...s, order: i }))
 
-      setPage({ ...page, content: reorderedContent })
+      updateContent(reorderedContent)
       if (selectedSectionId === sectionId) {
         setSelectedSectionId(null)
       }
@@ -236,7 +310,7 @@ export default function PageEditorPage() {
         setTargetContainerId(null)
       }
 
-      await savePage({ ...page, content: reorderedContent })
+      scheduleSave(async () => savePage({ ...page, content: reorderedContent }))
     },
     [page, selectedSectionId, targetContainerId]
   )
@@ -290,12 +364,27 @@ export default function PageEditorPage() {
         ]
       }
 
-      setPage({ ...page, content: updatedContent })
+      updateContent(updatedContent)
       setSelectedSectionId(duplicatedSection.id)
 
-      await savePage({ ...page, content: updatedContent })
+      scheduleSave(async () => savePage({ ...page, content: updatedContent }))
     },
     [page, cloneSectionWithNewIds]
+  )
+
+  const handleMoveSection = useCallback(
+    async (sectionId: string, direction: -1 | 1) => {
+      if (!page) return
+      const content = page.content || []
+      const index = content.findIndex(s => s.id === sectionId)
+      if (index === -1) return
+      const newIndex = index + direction
+      if (newIndex < 0 || newIndex >= content.length) return
+      const reordered = arrayMove(content, index, newIndex).map((s, i) => ({ ...s, order: i }))
+      updateContent(reordered)
+      scheduleSave(async () => savePage({ ...page, content: reordered }))
+    },
+    [page]
   )
 
   const handleUpdateSection = useCallback(
@@ -308,10 +397,10 @@ export default function PageEditorPage() {
         props
       }))
 
-      setPage({ ...page, content: updatedContent })
+      updateContent(updatedContent)
 
       // Debounced auto-save would be better here, but for simplicity we'll save immediately
-      await savePage({ ...page, content: updatedContent })
+      scheduleSave(async () => savePage({ ...page, content: updatedContent }))
     },
     [page]
   )
@@ -329,6 +418,15 @@ export default function PageEditorPage() {
     // Handle dropping from palette
     if (active.data.current?.type === 'palette-item') {
       const componentName = active.data.current.componentName
+
+      // Dropped on a drop zone — insert at that position
+      if (over.data.current?.type === 'drop-zone') {
+        const dropId = over.id as string // e.g. "drop-zone-2"
+        const insertIndex = parseInt(dropId.replace('drop-zone-', ''), 10)
+        handleAddSectionAtIndex(componentName, isNaN(insertIndex) ? undefined : insertIndex)
+        return
+      }
+
       // Check if dropping over a container - add inside it
       const overSection = findSectionById(page.content || [], over.id as string)
       if (overSection && containerTypes.includes(overSection.type)) {
@@ -358,8 +456,8 @@ export default function PageEditorPage() {
         // Move section INTO the container
         let updatedContent = deleteSectionFromTree(page.content || [], active.id as string)
         updatedContent = addSectionToContainer(updatedContent, over.id as string, activeSection)
-        setPage({ ...page, content: updatedContent })
-        await savePage({ ...page, content: updatedContent })
+        updateContent(updatedContent)
+        scheduleSave(async () => savePage({ ...page, content: updatedContent }))
         return
       }
 
@@ -377,16 +475,16 @@ export default function PageEditorPage() {
             }
             return parent
           })
-          setPage({ ...page, content: updatedContent })
-          await savePage({ ...page, content: updatedContent })
+          updateContent(updatedContent)
+          scheduleSave(async () => savePage({ ...page, content: updatedContent }))
         } else {
           // Reorder at root level
           const oldIndex = page.content.findIndex(s => s.id === active.id)
           const newIndex = page.content.findIndex(s => s.id === over.id)
           if (oldIndex !== -1 && newIndex !== -1) {
             const reorderedContent = arrayMove(page.content, oldIndex, newIndex).map((s, i) => ({ ...s, order: i }))
-            setPage({ ...page, content: reorderedContent })
-            await savePage({ ...page, content: reorderedContent })
+            updateContent(reorderedContent)
+            scheduleSave(async () => savePage({ ...page, content: reorderedContent }))
           }
         }
       } else {
@@ -410,39 +508,24 @@ export default function PageEditorPage() {
           ]
         }
 
-        setPage({ ...page, content: updatedContent })
-        await savePage({ ...page, content: updatedContent })
+        updateContent(updatedContent)
+        scheduleSave(async () => savePage({ ...page, content: updatedContent }))
       }
     }
   }
 
   async function savePage(pageData: Page) {
-    setSaving(true)
-    setSaveError(null)
-    try {
-      // Build update payload, only including defined values
-      const updatePayload: Record<string, unknown> = {
-        title: pageData.title,
-        content: pageData.content || [],
-      }
-      // Only include description if it has a value
-      if (pageData.description) {
-        updatePayload.description = pageData.description
-      }
+    const updatePayload: Record<string, unknown> = {
+      title: pageData.title,
+      content: pageData.content || [],
+    }
+    if (pageData.description) {
+      updatePayload.description = pageData.description
+    }
 
-      const result = await pagesApi.update(pageData.id, updatePayload)
-      if (result.success) {
-        setLastSaved(new Date())
-      } else {
-        setSaveError(result.error || 'Failed to save')
-        console.error('Save failed:', result.error)
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save page'
-      setSaveError(message)
-      console.error('Failed to save page:', err)
-    } finally {
-      setSaving(false)
+    const result = await pagesApi.update(pageData.id, updatePayload)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to save')
     }
   }
 
@@ -531,6 +614,26 @@ export default function PageEditorPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Undo/Redo */}
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={handleUndo}
+                disabled={!canUndo}
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                title="Undo (Ctrl+Z)"
+              >
+                <Icon name="undo" size={18} />
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={!canRedo}
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                title="Redo (Ctrl+Shift+Z)"
+              >
+                <Icon name="redo" size={18} />
+              </button>
+            </div>
+
             {/* Save Indicator */}
             {saving && (
               <span className="flex items-center gap-1.5 text-slate-400 text-xs px-3">
@@ -544,7 +647,13 @@ export default function PageEditorPage() {
                 Save failed
               </span>
             )}
-            {!saving && !saveError && lastSaved && (
+            {!saving && !saveError && hasUnsavedChanges && (
+              <span className="flex items-center gap-1.5 text-yellow-400 text-xs px-3">
+                <Icon name="edit" size={14} />
+                Unsaved
+              </span>
+            )}
+            {!saving && !saveError && !hasUnsavedChanges && lastSaved && (
               <span className="flex items-center gap-1.5 text-green-400 text-xs px-3">
                 <Icon name="check" size={14} />
                 Saved
@@ -565,14 +674,26 @@ export default function PageEditorPage() {
             {/* View Mode Toggle */}
             <div className="flex items-center bg-[#1a1a1a] rounded-lg p-1">
               <button
-                onClick={() => setViewMode('edit')}
+                onClick={() => setViewMode('visual')}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'edit'
+                  viewMode === 'visual'
                     ? 'bg-primary text-black'
                     : 'text-slate-400 hover:text-white'
                 }`}
+                title="Visual Editor"
               >
-                Edit
+                Visual
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-primary text-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="List Editor"
+              >
+                List
               </button>
               <button
                 onClick={() => setViewMode('preview')}
@@ -581,13 +702,53 @@ export default function PageEditorPage() {
                     ? 'bg-primary text-black'
                     : 'text-slate-400 hover:text-white'
                 }`}
+                title="Full Preview"
               >
                 Preview
               </button>
             </div>
 
-            {/* Toggle Panels (only in edit mode) */}
-            {viewMode === 'edit' && (
+            {/* Responsive Preview (visual mode only) */}
+            {viewMode === 'visual' && (
+              <div className="flex items-center bg-[#1a1a1a] rounded-lg p-1">
+                <button
+                  onClick={() => setViewportSize('desktop')}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    viewportSize === 'desktop'
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Desktop"
+                >
+                  <Icon name="monitor" size={16} />
+                </button>
+                <button
+                  onClick={() => setViewportSize('tablet')}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    viewportSize === 'tablet'
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Tablet (768px)"
+                >
+                  <Icon name="tablet" size={16} />
+                </button>
+                <button
+                  onClick={() => setViewportSize('mobile')}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    viewportSize === 'mobile'
+                      ? 'bg-primary/20 text-primary'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Mobile (375px)"
+                >
+                  <Icon name="smartphone" size={16} />
+                </button>
+              </div>
+            )}
+
+            {/* Toggle Panels (only in edit modes) */}
+            {viewMode !== 'preview' && (
               <>
                 <button
                   onClick={() => setShowPalette(!showPalette)}
@@ -658,7 +819,16 @@ export default function PageEditorPage() {
 
         {/* Main Editor Area */}
         <div className="flex-1 flex overflow-hidden">
-          {viewMode === 'edit' ? (
+          {viewMode === 'preview' ? (
+            /* Preview Mode - Full preview of the page */
+            <main className="flex-1 bg-[#1a1a1a] overflow-auto">
+              <div className="max-w-6xl mx-auto">
+                <div className="bg-[#0a0a0a] min-h-full shadow-2xl">
+                  <PageRenderer page={page} />
+                </div>
+              </div>
+            </main>
+          ) : (
             <>
               {/* Left Panel - Component Palette */}
               {showPalette && (
@@ -688,39 +858,54 @@ export default function PageEditorPage() {
                 </aside>
               )}
 
-              {/* Center - Sections List */}
-              <main className="flex-1 bg-[#0d0d0d] flex flex-col overflow-hidden">
-                <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between">
-                  <div>
-                    <h2 className="text-white font-semibold text-sm">Page Sections</h2>
-                    <p className="text-slate-500 text-xs">{page.content?.length || 0} sections</p>
+              {/* Center Panel - Visual Canvas or Section List */}
+              {viewMode === 'visual' ? (
+                <main className="flex-1 bg-[#1a1a1a] flex flex-col overflow-hidden">
+                  <EditorCanvas
+                    sections={page.content || []}
+                    selectedSectionId={selectedSectionId}
+                    isDragging={!!activeId}
+                    viewportSize={viewportSize}
+                    onSelectSection={setSelectedSectionId}
+                    onDeleteSection={handleDeleteSection}
+                    onDuplicateSection={handleDuplicateSection}
+                    onMoveSection={handleMoveSection}
+                  />
+                </main>
+              ) : (
+                <main className="flex-1 bg-[#0d0d0d] flex flex-col overflow-hidden">
+                  <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between">
+                    <div>
+                      <h2 className="text-white font-semibold text-sm">Page Sections</h2>
+                      <p className="text-slate-500 text-xs">{page.content?.length || 0} sections</p>
+                    </div>
+                    {/* Add to container button */}
+                    {selectedIsContainer && (
+                      <button
+                        onClick={() => setTargetContainerId(
+                          targetContainerId === selectedSectionId ? null : selectedSectionId
+                        )}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          targetContainerId === selectedSectionId
+                            ? 'bg-primary text-black'
+                            : 'bg-primary/10 text-primary hover:bg-primary/20'
+                        }`}
+                      >
+                        <Icon name="add" size={14} />
+                        {targetContainerId === selectedSectionId ? 'Adding here' : 'Add to this container'}
+                      </button>
+                    )}
                   </div>
-                  {/* Add to container button */}
-                  {selectedIsContainer && (
-                    <button
-                      onClick={() => setTargetContainerId(
-                        targetContainerId === selectedSectionId ? null : selectedSectionId
-                      )}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        targetContainerId === selectedSectionId
-                          ? 'bg-primary text-black'
-                          : 'bg-primary/10 text-primary hover:bg-primary/20'
-                      }`}
-                    >
-                      <Icon name="add" size={14} />
-                      {targetContainerId === selectedSectionId ? 'Adding here' : 'Add to this container'}
-                    </button>
-                  )}
-                </div>
-                <SectionList
-                  sections={page.content || []}
-                  componentTemplates={components}
-                  selectedSectionId={selectedSectionId}
-                  onSelectSection={setSelectedSectionId}
-                  onDeleteSection={handleDeleteSection}
-                  onDuplicateSection={handleDuplicateSection}
-                />
-              </main>
+                  <SectionList
+                    sections={page.content || []}
+                    componentTemplates={components}
+                    selectedSectionId={selectedSectionId}
+                    onSelectSection={setSelectedSectionId}
+                    onDeleteSection={handleDeleteSection}
+                    onDuplicateSection={handleDuplicateSection}
+                  />
+                </main>
+              )}
 
               {/* Right Panel - Properties */}
               {showProperties && (
@@ -734,15 +919,6 @@ export default function PageEditorPage() {
                 </aside>
               )}
             </>
-          ) : (
-            /* Preview Mode - Live preview of the page */
-            <main className="flex-1 bg-[#1a1a1a] overflow-auto">
-              <div className="max-w-6xl mx-auto">
-                <div className="bg-[#0a0a0a] min-h-full shadow-2xl">
-                  <PageRenderer page={page} />
-                </div>
-              </div>
-            </main>
           )}
         </div>
       </div>

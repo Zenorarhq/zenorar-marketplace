@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import Icon from '@/components/ui/Icon'
 import { ComponentTemplate } from '@/lib/cms/api'
@@ -60,8 +61,19 @@ function DraggableComponent({
 }
 
 export default function ComponentPalette({ components, onAddSection }: ComponentPaletteProps) {
+  const [search, setSearch] = useState('')
+
+  // Filter components by search
+  const filteredComponents = search.trim()
+    ? components.filter(c =>
+        c.name.replace(/-/g, ' ').toLowerCase().includes(search.toLowerCase()) ||
+        (c.description || '').toLowerCase().includes(search.toLowerCase()) ||
+        (c.category || '').toLowerCase().includes(search.toLowerCase())
+      )
+    : components
+
   // Group components by category
-  const groupedComponents = components.reduce(
+  const groupedComponents = filteredComponents.reduce(
     (acc, component) => {
       const category = component.category || 'other'
       if (!acc[category]) acc[category] = []
@@ -101,7 +113,17 @@ export default function ComponentPalette({ components, onAddSection }: Component
     <div className="h-full flex flex-col">
       <div className="p-4 border-b border-[#1f1f1f]">
         <h3 className="text-white font-semibold text-sm mb-1">Components</h3>
-        <p className="text-slate-500 text-xs">Drag or click to add sections</p>
+        <p className="text-slate-500 text-xs mb-3">Drag or click to add sections</p>
+        <div className="relative">
+          <Icon name="search" size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search components..."
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">

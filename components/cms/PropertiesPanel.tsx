@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import Icon from '@/components/ui/Icon'
 import { Section, ComponentTemplate } from '@/lib/cms/api'
+import ColorField from '@/components/page-builder/fields/ColorField'
+import ImageField from '@/components/page-builder/fields/ImageField'
 
 interface PropertiesPanelProps {
   section: Section | null
@@ -278,11 +280,21 @@ function renderField(name: string, value: any, schema: any, onChange: (value: an
 
   // Handle different types
   switch (schema.type) {
-    case 'string':
-      if (name.toLowerCase().includes('content') || name.toLowerCase().includes('description')) {
+    case 'string': {
+      const lowerName = name.toLowerCase()
+      // Color fields
+      if (lowerName.includes('color') || lowerName.includes('gradient') || lowerName === 'style' && (value || '').startsWith('#')) {
+        return <ColorField key={name} name={name} value={value || ''} schema={schema} onChange={onChange} />
+      }
+      // Image fields
+      if (lowerName.includes('image') || lowerName.includes('logo') || lowerName.includes('avatar') || lowerName.includes('thumbnail') || lowerName === 'src' || lowerName === 'backgroundimage') {
+        return <ImageField key={name} name={name} value={value || ''} schema={schema} onChange={onChange} />
+      }
+      if (lowerName.includes('content') || lowerName.includes('description')) {
         return <TextAreaField key={name} name={name} value={value} schema={schema} onChange={onChange} />
       }
       return <TextField key={name} name={name} value={value} schema={schema} onChange={onChange} />
+    }
     case 'number':
     case 'integer':
       return <NumberField key={name} name={name} value={value} schema={schema} onChange={onChange} />
