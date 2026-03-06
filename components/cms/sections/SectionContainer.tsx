@@ -20,6 +20,22 @@ interface SectionContainerProps {
     maxWidth?: 'full' | 'container' | 'narrow'
     verticalAlign?: 'top' | 'center' | 'bottom' | 'stretch'
     columns?: ColumnContent[]
+    backgroundImage?: string
+    overlayOpacity?: 'none' | 'light' | 'medium' | 'dark'
+    gradientFrom?: string
+    gradientTo?: string
+    borderWidth?: 'none' | '1' | '2' | '4'
+    borderColor?: string
+    borderStyle?: 'solid' | 'dashed' | 'dotted'
+    borderRadius?: 'none' | 'small' | 'medium' | 'large'
+    margin?: 'none' | 'small' | 'medium' | 'large'
+    paddingTop?: 'none' | 'small' | 'medium' | 'large'
+    paddingBottom?: 'none' | 'small' | 'medium' | 'large'
+    customClassName?: string
+    customId?: string
+    hideOnMobile?: boolean
+    hideOnTablet?: boolean
+    horizontalAlign?: 'left' | 'center' | 'right'
   }
   children?: React.ReactNode
 }
@@ -34,9 +50,24 @@ export default function SectionContainer({ props, children }: SectionContainerPr
     maxWidth = 'container',
     verticalAlign = 'top',
     columns = [],
+    backgroundImage,
+    overlayOpacity = 'none',
+    gradientFrom,
+    gradientTo,
+    borderWidth = 'none',
+    borderColor,
+    borderStyle = 'solid',
+    borderRadius = 'none',
+    margin = 'none',
+    paddingTop,
+    paddingBottom,
+    customClassName,
+    customId,
+    hideOnMobile,
+    hideOnTablet,
+    horizontalAlign,
   } = props
 
-  // Layout to grid columns mapping
   const layoutToGrid: Record<string, string> = {
     '1': 'grid-cols-1',
     '1/2-1/2': 'grid-cols-1 md:grid-cols-2',
@@ -63,6 +94,20 @@ export default function SectionContainer({ props, children }: SectionContainerPr
     large: 'py-12 md:py-20',
   }
 
+  const paddingTopClasses: Record<string, string> = {
+    none: 'pt-0',
+    small: 'pt-4 md:pt-6',
+    medium: 'pt-8 md:pt-12',
+    large: 'pt-12 md:pt-20',
+  }
+
+  const paddingBottomClasses: Record<string, string> = {
+    none: 'pb-0',
+    small: 'pb-4 md:pb-6',
+    medium: 'pb-8 md:pb-12',
+    large: 'pb-12 md:pb-20',
+  }
+
   const maxWidthClasses: Record<string, string> = {
     full: 'max-w-full',
     container: 'max-w-7xl',
@@ -76,30 +121,95 @@ export default function SectionContainer({ props, children }: SectionContainerPr
     stretch: 'items-stretch',
   }
 
-  // Determine expected column count from layout
+  const marginClasses: Record<string, string> = {
+    none: '',
+    small: 'my-2 md:my-4',
+    medium: 'my-4 md:my-6',
+    large: 'my-6 md:my-10',
+  }
+
+  const borderWidthClasses: Record<string, string> = {
+    none: '',
+    '1': 'border',
+    '2': 'border-2',
+    '4': 'border-4',
+  }
+
+  const borderStyleClasses: Record<string, string> = {
+    solid: 'border-solid',
+    dashed: 'border-dashed',
+    dotted: 'border-dotted',
+  }
+
+  const radiusClasses: Record<string, string> = {
+    none: '',
+    small: 'rounded-md',
+    medium: 'rounded-lg',
+    large: 'rounded-2xl',
+  }
+
+  const overlayClasses: Record<string, string> = {
+    none: '',
+    light: 'bg-black/20',
+    medium: 'bg-black/50',
+    dark: 'bg-black/70',
+  }
+
+  const horizontalAlignClasses: Record<string, string> = {
+    left: 'justify-start',
+    center: 'justify-center',
+    right: 'justify-end',
+  }
+
   const getColumnCount = (layoutStr: string): number => {
     const parts = layoutStr.split('-')
     return parts.length
   }
   const expectedColumns = getColumnCount(layout)
 
+  const pyClass = paddingTop || paddingBottom
+    ? `${paddingTopClasses[paddingTop || padding] || ''} ${paddingBottomClasses[paddingBottom || padding] || ''}`
+    : paddingClasses[padding] || paddingClasses.medium
+
+  const sectionStyle: React.CSSProperties = {}
+  if (backgroundColor) sectionStyle.backgroundColor = backgroundColor
+  if (backgroundImage) {
+    sectionStyle.backgroundImage = `url(${backgroundImage})`
+    sectionStyle.backgroundSize = 'cover'
+    sectionStyle.backgroundPosition = 'center'
+  }
+  if (gradientFrom && gradientTo && !backgroundImage) {
+    sectionStyle.background = `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})`
+  }
+  if (borderColor && borderWidth !== 'none') {
+    sectionStyle.borderColor = borderColor
+  }
+
+  const visibilityClasses = [
+    hideOnMobile ? 'hidden md:block' : '',
+    hideOnTablet ? 'md:hidden lg:block' : '',
+  ].filter(Boolean).join(' ')
+
   return (
     <section
-      className={`${paddingClasses[padding] || paddingClasses.medium} px-4`}
-      style={{ backgroundColor: backgroundColor || undefined }}
+      id={customId || undefined}
+      className={`${pyClass} px-4 relative ${marginClasses[margin]} ${borderWidthClasses[borderWidth]} ${borderWidth !== 'none' ? borderStyleClasses[borderStyle] : ''} ${radiusClasses[borderRadius]} ${visibilityClasses} ${customClassName || ''}`}
+      style={sectionStyle}
     >
-      <div className={`${maxWidthClasses[maxWidth] || maxWidthClasses.container} mx-auto`}>
+      {backgroundImage && overlayOpacity !== 'none' && (
+        <div className={`absolute inset-0 ${overlayClasses[overlayOpacity]} ${radiusClasses[borderRadius]}`} />
+      )}
+
+      <div className={`${maxWidthClasses[maxWidth] || maxWidthClasses.container} mx-auto relative`}>
         {title && (
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-6 md:mb-8 text-center">
             {title}
           </h2>
         )}
-        <div className={`grid ${layoutToGrid[layout] || 'grid-cols-1'} ${gapClasses[gap] || gapClasses.medium} ${alignClasses[verticalAlign] || alignClasses.top}`}>
-          {/* Priority 1: Render nested children (from children prop) */}
+        <div className={`grid ${layoutToGrid[layout] || 'grid-cols-1'} ${gapClasses[gap] || gapClasses.medium} ${alignClasses[verticalAlign] || alignClasses.top} ${horizontalAlign ? horizontalAlignClasses[horizontalAlign] : ''}`}>
           {children ? (
             children
           ) : columns.length > 0 ? (
-            // Priority 2: Render columns from props (backward compatibility)
             columns.map((column, index) => (
               <div key={index} className="bg-[#141414] rounded-lg p-4 md:p-6">
                 {column.imageUrl && (
@@ -130,7 +240,6 @@ export default function SectionContainer({ props, children }: SectionContainerPr
               </div>
             ))
           ) : (
-            // Priority 3: Show placeholder columns based on layout
             Array.from({ length: expectedColumns }).map((_, index) => (
               <div key={index} className="bg-[#1a1a1a] border-2 border-dashed border-[#2a2a2a] rounded-lg p-8 text-center min-h-[120px] flex items-center justify-center">
                 <div>

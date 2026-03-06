@@ -7,6 +7,11 @@ interface ProductShowcaseSectionProps {
     columns?: number
     showPrice?: boolean
     showRating?: boolean
+    backgroundColor?: string
+    padding?: 'none' | 'small' | 'medium' | 'large'
+    cardBackgroundColor?: string
+    cardBorderRadius?: 'none' | 'small' | 'medium' | 'large'
+    hideOnMobile?: boolean
   }
 }
 
@@ -17,19 +22,38 @@ export default function ProductShowcaseSection({ props }: ProductShowcaseSection
     columns = 4,
     showPrice = true,
     showRating = true,
+    backgroundColor,
+    padding = 'large',
+    cardBackgroundColor,
+    cardBorderRadius = 'medium',
+    hideOnMobile,
   } = props
 
-  const gridCols = {
+  const gridCols: Record<number, string> = {
     2: 'grid-cols-1 sm:grid-cols-2',
     3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
     4: 'grid-cols-2 lg:grid-cols-4',
   }
 
-  // TODO: Fetch actual products from API based on productIds
-  // For now, show placeholder
+  const paddingClasses: Record<string, string> = {
+    none: 'py-4',
+    small: 'py-6 sm:py-8',
+    medium: 'py-10 sm:py-12 lg:py-16',
+    large: 'py-10 sm:py-12 lg:py-20',
+  }
+
+  const cardRadiusClasses: Record<string, string> = {
+    none: 'rounded-none',
+    small: 'rounded-md',
+    medium: 'rounded-lg sm:rounded-xl',
+    large: 'rounded-2xl',
+  }
 
   return (
-    <section className="py-10 sm:py-12 lg:py-20 px-4">
+    <section
+      className={`${paddingClasses[padding]} px-4 ${hideOnMobile ? 'hidden md:block' : ''}`}
+      style={{ backgroundColor: backgroundColor || undefined }}
+    >
       <div className="max-w-6xl mx-auto">
         {title && (
           <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white text-center mb-8 sm:mb-10 lg:mb-16">
@@ -42,11 +66,12 @@ export default function ProductShowcaseSection({ props }: ProductShowcaseSection
             <p className="text-slate-500 text-sm sm:text-base">No products selected. Add product IDs in the editor.</p>
           </div>
         ) : (
-          <div className={`grid ${gridCols[columns as keyof typeof gridCols] || gridCols[4]} gap-3 sm:gap-4 lg:gap-6`}>
+          <div className={`grid ${gridCols[columns as number] || gridCols[4]} gap-3 sm:gap-4 lg:gap-6`}>
             {productIds.map((id, index) => (
               <div
                 key={index}
-                className="bg-[#141414] border border-[#1f1f1f] rounded-lg sm:rounded-xl overflow-hidden group hover:border-primary/30 transition-colors"
+                className={`border border-[#1f1f1f] ${cardRadiusClasses[cardBorderRadius]} overflow-hidden group hover:border-primary/30 transition-colors`}
+                style={{ backgroundColor: cardBackgroundColor || '#141414' }}
               >
                 <div className="aspect-square bg-[#1a1a1a] flex items-center justify-center">
                   <p className="text-slate-500 text-xs sm:text-sm">Product #{id}</p>

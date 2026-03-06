@@ -11,6 +11,8 @@ interface Plan {
   buttonText?: string
   buttonLink?: string
   highlighted?: boolean
+  description?: string
+  badge?: string
 }
 
 interface PricingTableSectionProps {
@@ -18,6 +20,12 @@ interface PricingTableSectionProps {
     title?: string
     subtitle?: string
     plans?: Plan[]
+    backgroundColor?: string
+    highlightColor?: string
+    cardBackgroundColor?: string
+    padding?: 'none' | 'small' | 'medium' | 'large'
+    columns?: 'auto' | '2' | '3' | '4'
+    hideOnMobile?: boolean
   }
 }
 
@@ -26,19 +34,41 @@ export default function PricingTableSection({ props }: PricingTableSectionProps)
     title,
     subtitle,
     plans = [],
+    backgroundColor,
+    highlightColor,
+    cardBackgroundColor,
+    padding = 'large',
+    columns = 'auto',
+    hideOnMobile,
   } = props
 
-  // Determine grid columns based on number of plans
+  const paddingClasses: Record<string, string> = {
+    none: 'py-4',
+    small: 'py-6 sm:py-8',
+    medium: 'py-10 sm:py-12 lg:py-16',
+    large: 'py-10 sm:py-12 lg:py-20',
+  }
+
   const getGridCols = (count: number) => {
+    if (columns !== 'auto') {
+      const colMap: Record<string, string> = {
+        '2': 'grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto',
+        '3': 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+        '4': 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+      }
+      return colMap[columns] || colMap['3']
+    }
     if (count === 1) return 'grid-cols-1 max-w-md mx-auto'
     if (count === 2) return 'grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto'
     return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
   }
 
   return (
-    <section className="py-10 sm:py-12 lg:py-20 px-4">
+    <section
+      className={`${paddingClasses[padding]} px-4 ${hideOnMobile ? 'hidden md:block' : ''}`}
+      style={{ backgroundColor: backgroundColor || undefined }}
+    >
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         {(title || subtitle) && (
           <div className="text-center mb-8 sm:mb-10 lg:mb-16">
             {title && (
@@ -65,24 +95,35 @@ export default function PricingTableSection({ props }: PricingTableSectionProps)
                 key={index}
                 className={`relative rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 ${
                   plan.highlighted
-                    ? 'bg-primary/10 border-2 border-primary'
-                    : 'bg-[#141414] border border-[#1f1f1f]'
+                    ? 'border-2'
+                    : 'border border-[#1f1f1f]'
                 }`}
+                style={{
+                  backgroundColor: plan.highlighted
+                    ? (highlightColor ? `${highlightColor}15` : 'rgba(67,214,120,0.1)')
+                    : (cardBackgroundColor || '#141414'),
+                  borderColor: plan.highlighted ? (highlightColor || undefined) : undefined,
+                }}
               >
                 {plan.highlighted && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary text-black text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
-                      Most Popular
+                    <span
+                      className="text-black text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap"
+                      style={{ backgroundColor: highlightColor || undefined }}
+                    >
+                      {plan.badge || 'Most Popular'}
                     </span>
                   </div>
                 )}
 
-                {/* Plan Name */}
                 {plan.name && (
                   <h3 className="text-white font-semibold text-lg sm:text-xl mb-2">{plan.name}</h3>
                 )}
 
-                {/* Price */}
+                {plan.description && (
+                  <p className="text-slate-400 text-xs sm:text-sm mb-3">{plan.description}</p>
+                )}
+
                 <div className="mb-4 sm:mb-6">
                   <span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white">{plan.price || '$0'}</span>
                   {plan.period && (
@@ -90,7 +131,6 @@ export default function PricingTableSection({ props }: PricingTableSectionProps)
                   )}
                 </div>
 
-                {/* Features */}
                 {plan.features && plan.features.length > 0 && (
                   <ul className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
                     {plan.features.map((feature, featureIndex) => (
@@ -102,7 +142,6 @@ export default function PricingTableSection({ props }: PricingTableSectionProps)
                   </ul>
                 )}
 
-                {/* CTA Button */}
                 {plan.buttonText && plan.buttonLink && (
                   <Link
                     href={plan.buttonLink}
@@ -111,6 +150,7 @@ export default function PricingTableSection({ props }: PricingTableSectionProps)
                         ? 'bg-primary text-black hover:bg-primary/90'
                         : 'bg-[#1a1a1a] text-white border border-[#2a2a2a] hover:border-primary/50'
                     }`}
+                    style={plan.highlighted && highlightColor ? { backgroundColor: highlightColor } : undefined}
                   >
                     {plan.buttonText}
                   </Link>

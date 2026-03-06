@@ -10,6 +10,11 @@ interface SocialLinksSectionProps {
     title?: string
     alignment?: 'left' | 'center' | 'right'
     links?: SocialLink[]
+    backgroundColor?: string
+    padding?: 'none' | 'small' | 'medium' | 'large'
+    iconSize?: 'small' | 'medium' | 'large'
+    iconColor?: string
+    hideOnMobile?: boolean
   }
 }
 
@@ -23,8 +28,33 @@ const PLATFORM_ICONS: Record<string, string> = {
 }
 
 export default function SocialLinksSection({ props }: SocialLinksSectionProps) {
-  const { title, alignment = 'center', links = [] } = props
-  const alignClass = { left: 'justify-start', center: 'justify-center', right: 'justify-end' }[alignment] || 'justify-center'
+  const {
+    title,
+    alignment = 'center',
+    links = [],
+    backgroundColor,
+    padding = 'medium',
+    iconSize = 'medium',
+    iconColor,
+    hideOnMobile,
+  } = props
+
+  const alignClass: Record<string, string> = { left: 'justify-start', center: 'justify-center', right: 'justify-end' }
+
+  const paddingClasses: Record<string, string> = {
+    none: 'py-2',
+    small: 'py-4',
+    medium: 'py-8',
+    large: 'py-12',
+  }
+
+  const iconSizeMap: Record<string, { container: string; svg: number }> = {
+    small: { container: 'w-8 h-8', svg: 14 },
+    medium: { container: 'w-10 h-10', svg: 18 },
+    large: { container: 'w-12 h-12', svg: 22 },
+  }
+
+  const sizeConfig = iconSizeMap[iconSize] || iconSizeMap.medium
 
   if (links.length === 0) {
     return (
@@ -35,21 +65,25 @@ export default function SocialLinksSection({ props }: SocialLinksSectionProps) {
   }
 
   return (
-    <div className="py-8 px-4">
+    <div
+      className={`${paddingClasses[padding]} px-4 ${hideOnMobile ? 'hidden md:block' : ''}`}
+      style={{ backgroundColor: backgroundColor || undefined }}
+    >
       <div className="max-w-4xl mx-auto">
         {title && <h3 className="text-lg font-semibold text-white mb-4 text-center">{title}</h3>}
-        <div className={`flex ${alignClass} gap-4`}>
+        <div className={`flex ${alignClass[alignment]} gap-4`}>
           {links.map((link, i) => (
             <a
               key={i}
               href={link.url || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary/50 transition-colors"
+              className={`${sizeConfig.container} rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center hover:text-primary hover:border-primary/50 transition-colors`}
+              style={{ color: iconColor || undefined }}
               title={link.platform}
             >
               {PLATFORM_ICONS[link.platform?.toLowerCase() || ''] ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg width={sizeConfig.svg} height={sizeConfig.svg} viewBox="0 0 24 24" fill="currentColor">
                   <path d={PLATFORM_ICONS[link.platform?.toLowerCase() || '']} />
                 </svg>
               ) : (

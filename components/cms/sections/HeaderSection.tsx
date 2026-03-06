@@ -18,6 +18,8 @@ interface HeaderSectionProps {
     showLogin?: boolean
     backgroundColor?: string
     sticky?: boolean
+    textColor?: string
+    padding?: 'none' | 'small' | 'medium' | 'large'
   }
 }
 
@@ -31,13 +33,22 @@ export default function HeaderSection({ props }: HeaderSectionProps) {
     showLogin = true,
     backgroundColor,
     sticky = true,
+    textColor,
+    padding = 'none',
   } = props
+
+  const paddingClasses: Record<string, string> = {
+    none: '',
+    small: 'py-1',
+    medium: 'py-2',
+    large: 'py-4',
+  }
 
   return (
     <header
       className={`border-b border-[#1f1f1f] bg-[#0a0a0a]/80 backdrop-blur-md ${
         sticky ? 'sticky top-0 z-50' : ''
-      }`}
+      } ${paddingClasses[padding]}`}
       style={{ backgroundColor: backgroundColor || undefined }}
     >
       {/* Main Header Row */}
@@ -57,6 +68,7 @@ export default function HeaderSection({ props }: HeaderSectionProps) {
           <Link
             href="/"
             className="flex items-center gap-1.5 sm:gap-2 font-bold text-base sm:text-lg md:text-xl tracking-tight text-primary flex-shrink-0"
+            style={{ color: textColor || undefined }}
           >
             {logoIcon && (
               <span className="hidden md:flex w-6 h-6 items-center justify-center">
@@ -110,7 +122,7 @@ export default function HeaderSection({ props }: HeaderSectionProps) {
           )}
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-4 lg:gap-6 text-sm font-medium text-slate-400 flex-shrink-0">
+          <nav className="hidden md:flex items-center gap-4 lg:gap-6 text-sm font-medium text-slate-400 flex-shrink-0" style={{ color: textColor || undefined }}>
             {navLinks.map((link, index) => (
               link.label && link.href && (
                 <Link

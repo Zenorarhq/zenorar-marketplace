@@ -31,6 +31,8 @@ interface FooterSectionProps {
     copyrightText?: string
     bottomLinks?: FooterLink[]
     backgroundColor?: string
+    textColor?: string
+    padding?: 'none' | 'small' | 'medium' | 'large'
   }
 }
 
@@ -46,15 +48,24 @@ export default function FooterSection({ props }: FooterSectionProps) {
     copyrightText,
     bottomLinks = [],
     backgroundColor,
+    textColor,
+    padding = 'large',
   } = props
 
   const currentYear = new Date().getFullYear()
-  const defaultCopyright = `© ${currentYear} ${logoText}. All rights reserved.`
+  const defaultCopyright = `\u00A9 ${currentYear} ${logoText}. All rights reserved.`
+
+  const paddingClasses: Record<string, string> = {
+    none: 'pt-4 pb-4',
+    small: 'pt-6 sm:pt-8 pb-4 sm:pb-6',
+    medium: 'pt-8 sm:pt-10 pb-5 sm:pb-7',
+    large: 'pt-10 sm:pt-12 lg:pt-16 pb-6 sm:pb-8',
+  }
 
   return (
     <footer
-      className="bg-[#0d0d0d] border-t border-[#1f1f1f] pt-10 sm:pt-12 lg:pt-16 pb-6 sm:pb-8"
-      style={{ backgroundColor: backgroundColor || undefined }}
+      className={`bg-[#0d0d0d] border-t border-[#1f1f1f] ${paddingClasses[padding]}`}
+      style={{ backgroundColor: backgroundColor || undefined, color: textColor || undefined }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 mb-10 sm:mb-12 lg:mb-16">
         {/* Main footer grid */}

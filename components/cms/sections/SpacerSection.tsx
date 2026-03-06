@@ -3,13 +3,15 @@
 interface SpacerSectionProps {
   props: {
     height?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+    hideOnMobile?: boolean
+    hideOnTablet?: boolean
   }
 }
 
 export default function SpacerSection({ props }: SpacerSectionProps) {
-  const { height = 'md' } = props
+  const { height = 'md', hideOnMobile, hideOnTablet } = props
 
-  const heightClasses = {
+  const heightClasses: Record<string, string> = {
     xs: 'h-4',
     sm: 'h-8',
     md: 'h-12',
@@ -18,5 +20,10 @@ export default function SpacerSection({ props }: SpacerSectionProps) {
     '2xl': 'h-48',
   }
 
-  return <div className={heightClasses[height]} aria-hidden="true" />
+  const visibilityClasses = [
+    hideOnMobile ? 'hidden md:block' : '',
+    hideOnTablet ? 'md:hidden lg:block' : '',
+  ].filter(Boolean).join(' ')
+
+  return <div className={`${heightClasses[height]} ${visibilityClasses}`} aria-hidden="true" />
 }
