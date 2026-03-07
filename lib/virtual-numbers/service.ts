@@ -32,6 +32,11 @@ class VirtualNumberService {
     smsLimit?: number,
     minuteIncluded?: number
   ): Promise<ProvisionResult> {
+    console.log('provisionNumber called with:', {
+      userId, countryId, planId, phoneNumber, orderId, numberType,
+      amountPaid, minuteTier, durationDaysOverride, smsLimit, minuteIncluded
+    })
+
     try {
       // Get plan details to determine duration
       let durationDays = durationDaysOverride || 30 // use override if provided
@@ -121,13 +126,19 @@ class VirtualNumberService {
         )
       } else {
         // Create new user virtual number record
+        console.log('Creating new user_virtual_numbers record:', {
+          userId, planId, planCategory, durationDays, smsLimit: smsLimit || 100, minuteTier, minuteIncluded: minuteIncluded || 0,
+          countryId, phoneNumber, displayNumber, numberType,
+          provider, providerNumberSid, orderId, expiresAt: rentResult.expiresAt, inventoryId: rentResult.inventoryId
+        })
+
         const insertResult = await query(
           `INSERT INTO user_virtual_numbers
-             (id, user_id, plan_id, plan_category, plan_duration_days, sms_limit, minute_tier, minute_included,
+             (user_id, plan_id, plan_category, plan_duration_days, sms_limit, minute_tier, minute_included,
               country_id, phone_number, phone_number_display, number_type,
               provider, provider_number_sid, status, order_id, expires_at, next_billing_at,
               inventory_id, created_at, updated_at)
-           VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active', $14, $15, $15, $16, NOW(), NOW())
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active', $14, $15, $15, $16, NOW(), NOW())
            RETURNING id`,
           [
             userId, planId, planCategory, durationDays, smsLimit || 100, minuteTier, minuteIncluded || 0,
@@ -136,6 +147,7 @@ class VirtualNumberService {
           ]
         )
         userVirtualNumberId = insertResult.rows[0].id
+        console.log('Created user_virtual_numbers record:', userVirtualNumberId)
       }
 
       return {

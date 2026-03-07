@@ -190,6 +190,8 @@ class InventoryService {
   async rentNumber(params: RentNumberParams): Promise<RentResult> {
     const { phoneNumber, userId, planId, durationDays, amountPaid, minuteTier, minuteTierPrice, countryId: passedCountryId } = params
 
+    console.log('rentNumber called with:', { phoneNumber, userId, planId, durationDays, amountPaid, passedCountryId })
+
     try {
       // Check if number exists in inventory
       const existingResult = await query(
@@ -227,18 +229,22 @@ class InventoryService {
 
         // Get country info - use passed countryId first, fallback to lookup
         let countryId = passedCountryId
+        console.log('rentNumber countryId resolution:', { passedCountryId, phoneNumber })
+
         if (!countryId) {
+          console.log('No countryId passed, looking up by dial code...')
           const countryResult = await query(
             `SELECT id FROM virtual_number_countries
              WHERE dial_code = $1 OR $2 LIKE dial_code || '%'`,
             [phoneNumber.substring(0, 2), phoneNumber]
           )
           countryId = countryResult.rows[0]?.id
+          console.log('Dial code lookup result:', countryId)
         }
 
         // If still no countryId, try to lookup by full dial code patterns
         if (!countryId) {
-          // Try common patterns
+          console.log('Still no countryId, trying common dial codes...')
           const dialCodes = ['+1', '+44', '+61', '+49', '+33', '+81', '+65', '+86']
           for (const dialCode of dialCodes) {
             if (phoneNumber.startsWith(dialCode)) {
@@ -248,6 +254,7 @@ class InventoryService {
               )
               if (result.rows.length > 0) {
                 countryId = result.rows[0].id
+                console.log('Found countryId from dial code:', dialCode, countryId)
                 break
               }
             }
@@ -255,8 +262,11 @@ class InventoryService {
         }
 
         if (!countryId) {
+          console.error('Could not determine countryId for phone:', phoneNumber)
           return { success: false, error: 'Could not determine country for phone number. Please try again.' }
         }
+
+        console.log('Final countryId for INSERT:', countryId)
 
         // Add to inventory with the provider that successfully purchased
         const insertResult = await query(

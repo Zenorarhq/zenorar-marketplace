@@ -701,6 +701,9 @@ async function processVirtualNumberItem(
 
     const metadata = itemResult.rows[0].metadata || {}
 
+    // Log metadata for debugging
+    console.log('Virtual number metadata:', JSON.stringify(metadata, null, 2))
+
     const phoneNumber = metadata.phone_number || metadata.phoneNumber
     const countryId = metadata.country_id || metadata.countryId
     const planId = metadata.plan_id || metadata.planId
@@ -712,8 +715,19 @@ async function processVirtualNumberItem(
     const smsLimit = metadata.sms_limit || metadata.smsLimit
     const minuteIncluded = metadata.minute_included || metadata.minuteIncluded
 
+    console.log('Extracted values:', { phoneNumber, countryId, planId, numberType, durationDays })
+
     if (!phoneNumber || !countryId || !planId) {
-      throw new Error('Missing required virtual number metadata (phone_number, country_id, plan_id)')
+      throw new Error(`Missing required virtual number metadata: phone=${phoneNumber}, country=${countryId}, plan=${planId}`)
+    }
+
+    // Validate countryId exists in database
+    const countryCheck = await query(
+      `SELECT id FROM virtual_number_countries WHERE id = $1`,
+      [countryId]
+    )
+    if (countryCheck.rows.length === 0) {
+      throw new Error(`Invalid country ID: ${countryId}`)
     }
 
     const provisionResult = await virtualNumberService.provisionNumber(

@@ -1543,15 +1543,33 @@ function PlanSelectionModal({
         total: totalPrice,
       }
 
-      const result = await localApiFetch<{ orderId: string; orderNumber: string }>('/orders/instant', {
+      const result = await localApiFetch<{
+        orderId: string
+        orderNumber: string
+        fulfillment?: {
+          success: boolean
+          itemsFailed: number
+          details?: Array<{ status: string; error?: string }>
+        }
+      }>('/orders/instant', {
         method: 'POST',
         body: JSON.stringify(orderData),
       })
 
       if (result.success) {
-        setCheckoutSuccess(true)
-        // Refresh wallet balance
-        fetchWalletBalance()
+        // Check if fulfillment also succeeded
+        const fulfillment = result.data?.fulfillment
+        if (fulfillment && !fulfillment.success) {
+          // Get the first error message from failed items
+          const failedItem = fulfillment.details?.find(d => d.status === 'failed')
+          const errorMsg = failedItem?.error || 'Failed to provision virtual number'
+          setCheckoutError(errorMsg)
+          console.error('Fulfillment failed:', fulfillment)
+        } else {
+          setCheckoutSuccess(true)
+          // Refresh wallet balance
+          fetchWalletBalance()
+        }
       } else {
         setCheckoutError(result.error || 'Failed to process payment')
       }

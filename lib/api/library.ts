@@ -34,7 +34,7 @@ export interface LibraryItem {
   category: 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers'
   icon: string
   purchaseDate: string
-  status: 'active' | 'expired' | 'update-available' | 'suspended'
+  status: 'active' | 'expired' | 'update-available' | 'suspended' | 'pending' | 'failed'
   version?: string
   downloadCount?: number
   expiresAt?: string
@@ -45,6 +45,7 @@ export interface LibraryItem {
   unreadCount?: number
   smsUsed?: number
   smsIncluded?: number
+  errorMessage?: string
 }
 
 export interface DownloadLink {

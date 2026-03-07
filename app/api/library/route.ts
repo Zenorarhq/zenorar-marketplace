@@ -97,6 +97,38 @@ export async function GET(request: Request) {
       [userId]
     )
 
+    // Query pending/failed virtual number orders (orders placed but not yet provisioned)
+    const pendingVirtualNumbersResult = await query(
+      `
+      SELECT
+        oi.id,
+        'virtual-numbers' as category,
+        INITCAP(COALESCE(oi.metadata->>'planCategory', 'basic')) || ' Plan' as name,
+        oi.metadata->>'friendlyName' as "phoneNumberDisplay",
+        oi.metadata->>'phone_number' as "phoneNumber",
+        CASE
+          WHEN vnpl.status = 'failed' THEN 'failed'
+          ELSE 'pending'
+        END as status,
+        o."createdAt" as purchase_date,
+        NULL as "expiresAt",
+        0 as "smsUsed",
+        COALESCE((oi.metadata->>'sms_limit')::int, 100) as "smsIncluded",
+        0 as "unreadCount",
+        vnpl.error_message as "errorMessage"
+      FROM orders o
+      JOIN order_items oi ON oi."orderId" = o.id
+      LEFT JOIN virtual_number_provision_log vnpl ON vnpl.order_id = o.id
+      LEFT JOIN user_virtual_numbers uvn ON uvn.order_id = o.id
+      WHERE o."userId" = $1
+        AND oi.product_type = 'virtual_number'
+        AND uvn.id IS NULL
+      ORDER BY o."createdAt" DESC
+      LIMIT 10
+      `,
+      [userId]
+    )
+
     // Query user's eSIMs
     const esimsResult = await query(
       `
@@ -198,6 +230,34 @@ export async function GET(request: Request) {
       }
     })
 
+    // Transform pending/failed virtual number orders
+    const pendingVirtualNumberItems = pendingVirtualNumbersResult.rows.map((row: any) => {
+      const isFailed = row.status === 'failed'
+      return {
+        id: row.id,
+        name: row.phoneNumberDisplay || row.phoneNumber || 'Virtual Number',
+        slug: `virtual-number-pending-${row.id}`,
+        description: isFailed
+          ? `Provisioning Failed: ${row.errorMessage || 'Provider error'}`
+          : `${row.name} - Provisioning...`,
+        category: 'virtual-numbers',
+        icon: 'phone',
+        purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        status: isFailed ? 'failed' : 'pending',
+        phoneNumber: row.phoneNumber,
+        phoneNumberDisplay: row.phoneNumberDisplay,
+        expiresAt: null,
+        smsUsed: 0,
+        smsIncluded: row.smsIncluded || 0,
+        unreadCount: 0,
+        errorMessage: row.errorMessage,
+      }
+    })
+
     // Transform gift cards to library item format
     const giftCardItems = giftCardsResult.rows.map((row: any) => {
       return {
@@ -258,8 +318,8 @@ export async function GET(request: Request) {
       }
     })
 
-    // Combine all library items
-    const libraryItems = [...productItems, ...virtualNumberItems, ...giftCardItems, ...esimItems]
+    // Combine all library items (include pending/failed virtual numbers)
+    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems]
 
     return NextResponse.json({
       success: true,

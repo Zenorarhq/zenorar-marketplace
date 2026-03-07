@@ -259,6 +259,18 @@ export default function LibraryPage() {
             <Icon name="alert" size={12} /> Suspended
           </div>
         )
+      case 'pending':
+        return (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-900/30 text-blue-400 border border-blue-500/20">
+            <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div> Provisioning
+          </div>
+        )
+      case 'failed':
+        return (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-900/30 text-red-500 border border-red-500/20">
+            <Icon name="alert-circle" size={12} /> Failed
+          </div>
+        )
       default:
         return null
     }
