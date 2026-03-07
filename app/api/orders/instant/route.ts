@@ -256,9 +256,9 @@ export async function POST(req: NextRequest) {
           [walletBalanceId, total, balanceAfter, balanceAfter + total, `Refund for failed order #${finalOrderNumber}`, orderId]
         )
 
-        // Update order status to failed
+        // Update order status to cancelled (FAILED is not a valid enum value)
         await query(
-          `UPDATE orders SET status = 'FAILED', "paymentStatus" = 'REFUNDED', "updatedAt" = NOW() WHERE id = $1`,
+          `UPDATE orders SET status = 'CANCELLED', "paymentStatus" = 'REFUNDED', "updatedAt" = NOW() WHERE id = $1`,
           [orderId]
         )
 
