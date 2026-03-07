@@ -67,7 +67,7 @@ export default function EditableSection({
               : 'bg-blue-500 text-white'
           }`}
         >
-          {section.type.replace(/-/g, ' ')}
+          {section.type === 'column' ? 'section' : section.type.replace(/-/g, ' ')}
         </div>
       )}
 

@@ -70,7 +70,7 @@ function SortableSection({
     transition,
   }
 
-  const componentName = section.type.replace(/-/g, ' ')
+  const componentName = section.type === 'column' ? 'section' : section.type.replace(/-/g, ' ')
   const iconName = componentTemplate?.icon || 'layers'
   const isContainer = containerTypes.includes(section.type)
   const children = section.children || []

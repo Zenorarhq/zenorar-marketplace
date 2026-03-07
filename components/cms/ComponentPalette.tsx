@@ -84,14 +84,15 @@ export default function ComponentPalette({ components, onAddSection }: Component
     })
   }
 
-  // Filter components by search
+  // Filter out inactive components, then filter by search
+  const activeComponents = components.filter(c => c.isActive !== false)
   const filteredComponents = search.trim()
-    ? components.filter(c =>
+    ? activeComponents.filter(c =>
         c.name.replace(/-/g, ' ').toLowerCase().includes(search.toLowerCase()) ||
         (c.description || '').toLowerCase().includes(search.toLowerCase()) ||
         (c.category || '').toLowerCase().includes(search.toLowerCase())
       )
-    : components
+    : activeComponents
 
   // Group components by category
   const groupedComponents = filteredComponents.reduce(

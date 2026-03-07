@@ -140,7 +140,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     defaultProps: { padding: 'medium', borderRadius: 'medium', alignment: 'left' },
     thumbnail: null,
     order: 4,
-    isActive: true,
+    isActive: false,
   },
   {
     id: 'tpl-spacer',
