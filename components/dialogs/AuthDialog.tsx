@@ -559,7 +559,7 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                       placeholder="Email Address"
                       required
                       autoComplete="email"
-                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-sm"
+                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-base"
                     />
                   </div>
 
@@ -574,7 +574,7 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                       placeholder="Password"
                       required
                       autoComplete="current-password"
-                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-sm"
+                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-base"
                     />
                     <button
                       type="button"
@@ -621,7 +621,7 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                       placeholder="Full Name"
                       required
                       autoComplete="name"
-                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-sm"
+                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-base"
                     />
                   </div>
 
@@ -637,7 +637,7 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                       placeholder="Email Address"
                       required
                       autoComplete="email"
-                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-sm"
+                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-base"
                     />
                   </div>
 
@@ -654,7 +654,7 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                       required
                       autoComplete="new-password"
                       minLength={8}
-                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-sm"
+                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-base"
                     />
                     <button
                       type="button"
@@ -678,7 +678,7 @@ export default function AuthDialog({ isOpen, onClose, onSuccess, defaultTab = 'l
                       placeholder="Confirm Password"
                       required
                       autoComplete="new-password"
-                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-sm"
+                      className="w-full bg-surface-light text-white border border-border-dark rounded-2xl py-3.5 pl-11 pr-11 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-slate-600 font-medium text-base"
                     />
                     <button
                       type="button"
