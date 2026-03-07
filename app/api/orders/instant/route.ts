@@ -290,20 +290,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Update order status to completed
+    // Update order status to confirmed (digital products are instant, no physical delivery)
     await query(
-      `UPDATE orders SET status = 'COMPLETED', "updatedAt" = NOW() WHERE id = $1`,
+      `UPDATE orders SET status = 'CONFIRMED', "updatedAt" = NOW() WHERE id = $1`,
       [orderId]
     )
 
-    // Send success notification (using ORDER_DELIVERED type for digital delivery)
+    // Send success notification
     await query(
       `INSERT INTO notifications (id, "userId", type, title, message, metadata)
-       VALUES (gen_random_uuid()::text, $1, 'ORDER_DELIVERED'::"NotificationType",
-               'Order Complete',
+       VALUES (gen_random_uuid()::text, $1, 'ORDER_CONFIRMED'::"NotificationType",
+               'Order Confirmed',
                $2,
                $3::jsonb)`,
-      [userId, `Your order #${finalOrderNumber} has been processed. Your virtual number is ready!`, JSON.stringify({ orderId, orderNumber: finalOrderNumber })]
+      [userId, `Your order #${finalOrderNumber} has been confirmed. Your virtual number is ready!`, JSON.stringify({ orderId, orderNumber: finalOrderNumber })]
     ).catch(err => console.error('Failed to send notification:', err))
 
     return NextResponse.json({
