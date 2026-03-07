@@ -1074,6 +1074,10 @@ export default function PageEditorPage() {
                     componentTemplate={selectedTemplate}
                     onUpdateSection={handleUpdateSection}
                     onClose={() => setSelectedSectionId(null)}
+                    sections={page?.content || []}
+                    componentTemplates={components}
+                    onSelectSection={setSelectedSectionId}
+                    onDeleteSection={handleDeleteSection}
                   />
                 </aside>
               )}

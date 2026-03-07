@@ -11,6 +11,10 @@ interface PropertiesPanelProps {
   componentTemplate: ComponentTemplate | null
   onUpdateSection: (id: string, props: Record<string, any>) => void
   onClose: () => void
+  sections?: Section[]
+  componentTemplates?: ComponentTemplate[]
+  onSelectSection?: (id: string) => void
+  onDeleteSection?: (id: string) => void
 }
 
 interface FieldProps {
@@ -417,6 +421,105 @@ function renderField(name: string, value: any, schema: any, onChange: (value: an
   }
 }
 
+// ── Navigator Tree ────────────────────────────────────────────────
+
+const containerTypes = ['section', 'column']
+
+function NavigatorTree({
+  sections,
+  componentTemplates,
+  onSelect,
+  onDelete,
+}: {
+  sections: Section[]
+  componentTemplates: ComponentTemplate[]
+  onSelect?: (id: string) => void
+  onDelete?: (id: string) => void
+}) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
+    const ids = new Set<string>()
+    const collectContainers = (list: Section[]) => {
+      for (const s of list) {
+        if (containerTypes.includes(s.type)) ids.add(s.id)
+        if (s.children) collectContainers(s.children)
+      }
+    }
+    collectContainers(sections)
+    return ids
+  })
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const getIcon = (type: string) => {
+    const t = componentTemplates.find((c) => c.name === type)
+    return t?.icon || 'layers'
+  }
+
+  const getLabel = (section: Section) => {
+    if (section.type === 'column') return 'Section'
+    const name = section.type.replace(/-/g, ' ')
+    return section.props?.title || name.charAt(0).toUpperCase() + name.slice(1)
+  }
+
+  function renderItems(items: Section[], depth: number) {
+    const sorted = [...items].sort((a, b) => a.order - b.order)
+    return sorted.map((section) => {
+      const isContainer = containerTypes.includes(section.type)
+      const children = section.children || []
+      const isExpanded = expandedIds.has(section.id)
+
+      return (
+        <div key={section.id}>
+          <div
+            className="flex items-center gap-1.5 py-1.5 px-2 hover:bg-white/5 cursor-pointer group transition-colors"
+            style={{ paddingLeft: 8 + depth * 16 }}
+            onClick={() => onSelect?.(section.id)}
+          >
+            {isContainer ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleExpand(section.id) }}
+                className="p-0.5 text-slate-500 hover:text-slate-300"
+              >
+                <Icon name={isExpanded ? 'chevron-down' : 'chevron-right'} size={12} />
+              </button>
+            ) : (
+              <span className="w-4" />
+            )}
+
+            <Icon name={getIcon(section.type)} size={14} className="text-slate-400 flex-shrink-0" />
+
+            <span className="text-xs text-slate-300 truncate flex-1">
+              {getLabel(section)}
+            </span>
+
+            {onDelete && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(section.id) }}
+                className="p-0.5 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Icon name="delete" size={12} />
+              </button>
+            )}
+          </div>
+
+          {isContainer && isExpanded && children.length > 0 && (
+            renderItems(children, depth + 1)
+          )}
+        </div>
+      )
+    })
+  }
+
+  return <div className="py-1">{renderItems(sections, 0)}</div>
+}
+
 // ── Tab Icons ─────────────────────────────────────────────────────
 
 const tabConfig = [
@@ -434,6 +537,10 @@ export default function PropertiesPanel({
   componentTemplate,
   onUpdateSection,
   onClose,
+  sections = [],
+  componentTemplates = [],
+  onSelectSection,
+  onDeleteSection,
 }: PropertiesPanelProps) {
   const [localProps, setLocalProps] = useState<Record<string, any>>({})
   const [activeTab, setActiveTab] = useState<TabId>('layout')
@@ -446,15 +553,27 @@ export default function PropertiesPanel({
 
   if (!section || !componentTemplate) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-[#1a1a1a] rounded-xl flex items-center justify-center">
-            <Icon name="edit" size={32} className="text-slate-600" />
-          </div>
-          <h3 className="text-white font-medium mb-2">No section selected</h3>
-          <p className="text-slate-500 text-sm max-w-xs">
-            Select a section from the list to edit its properties
-          </p>
+      <div className="h-full flex flex-col">
+        <div className="p-3 border-b border-[#1f1f1f] flex items-center gap-2">
+          <Icon name="layers" size={16} className="text-slate-400" />
+          <h3 className="text-white font-semibold text-sm">Navigator</h3>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {sections.length > 0 ? (
+            <NavigatorTree
+              sections={sections}
+              componentTemplates={componentTemplates}
+              onSelect={onSelectSection}
+              onDelete={onDeleteSection}
+            />
+          ) : (
+            <div className="flex items-center justify-center p-8">
+              <div className="text-center">
+                <Icon name="layers" size={32} className="text-slate-600 mx-auto mb-2" />
+                <p className="text-slate-500 text-sm">No sections yet</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
