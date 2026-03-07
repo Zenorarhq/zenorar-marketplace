@@ -528,7 +528,43 @@ const tabConfig = [
   { id: 'advanced', label: 'Advanced', icon: 'settings' },
 ] as const
 
-type TabId = typeof tabConfig[number]['id']
+const componentTabConfig = [
+  { id: 'content', label: 'Content', icon: 'edit' },
+  { id: 'style', label: 'Style', icon: 'paint-brush' },
+  { id: 'settings', label: 'Settings', icon: 'settings' },
+] as const
+
+type TabId = string
+
+const STYLE_KEYWORDS = [
+  'color', 'gradient', 'opacity', 'shadow', 'font', 'theme', 'variant',
+  'rounded', 'border', 'textalign', 'overlay', 'image', 'logo', 'avatar',
+  'thumbnail', 'backgroundimage', 'icon', 'iconcolor',
+]
+
+const SETTINGS_KEYWORDS = [
+  'padding', 'margin', 'gap', 'spacing', 'maxwidth', 'contentwidth',
+  'layout', 'direction', 'size', 'height', 'columns', 'rows', 'position',
+  'sticky', 'autoplay', 'animated', 'lazy', 'interval', 'delay', 'duration',
+  'hideonmobile', 'alignment',
+]
+
+function categorizeProperty(name: string, schema: any): 'content' | 'style' | 'settings' {
+  const lower = name.toLowerCase()
+
+  if (STYLE_KEYWORDS.some(k => lower.includes(k)) && lower !== 'iconcolor') {
+    if (lower === 'icon' && schema.type === 'string' && !lower.includes('color')) {
+      return 'content'
+    }
+    return 'style'
+  }
+  if (lower.includes('color')) return 'style'
+
+  if (schema.type === 'boolean') return 'settings'
+  if (SETTINGS_KEYWORDS.some(k => lower === k || lower.includes(k))) return 'settings'
+
+  return 'content'
+}
 
 // ── Main Panel ────────────────────────────────────────────────────
 
@@ -543,13 +579,18 @@ export default function PropertiesPanel({
   onDeleteSection,
 }: PropertiesPanelProps) {
   const [localProps, setLocalProps] = useState<Record<string, any>>({})
-  const [activeTab, setActiveTab] = useState<TabId>('layout')
+  const [activeTab, setActiveTab] = useState<TabId>('content')
 
   useEffect(() => {
     if (section) {
       setLocalProps(section.props || {})
+      // Reset tab when switching sections
+      const schema = componentTemplate?.schema || {}
+      const props = schema.properties || {}
+      const hasGroupMeta = Object.values(props).some((p: any) => p.group)
+      setActiveTab(hasGroupMeta ? 'layout' : 'content')
     }
-  }, [section])
+  }, [section, componentTemplate])
 
   if (!section || !componentTemplate) {
     return (
@@ -653,27 +694,62 @@ export default function PropertiesPanel({
     )
   }
 
-  // Fallback: flat list for components without groups
+  // Auto-categorize properties into tabs
+  const autoGrouped: Record<string, [string, any][]> = { content: [], style: [], settings: [] }
+  Object.entries(properties).forEach(([name, propSchema]: [string, any]) => {
+    const cat = categorizeProperty(name, propSchema)
+    autoGrouped[cat].push([name, propSchema])
+  })
+
+  // If all fields land in one tab, pick that tab as default
+  const populatedTabs = componentTabConfig.filter(t => autoGrouped[t.id]?.length > 0)
+  const defaultTab = populatedTabs[0]?.id || 'content'
+
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between">
-        <div>
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2 border-b border-[#1f1f1f]">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="text-white font-semibold text-sm capitalize">
-            {section.type.replace(/-/g, ' ')}
+            {section.type === 'column' ? 'Section' : section.type.replace(/-/g, ' ')}
           </h3>
-          <p className="text-slate-500 text-xs">Edit section properties</p>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <Icon name="close" size={14} />
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          className="p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-        >
-          <Icon name="close" size={16} />
-        </button>
+
+        {/* Tabs — only show if fields span multiple tabs */}
+        {populatedTabs.length > 1 && (
+          <div className="flex">
+            {componentTabConfig.map((tab) => {
+              const hasFields = autoGrouped[tab.id]?.length > 0
+              if (!hasFields) return null
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as TabId)}
+                  className={`flex-1 flex flex-col items-center gap-1 py-2 text-[10px] font-medium uppercase tracking-wider border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <Icon name={tab.icon} size={18} />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
+      {/* Tab Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-5">
-          {Object.entries(properties).map(([name, propSchema]: [string, any]) => (
+        <div className="space-y-4">
+          {(autoGrouped[populatedTabs.length > 1 ? activeTab : defaultTab] || []).map(([name, propSchema]) => (
             <div key={name}>
               {renderField(name, localProps[name], propSchema, (val) => handleChange(name, val))}
             </div>

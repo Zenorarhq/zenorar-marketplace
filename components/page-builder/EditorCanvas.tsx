@@ -25,6 +25,8 @@ interface EditorCanvasProps {
   onDeleteSection: (id: string) => void
   onDuplicateSection: (id: string) => void
   onMoveSection: (id: string, direction: -1 | 1) => void
+  onAddSection?: () => void
+  onAddToContainer?: (containerId: string) => void
   viewportSize?: 'desktop' | 'tablet' | 'mobile'
 }
 
@@ -36,6 +38,8 @@ export default function EditorCanvas({
   onDeleteSection,
   onDuplicateSection,
   onMoveSection,
+  onAddSection,
+  onAddToContainer,
   viewportSize = 'desktop',
 }: EditorCanvasProps) {
   const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null)
@@ -110,11 +114,17 @@ export default function EditorCanvas({
                     {/* Empty container: show placeholder or drop zone */}
                     <DropZone id={`container-${section.id}-drop-0`} isActive={isDragging} />
                     {!isDragging && (
-                      <div className="border-2 border-dashed border-[#2a2a2a] rounded-lg p-6 text-center min-h-[80px] flex items-center justify-center">
-                        <div>
-                          <p className="text-slate-500 text-sm">Empty section</p>
-                          <p className="text-slate-600 text-xs mt-1">Drag components here</p>
-                        </div>
+                      <div className="min-h-[80px] flex items-center justify-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onAddToContainer?.(section.id)
+                          }}
+                          className="w-9 h-9 rounded-full bg-white/5 border border-[#3a3a3a] hover:border-primary hover:bg-primary/10 flex items-center justify-center transition-all group z-[7] relative"
+                          title="Add component"
+                        >
+                          <Icon name="add" size={20} className="text-slate-500 group-hover:text-primary transition-colors" />
+                        </button>
                       </div>
                     )}
                   </>
@@ -174,6 +184,22 @@ export default function EditorCanvas({
         <DropZone id="drop-zone-0" isActive={isDragging} />
 
         {renderSections(sortedSections, null)}
+
+        {/* Add Section button at bottom of canvas */}
+        {onAddSection && (
+          <div className="flex justify-center py-6">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onAddSection()
+              }}
+              className="w-10 h-10 rounded-full bg-primary/10 border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/20 flex items-center justify-center transition-all group"
+              title="Add new section"
+            >
+              <Icon name="add" size={22} className="text-primary/60 group-hover:text-primary transition-colors" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

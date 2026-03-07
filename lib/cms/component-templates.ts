@@ -108,7 +108,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     defaultProps: { layout: '1', gap: 'medium', padding: 'none', maxWidth: 'full', verticalAlign: 'top', direction: 'column' },
     thumbnail: null,
     order: 3,
-    isActive: true,
+    isActive: false,
   },
   {
     id: 'tpl-column',

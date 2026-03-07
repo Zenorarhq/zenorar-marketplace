@@ -1033,6 +1033,10 @@ export default function PageEditorPage() {
                       setPendingStructureContainerId(undefined)
                       setShowStructurePicker(true)
                     }}
+                    onAddToContainer={(containerId) => {
+                      setTargetContainerId(containerId)
+                      setSelectedSectionId(null)
+                    }}
                   />
                 </main>
               ) : (
