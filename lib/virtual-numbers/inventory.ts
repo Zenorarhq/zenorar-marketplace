@@ -34,6 +34,7 @@ export interface RentNumberParams {
   amountPaid: number
   minuteTier?: string
   minuteTierPrice?: number
+  countryId?: string  // Pass from order to ensure proper country association
 }
 
 export interface RentResult {
@@ -187,7 +188,7 @@ class InventoryService {
    * If number is from Twilio, purchase it first
    */
   async rentNumber(params: RentNumberParams): Promise<RentResult> {
-    const { phoneNumber, userId, planId, durationDays, amountPaid, minuteTier, minuteTierPrice } = params
+    const { phoneNumber, userId, planId, durationDays, amountPaid, minuteTier, minuteTierPrice, countryId: passedCountryId } = params
 
     try {
       // Check if number exists in inventory
@@ -224,14 +225,38 @@ class InventoryService {
           return { success: false, error: purchaseResult.error || 'Failed to purchase number' }
         }
 
-        // Get country info
-        const countryResult = await query(
-          `SELECT id FROM virtual_number_countries
-           WHERE dial_code = $1 OR $2 LIKE dial_code || '%'`,
-          [phoneNumber.substring(0, 2), phoneNumber]
-        )
+        // Get country info - use passed countryId first, fallback to lookup
+        let countryId = passedCountryId
+        if (!countryId) {
+          const countryResult = await query(
+            `SELECT id FROM virtual_number_countries
+             WHERE dial_code = $1 OR $2 LIKE dial_code || '%'`,
+            [phoneNumber.substring(0, 2), phoneNumber]
+          )
+          countryId = countryResult.rows[0]?.id
+        }
 
-        const countryId = countryResult.rows[0]?.id || null
+        // If still no countryId, try to lookup by full dial code patterns
+        if (!countryId) {
+          // Try common patterns
+          const dialCodes = ['+1', '+44', '+61', '+49', '+33', '+81', '+65', '+86']
+          for (const dialCode of dialCodes) {
+            if (phoneNumber.startsWith(dialCode)) {
+              const result = await query(
+                `SELECT id FROM virtual_number_countries WHERE dial_code = $1`,
+                [dialCode]
+              )
+              if (result.rows.length > 0) {
+                countryId = result.rows[0].id
+                break
+              }
+            }
+          }
+        }
+
+        if (!countryId) {
+          return { success: false, error: 'Could not determine country for phone number. Please try again.' }
+        }
 
         // Add to inventory with the provider that successfully purchased
         const insertResult = await query(

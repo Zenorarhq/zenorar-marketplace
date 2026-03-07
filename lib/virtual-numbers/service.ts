@@ -61,7 +61,8 @@ class VirtualNumberService {
         durationDays,
         amountPaid,
         minuteTier,
-        minuteTierPrice
+        minuteTierPrice,
+        countryId  // Pass countryId to avoid lookup failures
       })
 
       if (!rentResult.success) {
