@@ -2305,7 +2305,7 @@ function PaystackCardForm({
         ref: `ORDER_${orderNumber}_${Date.now()}`,
         callback: (response: any) => {
           // Wrap async verification in a non-async callback (Paystack requires a plain function)
-          fetch(`${apiUrl}/payments/paystack/verify`, {
+          fetch('/backend/payments/paystack/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reference: response.reference }),
