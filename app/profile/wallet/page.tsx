@@ -8,7 +8,7 @@ import Icon from '@/components/ui/Icon'
 import DepositModal from '@/components/wallet/DepositModal'
 import { getBalance, getTransactionHistory } from '@/lib/api/wallet'
 import { getMyDeposits, type Deposit, type DepositStatus, type DepositMethod } from '@/lib/api/deposits'
-import { formatCurrency } from '@/lib/currency'
+import { usePreferences } from '@/contexts/PreferencesContext'
 import Link from 'next/link'
 
 type TransactionFilter = 'all' | 'DEPOSIT' | 'DEBIT'
@@ -37,6 +37,7 @@ const depositStatusConfig: Record<DepositStatus, { label: string; color: string 
 function WalletPageContent() {
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
+  const { formatPrice } = usePreferences()
   const [filter, setFilter] = useState<TransactionFilter>('all')
   const [showDepositModal, setShowDepositModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'transactions' | 'deposits'>('transactions')
@@ -285,7 +286,7 @@ function WalletPageContent() {
               <div className="h-16 bg-black/10 animate-pulse rounded-lg mb-6" />
             ) : (
               <p className="text-3xl sm:text-5xl font-bold text-black mb-6">
-                {formatCurrency(walletData?.balance || 0)}
+                {formatPrice(walletData?.balance || 0)}
               </p>
             )}
 
@@ -409,10 +410,10 @@ function WalletPageContent() {
 
                       <div className="text-right">
                         <p className={`text-lg sm:text-2xl font-bold ${isCredit ? 'text-green-500' : 'text-red-500'}`}>
-                          {isCredit ? '+' : '-'}{formatCurrency(Math.abs(Number(transaction.amount)))}
+                          {isCredit ? '+' : '-'}{formatPrice(Math.abs(Number(transaction.amount)))}
                         </p>
                         <p className="text-slate-500 text-sm mt-1">
-                          Balance: {formatCurrency(Number(transaction.balanceAfter))}
+                          Balance: {formatPrice(Number(transaction.balanceAfter))}
                         </p>
                       </div>
                     </div>
@@ -512,7 +513,7 @@ function WalletPageContent() {
 
                       <div className="text-right">
                         <p className="text-lg sm:text-2xl font-bold text-green-500">
-                          +{formatCurrency(Number(deposit.amount))}
+                          +{formatPrice(Number(deposit.amount))}
                         </p>
                         {deposit.completedAt && (
                           <p className="text-slate-500 text-xs mt-1">
