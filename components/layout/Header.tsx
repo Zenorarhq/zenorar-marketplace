@@ -317,6 +317,9 @@ export default function Header() {
                 </button>
 
                 {showMobileUserMenu && (
+                  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60]" onClick={() => setShowMobileUserMenu(false)} />
+                )}
+                {showMobileUserMenu && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
                     {/* Wallet Balance */}
                     <Link
