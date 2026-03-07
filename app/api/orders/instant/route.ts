@@ -61,15 +61,15 @@ export async function POST(req: NextRequest) {
 
     // Get user's wallet balance
     const walletResult = await query(
-      `SELECT id, balance FROM user_wallets WHERE user_id = $1`,
+      `SELECT id, balance, is_frozen FROM wallet_balances WHERE user_id = $1`,
       [userId]
     )
 
     if (walletResult.rows.length === 0) {
       // Create wallet if doesn't exist
       await query(
-        `INSERT INTO user_wallets (id, user_id, balance, currency, created_at, updated_at)
-         VALUES (gen_random_uuid()::text, $1, 0, 'USD', NOW(), NOW())`,
+        `INSERT INTO wallet_balances (id, user_id, balance, currency, is_frozen, created_at, updated_at)
+         VALUES (gen_random_uuid()::text, $1, 0, 'USD', false, NOW(), NOW())`,
         [userId]
       )
       return NextResponse.json(
@@ -78,7 +78,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const walletId = walletResult.rows[0].id
+    const walletBalanceId = walletResult.rows[0].id
+    const isFrozen = walletResult.rows[0].is_frozen
+
+    // Check if wallet is frozen
+    if (isFrozen) {
+      return NextResponse.json(
+        { success: false, error: 'Your wallet is currently frozen. Please contact support.' },
+        { status: 403 }
+      )
+    }
 
     const walletBalance = parseFloat(walletResult.rows[0].balance)
     if (walletBalance < total) {
@@ -144,19 +153,19 @@ export async function POST(req: NextRequest) {
     const balanceAfter = walletBalance - total
 
     await query(
-      `UPDATE user_wallets SET balance = $1, updated_at = NOW() WHERE user_id = $2`,
+      `UPDATE wallet_balances SET balance = $1, updated_at = NOW() WHERE user_id = $2`,
       [balanceAfter, userId]
     )
 
     // Record wallet transaction
     await query(
       `INSERT INTO wallet_transactions (
-         id, wallet_id, type, amount, balance_before, balance_after,
+         id, wallet_balance_id, type, amount, balance_before, balance_after,
          description, order_id, created_at
        ) VALUES (
          gen_random_uuid()::text, $1, 'DEBIT', $2, $3, $4, $5, $6, NOW()
        )`,
-      [walletId, total, balanceBefore, balanceAfter, `Order #${finalOrderNumber}`, orderId]
+      [walletBalanceId, total, balanceBefore, balanceAfter, `Order #${finalOrderNumber}`, orderId]
     )
 
     // Run fulfillment
