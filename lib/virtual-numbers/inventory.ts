@@ -84,7 +84,7 @@ class InventoryService {
       `SELECT
          id, phone_number, phone_number_display, country_id, number_type,
          provider, provider_number_sid, sms_enabled, voice_enabled, mms_enabled,
-         status, times_rented, twilio_next_billing
+         status, times_rented, twilio_next_billing, locality, region
        FROM virtual_number_inventory
        WHERE country_id = $1
          AND number_type = $2
@@ -110,7 +110,9 @@ class InventoryService {
         status: row.status,
         twilioNextBilling: row.twilio_next_billing,
         timesRented: row.times_rented,
-        source: 'inventory'
+        source: 'inventory',
+        locality: row.locality || undefined,
+        region: row.region || undefined
       })
     }
 

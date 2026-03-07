@@ -176,6 +176,8 @@ class BandwidthService {
       return phoneNumbers.map(n => ({
         phoneNumber: n.startsWith('+') ? n : `+1${n}`,
         friendlyName: n,
+        locality: '',  // Bandwidth API doesn't return locality in basic search
+        region: '',    // Would need additional API call for rate center info
         numberType: type,
         capabilities: {
           sms: true,
