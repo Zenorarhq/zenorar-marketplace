@@ -3,6 +3,66 @@ import { query } from '@/lib/db'
 import { fulfillOrder } from '@/lib/order-fulfillment'
 import { verifyAccessToken } from '@/lib/auth-utils'
 
+// Flag to track if migration has been attempted this session
+let migrationAttempted = false
+
+/**
+ * Ensure productId can be null in order_items table
+ * Runs once automatically if needed
+ */
+async function ensureNullableProductId(): Promise<void> {
+  if (migrationAttempted) return
+  migrationAttempted = true
+
+  try {
+    // Drop the constraint and make productId nullable
+    await query(`ALTER TABLE order_items DROP CONSTRAINT IF EXISTS "order_items_productId_fkey"`)
+    await query(`ALTER TABLE order_items ALTER COLUMN "productId" DROP NOT NULL`)
+    await query(`
+      ALTER TABLE order_items
+      ADD CONSTRAINT "order_items_productId_fkey"
+      FOREIGN KEY ("productId") REFERENCES products(id) ON DELETE SET NULL
+    `)
+    console.log('Successfully migrated order_items.productId to nullable')
+  } catch (e) {
+    console.log('Migration already applied or not needed')
+  }
+}
+
+/**
+ * Insert order item with automatic retry after migration
+ */
+async function insertOrderItem(
+  orderId: string,
+  productId: string | null,
+  name: string,
+  quantity: number,
+  price: number,
+  total: number,
+  metadata: any
+): Promise<void> {
+  const insertQuery = `
+    INSERT INTO order_items (
+      id, "orderId", "productId", name, quantity, price, total, license, metadata, product_type
+    ) VALUES (
+      gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9
+    )
+  `
+  const params = [orderId, productId, name, quantity, price, total, null, JSON.stringify(metadata), 'virtual_number']
+
+  try {
+    await query(insertQuery, params)
+  } catch (error: any) {
+    // If foreign key violation, run migration and retry
+    if (error.message?.includes('foreign key constraint') || error.message?.includes('productId_fkey')) {
+      await ensureNullableProductId()
+      await query(insertQuery, params)
+    } else {
+      throw error
+    }
+  }
+}
+
 /**
  * POST /api/orders/instant
  * Creates an order and pays with wallet balance instantly
@@ -122,42 +182,34 @@ export async function POST(req: NextRequest) {
     const orderId = orderResult.rows[0].id
     const finalOrderNumber = orderResult.rows[0].orderNumber
 
-    // Create order items with all required columns
-    // productId is null for dynamic products (requires migration to allow null)
+    // Create order items
     for (const item of items) {
       const itemQuantity = item.quantity || 1
       const itemPrice = item.price
       const itemTotal = itemPrice * itemQuantity
 
-      await query(
-        `INSERT INTO order_items (
-           id, "orderId", "productId", name, quantity, price, total, license, metadata, product_type
-         ) VALUES (
-           gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9
-         )`,
-        [
-          orderId,
-          item.productId || null,
-          item.metadata?.friendlyName || 'Virtual Number',
-          itemQuantity,
-          itemPrice,
-          itemTotal,
-          null,
-          JSON.stringify({
-            ...item.metadata,
-            phone_number: item.metadata?.phoneNumber,
-            country_id: item.metadata?.countryId,
-            plan_id: item.metadata?.planCategory === 'basic' ? 'basic' : 'business',
-            number_type: item.metadata?.numberType,
-            duration_days: item.metadata?.durationDays,
-            sms_limit: item.metadata?.smsLimit,
-            minute_tier: item.metadata?.minuteTier,
-            minute_included: item.metadata?.minuteIncluded,
-            minute_tier_price: item.metadata?.minuteTierPrice,
-            amount_paid: item.price,
-          }),
-          'virtual_number'
-        ]
+      const metadata = {
+        ...item.metadata,
+        phone_number: item.metadata?.phoneNumber,
+        country_id: item.metadata?.countryId,
+        plan_id: item.metadata?.planCategory === 'basic' ? 'basic' : 'business',
+        number_type: item.metadata?.numberType,
+        duration_days: item.metadata?.durationDays,
+        sms_limit: item.metadata?.smsLimit,
+        minute_tier: item.metadata?.minuteTier,
+        minute_included: item.metadata?.minuteIncluded,
+        minute_tier_price: item.metadata?.minuteTierPrice,
+        amount_paid: item.price,
+      }
+
+      await insertOrderItem(
+        orderId,
+        item.productId || null,
+        item.metadata?.friendlyName || 'Virtual Number',
+        itemQuantity,
+        itemPrice,
+        itemTotal,
+        metadata
       )
     }
 
