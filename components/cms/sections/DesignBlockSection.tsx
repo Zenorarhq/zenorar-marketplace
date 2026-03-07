@@ -66,8 +66,10 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
   }, [resizeIframe])
 
   useEffect(() => {
-    const timer = setTimeout(resizeIframe, 100)
-    return () => clearTimeout(timer)
+    const t1 = setTimeout(resizeIframe, 100)
+    const t2 = setTimeout(resizeIframe, 500)
+    const t3 = setTimeout(resizeIframe, 1500)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
   }, [code, overrides, resizeIframe])
 
   const paddingClasses: Record<string, string> = {
@@ -115,7 +117,7 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
           srcDoc={srcdoc}
           className="w-full border-0 overflow-hidden"
           style={{ minHeight: '50px' }}
-          sandbox="allow-same-origin allow-popups"
+          sandbox="allow-same-origin allow-scripts allow-popups"
           title="Design block"
         />
       </div>
