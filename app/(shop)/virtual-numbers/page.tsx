@@ -1546,6 +1546,8 @@ function PlanSelectionModal({
       const result = await localApiFetch<{
         orderId: string
         orderNumber: string
+        refunded?: boolean
+        newBalance?: number
         fulfillment?: {
           success: boolean
           itemsFailed: number
@@ -1571,7 +1573,15 @@ function PlanSelectionModal({
           fetchWalletBalance()
         }
       } else {
-        setCheckoutError(result.error || 'Failed to process payment')
+        // Check if this was a refunded failed order
+        if (result.data?.refunded) {
+          const errorMsg = result.error || 'Failed to provision virtual number'
+          setCheckoutError(`${errorMsg}. Your wallet has been refunded.`)
+          // Refresh wallet balance to show refund
+          fetchWalletBalance()
+        } else {
+          setCheckoutError(result.error || 'Failed to process payment')
+        }
       }
     } catch (error: any) {
       setCheckoutError(error.message || 'Failed to process payment')

@@ -233,17 +233,77 @@ export async function POST(req: NextRequest) {
     const fulfillmentResult = await fulfillOrder(orderId)
 
     if (!fulfillmentResult.success) {
-      console.error('Fulfillment had issues:', fulfillmentResult)
+      console.error('Fulfillment failed:', fulfillmentResult)
+
+      // Check if any items actually failed
+      const allFailed = fulfillmentResult.details?.every((d: any) => d.status === 'failed')
+
+      if (allFailed) {
+        // Refund the wallet
+        await query(
+          `UPDATE wallet_balances SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2`,
+          [total, userId]
+        )
+
+        // Record refund transaction
+        await query(
+          `INSERT INTO wallet_transactions (
+             id, wallet_balance_id, type, amount, balance_before, balance_after,
+             description, order_id, created_at
+           ) VALUES (
+             gen_random_uuid()::text, $1, 'CREDIT', $2, $3, $4, $5, $6, NOW()
+           )`,
+          [walletBalanceId, total, balanceAfter, balanceAfter + total, `Refund for failed order #${finalOrderNumber}`, orderId]
+        )
+
+        // Update order status to failed
+        await query(
+          `UPDATE orders SET status = 'FAILED', "paymentStatus" = 'REFUNDED', "updatedAt" = NOW() WHERE id = $1`,
+          [orderId]
+        )
+
+        // Get the error message from failed items
+        const failedItem = fulfillmentResult.details?.find((d: any) => d.status === 'failed')
+        const errorMessage = failedItem?.error || 'Failed to provision virtual number'
+
+        // Send failure notification (using ORDER_CANCELLED type which exists in enum)
+        await query(
+          `INSERT INTO notifications (id, "userId", type, title, message, metadata)
+           VALUES (gen_random_uuid()::text, $1, 'ORDER_CANCELLED'::"NotificationType",
+                   'Order Failed - Refunded',
+                   $2,
+                   $3::jsonb)`,
+          [userId, `Your order #${finalOrderNumber} could not be completed. ${errorMessage}. Your wallet has been refunded.`, JSON.stringify({ orderId, orderNumber: finalOrderNumber, error: errorMessage })]
+        ).catch(err => console.error('Failed to send notification:', err))
+
+        return NextResponse.json({
+          success: false,
+          error: errorMessage,
+          data: {
+            orderId,
+            orderNumber: finalOrderNumber,
+            refunded: true,
+            newBalance: balanceAfter + total,
+            fulfillment: fulfillmentResult
+          }
+        })
+      }
     }
 
-    // Send notification
+    // Update order status to completed
+    await query(
+      `UPDATE orders SET status = 'COMPLETED', "updatedAt" = NOW() WHERE id = $1`,
+      [orderId]
+    )
+
+    // Send success notification (using ORDER_DELIVERED type for digital delivery)
     await query(
       `INSERT INTO notifications (id, "userId", type, title, message, metadata)
-       VALUES (gen_random_uuid()::text, $1, 'ORDER_COMPLETED'::"NotificationType",
+       VALUES (gen_random_uuid()::text, $1, 'ORDER_DELIVERED'::"NotificationType",
                'Order Complete',
-               'Your order #' || $2 || ' has been processed.',
+               $2,
                $3::jsonb)`,
-      [userId, finalOrderNumber, JSON.stringify({ orderId, orderNumber: finalOrderNumber })]
+      [userId, `Your order #${finalOrderNumber} has been processed. Your virtual number is ready!`, JSON.stringify({ orderId, orderNumber: finalOrderNumber })]
     ).catch(err => console.error('Failed to send notification:', err))
 
     return NextResponse.json({
