@@ -2,6 +2,7 @@
 // Handles provider selection, fallback, and multi-provider operations
 
 import { query } from '@/lib/db'
+import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import {
   VirtualNumberProvider,
   ProviderConfig,
@@ -22,6 +23,10 @@ const providerInstances: Map<string, VirtualNumberProvider> = new Map()
 let providerConfigsCache: ProviderConfig[] | null = null
 let providerConfigsCacheTime: number = 0
 const CONFIG_CACHE_TTL = 60000 // 1 minute
+
+// Site settings cache for provider credentials
+let siteSettingsCache: { settings: Record<string, any>; timestamp: number } | null = null
+const SITE_SETTINGS_CACHE_TTL = 60000 // 1 minute
 
 /**
  * Twilio adapter to match VirtualNumberProvider interface
@@ -229,26 +234,100 @@ class ProviderManager {
   }
 
   /**
+   * Get site settings (cached)
+   */
+  private async getSiteSettings(): Promise<Record<string, any>> {
+    if (siteSettingsCache && Date.now() - siteSettingsCache.timestamp < SITE_SETTINGS_CACHE_TTL) {
+      return siteSettingsCache.settings
+    }
+
+    try {
+      const settings = await getSiteSettingsByGroup('api')
+      siteSettingsCache = { settings, timestamp: Date.now() }
+      return settings
+    } catch (error) {
+      console.error('Error fetching site settings:', error)
+      return {}
+    }
+  }
+
+  /**
+   * Check if a provider is enabled and has credentials from site_settings
+   * This is the primary source for provider credentials (admin settings page)
+   */
+  private async checkProviderFromSiteSettings(slug: string): Promise<boolean> {
+    const settings = await this.getSiteSettings()
+
+    switch (slug) {
+      case 'twilio': {
+        const enabled = settings.twilioEnabled === true || settings.twilioEnabled === 'true'
+        const mode = settings.twilioMode || 'test'
+        const isTestMode = mode === 'test'
+
+        let accountSid: string
+        let authToken: string
+
+        if (isTestMode) {
+          accountSid = settings.twilioTestAccountSid || ''
+          authToken = settings.twilioTestAuthToken || ''
+        } else {
+          accountSid = settings.twilioLiveAccountSid || ''
+          authToken = settings.twilioLiveAuthToken || ''
+        }
+
+        // If not explicitly enabled but has credentials, assume enabled
+        const hasCredentials = !!(accountSid && authToken)
+        return enabled || hasCredentials
+      }
+
+      case 'plivo': {
+        const enabled = settings.plivoEnabled === true || settings.plivoEnabled === 'true'
+        const authId = settings.plivoAuthId || ''
+        const authToken = settings.plivoAuthToken || ''
+        return enabled && !!(authId && authToken)
+      }
+
+      case 'vonage': {
+        const enabled = settings.vonageEnabled === true || settings.vonageEnabled === 'true'
+        const apiKey = settings.vonageApiKey || ''
+        const apiSecret = settings.vonageApiSecret || ''
+        return enabled && !!(apiKey && apiSecret)
+      }
+
+      case 'bandwidth': {
+        const enabled = settings.bandwidthEnabled === true || settings.bandwidthEnabled === 'true'
+        const apiKey = settings.bandwidthApiKey || ''
+        const apiSecret = settings.bandwidthApiSecret || ''
+        const accountId = settings.bandwidthAccountId || ''
+        return enabled && !!(apiKey && apiSecret && accountId)
+      }
+
+      case 'telnyx': {
+        const enabled = settings.telnyxEnabled === true || settings.telnyxEnabled === 'true'
+        const apiKey = settings.telnyxApiKey || ''
+        return enabled && !!apiKey
+      }
+
+      default:
+        return false
+    }
+  }
+
+  /**
    * Get all enabled providers
+   * Checks site_settings (admin settings page) for credentials - this is the primary source
    */
   async getEnabledProviders(): Promise<VirtualNumberProvider[]> {
-    const configs = await this.getProviderConfigs()
     const enabled: VirtualNumberProvider[] = []
+    const providerSlugs = ['twilio', 'vonage', 'plivo', 'bandwidth', 'telnyx']
 
-    for (const config of configs) {
-      if (config.isEnabled && this.hasCredentials(config)) {
-        const provider = this.getProvider(config.slug)
+    for (const slug of providerSlugs) {
+      const isEnabled = await this.checkProviderFromSiteSettings(slug)
+      if (isEnabled) {
+        const provider = this.getProvider(slug)
         if (provider) {
           enabled.push(provider)
         }
-      }
-    }
-
-    // Fallback to Twilio from env vars if no providers are configured in DB
-    if (enabled.length === 0) {
-      const twilioProvider = providerInstances.get('twilio')
-      if (twilioProvider && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-        enabled.push(twilioProvider)
       }
     }
 
@@ -508,6 +587,7 @@ class ProviderManager {
   clearCache(): void {
     providerConfigsCache = null
     providerConfigsCacheTime = 0
+    siteSettingsCache = null
     // Clear individual provider caches
     for (const provider of providerInstances.values()) {
       provider.clearCache()

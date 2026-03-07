@@ -64,8 +64,8 @@ class VonageService {
         return null
       }
 
-      const apiKey = settings.vonageApiKey || process.env.VONAGE_API_KEY || ''
-      const apiSecret = settings.vonageApiSecret || process.env.VONAGE_API_SECRET || ''
+      const apiKey = settings.vonageApiKey || ''
+      const apiSecret = settings.vonageApiSecret || ''
 
       const credentials: VonageCredentials | null = apiKey && apiSecret
         ? { apiKey, apiSecret, isEnabled }
@@ -75,9 +75,7 @@ class VonageService {
       return credentials
     } catch (error) {
       console.error('Error fetching Vonage credentials:', error)
-      const apiKey = process.env.VONAGE_API_KEY || ''
-      const apiSecret = process.env.VONAGE_API_SECRET || ''
-      return apiKey && apiSecret ? { apiKey, apiSecret, isEnabled: true } : null
+      return null
     }
   }
 

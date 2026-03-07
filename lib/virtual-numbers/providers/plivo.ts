@@ -64,8 +64,8 @@ class PlivoService {
         return null
       }
 
-      const authId = settings.plivoAuthId || process.env.PLIVO_AUTH_ID || ''
-      const authToken = settings.plivoAuthToken || process.env.PLIVO_AUTH_TOKEN || ''
+      const authId = settings.plivoAuthId || ''
+      const authToken = settings.plivoAuthToken || ''
 
       const credentials: PlivoCredentials | null = authId && authToken
         ? { authId, authToken, isEnabled }
@@ -75,9 +75,7 @@ class PlivoService {
       return credentials
     } catch (error) {
       console.error('Error fetching Plivo credentials:', error)
-      const authId = process.env.PLIVO_AUTH_ID || ''
-      const authToken = process.env.PLIVO_AUTH_TOKEN || ''
-      return authId && authToken ? { authId, authToken, isEnabled: true } : null
+      return null
     }
   }
 

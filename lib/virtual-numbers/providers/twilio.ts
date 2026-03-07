@@ -71,13 +71,13 @@ class TwilioService {
       let phoneNumber: string
 
       if (isTestMode) {
-        accountSid = settings.twilioTestAccountSid || process.env.TWILIO_TEST_ACCOUNT_SID || ''
-        authToken = settings.twilioTestAuthToken || process.env.TWILIO_TEST_AUTH_TOKEN || ''
-        phoneNumber = settings.twilioTestPhoneNumber || process.env.TWILIO_TEST_PHONE_NUMBER || ''
+        accountSid = settings.twilioTestAccountSid || ''
+        authToken = settings.twilioTestAuthToken || ''
+        phoneNumber = settings.twilioTestPhoneNumber || ''
       } else {
-        accountSid = settings.twilioLiveAccountSid || process.env.TWILIO_ACCOUNT_SID || ''
-        authToken = settings.twilioLiveAuthToken || process.env.TWILIO_AUTH_TOKEN || ''
-        phoneNumber = settings.twilioLivePhoneNumber || process.env.TWILIO_PHONE_NUMBER || ''
+        accountSid = settings.twilioLiveAccountSid || ''
+        authToken = settings.twilioLiveAuthToken || ''
+        phoneNumber = settings.twilioLivePhoneNumber || ''
       }
 
       const credentials: TwilioCredentials | null = accountSid && authToken
@@ -88,14 +88,7 @@ class TwilioService {
       return credentials
     } catch (error) {
       console.error('Error fetching Twilio credentials from DB:', error)
-      // Fall back to environment variables
-      const accountSid = process.env.TWILIO_ACCOUNT_SID || ''
-      const authToken = process.env.TWILIO_AUTH_TOKEN || ''
-      const phoneNumber = process.env.TWILIO_PHONE_NUMBER || ''
-
-      return accountSid && authToken
-        ? { accountSid, authToken, phoneNumber, isTestMode: false }
-        : null
+      return null
     }
   }
 
@@ -419,7 +412,7 @@ class TwilioService {
   }
 
   /**
-   * Synchronous signature validation - uses cached credentials or env vars
+   * Synchronous signature validation - uses cached credentials
    * For webhook handlers that need sync validation
    */
   validateWebhookSignature(signature: string, url: string, params: Record<string, string>): boolean {
@@ -427,9 +420,6 @@ class TwilioService {
     let authToken = ''
     if (credentialsCache?.credentials) {
       authToken = credentialsCache.credentials.authToken
-    } else {
-      // Fall back to env var for sync call
-      authToken = process.env.TWILIO_AUTH_TOKEN || process.env.TWILIO_TEST_AUTH_TOKEN || ''
     }
 
     if (!authToken) {
