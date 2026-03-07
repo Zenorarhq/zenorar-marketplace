@@ -444,6 +444,7 @@ export default function VirtualNumbersPage() {
         phoneNumber: selectedNumber.phoneNumber,
         countryId: selectedCountry.id,
         countryName: selectedCountry.name,
+        countryFlag: selectedCountry.flagEmoji || '🌍',  // For cart display
         planId: selectedPlan.id,
         planName: selectedPlan.name,
         numberType: selectedNumber.type,
@@ -1213,6 +1214,7 @@ function PlanSelectionModal({
         phoneNumber: number.phoneNumber,
         countryId: country.id,
         countryName: country.name,
+        countryFlag: country.flagEmoji || '🌍',  // For cart display
         numberType: number.type,
         friendlyName: number.friendlyName,
         planCategory,

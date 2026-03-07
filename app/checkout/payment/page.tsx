@@ -625,8 +625,8 @@ export default function PaymentPage() {
     const shippingDataStr = sessionStorage.getItem('checkoutShipping')
     const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
-    const orderResponse = await fetch(`${apiUrl}/orders`, {
+    // Use local Next.js API route for orders
+    const orderResponse = await fetch('/api/orders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -650,13 +650,14 @@ export default function PaymentPage() {
         useWalletBalance: useWalletBalance,
         items: items.map((item: any) => ({
           productId: item.product.id,
+          name: item.product.name || item.product.friendlyName || 'Product',
           quantity: item.quantity,
           license: item.license,
           price: item.price,
           // Pass metadata for virtual numbers, eSIMs, gift cards, etc.
           metadata: item.product.metadata || undefined,
           // Pass product type for fulfillment routing
-          productType: item.product.metadata?.productType || item.product.category || undefined,
+          productType: item.product.metadata?.productType || item.product.product_type || item.product.category || undefined,
         })),
       }),
     })
@@ -1823,10 +1824,18 @@ export default function PaymentPage() {
                 {items.map((item) => (
                   <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-surface-dark rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Icon name={item.product.icon || 'code'} size={20} className="text-slate-500" />
+                      {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryFlag ? (
+                        <span className="text-2xl">{item.product.metadata.countryFlag}</span>
+                      ) : (
+                        <Icon name={item.product.icon || 'code'} size={20} className="text-slate-500" />
+                      )}
                     </div>
                     <div className="flex-grow min-w-0">
-                      <p className="text-white text-sm font-medium truncate">{item.product.name}</p>
+                      <p className="text-white text-sm font-medium truncate">
+                        {item.product.metadata?.productType === 'virtual_number'
+                          ? `Virtual Number: ${item.product.metadata?.friendlyName || item.product.name}`
+                          : item.product.name}
+                      </p>
                       <p className="text-slate-500 text-xs">Qty: {item.quantity}</p>
                     </div>
                     <p className="text-white font-bold">{formatPrice(item.price * item.quantity)}</p>

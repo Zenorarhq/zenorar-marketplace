@@ -64,6 +64,27 @@ export interface Product {
   demoInfo?: string
   purchaseCount?: number
   proPrice?: number
+  product_type?: string
+  metadata?: {
+    productType?: string
+    phoneNumber?: string
+    countryId?: string
+    countryName?: string
+    countryFlag?: string
+    planId?: string
+    planName?: string
+    planCategory?: string
+    durationDays?: number
+    durationLabel?: string
+    numberType?: string
+    friendlyName?: string
+    smsLimit?: number
+    minuteTier?: string
+    minuteTierName?: string
+    minuteIncluded?: number
+    minuteTierPrice?: number
+    [key: string]: any
+  }
 }
 
 export interface CartItem {

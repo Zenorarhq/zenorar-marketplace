@@ -183,9 +183,14 @@ export default function CartPage() {
                 key={`${item.product.id}-${item.license}`}
                 className="bg-surface-dark border border-border-dark rounded-2xl p-4 md:p-6 flex gap-4 md:gap-6"
               >
-                {/* Product Image */}
+                {/* Product Image / Flag for Virtual Numbers */}
                 <div className="w-24 h-24 bg-charcoal rounded-xl overflow-hidden flex-shrink-0">
-                  {(item.product.image || item.product.images?.[0]?.url) ? (
+                  {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryFlag ? (
+                    // Virtual number - show country flag
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                      <span className="text-5xl">{item.product.metadata.countryFlag}</span>
+                    </div>
+                  ) : (item.product.image || item.product.images?.[0]?.url) ? (
                     <Image
                       src={item.product.image || item.product.images?.[0]?.url || ''}
                       alt={item.product.name}
@@ -195,7 +200,7 @@ export default function CartPage() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Icon name={item.product.icon} size={30} className="text-slate-600" />
+                      <Icon name={item.product.icon || 'phone'} size={30} className="text-slate-600" />
                     </div>
                   )}
                 </div>
@@ -203,12 +208,24 @@ export default function CartPage() {
                 {/* Product Details */}
                 <div className="flex-grow">
                   <div className="flex justify-between items-start mb-2">
-                    <Link
-                      href={`/products/${item.product.slug}`}
-                      className="text-lg font-bold text-white hover:text-primary transition-colors"
-                    >
-                      {item.product.name}
-                    </Link>
+                    {item.product.metadata?.productType === 'virtual_number' ? (
+                      // Virtual number - show phone number as title
+                      <div className="flex flex-col">
+                        <span className="text-lg font-bold text-white">
+                          {item.product.metadata?.friendlyName || item.product.name}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {item.product.metadata?.countryName || 'Virtual Number'}
+                        </span>
+                      </div>
+                    ) : (
+                      <Link
+                        href={`/products/${item.product.slug}`}
+                        className="text-lg font-bold text-white hover:text-primary transition-colors"
+                      >
+                        {item.product.name}
+                      </Link>
+                    )}
                     <button
                       onClick={() => removeItem(item.product.id, item.license)}
                       className="text-slate-400 hover:text-red-400 transition-colors"
@@ -219,7 +236,12 @@ export default function CartPage() {
                   </div>
 
                   <div className="text-xs text-primary font-bold uppercase tracking-wider mb-4">
-                    {item.license === 'extended' ? 'Extended License' : 'Standard License'}
+                    {item.product.metadata?.productType === 'virtual_number' ? (
+                      // Show plan info for virtual numbers
+                      `${item.product.metadata?.planCategory?.toUpperCase() || 'BASIC'} PLAN - ${item.product.metadata?.durationDays || 30} DAYS`
+                    ) : (
+                      item.license === 'extended' ? 'Extended License' : 'Standard License'
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between">

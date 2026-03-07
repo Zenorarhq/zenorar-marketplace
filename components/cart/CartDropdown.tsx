@@ -141,7 +141,11 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
             className="flex gap-3 p-3 bg-surface-dark rounded-xl"
           >
             <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
-              {(item.product.image || item.product.images?.[0]?.url) ? (
+              {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryFlag ? (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                  <span className="text-2xl">{item.product.metadata.countryFlag}</span>
+                </div>
+              ) : (item.product.image || item.product.images?.[0]?.url) ? (
                 <Image
                   src={item.product.image || item.product.images?.[0]?.url || ''}
                   alt={item.product.name}
@@ -151,13 +155,21 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Icon name={item.product.icon} size={20} className="text-slate-600" />
+                  <Icon name={item.product.icon || 'package'} size={20} className="text-slate-600" />
                 </div>
               )}
             </div>
             <div className="flex-grow min-w-0">
-              <h3 className="text-white font-bold text-sm truncate">{item.product.name}</h3>
-              <p className="text-slate-400 text-xs truncate">{item.product.category}</p>
+              <h3 className="text-white font-bold text-sm truncate">
+                {item.product.metadata?.productType === 'virtual_number'
+                  ? (item.product.metadata?.friendlyName || item.product.name)
+                  : item.product.name}
+              </h3>
+              <p className="text-slate-400 text-xs truncate">
+                {item.product.metadata?.productType === 'virtual_number'
+                  ? `${item.product.metadata?.planCategory?.toUpperCase() || 'Basic'} - ${item.product.metadata?.durationDays || 30} days`
+                  : item.product.category}
+              </p>
               <div className="flex items-center justify-between mt-1">
                 <span className="text-slate-500 text-xs">
                   {item.quantity} × {formatPrice(item.price)}
