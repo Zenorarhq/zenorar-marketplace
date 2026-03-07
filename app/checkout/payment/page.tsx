@@ -1997,9 +1997,8 @@ function StripeCardForm({
       const shippingDataStr = sessionStorage.getItem('checkoutShipping')
       const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
 
-      // 1. Create order via Railway API
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
-      const orderResponse = await fetch(`${apiUrl}/orders`, {
+      // 1. Create order via Railway API (using rewrite proxy for consistency)
+      const orderResponse = await fetch('/backend/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2021,15 +2020,33 @@ function StripeCardForm({
           discountCode: discountCode || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
           useWalletBalance: useWalletBalance,
-          items: items.map((item: any) => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-            license: item.license,
-            price: item.price,
-            // Pass metadata for virtual numbers, eSIMs, gift cards, etc.
-            metadata: item.product.metadata || undefined,
-            productType: item.product.metadata?.productType || item.product.category || undefined,
-          })),
+          // Separate dynamic items (virtual numbers, eSIMs, gift cards) from regular cart items
+          dynamicItems: items
+            .filter((item: any) => {
+              const productType = item.product.metadata?.productType || item.product.product_type
+              return productType === 'virtual_number' || productType === 'esim' || productType === 'gift_card'
+            })
+            .map((item: any) => ({
+              productId: item.product.id,
+              quantity: item.quantity,
+              price: item.price,
+              productType: item.product.metadata?.productType || item.product.product_type,
+              metadata: {
+                ...item.product.metadata,
+                friendlyName: item.product.name || item.product.metadata?.friendlyName,
+                phoneNumber: item.product.metadata?.phoneNumber,
+                countryId: item.product.metadata?.countryId,
+                countryFlag: item.product.metadata?.countryFlag,
+                countryName: item.product.metadata?.countryName,
+                planCategory: item.product.metadata?.planCategory,
+                durationDays: item.product.metadata?.durationDays,
+                smsLimit: item.product.metadata?.smsLimit,
+                minuteTier: item.product.metadata?.minuteTier,
+                minuteIncluded: item.product.metadata?.minuteIncluded,
+                minuteTierPrice: item.product.metadata?.minuteTierPrice,
+                numberType: item.product.metadata?.numberType,
+              },
+            })),
         }),
       })
 
