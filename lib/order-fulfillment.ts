@@ -133,6 +133,7 @@ export async function fulfillOrder(orderId: string): Promise<FulfillmentResult> 
     }
 
     // Get order items — order_items table uses Prisma camelCase columns
+    // Use COALESCE to prefer order_items.product_type (for dynamic products) over products.product_type
     const itemsResult = await query(
       `SELECT
          oi.id as item_id,
@@ -140,7 +141,7 @@ export async function fulfillOrder(orderId: string): Promise<FulfillmentResult> 
          oi.name,
          oi.quantity,
          oi.license,
-         p.product_type,
+         COALESCE(oi.product_type, p.product_type) as product_type,
          p.slug as product_slug
        FROM order_items oi
        LEFT JOIN products p ON oi."productId" = p.id

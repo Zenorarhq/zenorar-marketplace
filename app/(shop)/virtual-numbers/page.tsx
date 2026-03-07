@@ -30,6 +30,7 @@ interface AvailableNumber {
   phoneNumber: string
   friendlyName: string
   locality?: string
+  region?: string
   type: string
   capabilities: {
     sms: boolean
@@ -629,7 +630,7 @@ export default function VirtualNumbersPage() {
                           <div>
                             <h3 className="font-bold text-white">{number.friendlyName}</h3>
                             <p className="text-sm text-slate-500">
-                              {number.locality || selectedCountry?.name}
+                              {number.locality || number.region || selectedCountry?.name}
                             </p>
                           </div>
                         </div>

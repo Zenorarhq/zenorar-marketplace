@@ -8,12 +8,19 @@ import { verifyAccessToken } from '@/lib/auth-utils'
  * This is a real product representing the virtual number service
  */
 async function getVirtualNumberProductId(): Promise<string> {
-  // Check if product exists
+  // Check if product exists with correct product_type
   const existing = await query(
-    `SELECT id FROM products WHERE slug = 'virtual-number'`
+    `SELECT id, product_type FROM products WHERE slug = 'virtual-number'`
   )
 
   if (existing.rows.length > 0) {
+    // Ensure product_type is correct
+    if (existing.rows[0].product_type !== 'virtual_number') {
+      await query(
+        `UPDATE products SET product_type = 'virtual_number', "updatedAt" = NOW() WHERE id = $1`,
+        [existing.rows[0].id]
+      )
+    }
     return existing.rows[0].id
   }
 
@@ -35,7 +42,7 @@ async function getVirtualNumberProductId(): Promise<string> {
        NOW(),
        NOW()
      )
-     ON CONFLICT (slug) DO UPDATE SET "updatedAt" = NOW()
+     ON CONFLICT (slug) DO UPDATE SET product_type = 'virtual_number', "updatedAt" = NOW()
      RETURNING id`
   )
 
