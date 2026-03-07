@@ -36,6 +36,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const images = product.images && product.images.length > 0 ? product.images : null
   const [imgIndex, setImgIndex] = useState(0)
   const touchStartX = useRef(0)
+  const cartTouchStart = useRef<{ x: number; y: number } | null>(null)
   const wishlisted = isInWishlist(product.id)
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -156,8 +157,20 @@ export default function ProductCard({ product }: ProductCardProps) {
               : formatPrice(product.price)}
           </p>
           <button
+            onTouchStart={(e) => { cartTouchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
+            onTouchEnd={(e) => {
+              if (!cartTouchStart.current) return
+              const dx = Math.abs(e.changedTouches[0].clientX - cartTouchStart.current.x)
+              const dy = Math.abs(e.changedTouches[0].clientY - cartTouchStart.current.y)
+              cartTouchStart.current = null
+              if (dx > 10 || dy > 10) return // was a scroll, not a tap
+              e.preventDefault() // suppress subsequent click
+              e.stopPropagation()
+              addItem(product)
+              showAddedToCartPopup(product)
+            }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); addItem(product); showAddedToCartPopup(product) }}
-            className="w-8 h-8 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center hover:bg-primary hover:text-black transition-colors touch-none"
+            className="w-8 h-8 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center hover:bg-primary hover:text-black transition-colors"
             aria-label="Add to cart"
           >
             <Icon name="add-shopping-cart" size={18} />
