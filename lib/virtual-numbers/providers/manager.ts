@@ -244,6 +244,14 @@ class ProviderManager {
       }
     }
 
+    // Fallback to Twilio from env vars if no providers are configured in DB
+    if (enabled.length === 0) {
+      const twilioProvider = providerInstances.get('twilio')
+      if (twilioProvider && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+        enabled.push(twilioProvider)
+      }
+    }
+
     return enabled
   }
 
