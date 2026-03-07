@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS cms_page_versions (
   version INTEGER NOT NULL,
   title VARCHAR(255) NOT NULL,
   content JSONB NOT NULL DEFAULT '[]',
-  author_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  author_id TEXT REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
