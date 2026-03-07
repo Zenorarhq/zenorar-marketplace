@@ -4,9 +4,18 @@ import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { Section } from '@/lib/cms/api'
 import SectionRenderer from '@/components/cms/sections'
+import SectionContainer from '@/components/cms/sections/SectionContainer'
+import ColumnSection from '@/components/cms/sections/ColumnSection'
 import EditableSection from './EditableSection'
 import DropZone from './DropZone'
 import Icon from '@/components/ui/Icon'
+
+const containerTypes = ['section', 'column']
+
+const containerComponents: Record<string, React.ComponentType<{ props: Record<string, any>; children?: React.ReactNode }>> = {
+  section: SectionContainer,
+  column: ColumnSection,
+}
 
 interface EditorCanvasProps {
   sections: Section[]
@@ -31,20 +40,100 @@ export default function EditorCanvas({
 }: EditorCanvasProps) {
   const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null)
 
-  // Sort sections by order
-  const sortedSections = [...sections].sort((a, b) => a.order - b.order)
-
   const canvasWidth = viewportSize === 'mobile'
     ? '375px'
     : viewportSize === 'tablet'
     ? '768px'
     : '100%'
 
-  // Droppable for the empty canvas (when no sections exist)
+  // Droppable for the empty canvas
   const { setNodeRef: setEmptyRef, isOver: isOverEmpty } = useDroppable({
     id: 'drop-zone-0',
     data: { type: 'drop-zone', dropZoneId: 'drop-zone-0' },
   })
+
+  // Recursive section renderer for the editor
+  function renderSections(
+    sectionList: Section[],
+    parentId: string | null,
+  ) {
+    const sorted = [...sectionList].sort((a, b) => a.order - b.order)
+
+    return sorted.map((section, index) => {
+      const isContainer = containerTypes.includes(section.type)
+      const children = section.children || []
+      const sortedChildren = [...children].sort((a, b) => a.order - b.order)
+      const ContainerComponent = isContainer ? containerComponents[section.type] : null
+
+      // Drop zone ID prefix for this level
+      const dropPrefix = parentId ? `container-${parentId}-drop` : 'drop-zone'
+
+      return (
+        <div key={section.id}>
+          <EditableSection
+            section={section}
+            isSelected={selectedSectionId === section.id}
+            isHovered={hoveredSectionId === section.id}
+            isFirst={index === 0}
+            isLast={index === sorted.length - 1}
+            isContainer={isContainer}
+            isDragging={isDragging}
+            onSelect={() => onSelectSection(section.id)}
+            onHover={(hovered) =>
+              setHoveredSectionId(hovered ? section.id : null)
+            }
+            onMoveUp={() => onMoveSection(section.id, -1)}
+            onMoveDown={() => onMoveSection(section.id, 1)}
+            onDuplicate={() => onDuplicateSection(section.id)}
+            onDelete={() => onDeleteSection(section.id)}
+          >
+            {isContainer && ContainerComponent ? (
+              <ContainerComponent props={section.props}>
+                {sortedChildren.length > 0 ? (
+                  <>
+                    {/* Drop zone before first child */}
+                    <DropZone id={`container-${section.id}-drop-0`} isActive={isDragging} />
+
+                    {sortedChildren.map((child, childIndex) => (
+                      <div key={child.id}>
+                        {renderSections([child], section.id)[0]}
+                        {/* Drop zone after each child */}
+                        <DropZone
+                          id={`container-${section.id}-drop-${childIndex + 1}`}
+                          isActive={isDragging}
+                        />
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {/* Empty container: show placeholder or drop zone */}
+                    <DropZone id={`container-${section.id}-drop-0`} isActive={isDragging} />
+                    {!isDragging && (
+                      <div className="border-2 border-dashed border-[#2a2a2a] rounded-lg p-6 text-center min-h-[80px] flex items-center justify-center">
+                        <div>
+                          <p className="text-slate-500 text-sm">Empty section</p>
+                          <p className="text-slate-600 text-xs mt-1">Drag components here</p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </ContainerComponent>
+            ) : (
+              <SectionRenderer section={section} />
+            )}
+          </EditableSection>
+
+          {/* Drop zone between sections at this level */}
+          <DropZone id={`${dropPrefix}-${index + 1}`} isActive={isDragging} />
+        </div>
+      )
+    })
+  }
+
+  // Sort top-level sections
+  const sortedSections = [...sections].sort((a, b) => a.order - b.order)
 
   if (sortedSections.length === 0) {
     return (
@@ -84,30 +173,7 @@ export default function EditorCanvas({
         {/* Drop zone before first section */}
         <DropZone id="drop-zone-0" isActive={isDragging} />
 
-        {sortedSections.map((section, index) => (
-          <div key={section.id}>
-            <EditableSection
-              section={section}
-              isSelected={selectedSectionId === section.id}
-              isHovered={hoveredSectionId === section.id}
-              isFirst={index === 0}
-              isLast={index === sortedSections.length - 1}
-              onSelect={() => onSelectSection(section.id)}
-              onHover={(hovered) =>
-                setHoveredSectionId(hovered ? section.id : null)
-              }
-              onMoveUp={() => onMoveSection(section.id, -1)}
-              onMoveDown={() => onMoveSection(section.id, 1)}
-              onDuplicate={() => onDuplicateSection(section.id)}
-              onDelete={() => onDeleteSection(section.id)}
-            >
-              <SectionRenderer section={section} />
-            </EditableSection>
-
-            {/* Drop zone after each section */}
-            <DropZone id={`drop-zone-${index + 1}`} isActive={isDragging} />
-          </div>
-        ))}
+        {renderSections(sortedSections, null)}
       </div>
     </div>
   )

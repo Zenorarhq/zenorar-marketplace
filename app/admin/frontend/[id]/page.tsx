@@ -523,19 +523,29 @@ export default function PageEditorPage() {
     // Handle dropping from palette
     if (active.data.current?.type === 'palette-item') {
       const componentName = active.data.current.componentName
+      const dropId = over.id as string
 
-      // Dropped on a drop zone — insert at that position
+      // Dropped on a container-internal drop zone (e.g. "container-abc123-drop-2")
+      if (over.data.current?.type === 'drop-zone' && dropId.startsWith('container-')) {
+        const match = dropId.match(/^container-(.+)-drop-(\d+)$/)
+        if (match) {
+          const containerId = match[1]
+          handleAddSection(componentName, containerId)
+          return
+        }
+      }
+
+      // Dropped on a top-level drop zone (e.g. "drop-zone-2")
       if (over.data.current?.type === 'drop-zone') {
-        const dropId = over.id as string // e.g. "drop-zone-2"
         const insertIndex = parseInt(dropId.replace('drop-zone-', ''), 10)
         handleAddSectionAtIndex(componentName, isNaN(insertIndex) ? undefined : insertIndex)
         return
       }
 
       // Check if dropping over a container - add inside it
-      const overSection = findSectionById(page.content || [], over.id as string)
+      const overSection = findSectionById(page.content || [], dropId)
       if (overSection && containerTypes.includes(overSection.type)) {
-        handleAddSection(componentName, over.id as string)
+        handleAddSection(componentName, dropId)
       } else {
         handleAddSection(componentName)
       }
