@@ -3,57 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import {
-  DndContext,
-  DragOverlay,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragStartEvent,
-  DragEndEvent,
-} from '@dnd-kit/core'
-import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import Icon from '@/components/ui/Icon'
-import ComponentPalette from '@/components/cms/ComponentPalette'
-import SectionList from '@/components/cms/SectionList'
 import PropertiesPanel from '@/components/cms/PropertiesPanel'
 import PageRenderer from '@/components/cms/PageRenderer'
 import EditorCanvas from '@/components/page-builder/EditorCanvas'
-import StructurePicker from '@/components/page-builder/StructurePicker'
 import useEditorHistory from '@/components/page-builder/hooks/useEditorHistory'
 import useAutoSave from '@/components/page-builder/hooks/useAutoSave'
 import { pagesApi, componentsApi, Page, Section, ComponentTemplate, PageVersion } from '@/lib/cms/api'
-
-// Container types that can have children
-const containerTypes = ['section', 'column']
-
-// Helper to find a section by ID recursively
-function findSectionById(sections: Section[], id: string): Section | null {
-  for (const section of sections) {
-    if (section.id === id) return section
-    if (section.children) {
-      const found = findSectionById(section.children, id)
-      if (found) return found
-    }
-  }
-  return null
-}
-
-// Helper to find parent section by child ID
-function findParentSection(sections: Section[], childId: string): Section | null {
-  for (const section of sections) {
-    if (section.children?.some(c => c.id === childId)) {
-      return section
-    }
-    if (section.children) {
-      const found = findParentSection(section.children, childId)
-      if (found) return found
-    }
-  }
-  return null
-}
 
 // Helper to update a section in a nested structure
 function updateSectionInTree(
@@ -75,43 +31,16 @@ function updateSectionInTree(
   })
 }
 
-// Helper to delete a section from nested structure
-function deleteSectionFromTree(sections: Section[], sectionId: string): Section[] {
-  return sections
-    .filter(section => section.id !== sectionId)
-    .map(section => {
-      if (section.children) {
-        return {
-          ...section,
-          children: deleteSectionFromTree(section.children, sectionId)
-        }
-      }
-      return section
-    })
-}
-
-// Helper to add a section to a container
-function addSectionToContainer(
-  sections: Section[],
-  containerId: string,
-  newSection: Section
-): Section[] {
-  return sections.map(section => {
-    if (section.id === containerId) {
-      const children = section.children || []
-      return {
-        ...section,
-        children: [...children, { ...newSection, order: children.length, parentId: containerId }]
-      }
-    }
+// Helper to find a section by ID recursively
+function findSectionById(sections: Section[], id: string): Section | null {
+  for (const section of sections) {
+    if (section.id === id) return section
     if (section.children) {
-      return {
-        ...section,
-        children: addSectionToContainer(section.children, containerId, newSection)
-      }
+      const found = findSectionById(section.children, id)
+      if (found) return found
     }
-    return section
-  })
+  }
+  return null
 }
 
 export default function PageEditorPage() {
@@ -124,35 +53,14 @@ export default function PageEditorPage() {
   const [error, setError] = useState('')
 
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
-  const [targetContainerId, setTargetContainerId] = useState<string | null>(null) // Which container to add new sections to
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [showPalette, setShowPalette] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('cms-show-palette')
-      return saved !== null ? saved === 'true' : true
-    }
-    return true
-  })
-  const [showProperties, setShowProperties] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('cms-show-properties')
-      return saved !== null ? saved === 'true' : true
-    }
-    return true
-  })
+  const [showProperties, setShowProperties] = useState(true)
   const { scheduleSave, isSaving: saving, lastSavedAt: lastSaved, saveError, hasUnsavedChanges } = useAutoSave()
-  const [viewMode, setViewMode] = useState<'visual' | 'list' | 'preview'>('visual')
+  const [viewMode, setViewMode] = useState<'visual' | 'preview'>('visual')
   const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [showVersions, setShowVersions] = useState(false)
   const [versions, setVersions] = useState<PageVersion[]>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null)
-  const [showStructurePicker, setShowStructurePicker] = useState(false)
-  const [pendingStructureContainerId, setPendingStructureContainerId] = useState<string | undefined>(undefined)
-
-  // Persist panel toggle state
-  useEffect(() => { localStorage.setItem('cms-show-palette', String(showPalette)) }, [showPalette])
-  useEffect(() => { localStorage.setItem('cms-show-properties', String(showProperties)) }, [showProperties])
 
   // Undo/Redo history
   const { pushState: pushHistory, undo, redo, canUndo, canRedo } = useEditorHistory(page?.content || [])
@@ -204,22 +112,11 @@ export default function PageEditorPage() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [hasUnsavedChanges])
 
-  // History debounce timer ref + cleanup on unmount
+  // History debounce timer ref
   const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     return () => { if (historyTimerRef.current) clearTimeout(historyTimerRef.current) }
   }, [])
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -230,7 +127,30 @@ export default function PageEditorPage() {
       ])
 
       if (pageResult.success && pageResult.data) {
-        setPage(pageResult.data)
+        let pageData = pageResult.data
+
+        // Auto-create a single design-block section if the page is empty
+        if (!pageData.content || pageData.content.length === 0) {
+          const designBlockSection: Section = {
+            id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: 'design-block',
+            order: 0,
+            props: { code: '', overrides: '{}' },
+          }
+          pageData = { ...pageData, content: [designBlockSection] }
+
+          // Save the auto-created section
+          await pagesApi.update(pageData.id, {
+            title: pageData.title,
+            content: pageData.content,
+          })
+        }
+
+        setPage(pageData)
+        // Auto-select the first (only) section
+        if (pageData.content && pageData.content.length > 0) {
+          setSelectedSectionId(pageData.content[0].id)
+        }
       } else {
         setError('Page not found')
       }
@@ -257,377 +177,20 @@ export default function PageEditorPage() {
     historyTimerRef.current = setTimeout(() => pushHistory(updatedContent), 500)
   }, [page, pushHistory])
 
-  const generateSectionId = () => {
-    // Generate a simple unique ID without external dependency
-    return `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  }
-
-  const handleAddSection = useCallback(
-    async (componentName: string, containerId?: string) => {
-      if (!page) return
-
-      // Intercept 'section' type — show structure picker instead of adding directly
-      if (componentName === 'section') {
-        setPendingStructureContainerId(containerId)
-        setShowStructurePicker(true)
-        return
-      }
-
-      const template = components.find((c) => c.name === componentName)
-      if (!template) return
-
-      const effectiveContainerId = containerId || targetContainerId
-
-      const newSection: Section = {
-        id: generateSectionId(),
-        type: componentName,
-        order: 0, // Will be set properly below
-        props: { ...template.defaultProps },
-        parentId: effectiveContainerId || undefined,
-      }
-
-      let updatedContent: Section[]
-
-      if (effectiveContainerId) {
-        // Add to a specific container
-        const container = findSectionById(page.content || [], effectiveContainerId)
-        if (container && containerTypes.includes(container.type)) {
-          newSection.order = container.children?.length || 0
-          updatedContent = addSectionToContainer(page.content || [], effectiveContainerId, newSection)
-        } else {
-          // Container not found or not a container type, add to root
-          newSection.order = page.content?.length || 0
-          updatedContent = [...(page.content || []), newSection]
-        }
-      } else {
-        // Add to root level
-        newSection.order = page.content?.length || 0
-        updatedContent = [...(page.content || []), newSection]
-      }
-
-      updateContent(updatedContent)
-      setSelectedSectionId(newSection.id)
-
-      // Auto-save
-      scheduleSave(async () => savePage({ ...page, content: updatedContent }))
-    },
-    [page, components, targetContainerId]
-  )
-
-  const handleStructureSelect = useCallback(
-    (layout: string) => {
-      if (!page) return
-      setShowStructurePicker(false)
-
-      const sectionTemplate = components.find((c) => c.name === 'section')
-      const columnTemplate = components.find((c) => c.name === 'column')
-      if (!sectionTemplate) return
-
-      const sectionId = generateSectionId()
-      const effectiveContainerId = pendingStructureContainerId || targetContainerId
-
-      // Count columns from layout string
-      const columnCount = layout === '1' ? 1 : layout.split('-').length
-
-      // Create child columns
-      const children: Section[] = Array.from({ length: columnCount }).map((_, i) => ({
-        id: generateSectionId(),
-        type: 'column',
-        order: i,
-        props: { ...(columnTemplate?.defaultProps || {}) },
-        parentId: sectionId,
-      }))
-
-      const newSection: Section = {
-        id: sectionId,
-        type: 'section',
-        order: page.content?.length || 0,
-        props: { ...sectionTemplate.defaultProps, layout },
-        parentId: effectiveContainerId || undefined,
-        children,
-      }
-
-      let updatedContent: Section[]
-
-      if (effectiveContainerId) {
-        const container = findSectionById(page.content || [], effectiveContainerId)
-        if (container && containerTypes.includes(container.type)) {
-          newSection.order = container.children?.length || 0
-          updatedContent = addSectionToContainer(page.content || [], effectiveContainerId, newSection)
-        } else {
-          updatedContent = [...(page.content || []), newSection]
-        }
-      } else {
-        updatedContent = [...(page.content || []), newSection]
-      }
-
-      updateContent(updatedContent)
-      setSelectedSectionId(sectionId)
-      scheduleSave(async () => savePage({ ...page, content: updatedContent }))
-      setPendingStructureContainerId(undefined)
-    },
-    [page, components, targetContainerId, pendingStructureContainerId]
-  )
-
-  const handleAddSectionAtIndex = useCallback(
-    async (componentName: string, insertIndex?: number) => {
-      if (!page) return
-      const template = components.find((c) => c.name === componentName)
-      if (!template) return
-
-      const content = page.content || []
-      const idx = insertIndex !== undefined ? insertIndex : content.length
-      const newSection: Section = {
-        id: generateSectionId(),
-        type: componentName,
-        order: idx,
-        props: { ...template.defaultProps },
-      }
-
-      const updatedContent = [
-        ...content.slice(0, idx),
-        newSection,
-        ...content.slice(idx),
-      ].map((s, i) => ({ ...s, order: i }))
-
-      updateContent(updatedContent)
-      setSelectedSectionId(newSection.id)
-      scheduleSave(async () => savePage({ ...page, content: updatedContent }))
-    },
-    [page, components]
-  )
-
-  const handleDeleteSection = useCallback(
-    async (sectionId: string) => {
-      if (!page) return
-
-      // Delete section from tree (works recursively)
-      const updatedContent = deleteSectionFromTree(page.content || [], sectionId)
-
-      // Reorder root level sections
-      const reorderedContent = updatedContent.map((s, i) => ({ ...s, order: i }))
-
-      updateContent(reorderedContent)
-      if (selectedSectionId === sectionId) {
-        setSelectedSectionId(null)
-      }
-      if (targetContainerId === sectionId) {
-        setTargetContainerId(null)
-      }
-
-      scheduleSave(async () => savePage({ ...page, content: reorderedContent }))
-    },
-    [page, selectedSectionId, targetContainerId]
-  )
-
-  // Helper to deep clone a section and its children with new IDs
-  const cloneSectionWithNewIds = useCallback((section: Section, newParentId?: string): Section => {
-    const newId = generateSectionId()
-    return {
-      ...section,
-      id: newId,
-      parentId: newParentId,
-      children: section.children?.map(child => cloneSectionWithNewIds(child, newId))
-    }
-  }, [])
-
-  const handleDuplicateSection = useCallback(
-    async (sectionId: string) => {
-      if (!page) return
-
-      // Find section in tree
-      const sectionToDuplicate = findSectionById(page.content || [], sectionId)
-      if (!sectionToDuplicate) return
-
-      // Find parent (if any)
-      const parent = findParentSection(page.content || [], sectionId)
-
-      // Clone with new IDs
-      const duplicatedSection = cloneSectionWithNewIds(sectionToDuplicate, parent?.id)
-
-      let updatedContent: Section[]
-
-      if (parent) {
-        // Duplicate within parent's children
-        updatedContent = updateSectionInTree(page.content || [], parent.id, (parentSection) => {
-          const children = parentSection.children || []
-          const sectionIndex = children.findIndex(s => s.id === sectionId)
-          const newChildren = [
-            ...children.slice(0, sectionIndex + 1),
-            { ...duplicatedSection, order: sectionIndex + 1 },
-            ...children.slice(sectionIndex + 1).map(s => ({ ...s, order: s.order + 1 }))
-          ]
-          return { ...parentSection, children: newChildren }
-        })
-      } else {
-        // Duplicate at root level
-        const sectionIndex = page.content.findIndex(s => s.id === sectionId)
-        updatedContent = [
-          ...page.content.slice(0, sectionIndex + 1),
-          { ...duplicatedSection, order: sectionIndex + 1 },
-          ...page.content.slice(sectionIndex + 1).map(s => ({ ...s, order: s.order + 1 }))
-        ]
-      }
-
-      updateContent(updatedContent)
-      setSelectedSectionId(duplicatedSection.id)
-
-      scheduleSave(async () => savePage({ ...page, content: updatedContent }))
-    },
-    [page, cloneSectionWithNewIds]
-  )
-
-  const handleMoveSection = useCallback(
-    async (sectionId: string, direction: -1 | 1) => {
-      if (!page) return
-      const content = page.content || []
-      const index = content.findIndex(s => s.id === sectionId)
-      if (index === -1) return
-      const newIndex = index + direction
-      if (newIndex < 0 || newIndex >= content.length) return
-      const reordered = arrayMove(content, index, newIndex).map((s, i) => ({ ...s, order: i }))
-      updateContent(reordered)
-      scheduleSave(async () => savePage({ ...page, content: reordered }))
-    },
-    [page]
-  )
-
   const handleUpdateSection = useCallback(
     async (sectionId: string, props: Record<string, any>) => {
       if (!page) return
 
-      // Update section in tree (works recursively)
       const updatedContent = updateSectionInTree(page.content || [], sectionId, (section) => ({
         ...section,
         props
       }))
 
       updateContent(updatedContent)
-
-      // Debounced auto-save would be better here, but for simplicity we'll save immediately
       scheduleSave(async () => savePage({ ...page, content: updatedContent }))
     },
     [page]
   )
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string)
-  }
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
-    setActiveId(null)
-
-    if (!over || !page) return
-
-    // Handle dropping from palette
-    if (active.data.current?.type === 'palette-item') {
-      const componentName = active.data.current.componentName
-      const dropId = over.id as string
-
-      // Dropped on a container-internal drop zone (e.g. "container-abc123-drop-2")
-      if (over.data.current?.type === 'drop-zone' && dropId.startsWith('container-')) {
-        const match = dropId.match(/^container-(.+)-drop-(\d+)$/)
-        if (match) {
-          const containerId = match[1]
-          handleAddSection(componentName, containerId)
-          return
-        }
-      }
-
-      // Dropped on a top-level drop zone (e.g. "drop-zone-2")
-      if (over.data.current?.type === 'drop-zone') {
-        const insertIndex = parseInt(dropId.replace('drop-zone-', ''), 10)
-        handleAddSectionAtIndex(componentName, isNaN(insertIndex) ? undefined : insertIndex)
-        return
-      }
-
-      // Check if dropping over a container - add inside it
-      const overSection = findSectionById(page.content || [], dropId)
-      if (overSection && containerTypes.includes(overSection.type)) {
-        handleAddSection(componentName, dropId)
-      } else {
-        handleAddSection(componentName)
-      }
-      return
-    }
-
-    // Handle reordering sections
-    if (active.id !== over.id) {
-      const activeSection = findSectionById(page.content || [], active.id as string)
-      const overSection = findSectionById(page.content || [], over.id as string)
-
-      if (!activeSection || !overSection) return
-
-      // Find parents
-      const activeParent = findParentSection(page.content || [], active.id as string)
-      const overParent = findParentSection(page.content || [], over.id as string)
-
-      // Check if dropping INTO a container (over is a container and active is not already its child)
-      const isDropIntoContainer = containerTypes.includes(overSection.type) &&
-        !overSection.children?.some(c => c.id === active.id)
-
-      if (isDropIntoContainer) {
-        // Move section INTO the container
-        let updatedContent = deleteSectionFromTree(page.content || [], active.id as string)
-        updatedContent = addSectionToContainer(updatedContent, over.id as string, activeSection)
-        updateContent(updatedContent)
-        scheduleSave(async () => savePage({ ...page, content: updatedContent }))
-        return
-      }
-
-      // Same parent - simple reorder
-      if (activeParent?.id === overParent?.id) {
-        if (activeParent) {
-          // Reorder within parent's children
-          const updatedContent = updateSectionInTree(page.content || [], activeParent.id, (parent) => {
-            const children = parent.children || []
-            const oldIndex = children.findIndex(s => s.id === active.id)
-            const newIndex = children.findIndex(s => s.id === over.id)
-            if (oldIndex !== -1 && newIndex !== -1) {
-              const reordered = arrayMove(children, oldIndex, newIndex).map((s, i) => ({ ...s, order: i }))
-              return { ...parent, children: reordered }
-            }
-            return parent
-          })
-          updateContent(updatedContent)
-          scheduleSave(async () => savePage({ ...page, content: updatedContent }))
-        } else {
-          // Reorder at root level
-          const oldIndex = page.content.findIndex(s => s.id === active.id)
-          const newIndex = page.content.findIndex(s => s.id === over.id)
-          if (oldIndex !== -1 && newIndex !== -1) {
-            const reorderedContent = arrayMove(page.content, oldIndex, newIndex).map((s, i) => ({ ...s, order: i }))
-            updateContent(reorderedContent)
-            scheduleSave(async () => savePage({ ...page, content: reorderedContent }))
-          }
-        }
-      } else {
-        // Different parents - move between containers
-        // Remove from old location
-        let updatedContent = deleteSectionFromTree(page.content || [], active.id as string)
-
-        if (overParent) {
-          // Add to new parent
-          updatedContent = addSectionToContainer(updatedContent, overParent.id, {
-            ...activeSection,
-            parentId: overParent.id
-          })
-        } else {
-          // Add to root level
-          const overIndex = updatedContent.findIndex(s => s.id === over.id)
-          updatedContent = [
-            ...updatedContent.slice(0, overIndex),
-            { ...activeSection, parentId: undefined, order: overIndex },
-            ...updatedContent.slice(overIndex).map(s => ({ ...s, order: s.order + 1 }))
-          ]
-        }
-
-        updateContent(updatedContent)
-        scheduleSave(async () => savePage({ ...page, content: updatedContent }))
-      }
-    }
-  }
 
   async function savePage(pageData: Page) {
     const updatePayload: Record<string, unknown> = {
@@ -699,16 +262,13 @@ export default function PageEditorPage() {
     }
   }
 
-  // Find selected section recursively
+  // Find selected section
   const selectedSection = selectedSectionId
     ? findSectionById(page?.content || [], selectedSectionId)
     : null
   const selectedTemplate = selectedSection
     ? components.find((c) => c.name === selectedSection.type) || null
     : null
-
-  // Check if selected section is a container (for "Add to container" UI)
-  const selectedIsContainer = selectedSection && containerTypes.includes(selectedSection.type)
 
   if (loading) {
     return (
@@ -741,366 +301,255 @@ export default function PageEditorPage() {
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="h-screen bg-[#0a0a0a] flex flex-col overflow-hidden">
-        {/* Top Bar */}
-        <header className="h-14 bg-[#111111] border-b border-[#1f1f1f] flex items-center justify-between px-4 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/admin/frontend"
-              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+    <div className="h-screen bg-[#0a0a0a] flex flex-col overflow-hidden">
+      {/* Top Bar */}
+      <header className="h-14 bg-[#111111] border-b border-[#1f1f1f] flex items-center justify-between px-4 flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/admin/frontend"
+            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+          >
+            <Icon name="arrow-left" size={20} />
+          </Link>
+          <div>
+            <h1 className="text-white font-medium text-sm">{page.title}</h1>
+            <p className="text-slate-500 text-xs">/{page.slug}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Undo/Redo */}
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={handleUndo}
+              disabled={!canUndo}
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              title="Undo (Ctrl+Z)"
             >
-              <Icon name="arrow-left" size={20} />
-            </Link>
-            <div>
-              <h1 className="text-white font-medium text-sm">{page.title}</h1>
-              <p className="text-slate-500 text-xs">/{page.slug}</p>
-            </div>
+              <Icon name="undo" size={18} />
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!canRedo}
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              title="Redo (Ctrl+Shift+Z)"
+            >
+              <Icon name="redo" size={18} />
+            </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Undo/Redo */}
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={handleUndo}
-                disabled={!canUndo}
-                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                title="Undo (Ctrl+Z)"
-              >
-                <Icon name="undo" size={18} />
-              </button>
-              <button
-                onClick={handleRedo}
-                disabled={!canRedo}
-                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                title="Redo (Ctrl+Shift+Z)"
-              >
-                <Icon name="redo" size={18} />
-              </button>
-            </div>
+          {/* Save Indicator */}
+          {saving && (
+            <span className="flex items-center gap-1.5 text-slate-400 text-xs px-3">
+              <Icon name="loading" size={14} className="animate-spin" />
+              Saving...
+            </span>
+          )}
+          {!saving && saveError && (
+            <span className="flex items-center gap-1.5 text-red-400 text-xs px-3" title={saveError}>
+              <Icon name="alert-circle" size={14} />
+              Save failed
+            </span>
+          )}
+          {!saving && !saveError && hasUnsavedChanges && (
+            <span className="flex items-center gap-1.5 text-yellow-400 text-xs px-3">
+              <Icon name="edit" size={14} />
+              Unsaved
+            </span>
+          )}
+          {!saving && !saveError && !hasUnsavedChanges && lastSaved && (
+            <span className="flex items-center gap-1.5 text-green-400 text-xs px-3">
+              <Icon name="check" size={14} />
+              Saved
+            </span>
+          )}
 
-            {/* Save Indicator */}
-            {saving && (
-              <span className="flex items-center gap-1.5 text-slate-400 text-xs px-3">
-                <Icon name="loading" size={14} className="animate-spin" />
-                Saving...
-              </span>
-            )}
-            {!saving && saveError && (
-              <span className="flex items-center gap-1.5 text-red-400 text-xs px-3" title={saveError}>
-                <Icon name="alert-circle" size={14} />
-                Save failed
-              </span>
-            )}
-            {!saving && !saveError && hasUnsavedChanges && (
-              <span className="flex items-center gap-1.5 text-yellow-400 text-xs px-3">
-                <Icon name="edit" size={14} />
-                Unsaved
-              </span>
-            )}
-            {!saving && !saveError && !hasUnsavedChanges && lastSaved && (
-              <span className="flex items-center gap-1.5 text-green-400 text-xs px-3">
-                <Icon name="check" size={14} />
-                Saved
-              </span>
-            )}
+          {/* Status Badge */}
+          <span
+            className={`px-2 py-1 rounded text-xs font-medium ${
+              page.status === 'PUBLISHED'
+                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+            }`}
+          >
+            {page.status}
+          </span>
 
-            {/* Status Badge */}
-            <span
-              className={`px-2 py-1 rounded text-xs font-medium ${
-                page.status === 'PUBLISHED'
-                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                  : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+          {/* View Mode Toggle */}
+          <div className="flex items-center bg-[#1a1a1a] rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('visual')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === 'visual'
+                  ? 'bg-primary text-black'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              {page.status}
-            </span>
+              Editor
+            </button>
+            <button
+              onClick={() => setViewMode('preview')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === 'preview'
+                  ? 'bg-primary text-black'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Preview
+            </button>
+          </div>
 
-            {/* View Mode Toggle */}
+          {/* Responsive Preview */}
+          {viewMode === 'visual' && (
             <div className="flex items-center bg-[#1a1a1a] rounded-lg p-1">
               <button
-                onClick={() => setViewMode('visual')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'visual'
-                    ? 'bg-primary text-black'
+                onClick={() => setViewportSize('desktop')}
+                className={`p-1.5 rounded-md transition-colors ${
+                  viewportSize === 'desktop'
+                    ? 'bg-primary/20 text-primary'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Visual Editor"
+                title="Desktop"
               >
-                Visual
+                <Icon name="monitor" size={16} />
               </button>
               <button
-                onClick={() => setViewMode('list')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-primary text-black'
+                onClick={() => setViewportSize('tablet')}
+                className={`p-1.5 rounded-md transition-colors ${
+                  viewportSize === 'tablet'
+                    ? 'bg-primary/20 text-primary'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="List Editor"
+                title="Tablet (768px)"
               >
-                List
+                <Icon name="tablet" size={16} />
               </button>
               <button
-                onClick={() => setViewMode('preview')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'preview'
-                    ? 'bg-primary text-black'
+                onClick={() => setViewportSize('mobile')}
+                className={`p-1.5 rounded-md transition-colors ${
+                  viewportSize === 'mobile'
+                    ? 'bg-primary/20 text-primary'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Full Preview"
+                title="Mobile (375px)"
               >
-                Preview
+                <Icon name="smartphone" size={16} />
               </button>
             </div>
+          )}
 
-            {/* Responsive Preview (visual mode only) */}
-            {viewMode === 'visual' && (
-              <div className="flex items-center bg-[#1a1a1a] rounded-lg p-1">
-                <button
-                  onClick={() => setViewportSize('desktop')}
-                  className={`p-1.5 rounded-md transition-colors ${
-                    viewportSize === 'desktop'
-                      ? 'bg-primary/20 text-primary'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="Desktop"
-                >
-                  <Icon name="monitor" size={16} />
-                </button>
-                <button
-                  onClick={() => setViewportSize('tablet')}
-                  className={`p-1.5 rounded-md transition-colors ${
-                    viewportSize === 'tablet'
-                      ? 'bg-primary/20 text-primary'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="Tablet (768px)"
-                >
-                  <Icon name="tablet" size={16} />
-                </button>
-                <button
-                  onClick={() => setViewportSize('mobile')}
-                  className={`p-1.5 rounded-md transition-colors ${
-                    viewportSize === 'mobile'
-                      ? 'bg-primary/20 text-primary'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="Mobile (375px)"
-                >
-                  <Icon name="smartphone" size={16} />
-                </button>
-              </div>
-            )}
-
-            {/* Toggle Panels (only in edit modes) */}
-            {viewMode !== 'preview' && (
-              <>
-                <button
-                  onClick={() => setShowPalette(!showPalette)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    showPalette
-                      ? 'text-primary bg-primary/10'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
-                  title="Toggle Components Panel"
-                >
-                  <Icon name="grid-view" size={18} />
-                </button>
-                <button
-                  onClick={() => setShowProperties(!showProperties)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    showProperties
-                      ? 'text-primary bg-primary/10'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
-                  title="Toggle Properties Panel"
-                >
-                  <Icon name="settings" size={18} />
-                </button>
-              </>
-            )}
-
-            {/* Full Page Preview (in new tab) */}
-            <Link
-              href={`/admin/frontend/${pageId}/preview`}
-              target="_blank"
-              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-              title="Open Full Preview"
-            >
-              <Icon name="monitor" size={18} />
-            </Link>
-
-            {/* View Published */}
-            {page.status === 'PUBLISHED' && (
-              <a
-                href={`/p/${page.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded-lg transition-colors"
-                title="View Live Page"
-              >
-                <Icon name="globe" size={18} />
-              </a>
-            )}
-
-            {/* Version History */}
+          {/* Toggle Properties */}
+          {viewMode !== 'preview' && (
             <button
-              onClick={handleOpenVersions}
-              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-              title="Version History"
+              onClick={() => setShowProperties(!showProperties)}
+              className={`p-2 rounded-lg transition-colors ${
+                showProperties
+                  ? 'text-primary bg-primary/10'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              title="Toggle Properties Panel"
             >
-              <Icon name="clock" size={18} />
+              <Icon name="settings" size={18} />
             </button>
+          )}
 
-            {/* Publish/Unpublish */}
-            {page.status === 'PUBLISHED' ? (
-              <button
-                onClick={handleUnpublish}
-                className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#222] transition-colors"
-              >
-                Unpublish
-              </button>
-            ) : (
-              <button
-                onClick={handlePublish}
-                className="px-4 py-2 bg-primary text-black rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-              >
-                Publish
-              </button>
-            )}
-          </div>
-        </header>
+          {/* Full Page Preview (in new tab) */}
+          <Link
+            href={`/admin/frontend/${pageId}/preview`}
+            target="_blank"
+            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            title="Open Full Preview"
+          >
+            <Icon name="monitor" size={18} />
+          </Link>
 
-        {/* Main Editor Area */}
-        <div className="flex-1 flex overflow-hidden">
-          {viewMode === 'preview' ? (
-            /* Preview Mode - Full preview of the page */
-            <main className="flex-1 bg-[#1a1a1a] overflow-auto">
-              <div className="max-w-6xl mx-auto">
-                <div className="bg-[#0a0a0a] min-h-full shadow-2xl">
-                  <PageRenderer page={page} />
-                </div>
-              </div>
-            </main>
+          {/* View Published */}
+          {page.status === 'PUBLISHED' && (
+            <a
+              href={`/p/${page.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded-lg transition-colors"
+              title="View Live Page"
+            >
+              <Icon name="globe" size={18} />
+            </a>
+          )}
+
+          {/* Version History */}
+          <button
+            onClick={handleOpenVersions}
+            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            title="Version History"
+          >
+            <Icon name="clock" size={18} />
+          </button>
+
+          {/* Publish/Unpublish */}
+          {page.status === 'PUBLISHED' ? (
+            <button
+              onClick={handleUnpublish}
+              className="px-4 py-2 bg-[#1a1a1a] text-white rounded-lg text-sm font-medium hover:bg-[#222] transition-colors"
+            >
+              Unpublish
+            </button>
           ) : (
-            <>
-              {/* Left Panel - Component Palette */}
-              {showPalette && (
-                <aside className="w-72 bg-[#111111] border-r border-[#1f1f1f] flex-shrink-0 overflow-hidden flex flex-col">
-                  {/* Target Container Indicator */}
-                  {targetContainerId && (
-                    <div className="p-3 bg-primary/10 border-b border-primary/20">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Icon name="folder" size={14} className="text-primary" />
-                          <span className="text-primary text-xs font-medium">
-                            Adding to: {findSectionById(page?.content || [], targetContainerId)?.type || 'container'}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => setTargetContainerId(null)}
-                          className="p-1 text-primary hover:bg-primary/20 rounded"
-                        >
-                          <Icon name="close" size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex-1 overflow-hidden">
-                    <ComponentPalette components={components} onAddSection={handleAddSection} />
-                  </div>
-                </aside>
-              )}
-
-              {/* Center Panel - Visual Canvas or Section List */}
-              {viewMode === 'visual' ? (
-                <main className="flex-1 bg-[#1a1a1a] flex flex-col overflow-hidden">
-                  <EditorCanvas
-                    sections={page.content || []}
-                    selectedSectionId={selectedSectionId}
-                    isDragging={!!activeId}
-                    viewportSize={viewportSize}
-                    onSelectSection={setSelectedSectionId}
-                    onDeleteSection={handleDeleteSection}
-                    onDuplicateSection={handleDuplicateSection}
-                    onMoveSection={handleMoveSection}
-                    onAddSection={() => {
-                      setPendingStructureContainerId(undefined)
-                      setShowStructurePicker(true)
-                    }}
-                    onAddToContainer={(containerId) => {
-                      setTargetContainerId(containerId)
-                      setSelectedSectionId(null)
-                    }}
-                  />
-                </main>
-              ) : (
-                <main className="flex-1 bg-[#0d0d0d] flex flex-col overflow-hidden">
-                  <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between">
-                    <div>
-                      <h2 className="text-white font-semibold text-sm">Page Sections</h2>
-                      <p className="text-slate-500 text-xs">{page.content?.length || 0} sections</p>
-                    </div>
-                    {/* Add to container button */}
-                    {selectedIsContainer && (
-                      <button
-                        onClick={() => setTargetContainerId(
-                          targetContainerId === selectedSectionId ? null : selectedSectionId
-                        )}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          targetContainerId === selectedSectionId
-                            ? 'bg-primary text-black'
-                            : 'bg-primary/10 text-primary hover:bg-primary/20'
-                        }`}
-                      >
-                        <Icon name="add" size={14} />
-                        {targetContainerId === selectedSectionId ? 'Adding here' : 'Add to this container'}
-                      </button>
-                    )}
-                  </div>
-                  <SectionList
-                    sections={page.content || []}
-                    componentTemplates={components}
-                    selectedSectionId={selectedSectionId}
-                    onSelectSection={setSelectedSectionId}
-                    onDeleteSection={handleDeleteSection}
-                    onDuplicateSection={handleDuplicateSection}
-                  />
-                </main>
-              )}
-
-              {/* Right Panel - Properties */}
-              {showProperties && (
-                <aside className="w-80 bg-[#111111] border-l border-[#1f1f1f] flex-shrink-0 overflow-hidden">
-                  <PropertiesPanel
-                    section={selectedSection}
-                    componentTemplate={selectedTemplate}
-                    onUpdateSection={handleUpdateSection}
-                    onClose={() => setSelectedSectionId(null)}
-                    sections={page?.content || []}
-                    componentTemplates={components}
-                    onSelectSection={setSelectedSectionId}
-                    onDeleteSection={handleDeleteSection}
-                  />
-                </aside>
-              )}
-            </>
+            <button
+              onClick={handlePublish}
+              className="px-4 py-2 bg-primary text-black rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Publish
+            </button>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Structure Picker Modal */}
-      {showStructurePicker && (
-        <StructurePicker
-          onSelect={handleStructureSelect}
-          onClose={() => { setShowStructurePicker(false); setPendingStructureContainerId(undefined) }}
-        />
-      )}
+      {/* Main Editor Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {viewMode === 'preview' ? (
+          <main className="flex-1 bg-[#1a1a1a] overflow-auto">
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-[#0a0a0a] min-h-full shadow-2xl">
+                <PageRenderer page={page} />
+              </div>
+            </div>
+          </main>
+        ) : (
+          <>
+            {/* Center Panel - Canvas */}
+            <main className="flex-1 bg-[#1a1a1a] flex flex-col overflow-hidden">
+              <EditorCanvas
+                sections={page.content || []}
+                selectedSectionId={selectedSectionId}
+                isDragging={false}
+                viewportSize={viewportSize}
+                onSelectSection={setSelectedSectionId}
+                onDeleteSection={() => {}}
+                onDuplicateSection={() => {}}
+                onMoveSection={() => {}}
+                onAddSection={() => {}}
+                onAddToContainer={() => {}}
+              />
+            </main>
+
+            {/* Right Panel - Properties */}
+            {showProperties && (
+              <aside className="w-80 bg-[#111111] border-l border-[#1f1f1f] flex-shrink-0 overflow-hidden">
+                <PropertiesPanel
+                  section={selectedSection}
+                  componentTemplate={selectedTemplate}
+                  onUpdateSection={handleUpdateSection}
+                  onClose={() => setSelectedSectionId(null)}
+                  sections={page?.content || []}
+                  componentTemplates={components}
+                  onSelectSection={setSelectedSectionId}
+                  onDeleteSection={() => {}}
+                />
+              </aside>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Version History Modal */}
       {showVersions && (
@@ -1162,15 +611,6 @@ export default function PageEditorPage() {
           </div>
         </div>
       )}
-
-      {/* Drag Overlay */}
-      <DragOverlay>
-        {activeId && (
-          <div className="bg-[#1a1a1a] border border-primary rounded-lg p-3 shadow-lg opacity-80">
-            <span className="text-white text-sm">Moving section...</span>
-          </div>
-        )}
-      </DragOverlay>
-    </DndContext>
+    </div>
   )
 }
