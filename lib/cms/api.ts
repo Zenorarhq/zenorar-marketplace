@@ -19,16 +19,6 @@ export interface Section {
   props: Record<string, any>
   children?: Section[]  // Support nested sections
   parentId?: string     // Reference to parent section
-  style?: {
-    backgroundColor?: string
-    padding?: string
-    margin?: string
-  }
-  visibility?: {
-    desktop: boolean
-    tablet: boolean
-    mobile: boolean
-  }
 }
 
 export interface Page {
@@ -70,19 +60,6 @@ export interface ComponentTemplate {
   thumbnail: string | null
   order: number
   isActive: boolean
-}
-
-export interface Media {
-  id: string
-  name: string
-  url: string
-  publicId: string
-  type: 'IMAGE' | 'VIDEO' | 'DOCUMENT'
-  size: number
-  width: number | null
-  height: number | null
-  uploadedById: string
-  createdAt: string
 }
 
 export interface ApiResponse<T> {
@@ -158,10 +135,6 @@ export const pagesApi = {
     return apiFetch<Page>(`/pages/${id}`)
   },
 
-  async getBySlug(slug: string) {
-    return apiFetch<Page>(`/pages/slug/${slug}`)
-  },
-
   async getPublished(slug: string) {
     return apiFetch<Page>(`/pages/public/${slug}`)
   },
@@ -210,13 +183,6 @@ export const pagesApi = {
     })
   },
 
-  async reorderSections(id: string, sectionIds: string[]) {
-    return apiFetch<Page>(`/pages/${id}/reorder`, {
-      method: 'PATCH',
-      body: JSON.stringify({ sectionIds }),
-    })
-  },
-
   // Versions
   async getVersions(id: string) {
     return apiFetch<PageVersion[]>(`/pages/${id}/versions`)
@@ -239,57 +205,5 @@ export const componentsApi = {
     return apiFetch<ComponentTemplate[]>('/components')
   },
 
-  async getByName(name: string) {
-    return apiFetch<ComponentTemplate>(`/components/${name}`)
-  },
-
-  async getSchema(name: string) {
-    return apiFetch<{ schema: Record<string, any>; defaultProps: Record<string, any> }>(
-      `/components/${name}/schema`
-    )
-  },
-
-  async getCategories() {
-    return apiFetch<string[]>('/components/meta/categories')
-  },
-
-  async seed() {
-    return apiFetch<{ count: number }>('/components/seed', {
-      method: 'POST',
-    })
-  },
 }
 
-// Media API
-export const mediaApi = {
-  async list(params?: { page?: number; limit?: number; type?: string }) {
-    const query = new URLSearchParams()
-    if (params?.page) query.set('page', String(params.page))
-    if (params?.limit) query.set('limit', String(params.limit))
-    if (params?.type) query.set('type', params.type)
-    const queryStr = query.toString()
-    return apiFetch<Media[]>(`/media${queryStr ? `?${queryStr}` : ''}`)
-  },
-
-  async upload(file: File) {
-    const token = getAccessToken()
-    const formData = new FormData()
-    formData.append('file', file)
-
-    const response = await fetch(`${API_BASE}/media/upload`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    })
-
-    return response.json() as Promise<ApiResponse<Media>>
-  },
-
-  async delete(id: string) {
-    return apiFetch<void>(`/media/${id}`, {
-      method: 'DELETE',
-    })
-  },
-}

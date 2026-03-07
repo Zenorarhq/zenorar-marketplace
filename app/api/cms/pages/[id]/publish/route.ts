@@ -11,6 +11,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const { id } = await params
+
+    // Save a version snapshot before publishing
+    const currentPage = await executeQuery(`SELECT title, content FROM cms_pages WHERE id = $1`, [id])
+    if (currentPage.rows.length > 0) {
+      const maxVersion = await executeQuery(
+        `SELECT COALESCE(MAX(version), 0) as max_version FROM cms_page_versions WHERE page_id = $1`,
+        [id]
+      )
+      const nextVersion = (maxVersion.rows[0]?.max_version || 0) + 1
+      await executeQuery(
+        `INSERT INTO cms_page_versions (page_id, version, title, content, author_id) VALUES ($1, $2, $3, $4, $5)`,
+        [id, nextVersion, currentPage.rows[0].title, JSON.stringify(currentPage.rows[0].content), user.id]
+      )
+    }
+
     const result = await executeQuery(
       `UPDATE cms_pages SET status = 'PUBLISHED', published_at = NOW(), updated_at = NOW() WHERE id = $1 RETURNING id, slug, title, status, published_at as "publishedAt"`,
       [id]

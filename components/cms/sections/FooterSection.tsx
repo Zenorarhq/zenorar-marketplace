@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 
@@ -51,6 +52,29 @@ export default function FooterSection({ props }: FooterSectionProps) {
     textColor,
     padding = 'large',
   } = props
+
+  const [footerEmail, setFooterEmail] = useState('')
+  const [footerSubscribed, setFooterSubscribed] = useState(false)
+  const [footerSubmitting, setFooterSubmitting] = useState(false)
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!footerEmail || footerSubmitting) return
+    setFooterSubmitting(true)
+    try {
+      await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: footerEmail }),
+      })
+      setFooterSubscribed(true)
+      setFooterEmail('')
+    } catch {
+      // Silently fail — user can retry
+    } finally {
+      setFooterSubmitting(false)
+    }
+  }
 
   const currentYear = new Date().getFullYear()
   const defaultCopyright = `\u00A9 ${currentYear} ${logoText}. All rights reserved.`
@@ -123,23 +147,31 @@ export default function FooterSection({ props }: FooterSectionProps) {
               <h4 className="font-bold mb-3 sm:mb-4 lg:mb-6 text-white text-sm sm:text-base">
                 {newsletterTitle}
               </h4>
-              <form className="flex gap-2">
-                <label htmlFor="footer-newsletter-email" className="sr-only">
-                  Email address
-                </label>
-                <input
-                  id="footer-newsletter-email"
-                  type="email"
-                  placeholder="Email address"
-                  className="bg-[#141414] border border-[#2a2a2a] rounded-lg py-2 px-3 text-xs sm:text-sm focus:ring-1 focus:ring-primary focus:border-primary w-full text-slate-200 placeholder:text-slate-500 transition-all"
-                />
-                <button
-                  type="submit"
-                  className="bg-primary text-black px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold hover:brightness-110 transition-all"
-                >
-                  Join
-                </button>
-              </form>
+              {footerSubscribed ? (
+                <p className="text-green-400 text-xs sm:text-sm">Thanks for subscribing!</p>
+              ) : (
+                <form className="flex gap-2" onSubmit={handleNewsletterSubmit}>
+                  <label htmlFor="footer-newsletter-email" className="sr-only">
+                    Email address
+                  </label>
+                  <input
+                    id="footer-newsletter-email"
+                    type="email"
+                    placeholder="Email address"
+                    value={footerEmail}
+                    onChange={(e) => setFooterEmail(e.target.value)}
+                    required
+                    className="bg-[#141414] border border-[#2a2a2a] rounded-lg py-2 px-3 text-xs sm:text-sm focus:ring-1 focus:ring-primary focus:border-primary w-full text-slate-200 placeholder:text-slate-500 transition-all"
+                  />
+                  <button
+                    type="submit"
+                    disabled={footerSubmitting}
+                    className="bg-primary text-black px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold hover:brightness-110 transition-all disabled:opacity-50"
+                  >
+                    {footerSubmitting ? '...' : 'Join'}
+                  </button>
+                </form>
+              )}
 
               {/* Social Links */}
               {socialLinks.length > 0 && (

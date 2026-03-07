@@ -23,7 +23,7 @@ import PageRenderer from '@/components/cms/PageRenderer'
 import EditorCanvas from '@/components/page-builder/EditorCanvas'
 import useEditorHistory from '@/components/page-builder/hooks/useEditorHistory'
 import useAutoSave from '@/components/page-builder/hooks/useAutoSave'
-import { pagesApi, componentsApi, Page, Section, ComponentTemplate } from '@/lib/cms/api'
+import { pagesApi, componentsApi, Page, Section, ComponentTemplate, PageVersion } from '@/lib/cms/api'
 
 // Container types that can have children
 const containerTypes = ['section', 'column']
@@ -142,6 +142,10 @@ export default function PageEditorPage() {
   const { scheduleSave, isSaving: saving, lastSavedAt: lastSaved, saveError, hasUnsavedChanges } = useAutoSave()
   const [viewMode, setViewMode] = useState<'visual' | 'list' | 'preview'>('visual')
   const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
+  const [showVersions, setShowVersions] = useState(false)
+  const [versions, setVersions] = useState<PageVersion[]>([])
+  const [versionsLoading, setVersionsLoading] = useState(false)
+  const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null)
 
   // Persist panel toggle state
   useEffect(() => { localStorage.setItem('cms-show-palette', String(showPalette)) }, [showPalette])
@@ -565,6 +569,41 @@ export default function PageEditorPage() {
     }
   }
 
+  async function handleOpenVersions() {
+    if (!page) return
+    setShowVersions(true)
+    setVersionsLoading(true)
+    try {
+      const result = await pagesApi.getVersions(page.id)
+      if (result.success && result.data) {
+        setVersions(result.data)
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setVersionsLoading(false)
+    }
+  }
+
+  async function handleRestoreVersion(versionId: string) {
+    if (!page) return
+    if (!confirm('Restore this version? Current content will be saved as a new version first.')) return
+    setRestoringVersionId(versionId)
+    try {
+      const result = await pagesApi.restoreVersion(page.id, versionId)
+      if (result.success && result.data) {
+        setPage(result.data)
+        setShowVersions(false)
+      } else {
+        alert('Failed to restore version')
+      }
+    } catch {
+      alert('Failed to restore version')
+    } finally {
+      setRestoringVersionId(null)
+    }
+  }
+
   async function handlePublish() {
     if (!page) return
     try {
@@ -834,6 +873,15 @@ export default function PageEditorPage() {
               </a>
             )}
 
+            {/* Version History */}
+            <button
+              onClick={handleOpenVersions}
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              title="Version History"
+            >
+              <Icon name="clock" size={18} />
+            </button>
+
             {/* Publish/Unpublish */}
             {page.status === 'PUBLISHED' ? (
               <button
@@ -958,6 +1006,67 @@ export default function PageEditorPage() {
           )}
         </div>
       </div>
+
+      {/* Version History Modal */}
+      {showVersions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowVersions(false)} />
+          <div className="relative bg-[#111111] border border-[#1f1f1f] rounded-xl w-full max-w-lg max-h-[70vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-[#1f1f1f]">
+              <div className="flex items-center gap-2">
+                <Icon name="clock" size={18} className="text-primary" />
+                <h2 className="text-white font-semibold text-sm">Version History</h2>
+              </div>
+              <button
+                onClick={() => setShowVersions(false)}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {versionsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Icon name="loading" size={24} className="text-primary animate-spin" />
+                </div>
+              ) : versions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Icon name="clock" size={32} className="text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm">No versions yet</p>
+                  <p className="text-slate-500 text-xs mt-1">Versions are created each time you publish</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {versions.map((v) => (
+                    <div
+                      key={v.id}
+                      className="flex items-center justify-between p-3 bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white text-sm font-medium">v{v.version}</span>
+                          <span className="text-slate-500 text-xs">{v.title}</span>
+                        </div>
+                        <p className="text-slate-500 text-xs mt-0.5">
+                          {new Date(v.createdAt).toLocaleDateString()} at{' '}
+                          {new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRestoreVersion(v.id)}
+                        disabled={restoringVersionId === v.id}
+                        className="px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {restoringVersionId === v.id ? 'Restoring...' : 'Restore'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Drag Overlay */}
       <DragOverlay>
