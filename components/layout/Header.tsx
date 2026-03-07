@@ -20,7 +20,6 @@ import NotificationsDropdown from '@/components/notifications/NotificationsDropd
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
 import { navCategories } from '@/lib/mock-data'
 import { getBalance } from '@/lib/api/wallet'
-import { formatPrice } from '@/lib/currency'
 
 function MobileNavItem({ item, pathname, onClose }: { item: { label: string; url: string; children?: { label: string; url: string }[] }; pathname: string; onClose: () => void }) {
   const [expanded, setExpanded] = useState(false)
@@ -57,7 +56,7 @@ export default function Header() {
   const pathname = usePathname()
   const { itemCount } = useCart()
   const { user, isAuthenticated, logout } = useAuth()
-  const { preferences } = usePreferences()
+  const { preferences, formatPrice } = usePreferences()
   const { unreadCount } = useNotifications()
   const { siteName, logoUrl, rawSettings, isLoaded } = useSiteSettings()
 
@@ -329,7 +328,7 @@ export default function Header() {
                     >
                       <Icon name="wallet" size={16} className="text-primary" />
                       <span className="text-sm font-bold text-primary">
-                        {formatPrice(walletData?.balance || 0, preferences.currency)}
+                        {formatPrice(walletData?.balance || 0)}
                       </span>
                     </Link>
                     <div className="border-t border-border-dark" />
@@ -519,7 +518,7 @@ export default function Header() {
                       >
                         <Icon name="wallet" size={16} className="text-primary" />
                         <span className="text-sm font-bold text-primary">
-                          {formatPrice(walletData?.balance || 0, preferences.currency)}
+                          {formatPrice(walletData?.balance || 0)}
                         </span>
                       </Link>
                       <div className="border-t border-border-dark" />
