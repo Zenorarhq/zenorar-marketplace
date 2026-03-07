@@ -190,17 +190,19 @@ export default function SectionContainer({ props, children }: SectionContainerPr
     hideOnTablet ? 'md:hidden lg:block' : '',
   ].filter(Boolean).join(' ')
 
+  const contentPadding = maxWidth === 'full' ? '' : 'px-4 md:px-8'
+
   return (
     <section
       id={customId || undefined}
-      className={`${pyClass} px-4 relative ${marginClasses[margin]} ${borderWidthClasses[borderWidth]} ${borderWidth !== 'none' ? borderStyleClasses[borderStyle] : ''} ${radiusClasses[borderRadius]} ${visibilityClasses} ${customClassName || ''}`}
+      className={`${pyClass} w-full relative ${marginClasses[margin]} ${borderWidthClasses[borderWidth]} ${borderWidth !== 'none' ? borderStyleClasses[borderStyle] : ''} ${radiusClasses[borderRadius]} ${visibilityClasses} ${customClassName || ''}`}
       style={sectionStyle}
     >
       {backgroundImage && overlayOpacity !== 'none' && (
         <div className={`absolute inset-0 ${overlayClasses[overlayOpacity]} ${radiusClasses[borderRadius]}`} />
       )}
 
-      <div className={`${maxWidthClasses[maxWidth] || maxWidthClasses.container} mx-auto relative`}>
+      <div className={`${maxWidthClasses[maxWidth] || maxWidthClasses.container} mx-auto relative ${contentPadding}`}>
         {title && (
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-6 md:mb-8 text-center">
             {title}
