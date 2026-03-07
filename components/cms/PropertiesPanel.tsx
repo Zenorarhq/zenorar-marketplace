@@ -43,6 +43,43 @@ function TextField({ name, value, schema, onChange }: FieldProps) {
   )
 }
 
+function CodeField({ name, value, schema, onChange }: FieldProps) {
+  const [showPreview, setShowPreview] = useState(false)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-xs font-medium text-slate-400">
+          {schema.title || name}
+        </label>
+        <button
+          type="button"
+          onClick={() => setShowPreview(!showPreview)}
+          className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-slate-400 hover:text-primary bg-[#1a1a1a] border border-[#2a2a2a] rounded transition-colors"
+        >
+          <Icon name={showPreview ? 'code' : 'visibility'} size={12} />
+          {showPreview ? 'Code' : 'Preview'}
+        </button>
+      </div>
+      {showPreview ? (
+        <div
+          className="w-full bg-white rounded-lg p-3 min-h-[120px] overflow-auto text-sm"
+          dangerouslySetInnerHTML={{ __html: value || '<p style="color:#999">No code yet</p>' }}
+        />
+      ) : (
+        <textarea
+          rows={12}
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={`Paste your ${name === 'css' ? 'CSS' : 'HTML'} code here...`}
+          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-green-400 placeholder:text-slate-600 focus:outline-none focus:border-primary/50 resize-none font-mono leading-relaxed"
+          spellCheck={false}
+        />
+      )}
+    </div>
+  )
+}
+
 function TextAreaField({ name, value, schema, onChange }: FieldProps) {
   return (
     <div>
@@ -382,6 +419,11 @@ function IconButtonSelect({ name, value, schema, onChange }: FieldProps) {
 // ── Render Field ──────────────────────────────────────────────────
 
 function renderField(name: string, value: any, schema: any, onChange: (value: any) => void) {
+  // Code editor fields
+  if (schema.ui === 'code') {
+    return <CodeField key={name} name={name} value={value} schema={schema} onChange={onChange} />
+  }
+
   // Icon button fields
   if (schema.ui === 'icon-buttons' && schema.enum) {
     return <IconButtonSelect key={name} name={name} value={value} schema={schema} onChange={onChange} />
