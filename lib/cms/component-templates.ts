@@ -99,7 +99,7 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
         horizontalAlign: { type: 'string', title: 'Horizontal Align', enum: ['left', 'center', 'right'] },
       },
     },
-    defaultProps: { layout: '1', gap: 'medium', padding: 'medium', maxWidth: 'container', verticalAlign: 'top' },
+    defaultProps: { layout: '1', gap: 'medium', padding: 'medium', maxWidth: 'full', verticalAlign: 'top' },
     thumbnail: null,
     order: 3,
     isActive: true,
