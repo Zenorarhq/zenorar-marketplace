@@ -1,14 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useMemo } from 'react'
+import { useRef, useEffect, useCallback, useMemo } from 'react'
 
 interface DesignBlockSectionProps {
   props: {
     code?: string
     overrides?: string
-    padding?: 'none' | 'small' | 'medium' | 'large'
-    backgroundColor?: string
-    maxWidth?: 'full' | 'container' | 'narrow'
     hideOnMobile?: boolean
   }
 }
@@ -39,6 +36,16 @@ function applyOverrides(html: string, overridesJson: string): string {
   }
 }
 
+// Inject a resize script that tells the parent the content height
+const RESIZE_SCRIPT = `<script>
+function __notifyHeight() {
+  var h = document.documentElement.scrollHeight;
+  window.parent.postMessage({ type: '__designBlockResize', height: h }, '*');
+}
+window.addEventListener('load', function() { setTimeout(__notifyHeight, 50); setTimeout(__notifyHeight, 300); setTimeout(__notifyHeight, 1000); });
+new MutationObserver(__notifyHeight).observe(document.body, { childList: true, subtree: true, attributes: true });
+</script>`
+
 export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
   const {
     code,
@@ -46,24 +53,37 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
     hideOnMobile,
   } = props
 
-  const containerRef = useRef<HTMLDivElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const processed = useMemo(() => applyOverrides(code || '', overrides), [code, overrides])
 
-  // Execute any <script> tags in the pasted code
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container || !code) return
-    const scripts = container.querySelectorAll('script')
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement('script')
-      Array.from(oldScript.attributes).forEach((attr) => {
-        newScript.setAttribute(attr.name, attr.value)
-      })
-      newScript.textContent = oldScript.textContent
-      oldScript.parentNode?.replaceChild(newScript, oldScript)
-    })
+  // Build a full HTML document from the pasted code
+  const srcdoc = useMemo(() => {
+    if (!code) return ''
+    // If the code already has <html> or <head>, inject resize script before </head> or </body>
+    const containStyle = `<style>html, body { margin: 0; padding: 0; overflow-x: hidden; max-width: 100%; }</style>`
+    let html = processed
+    if (html.includes('</head>')) {
+      html = html.replace('</head>', `${containStyle}${RESIZE_SCRIPT}</head>`)
+    } else if (html.includes('</body>')) {
+      html = html.replace('</body>', `${containStyle}${RESIZE_SCRIPT}</body>`)
+    } else {
+      // Wrap in a basic document
+      html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${containStyle}${RESIZE_SCRIPT}</head><body>${html}</body></html>`
+    }
+    return html
   }, [processed, code])
+
+  const handleMessage = useCallback((e: MessageEvent) => {
+    if (e.data?.type === '__designBlockResize' && iframeRef.current) {
+      iframeRef.current.style.height = `${e.data.height}px`
+    }
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [handleMessage])
 
   if (!code) {
     return (
@@ -76,10 +96,14 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={hideOnMobile ? 'hidden md:block' : undefined}
-      dangerouslySetInnerHTML={{ __html: processed }}
-    />
+    <div className={`w-full max-w-full overflow-hidden ${hideOnMobile ? 'hidden md:block' : ''}`}>
+      <iframe
+        ref={iframeRef}
+        srcDoc={srcdoc}
+        className="w-full border-0 block"
+        style={{ minHeight: '100px', maxWidth: '100%', overflow: 'hidden' }}
+        title="Design block"
+      />
+    </div>
   )
 }
