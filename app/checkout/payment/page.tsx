@@ -625,8 +625,8 @@ export default function PaymentPage() {
     const shippingDataStr = sessionStorage.getItem('checkoutShipping')
     const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
 
-    // Use local Next.js API route for orders
-    const orderResponse = await fetch('/api/orders', {
+    // Use Railway backend via rewrite proxy
+    const orderResponse = await fetch('/backend/orders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -650,14 +650,13 @@ export default function PaymentPage() {
         useWalletBalance: useWalletBalance,
         items: items.map((item: any) => ({
           productId: item.product.id,
-          name: item.product.name || item.product.friendlyName || 'Product',
           quantity: item.quantity,
           license: item.license,
           price: item.price,
           // Pass metadata for virtual numbers, eSIMs, gift cards, etc.
           metadata: item.product.metadata || undefined,
           // Pass product type for fulfillment routing
-          productType: item.product.metadata?.productType || item.product.product_type || item.product.category || undefined,
+          productType: item.product.metadata?.productType || item.product.category || undefined,
         })),
       }),
     })
