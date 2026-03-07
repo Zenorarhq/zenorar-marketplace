@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
     const finalOrderNumber = orderResult.rows[0].orderNumber
 
     // Create order items with all required columns
+    // productId is null for dynamic products (requires migration to allow null)
     for (const item of items) {
       const itemQuantity = item.quantity || 1
       const itemPrice = item.price
@@ -136,15 +137,14 @@ export async function POST(req: NextRequest) {
          )`,
         [
           orderId,
-          item.productId || null, // productId is nullable for dynamic products
-          item.metadata?.friendlyName || `Virtual Number`,
+          item.productId || null,
+          item.metadata?.friendlyName || 'Virtual Number',
           itemQuantity,
           itemPrice,
           itemTotal,
           null,
           JSON.stringify({
             ...item.metadata,
-            // Store both formats for compatibility
             phone_number: item.metadata?.phoneNumber,
             country_id: item.metadata?.countryId,
             plan_id: item.metadata?.planCategory === 'basic' ? 'basic' : 'business',
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
             minute_tier_price: item.metadata?.minuteTierPrice,
             amount_paid: item.price,
           }),
-          'virtual_number' // product_type for fulfillment routing
+          'virtual_number'
         ]
       )
     }
@@ -185,7 +185,6 @@ export async function POST(req: NextRequest) {
     const fulfillmentResult = await fulfillOrder(orderId)
 
     if (!fulfillmentResult.success) {
-      // Log the issue but don't fail the order - it can be retried
       console.error('Fulfillment had issues:', fulfillmentResult)
     }
 
