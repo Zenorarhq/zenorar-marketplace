@@ -1,7 +1,7 @@
 // Virtual Numbers Service - Business Logic
 
 import { query } from '@/lib/db'
-import { twilioService } from './providers/twilio'
+import { providerManager } from './providers/manager'
 import { inventoryService } from './inventory'
 import { sendSmsForwardingEmail } from '@/lib/email-service'
 
@@ -167,11 +167,14 @@ class VirtualNumberService {
       const virtualNumber = numberResult.rows[0]
 
       // Release from provider if configured
-      if (virtualNumber.provider === 'twilio' && virtualNumber.provider_number_sid) {
-        const releaseResult = await twilioService.releaseNumber(virtualNumber.provider_number_sid)
-        if (!releaseResult.success) {
-          console.warn('Failed to release from provider:', releaseResult.error)
-          // Continue with local cancellation anyway
+      if (virtualNumber.provider && virtualNumber.provider_number_sid) {
+        const provider = providerManager.getProvider(virtualNumber.provider)
+        if (provider) {
+          const releaseResult = await provider.releaseNumber(virtualNumber.provider_number_sid)
+          if (!releaseResult.success) {
+            console.warn('Failed to release from provider:', releaseResult.error)
+            // Continue with local cancellation anyway
+          }
         }
       }
 
@@ -361,10 +364,13 @@ class VirtualNumberService {
 
       for (const number of expiredResult.rows) {
         // Release from provider
-        if (number.provider === 'twilio' && number.provider_number_sid) {
-          const releaseResult = await twilioService.releaseNumber(number.provider_number_sid)
-          if (releaseResult.success) {
-            released++
+        if (number.provider && number.provider_number_sid) {
+          const provider = providerManager.getProvider(number.provider)
+          if (provider) {
+            const releaseResult = await provider.releaseNumber(number.provider_number_sid)
+            if (releaseResult.success) {
+              released++
+            }
           }
         }
 

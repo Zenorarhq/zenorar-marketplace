@@ -6,8 +6,8 @@ import { inventoryService } from '@/lib/virtual-numbers/inventory'
 
 /**
  * GET /api/virtual-numbers/available
- * Search available numbers - inventory first, then Twilio
- * Returns numbers with 'source' field: 'inventory' (instant) or 'twilio' (new)
+ * Search available numbers - inventory first, then enabled providers
+ * Returns numbers with 'source' field: 'inventory' (instant) or provider slug (new)
  *
  * type param: 'local', 'toll-free', 'mobile', or undefined/null for ALL types
  */
@@ -109,15 +109,15 @@ export async function GET(request: NextRequest) {
           mms: n.mmsEnabled
         },
         monthlyPrice: retailMonthly,
-        source: n.source, // 'inventory' or 'twilio' or other provider
+        source: n.source, // 'inventory' or provider slug (twilio, vonage, etc.)
         countryId: n.countryId || resolvedCountryId, // Include countryId for checkout
-        provider: n.provider || 'twilio' // Include provider for multi-provider support
+        provider: n.provider // Include provider for multi-provider support
       }
     })
 
-    // Count inventory vs Twilio numbers for stats
+    // Count inventory vs provider numbers for stats
     const inventoryCount = formattedNumbers.filter(n => n.source === 'inventory').length
-    const twilioCount = formattedNumbers.filter(n => n.source === 'twilio').length
+    const providerCount = formattedNumbers.filter(n => n.source !== 'inventory').length
 
     return NextResponse.json({
       success: true,
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
       stats: {
         total: formattedNumbers.length,
         fromInventory: inventoryCount,
-        fromTwilio: twilioCount
+        fromProviders: providerCount
       },
       message: formattedNumbers.length === 0 ? 'No numbers available for this country/type' : undefined
     })

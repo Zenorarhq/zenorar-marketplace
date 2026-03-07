@@ -2,7 +2,7 @@
 // Manages owned numbers that can be rented to customers
 
 import { query } from '@/lib/db'
-import { twilioService } from './providers/twilio'
+import { providerManager } from './providers/manager'
 
 export interface InventoryNumber {
   id: string
@@ -21,9 +21,9 @@ export interface InventoryNumber {
   rentalExpiresAt?: Date
   twilioNextBilling?: Date
   timesRented: number
-  source: 'inventory' | 'twilio'  // For display purposes
-  locality?: string   // City/area from Twilio
-  region?: string     // State/region from Twilio
+  source: 'inventory' | string  // 'inventory' for pool numbers, provider slug for fresh numbers
+  locality?: string   // City/area from provider
+  region?: string     // State/region from provider
 }
 
 export interface RentNumberParams {
@@ -73,8 +73,8 @@ class InventoryService {
     )
 
     if (countryResult.rows.length === 0) {
-      // Country not in our system, fall back to Twilio only
-      return this.getTwilioNumbers(countryCode, numberType, limit)
+      // Country not in our system, fall back to enabled providers
+      return this.getProviderNumbers(countryCode, numberType, limit)
     }
 
     const countryId = countryResult.rows[0].id
@@ -116,16 +116,16 @@ class InventoryService {
       })
     }
 
-    // 3. If we need more numbers, get from Twilio
+    // 3. If we need more numbers, get from enabled providers
     const remaining = limit - numbers.length
     if (remaining > 0) {
-      const twilioNumbers = await this.getTwilioNumbers(countryCode, numberType, remaining, countryId)
+      const providerNumbers = await this.getProviderNumbers(countryCode, numberType, remaining, countryId)
 
       // Filter out numbers we already have in inventory
       const existingPhones = new Set(numbers.map(n => n.phoneNumber))
-      for (const tn of twilioNumbers) {
-        if (!existingPhones.has(tn.phoneNumber)) {
-          numbers.push(tn)
+      for (const pn of providerNumbers) {
+        if (!existingPhones.has(pn.phoneNumber)) {
+          numbers.push(pn)
         }
       }
     }
@@ -134,18 +134,23 @@ class InventoryService {
   }
 
   /**
-   * Get fresh numbers from Twilio API
+   * Get fresh numbers from all enabled providers
    */
-  private async getTwilioNumbers(
+  private async getProviderNumbers(
     countryCode: string,
     numberType: string,
     limit: number,
     countryId?: string
   ): Promise<InventoryNumber[]> {
-    const twilioType = numberType === 'toll-free' ? 'tollFree' :
-                       numberType === 'mobile' ? 'mobile' : 'local'
+    const providerType = numberType === 'toll-free' ? 'toll-free' :
+                         numberType === 'mobile' ? 'mobile' : 'local'
 
-    const twilioNumbers = await twilioService.searchNumbers(countryCode, twilioType, undefined, limit)
+    // Search all enabled providers
+    const providerNumbers = await providerManager.searchNumbersAllProviders(
+      countryCode,
+      providerType as 'local' | 'toll-free' | 'mobile',
+      { limit }
+    )
 
     // If countryId wasn't provided, try to look it up from the country code
     let resolvedCountryId = countryId || ''
@@ -157,22 +162,22 @@ class InventoryService {
       resolvedCountryId = countryResult.rows[0]?.id || ''
     }
 
-    return twilioNumbers.map(n => ({
+    return providerNumbers.map(n => ({
       id: '',  // No inventory ID yet
       phoneNumber: n.phoneNumber,
-      phoneNumberDisplay: n.friendlyName,
+      phoneNumberDisplay: n.friendlyName || n.phoneNumber,
       countryId: resolvedCountryId,
       numberType,
-      provider: 'twilio',
+      provider: n.providerSlug,
       providerNumberSid: '',
-      smsEnabled: n.capabilities.sms,
-      voiceEnabled: n.capabilities.voice,
-      mmsEnabled: n.capabilities.mms,
+      smsEnabled: n.capabilities?.sms ?? true,
+      voiceEnabled: n.capabilities?.voice ?? true,
+      mmsEnabled: n.capabilities?.mms ?? false,
       status: 'available' as const,
       timesRented: 0,
-      source: 'twilio' as const,
-      locality: n.locality,
-      region: n.region
+      source: n.providerSlug,  // Provider slug (twilio, vonage, plivo, etc.)
+      locality: n.locality || undefined,
+      region: n.region || undefined
     }))
   }
 
@@ -212,8 +217,8 @@ class InventoryService {
 
         inventoryId = existing.id
       } else {
-        // Number not in inventory - purchase from Twilio
-        const purchaseResult = await twilioService.purchaseNumber(phoneNumber)
+        // Number not in inventory - purchase from enabled providers with fallback
+        const purchaseResult = await providerManager.purchaseNumberWithFallback(phoneNumber)
 
         if (!purchaseResult.success) {
           return { success: false, error: purchaseResult.error || 'Failed to purchase number' }
@@ -228,15 +233,15 @@ class InventoryService {
 
         const countryId = countryResult.rows[0]?.id || null
 
-        // Add to inventory
+        // Add to inventory with the provider that successfully purchased
         const insertResult = await query(
           `INSERT INTO virtual_number_inventory (
              phone_number, phone_number_display, country_id, number_type,
              provider, provider_number_sid, sms_enabled, voice_enabled, mms_enabled,
              twilio_cost_monthly, twilio_purchased_at, twilio_next_billing
-           ) VALUES ($1, $2, $3, 'local', 'twilio', $4, true, true, false, 1.00, NOW(), NOW() + INTERVAL '30 days')
+           ) VALUES ($1, $2, $3, 'local', $4, $5, true, true, false, 1.00, NOW(), NOW() + INTERVAL '30 days')
            RETURNING id`,
-          [phoneNumber, phoneNumber, countryId, purchaseResult.numberSid]
+          [phoneNumber, phoneNumber, countryId, purchaseResult.providerSlug, purchaseResult.numberSid]
         )
 
         inventoryId = insertResult.rows[0].id
@@ -418,9 +423,9 @@ class InventoryService {
     let released = 0
 
     try {
-      // Find available numbers where Twilio billing is tomorrow or today
+      // Find available numbers where billing is tomorrow or today
       const toReleaseResult = await query(
-        `SELECT id, phone_number, provider_number_sid
+        `SELECT id, phone_number, provider, provider_number_sid
          FROM virtual_number_inventory
          WHERE status = 'available'
            AND twilio_next_billing <= NOW() + INTERVAL '1 day'
@@ -429,8 +434,15 @@ class InventoryService {
 
       for (const row of toReleaseResult.rows) {
         try {
-          // Release from Twilio
-          const releaseResult = await twilioService.releaseNumber(row.provider_number_sid)
+          // Get the provider instance for this number
+          const provider = providerManager.getProvider(row.provider || 'twilio')
+          if (!provider) {
+            errors.push(`Provider ${row.provider} not found for ${row.phone_number}`)
+            continue
+          }
+
+          // Release from provider
+          const releaseResult = await provider.releaseNumber(row.provider_number_sid)
 
           if (releaseResult.success) {
             // Remove from inventory
