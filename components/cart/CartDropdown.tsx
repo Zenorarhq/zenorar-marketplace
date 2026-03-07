@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
@@ -141,9 +142,9 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
             className="flex gap-3 p-3 bg-surface-dark rounded-xl"
           >
             <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
-              {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryFlag ? (
+              {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                  <span className="text-2xl">{item.product.metadata.countryFlag}</span>
+                  <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
                 </div>
               ) : (item.product.image || item.product.images?.[0]?.url) ? (
                 <Image

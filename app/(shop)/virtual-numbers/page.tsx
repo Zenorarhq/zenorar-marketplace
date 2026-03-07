@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
@@ -444,7 +445,8 @@ export default function VirtualNumbersPage() {
         phoneNumber: selectedNumber.phoneNumber,
         countryId: selectedCountry.id,
         countryName: selectedCountry.name,
-        countryFlag: selectedCountry.flagEmoji || '🌍',  // For cart display
+        countryIsoCode: selectedCountry.isoCode,  // For FlagIcon component
+        countryFlag: selectedCountry.flagEmoji || '🌍',  // Fallback emoji
         planId: selectedPlan.id,
         planName: selectedPlan.name,
         numberType: selectedNumber.type,
@@ -572,7 +574,9 @@ export default function VirtualNumbersPage() {
                           : 'bg-charcoal border-border-dark hover:border-primary/50'
                       }`}
                     >
-                      <span className="text-2xl mb-2 block">{country.flagEmoji || '🌍'}</span>
+                      <div className="flex justify-center mb-2">
+                        <FlagIcon countryCode={country.isoCode} className="w-8 h-8 rounded" />
+                      </div>
                       <h3 className="font-bold text-white text-xs mb-1">{country.name}</h3>
                       <p className="text-xs text-primary font-bold">Starting From {formatPrice(2)}</p>
                     </button>
@@ -627,7 +631,11 @@ export default function VirtualNumbersPage() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-3xl">{selectedCountry?.flagEmoji || '🌍'}</span>
+                          {selectedCountry?.isoCode ? (
+                            <FlagIcon countryCode={selectedCountry.isoCode} className="w-10 h-10 rounded" />
+                          ) : (
+                            <span className="text-3xl">🌍</span>
+                          )}
                           <div>
                             <h3 className="font-bold text-white">{number.friendlyName}</h3>
                             <p className="text-sm text-slate-500">
@@ -838,7 +846,9 @@ export default function VirtualNumbersPage() {
                               : 'bg-charcoal border-border-dark hover:border-primary/50'
                           }`}
                         >
-                          <span className="text-xl mb-1 block">{country.flag || '🌍'}</span>
+                          <div className="flex justify-center mb-1">
+                            <FlagIcon countryCode={country.code} className="w-6 h-6 rounded" />
+                          </div>
                           <h3 className="font-medium text-white text-xs truncate">{country.name}</h3>
                         </button>
                       ))}
@@ -873,7 +883,7 @@ export default function VirtualNumbersPage() {
                   <p className="text-slate-500 text-sm mb-1">Country</p>
                   {selectedOtpCountry ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">{selectedOtpCountry.flag || '🌍'}</span>
+                      <FlagIcon countryCode={selectedOtpCountry.code} className="w-6 h-6 rounded" />
                       <span className="text-white font-medium">{selectedOtpCountry.name}</span>
                     </div>
                   ) : (
@@ -1214,7 +1224,8 @@ function PlanSelectionModal({
         phoneNumber: number.phoneNumber,
         countryId: country.id,
         countryName: country.name,
-        countryFlag: country.flagEmoji || '🌍',  // For cart display
+        countryIsoCode: country.isoCode,  // For FlagIcon component
+        countryFlag: country.flagEmoji || '🌍',  // Fallback emoji
         numberType: number.type,
         friendlyName: number.friendlyName,
         planCategory,

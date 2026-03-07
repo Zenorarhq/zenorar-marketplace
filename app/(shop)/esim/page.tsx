@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useRouter } from 'next/navigation'
@@ -155,7 +156,13 @@ export default function EsimPage() {
                   : 'bg-charcoal border-border-dark hover:border-primary/50'
               }`}
             >
-              <span className="text-2xl mb-2 block">{region.flagEmoji || '🌍'}</span>
+              <div className="flex justify-center mb-2">
+                {region.slug.length === 2 ? (
+                  <FlagIcon countryCode={region.slug.toUpperCase()} className="w-8 h-8 rounded" />
+                ) : (
+                  <Icon name="globe" size={32} className="text-primary" />
+                )}
+              </div>
               <h3 className="font-bold text-white text-sm mb-1">{region.name}</h3>
               <p className="text-xs text-slate-500">
                 {getRegionPlanCount(region.slug) || region.countryCount} plans

@@ -13,6 +13,7 @@ import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -1901,11 +1902,11 @@ export default function PaymentPage() {
               <div className="space-y-4 mb-6">
                 {items.map((item) => (
                   <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-surface-dark rounded-lg flex items-center justify-center flex-shrink-0">
-                      {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryFlag ? (
-                        <span className="text-2xl">{item.product.metadata.countryFlag}</span>
+                    <div className="w-12 h-12 bg-surface-dark rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
+                        <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
                       ) : (
-                        <Icon name={item.product.icon || 'code'} size={20} className="text-slate-500" />
+                        <Icon name={item.product.icon || (item.product.metadata?.productType === 'virtual_number' ? 'phone' : 'code')} size={20} className="text-slate-500" />
                       )}
                     </div>
                     <div className="flex-grow min-w-0">

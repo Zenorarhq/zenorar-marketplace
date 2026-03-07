@@ -8,6 +8,7 @@ import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -185,10 +186,10 @@ export default function CartPage() {
               >
                 {/* Product Image / Flag for Virtual Numbers */}
                 <div className="w-24 h-24 bg-charcoal rounded-xl overflow-hidden flex-shrink-0">
-                  {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryFlag ? (
-                    // Virtual number - show country flag
+                  {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
+                    // Virtual number - show country flag image
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                      <span className="text-5xl">{item.product.metadata.countryFlag}</span>
+                      <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-16 h-16 rounded" />
                     </div>
                   ) : (item.product.image || item.product.images?.[0]?.url) ? (
                     <Image
