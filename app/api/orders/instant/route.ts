@@ -97,42 +97,54 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Get user's email for the order
+    const userResult = await query(
+      `SELECT email FROM users WHERE id = $1`,
+      [userId]
+    )
+    const userEmail = userResult.rows[0]?.email || 'unknown@zenorar.com'
+
     // Generate order number
     const orderNumber = `ZN${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
-    // Create order
+    // Create order with all required columns
     const orderResult = await query(
       `INSERT INTO orders (
-         id, "orderNumber", "userId", status, total, "paymentMethod",
-         "paymentStatus", "createdAt", "updatedAt"
+         id, "orderNumber", "userId", status, subtotal, total, email,
+         "paymentMethod", "paymentStatus", "paidAt", "createdAt", "updatedAt"
        ) VALUES (
-         gen_random_uuid()::text, $1, $2, 'PROCESSING', $3, 'WALLET',
-         'PAID', NOW(), NOW()
+         gen_random_uuid()::text, $1, $2, 'PROCESSING', $3, $4, $5,
+         'WALLET', 'PAID', NOW(), NOW(), NOW()
        ) RETURNING id, "orderNumber"`,
-      [orderNumber, userId, total]
+      [orderNumber, userId, total, total, userEmail]
     )
 
     const orderId = orderResult.rows[0].id
     const finalOrderNumber = orderResult.rows[0].orderNumber
 
-    // Create order items
+    // Create order items with all required columns
     for (const item of items) {
+      const itemQuantity = item.quantity || 1
+      const itemPrice = item.price
+      const itemTotal = itemPrice * itemQuantity
+
       await query(
         `INSERT INTO order_items (
-           id, "orderId", "productId", name, quantity, price, license, metadata
+           id, "orderId", "productId", name, quantity, price, total, license, metadata, product_type
          ) VALUES (
-           gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7
+           gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9
          )`,
         [
           orderId,
-          item.productId || `dynamic-${Date.now()}`,
+          item.productId || null, // productId is nullable for dynamic products
           item.metadata?.friendlyName || `Virtual Number`,
-          item.quantity || 1,
-          item.price,
+          itemQuantity,
+          itemPrice,
+          itemTotal,
           null,
           JSON.stringify({
             ...item.metadata,
-            // Convert camelCase to snake_case for fulfillment
+            // Store both formats for compatibility
             phone_number: item.metadata?.phoneNumber,
             country_id: item.metadata?.countryId,
             plan_id: item.metadata?.planCategory === 'basic' ? 'basic' : 'business',
@@ -143,7 +155,8 @@ export async function POST(req: NextRequest) {
             minute_included: item.metadata?.minuteIncluded,
             minute_tier_price: item.metadata?.minuteTierPrice,
             amount_paid: item.price,
-          })
+          }),
+          'virtual_number' // product_type for fulfillment routing
         ]
       )
     }
