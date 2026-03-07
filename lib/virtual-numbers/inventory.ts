@@ -22,6 +22,8 @@ export interface InventoryNumber {
   twilioNextBilling?: Date
   timesRented: number
   source: 'inventory' | 'twilio'  // For display purposes
+  locality?: string   // City/area from Twilio
+  region?: string     // State/region from Twilio
 }
 
 export interface RentNumberParams {
@@ -155,7 +157,9 @@ class InventoryService {
       mmsEnabled: n.capabilities.mms,
       status: 'available' as const,
       timesRented: 0,
-      source: 'twilio' as const
+      source: 'twilio' as const,
+      locality: n.locality,
+      region: n.region
     }))
   }
 

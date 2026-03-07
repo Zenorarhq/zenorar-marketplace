@@ -93,7 +93,8 @@ export async function GET(request: NextRequest) {
       return {
         phoneNumber: n.phoneNumber,
         friendlyName: n.phoneNumberDisplay || n.phoneNumber,
-        locality: undefined, // Will be populated from Twilio response if available
+        locality: n.locality,
+        region: n.region,
         type: numberType,
         capabilities: {
           sms: n.smsEnabled,
