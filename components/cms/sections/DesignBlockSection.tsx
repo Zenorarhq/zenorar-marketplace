@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 
 interface DesignBlockSectionProps {
   props: {
@@ -43,49 +43,27 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
   const {
     code,
     overrides = '{}',
-    padding = 'none',
-    maxWidth = 'full',
     hideOnMobile,
   } = props
 
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-
-  const resizeIframe = useCallback(() => {
-    const iframe = iframeRef.current
-    if (!iframe?.contentDocument?.body) return
-    const height = iframe.contentDocument.body.scrollHeight
-    iframe.style.height = `${height}px`
-  }, [])
-
-  useEffect(() => {
-    const iframe = iframeRef.current
-    if (!iframe) return
-    const handleLoad = () => resizeIframe()
-    iframe.addEventListener('load', handleLoad)
-    return () => iframe.removeEventListener('load', handleLoad)
-  }, [resizeIframe])
-
-  useEffect(() => {
-    const t1 = setTimeout(resizeIframe, 100)
-    const t2 = setTimeout(resizeIframe, 500)
-    const t3 = setTimeout(resizeIframe, 1500)
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
-  }, [code, overrides, resizeIframe])
-
-  const paddingClasses: Record<string, string> = {
-    none: 'py-0',
-    small: 'py-4',
-    medium: 'py-8',
-    large: 'py-12',
-  }
-
-  const maxWidthClasses: Record<string, string> = {
-    full: 'max-w-full',
-    container: 'max-w-6xl',
-    narrow: 'max-w-4xl',
-  }
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const processed = useMemo(() => applyOverrides(code || '', overrides), [code, overrides])
+
+  // Execute any <script> tags in the pasted code
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || !code) return
+    const scripts = container.querySelectorAll('script')
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script')
+      Array.from(oldScript.attributes).forEach((attr) => {
+        newScript.setAttribute(attr.name, attr.value)
+      })
+      newScript.textContent = oldScript.textContent
+      oldScript.parentNode?.replaceChild(newScript, oldScript)
+    })
+  }, [processed, code])
 
   if (!code) {
     return (
@@ -97,30 +75,11 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
     )
   }
 
-  const srcdoc = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>body { margin: 0; padding: 0; }</style>
-</head>
-<body>${processed}</body>
-</html>`
-
   return (
     <div
-      className={`${paddingClasses[padding]} px-4 ${hideOnMobile ? 'hidden md:block' : ''}`}
-    >
-      <div className={`${maxWidthClasses[maxWidth]} mx-auto`}>
-        <iframe
-          ref={iframeRef}
-          srcDoc={srcdoc}
-          className="w-full border-0 overflow-hidden"
-          style={{ minHeight: '50px' }}
-          sandbox="allow-same-origin allow-scripts allow-popups"
-          title="Design block"
-        />
-      </div>
-    </div>
+      ref={containerRef}
+      className={hideOnMobile ? 'hidden md:block' : undefined}
+      dangerouslySetInnerHTML={{ __html: processed }}
+    />
   )
 }
