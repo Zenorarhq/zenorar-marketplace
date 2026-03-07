@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import Icon from '@/components/ui/Icon'
 import { mediaApi } from '@/lib/api/media'
+import MediaPickerModal from '@/components/admin/MediaPickerModal'
 
 interface ImageFieldProps {
   name: string
@@ -14,6 +15,7 @@ interface ImageFieldProps {
 export default function ImageField({ name, value, schema, onChange }: ImageFieldProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showLibrary, setShowLibrary] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,7 +79,7 @@ export default function ImageField({ name, value, schema, onChange }: ImageField
         </div>
       )}
 
-      {/* Upload Button + URL Input */}
+      {/* Upload + Browse Library + URL Input */}
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -97,12 +99,20 @@ export default function ImageField({ name, value, schema, onChange }: ImageField
             </>
           )}
         </button>
+        <button
+          type="button"
+          onClick={() => setShowLibrary(true)}
+          className="flex items-center gap-1.5 px-3 py-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-sm text-slate-300 hover:bg-[#222] hover:text-white transition-colors flex-shrink-0"
+        >
+          <Icon name="folder" size={14} />
+          Library
+        </button>
         <input
           type="text"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder="https://... or upload"
-          className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+          className="flex-1 min-w-0 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
         />
       </div>
 
@@ -117,6 +127,15 @@ export default function ImageField({ name, value, schema, onChange }: ImageField
       {error && (
         <p className="text-red-400 text-xs mt-1">{error}</p>
       )}
+
+      {/* Media Library Modal */}
+      <MediaPickerModal
+        isOpen={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        onSelect={(file) => onChange(file.url)}
+        allowedTypes={['image']}
+        title="Select Image"
+      />
     </div>
   )
 }
