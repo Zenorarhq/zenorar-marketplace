@@ -39,11 +39,14 @@ function applyOverrides(html: string, overridesJson: string): string {
 // Inject a resize script that tells the parent the content height
 const RESIZE_SCRIPT = `<script>
 function __notifyHeight() {
-  var h = document.documentElement.scrollHeight;
+  var h = Math.max(document.body.scrollHeight, document.body.offsetHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight);
   window.parent.postMessage({ type: '__designBlockResize', height: h }, '*');
 }
-window.addEventListener('load', function() { setTimeout(__notifyHeight, 50); setTimeout(__notifyHeight, 300); setTimeout(__notifyHeight, 1000); });
+window.addEventListener('load', function() { __notifyHeight(); setTimeout(__notifyHeight, 100); setTimeout(__notifyHeight, 500); setTimeout(__notifyHeight, 1500); setTimeout(__notifyHeight, 3000); });
+window.addEventListener('resize', __notifyHeight);
 new MutationObserver(__notifyHeight).observe(document.body, { childList: true, subtree: true, attributes: true });
+new ResizeObserver(__notifyHeight).observe(document.documentElement);
+setInterval(__notifyHeight, 2000);
 </script>`
 
 export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
