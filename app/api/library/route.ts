@@ -80,17 +80,17 @@ export async function GET(request: Request) {
       SELECT
         uvn.id,
         'virtual-numbers' as category,
-        COALESCE(vnp.name, 'Virtual Number') as name,
+        COALESCE(vnp.name, INITCAP(COALESCE(uvn.plan_category, 'basic')) || ' Plan') as name,
         uvn.phone_number_display as "phoneNumberDisplay",
         uvn.phone_number as "phoneNumber",
         uvn.status,
         uvn.created_at as purchase_date,
         uvn.expires_at as "expiresAt",
         uvn.current_period_sms as "smsUsed",
-        COALESCE(vnp.sms_included, 0) as "smsIncluded",
+        COALESCE(vnp.sms_included, uvn.sms_limit, 100) as "smsIncluded",
         (SELECT COUNT(*)::int FROM virtual_number_messages WHERE virtual_number_id = uvn.id AND direction = 'inbound' AND is_read = false) as "unreadCount"
       FROM user_virtual_numbers uvn
-      LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+      LEFT JOIN virtual_number_plans vnp ON uvn.plan_id::text = vnp.id::text
       WHERE uvn.user_id = $1 AND uvn.status IN ('active', 'expired')
       ORDER BY uvn.created_at DESC
       `,

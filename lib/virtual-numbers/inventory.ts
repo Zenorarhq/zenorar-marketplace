@@ -119,7 +119,7 @@ class InventoryService {
     // 3. If we need more numbers, get from Twilio
     const remaining = limit - numbers.length
     if (remaining > 0) {
-      const twilioNumbers = await this.getTwilioNumbers(countryCode, numberType, remaining)
+      const twilioNumbers = await this.getTwilioNumbers(countryCode, numberType, remaining, countryId)
 
       // Filter out numbers we already have in inventory
       const existingPhones = new Set(numbers.map(n => n.phoneNumber))
@@ -139,18 +139,29 @@ class InventoryService {
   private async getTwilioNumbers(
     countryCode: string,
     numberType: string,
-    limit: number
+    limit: number,
+    countryId?: string
   ): Promise<InventoryNumber[]> {
     const twilioType = numberType === 'toll-free' ? 'tollFree' :
                        numberType === 'mobile' ? 'mobile' : 'local'
 
     const twilioNumbers = await twilioService.searchNumbers(countryCode, twilioType, undefined, limit)
 
+    // If countryId wasn't provided, try to look it up from the country code
+    let resolvedCountryId = countryId || ''
+    if (!resolvedCountryId) {
+      const countryResult = await query(
+        `SELECT id FROM virtual_number_countries WHERE iso_code = $1`,
+        [countryCode]
+      )
+      resolvedCountryId = countryResult.rows[0]?.id || ''
+    }
+
     return twilioNumbers.map(n => ({
       id: '',  // No inventory ID yet
       phoneNumber: n.phoneNumber,
       phoneNumberDisplay: n.friendlyName,
-      countryId: '',
+      countryId: resolvedCountryId,
       numberType,
       provider: 'twilio',
       providerNumberSid: '',

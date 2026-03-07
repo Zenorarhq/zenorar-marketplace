@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
          uvn.id,
          uvn.user_id as "userId",
          uvn.plan_id as "planId",
-         vnp.name as "planName",
+         COALESCE(vnp.name, INITCAP(COALESCE(uvn.plan_category, 'basic')) || ' Plan') as "planName",
          uvn.country_id as "countryId",
          vnc.name as "countryName",
          vnc.flag_emoji as "flagEmoji",
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
           WHERE vnm.virtual_number_id = uvn.id AND vnm.is_read = false AND vnm.direction = 'inbound'
          ) as "unreadCount"
        FROM user_virtual_numbers uvn
-       LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+       LEFT JOIN virtual_number_plans vnp ON uvn.plan_id::text = vnp.id::text
        LEFT JOIN virtual_number_countries vnc ON uvn.country_id = vnc.id
        WHERE uvn.user_id = $1
        ORDER BY uvn.created_at DESC`,

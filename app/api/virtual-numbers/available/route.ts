@@ -83,6 +83,13 @@ export async function GET(request: NextRequest) {
     // Limit total results
     allNumbers = allNumbers.slice(0, limit)
 
+    // Get the country ID for this country code
+    const countryIdResult = await query(
+      `SELECT id FROM virtual_number_countries WHERE iso_code = $1`,
+      [countryCode]
+    )
+    const resolvedCountryId = countryIdResult.rows[0]?.id || null
+
     // Format for frontend
     const formattedNumbers = allNumbers.map(n => {
       const numberType = n.numberType || type || 'local'
@@ -102,7 +109,9 @@ export async function GET(request: NextRequest) {
           mms: n.mmsEnabled
         },
         monthlyPrice: retailMonthly,
-        source: n.source // 'inventory' or 'twilio'
+        source: n.source, // 'inventory' or 'twilio' or other provider
+        countryId: n.countryId || resolvedCountryId, // Include countryId for checkout
+        provider: n.provider || 'twilio' // Include provider for multi-provider support
       }
     })
 

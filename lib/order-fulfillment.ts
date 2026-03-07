@@ -709,6 +709,8 @@ async function processVirtualNumberItem(
     const amountPaid = metadata.amount_paid || metadata.amountPaid || 0
     const minuteTier = metadata.minute_tier || metadata.minuteTier
     const minuteTierPrice = metadata.minute_tier_price || metadata.minuteTierPrice
+    const smsLimit = metadata.sms_limit || metadata.smsLimit
+    const minuteIncluded = metadata.minute_included || metadata.minuteIncluded
 
     if (!phoneNumber || !countryId || !planId) {
       throw new Error('Missing required virtual number metadata (phone_number, country_id, plan_id)')
@@ -724,7 +726,9 @@ async function processVirtualNumberItem(
       amountPaid,
       minuteTier,
       minuteTierPrice,
-      durationDays
+      durationDays,
+      smsLimit,
+      minuteIncluded
     )
 
     if (!provisionResult.success) {
@@ -738,11 +742,11 @@ async function processVirtualNumberItem(
            uvn.*,
            u.email as user_email,
            u.name as user_name,
-           vnp.name as plan_name,
+           COALESCE(vnp.name, INITCAP(uvn.plan_category) || ' Plan') as plan_name,
            o."orderNumber" as order_number
          FROM user_virtual_numbers uvn
          JOIN users u ON uvn.user_id = u.id
-         JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+         LEFT JOIN virtual_number_plans vnp ON uvn.plan_id::text = vnp.id::text
          LEFT JOIN orders o ON uvn.order_id = o.id
          WHERE uvn.id = $1`,
         [provisionResult.userVirtualNumberId]

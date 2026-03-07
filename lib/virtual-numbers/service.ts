@@ -28,7 +28,9 @@ class VirtualNumberService {
     amountPaid: number = 0,
     minuteTier?: string,
     minuteTierPrice?: number,
-    durationDaysOverride?: number
+    durationDaysOverride?: number,
+    smsLimit?: number,
+    minuteIncluded?: number
   ): Promise<ProvisionResult> {
     try {
       // Get plan details to determine duration
@@ -66,6 +68,15 @@ class VirtualNumberService {
         return { success: false, error: rentResult.error }
       }
 
+      // Get inventory details including provider info
+      const inventoryResult = await query(
+        `SELECT provider, provider_number_sid FROM virtual_number_inventory WHERE id = $1`,
+        [rentResult.inventoryId]
+      )
+      const providerInfo = inventoryResult.rows[0] || {}
+      const provider = providerInfo.provider || 'twilio'
+      const providerNumberSid = providerInfo.provider_number_sid || null
+
       // Get country details for display formatting
       const countryResult = await query(
         `SELECT iso_code FROM virtual_number_countries WHERE id = $1`,
@@ -82,6 +93,9 @@ class VirtualNumberService {
 
       let userVirtualNumberId: string
 
+      // Determine plan category from planId
+      const planCategory = planId === 'business' ? 'business' : 'basic'
+
       if (existingResult.rows.length > 0) {
         // Update existing record
         userVirtualNumberId = existingResult.rows[0].id
@@ -89,25 +103,35 @@ class VirtualNumberService {
           `UPDATE user_virtual_numbers SET
              status = 'active',
              plan_id = $1,
-             expires_at = $2,
-             order_id = $3,
-             inventory_id = $4,
+             plan_category = $2,
+             plan_duration_days = $3,
+             sms_limit = $4,
+             minute_tier = $5,
+             minute_included = $6,
+             expires_at = $7,
+             order_id = $8,
+             inventory_id = $9,
+             provider = $10,
+             provider_number_sid = $11,
              updated_at = NOW()
-           WHERE id = $5`,
-          [planId, rentResult.expiresAt, orderId, rentResult.inventoryId, userVirtualNumberId]
+           WHERE id = $12`,
+          [planId, planCategory, durationDays, smsLimit || 100, minuteTier, minuteIncluded || 0,
+           rentResult.expiresAt, orderId, rentResult.inventoryId, provider, providerNumberSid, userVirtualNumberId]
         )
       } else {
         // Create new user virtual number record
         const insertResult = await query(
           `INSERT INTO user_virtual_numbers
-             (id, user_id, plan_id, country_id, phone_number, phone_number_display, number_type,
+             (id, user_id, plan_id, plan_category, plan_duration_days, sms_limit, minute_tier, minute_included,
+              country_id, phone_number, phone_number_display, number_type,
               provider, provider_number_sid, status, order_id, expires_at, next_billing_at,
               inventory_id, created_at, updated_at)
-           VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, 'twilio', $7, 'active', $8, $9, $9, $10, NOW(), NOW())
+           VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active', $14, $15, $15, $16, NOW(), NOW())
            RETURNING id`,
           [
-            userId, planId, countryId, phoneNumber, displayNumber, numberType,
-            rentResult.inventoryId, orderId, rentResult.expiresAt, rentResult.inventoryId
+            userId, planId, planCategory, durationDays, smsLimit || 100, minuteTier, minuteIncluded || 0,
+            countryId, phoneNumber, displayNumber, numberType,
+            provider, providerNumberSid, orderId, rentResult.expiresAt, rentResult.inventoryId
           ]
         )
         userVirtualNumberId = insertResult.rows[0].id
