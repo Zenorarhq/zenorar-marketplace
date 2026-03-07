@@ -83,6 +83,8 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
     narrow: 'max-w-4xl',
   }
 
+  const processed = useMemo(() => applyOverrides(code || '', overrides), [code, overrides])
+
   if (!code) {
     return (
       <div className="py-8 px-4">
@@ -92,8 +94,6 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
       </div>
     )
   }
-
-  const processed = useMemo(() => applyOverrides(code, overrides), [code, overrides])
 
   const srcdoc = `<!DOCTYPE html>
 <html>
