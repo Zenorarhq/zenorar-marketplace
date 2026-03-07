@@ -63,8 +63,14 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
   // Build a full HTML document from the pasted code
   const srcdoc = useMemo(() => {
     if (!code) return ''
-    // If the code already has <html> or <head>, inject resize script before </head> or </body>
-    const containStyle = `<style>html, body { margin: 0; padding: 0; overflow-x: hidden; max-width: 100%; }</style>`
+    // Override viewport-height locks and internal scroll so content flows naturally
+    const containStyle = `<style>
+html, body { margin: 0; padding: 0; overflow-x: hidden; max-width: 100%; height: auto !important; min-height: auto !important; }
+.h-screen, .min-h-screen { height: auto !important; min-height: auto !important; }
+.overflow-y-auto, .overflow-y-scroll { overflow-y: visible !important; }
+header[class*="fixed"] { position: sticky !important; }
+aside[class*="fixed"] { position: sticky !important; top: 0; height: auto !important; }
+</style>`
     let html = processed
     if (html.includes('</head>')) {
       html = html.replace('</head>', `${containStyle}${RESIZE_SCRIPT}</head>`)
