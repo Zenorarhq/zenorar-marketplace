@@ -20,10 +20,12 @@ interface FieldProps {
   onChange: (value: any) => void
 }
 
+// ── Field Components ──────────────────────────────────────────────
+
 function TextField({ name, value, schema, onChange }: FieldProps) {
   return (
     <div>
-      <label className="block text-sm font-medium text-white mb-2 capitalize">
+      <label className="block text-xs font-medium text-slate-400 mb-1.5">
         {schema.title || name.replace(/([A-Z])/g, ' $1').trim()}
       </label>
       <input
@@ -40,7 +42,7 @@ function TextField({ name, value, schema, onChange }: FieldProps) {
 function TextAreaField({ name, value, schema, onChange }: FieldProps) {
   return (
     <div>
-      <label className="block text-sm font-medium text-white mb-2 capitalize">
+      <label className="block text-xs font-medium text-slate-400 mb-1.5">
         {schema.title || name.replace(/([A-Z])/g, ' $1').trim()}
       </label>
       <textarea
@@ -58,7 +60,6 @@ function SelectField({ name, value, schema, onChange }: FieldProps) {
   const options = schema.enum || []
   const isLayoutField = name === 'layout'
 
-  // Layout visual previews
   const layoutPreviews: Record<string, React.ReactNode> = {
     '1': (
       <div className="flex gap-1 h-4">
@@ -102,7 +103,7 @@ function SelectField({ name, value, schema, onChange }: FieldProps) {
 
   return (
     <div>
-      <label className="block text-sm font-medium text-white mb-2 capitalize">
+      <label className="block text-xs font-medium text-slate-400 mb-1.5">
         {schema.title || name.replace(/([A-Z])/g, ' $1').trim()}
       </label>
       <select
@@ -118,7 +119,6 @@ function SelectField({ name, value, schema, onChange }: FieldProps) {
         ))}
       </select>
 
-      {/* Layout Preview */}
       {isLayoutField && value && layoutPreviews[value] && (
         <div className="mt-2 p-2 bg-[#151515] rounded-lg border border-[#252525]">
           <p className="text-xs text-slate-500 mb-2">Layout Preview:</p>
@@ -132,7 +132,7 @@ function SelectField({ name, value, schema, onChange }: FieldProps) {
 function NumberField({ name, value, schema, onChange }: FieldProps) {
   return (
     <div>
-      <label className="block text-sm font-medium text-white mb-2 capitalize">
+      <label className="block text-xs font-medium text-slate-400 mb-1.5">
         {schema.title || name.replace(/([A-Z])/g, ' $1').trim()}
       </label>
       <input
@@ -150,7 +150,7 @@ function NumberField({ name, value, schema, onChange }: FieldProps) {
 function BooleanField({ name, value, schema, onChange }: FieldProps) {
   return (
     <div className="flex items-center justify-between">
-      <label className="text-sm font-medium text-white capitalize">
+      <label className="text-xs font-medium text-slate-400">
         {schema.title || name.replace(/([A-Z])/g, ' $1').trim()}
       </label>
       <button
@@ -198,7 +198,7 @@ function ArrayField({ name, value, schema, onChange }: FieldProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <label className="text-sm font-medium text-white capitalize">
+        <label className="text-xs font-medium text-slate-400">
           {schema.title || name.replace(/([A-Z])/g, ' $1').trim()}
         </label>
         <button
@@ -211,7 +211,6 @@ function ArrayField({ name, value, schema, onChange }: FieldProps) {
         </button>
       </div>
 
-      {/* Helpful hint for columns */}
       {isColumnsField && items.length === 0 && (
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-3">
           <p className="text-primary text-xs">
@@ -223,7 +222,6 @@ function ArrayField({ name, value, schema, onChange }: FieldProps) {
       <div className="space-y-3">
         {items.map((item: any, index: number) => (
           <div key={index} className="relative bg-[#151515] border border-[#252525] rounded-lg overflow-hidden">
-            {/* Item Header */}
             <div className="flex items-center justify-between px-3 py-2 bg-[#1a1a1a] border-b border-[#252525]">
               <span className="text-xs font-medium text-slate-400">
                 {isColumnsField ? `Column ${index + 1}` : `Item ${index + 1}`}
@@ -237,7 +235,6 @@ function ArrayField({ name, value, schema, onChange }: FieldProps) {
               </button>
             </div>
 
-            {/* Item Content */}
             <div className="p-3">
               {itemSchema.type === 'object' ? (
                 <div className="space-y-3">
@@ -272,7 +269,120 @@ function ArrayField({ name, value, schema, onChange }: FieldProps) {
   )
 }
 
+// ── Icon Button Select ─────────────────────────────────────────────
+
+function DirectionIcon({ dir }: { dir: string }) {
+  const icons: Record<string, string> = {
+    row: 'arrow-right',
+    column: 'chevron-down',
+    'row-reverse': 'arrow-left',
+    'column-reverse': 'chevron-up',
+  }
+  return <Icon name={icons[dir] || 'help'} size={16} />
+}
+
+function JustifyIcon({ align }: { align: string }) {
+  const positions: Record<string, string> = {
+    left: 'justify-start',
+    center: 'justify-center',
+    right: 'justify-end',
+    'space-between': 'justify-between',
+    'space-around': 'justify-around',
+    'space-evenly': 'justify-evenly',
+  }
+  return (
+    <div className={`flex ${positions[align] || ''} items-center w-5 h-4 gap-[1px]`}>
+      <div className="w-[3px] h-[10px] bg-current rounded-[1px]" />
+      <div className="w-[3px] h-[7px] bg-current rounded-[1px]" />
+      <div className="w-[3px] h-[10px] bg-current rounded-[1px]" />
+    </div>
+  )
+}
+
+function AlignIcon({ align }: { align: string }) {
+  const positions: Record<string, string> = {
+    top: 'items-start',
+    center: 'items-center',
+    bottom: 'items-end',
+    stretch: 'items-stretch',
+  }
+  return (
+    <div className={`flex ${positions[align] || ''} justify-center w-5 h-4 gap-[2px]`}>
+      <div className={`w-[3px] ${align === 'stretch' ? 'h-full' : 'h-[6px]'} bg-current rounded-[1px]`} />
+      <div className={`w-[3px] ${align === 'stretch' ? 'h-full' : 'h-[10px]'} bg-current rounded-[1px]`} />
+      <div className={`w-[3px] ${align === 'stretch' ? 'h-full' : 'h-[6px]'} bg-current rounded-[1px]`} />
+    </div>
+  )
+}
+
+function ContentWidthIcon({ width }: { width: string }) {
+  if (width === 'full') {
+    return (
+      <div className="flex items-center w-5 h-4">
+        <div className="w-full h-[8px] bg-current rounded-[1px]" />
+      </div>
+    )
+  }
+  if (width === 'narrow') {
+    return (
+      <div className="flex items-center justify-center w-5 h-4">
+        <div className="w-[10px] h-[8px] bg-current rounded-[1px]" />
+      </div>
+    )
+  }
+  // container (boxed)
+  return (
+    <div className="flex items-center justify-center w-5 h-4">
+      <div className="w-[14px] h-[8px] bg-current rounded-[1px]" />
+    </div>
+  )
+}
+
+function IconButtonSelect({ name, value, schema, onChange }: FieldProps) {
+  const options: string[] = schema.enum || []
+
+  const getIcon = (option: string) => {
+    if (name === 'direction') return <DirectionIcon dir={option} />
+    if (name === 'horizontalAlign') return <JustifyIcon align={option} />
+    if (name === 'verticalAlign') return <AlignIcon align={option} />
+    if (name === 'maxWidth') return <ContentWidthIcon width={option} />
+    return <span className="text-[10px]">{option}</span>
+  }
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-slate-400 mb-1.5">
+        {schema.title || name}
+      </label>
+      <div className="flex gap-1">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(value === opt ? '' : opt)}
+            className={`flex items-center justify-center p-2 rounded-md border transition-all ${
+              value === opt
+                ? 'bg-primary/15 border-primary/50 text-primary'
+                : 'bg-[#1a1a1a] border-[#2a2a2a] text-slate-500 hover:text-slate-300 hover:border-[#3a3a3a]'
+            }`}
+            title={opt}
+          >
+            {getIcon(opt)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Render Field ──────────────────────────────────────────────────
+
 function renderField(name: string, value: any, schema: any, onChange: (value: any) => void) {
+  // Icon button fields
+  if (schema.ui === 'icon-buttons' && schema.enum) {
+    return <IconButtonSelect key={name} name={name} value={value} schema={schema} onChange={onChange} />
+  }
+
   // Handle enums (select)
   if (schema.enum) {
     return <SelectField key={name} name={name} value={value} schema={schema} onChange={onChange} />
@@ -307,6 +417,18 @@ function renderField(name: string, value: any, schema: any, onChange: (value: an
   }
 }
 
+// ── Tab Icons ─────────────────────────────────────────────────────
+
+const tabConfig = [
+  { id: 'layout', label: 'Layout', icon: 'grid-view' },
+  { id: 'style', label: 'Style', icon: 'paint-brush' },
+  { id: 'advanced', label: 'Advanced', icon: 'settings' },
+] as const
+
+type TabId = typeof tabConfig[number]['id']
+
+// ── Main Panel ────────────────────────────────────────────────────
+
 export default function PropertiesPanel({
   section,
   componentTemplate,
@@ -314,6 +436,7 @@ export default function PropertiesPanel({
   onClose,
 }: PropertiesPanelProps) {
   const [localProps, setLocalProps] = useState<Record<string, any>>({})
+  const [activeTab, setActiveTab] = useState<TabId>('layout')
 
   useEffect(() => {
     if (section) {
@@ -346,9 +469,74 @@ export default function PropertiesPanel({
     onUpdateSection(section.id, updated)
   }
 
+  // Check if any properties have group metadata
+  const hasGroups = Object.values(properties).some((p: any) => p.group)
+
+  if (hasGroups) {
+    // Group properties by tab
+    const grouped: Record<string, [string, any][]> = { layout: [], style: [], advanced: [] }
+    Object.entries(properties).forEach(([name, propSchema]: [string, any]) => {
+      const group = propSchema.group || 'advanced'
+      if (!grouped[group]) grouped[group] = []
+      grouped[group].push([name, propSchema])
+    })
+
+    return (
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <div className="px-4 pt-4 pb-2 border-b border-[#1f1f1f]">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-white font-semibold text-sm capitalize">
+              {section.type === 'column' ? 'Section' : section.type.replace(/-/g, ' ')}
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex">
+            {tabConfig.map((tab) => {
+              const hasFields = grouped[tab.id]?.length > 0
+              if (!hasFields) return null
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 flex flex-col items-center gap-1 py-2 text-[10px] font-medium uppercase tracking-wider border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <Icon name={tab.icon} size={18} />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-4">
+            {(grouped[activeTab] || []).map(([name, propSchema]) => (
+              <div key={name}>
+                {renderField(name, localProps[name], propSchema, (val) => handleChange(name, val))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Fallback: flat list for components without groups
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between">
         <div>
           <h3 className="text-white font-semibold text-sm capitalize">
@@ -364,7 +552,6 @@ export default function PropertiesPanel({
         </button>
       </div>
 
-      {/* Properties Form */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-5">
           {Object.entries(properties).map(([name, propSchema]: [string, any]) => (

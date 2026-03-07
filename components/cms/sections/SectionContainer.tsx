@@ -35,7 +35,10 @@ interface SectionContainerProps {
     customId?: string
     hideOnMobile?: boolean
     hideOnTablet?: boolean
-    horizontalAlign?: 'left' | 'center' | 'right'
+    horizontalAlign?: 'left' | 'center' | 'right' | 'space-between' | 'space-around' | 'space-evenly'
+    minHeight?: string
+    direction?: 'row' | 'column' | 'row-reverse' | 'column-reverse'
+    flexWrap?: boolean
   }
   children?: React.ReactNode
 }
@@ -66,6 +69,9 @@ export default function SectionContainer({ props, children }: SectionContainerPr
     hideOnMobile,
     hideOnTablet,
     horizontalAlign,
+    minHeight,
+    direction,
+    flexWrap,
   } = props
 
   const layoutToGrid: Record<string, string> = {
@@ -159,6 +165,16 @@ export default function SectionContainer({ props, children }: SectionContainerPr
     left: 'justify-start',
     center: 'justify-center',
     right: 'justify-end',
+    'space-between': 'justify-between',
+    'space-around': 'justify-around',
+    'space-evenly': 'justify-evenly',
+  }
+
+  const directionClasses: Record<string, string> = {
+    row: 'flex-row',
+    column: 'flex-col',
+    'row-reverse': 'flex-row-reverse',
+    'column-reverse': 'flex-col-reverse',
   }
 
   const getColumnCount = (layoutStr: string): number => {
@@ -172,6 +188,7 @@ export default function SectionContainer({ props, children }: SectionContainerPr
     : paddingClasses[padding] || paddingClasses.medium
 
   const sectionStyle: React.CSSProperties = {}
+  if (minHeight) sectionStyle.minHeight = minHeight
   if (backgroundColor) sectionStyle.backgroundColor = backgroundColor
   if (backgroundImage) {
     sectionStyle.backgroundImage = `url(${backgroundImage})`
@@ -208,7 +225,7 @@ export default function SectionContainer({ props, children }: SectionContainerPr
             {title}
           </h2>
         )}
-        <div className={`grid ${layoutToGrid[layout] || 'grid-cols-1'} ${gapClasses[gap] || gapClasses.medium} ${alignClasses[verticalAlign] || alignClasses.top} ${horizontalAlign ? horizontalAlignClasses[horizontalAlign] : ''}`}>
+        <div className={`${direction && direction !== 'column' ? `flex ${directionClasses[direction]} ${flexWrap ? 'flex-wrap' : ''}` : `grid ${layoutToGrid[layout] || 'grid-cols-1'}`} ${gapClasses[gap] || gapClasses.medium} ${alignClasses[verticalAlign] || alignClasses.top} ${horizontalAlign ? horizontalAlignClasses[horizontalAlign] : ''}`}>
           {children ? (
             children
           ) : columns.length > 0 ? (
