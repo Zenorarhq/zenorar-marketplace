@@ -62,16 +62,8 @@ export default function EditableSection({
     >
       {/* Rendered content */}
       {isContainer ? (
-        // Containers: allow pointer events so children are interactive
-        <div
-          onClick={(e) => {
-            // Only select this container if click is directly on the container bg, not on a child
-            if (e.target === e.currentTarget) {
-              e.stopPropagation()
-              onSelect()
-            }
-          }}
-        >
+        // Containers: keep pointer events so children are interactive
+        <div className="relative z-[6]">
           {children}
         </div>
       ) : (
@@ -130,16 +122,14 @@ export default function EditableSection({
         </div>
       )}
 
-      {/* Click target overlay — only for non-containers (containers use onClick on wrapper) */}
-      {!isContainer && (
-        <div
-          className="absolute inset-0 cursor-pointer z-[5]"
-          onClick={(e) => {
-            e.stopPropagation()
-            onSelect()
-          }}
-        />
-      )}
+      {/* Click target overlay — selects this section when clicked */}
+      <div
+        className="absolute inset-0 cursor-pointer z-[5]"
+        onClick={(e) => {
+          e.stopPropagation()
+          onSelect()
+        }}
+      />
     </div>
   )
 }
