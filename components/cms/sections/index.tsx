@@ -21,6 +21,7 @@ import VideoEmbedSection from './VideoEmbedSection'
 import ButtonCtaSection from './ButtonCtaSection'
 import FaqAccordionSection from './FaqAccordionSection'
 import CustomHtmlSection from './CustomHtmlSection'
+import DesignBlockSection from './DesignBlockSection'
 import SocialLinksSection from './SocialLinksSection'
 import NewsletterSection from './NewsletterSection'
 import StatsCounterSection from './StatsCounterSection'
@@ -74,6 +75,7 @@ const leafComponents: Record<string, React.ComponentType<LeafComponentProps>> = 
   'button-cta': ButtonCtaSection,
   'faq-accordion': FaqAccordionSection,
   'custom-html': CustomHtmlSection,
+  'design-block': DesignBlockSection,
   'social-links': SocialLinksSection,
   'newsletter': NewsletterSection,
   'stats-counter': StatsCounterSection,
@@ -179,6 +181,7 @@ export {
   ButtonCtaSection,
   FaqAccordionSection,
   CustomHtmlSection,
+  DesignBlockSection,
   SocialLinksSection,
   NewsletterSection,
   StatsCounterSection,

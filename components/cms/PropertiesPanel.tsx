@@ -5,6 +5,7 @@ import Icon from '@/components/ui/Icon'
 import { Section, ComponentTemplate } from '@/lib/cms/api'
 import ColorField from '@/components/page-builder/fields/ColorField'
 import ImageField from '@/components/page-builder/fields/ImageField'
+import ElementEditorField from '@/components/page-builder/fields/ElementEditorField'
 
 interface PropertiesPanelProps {
   section: Section | null
@@ -418,7 +419,12 @@ function IconButtonSelect({ name, value, schema, onChange }: FieldProps) {
 
 // ── Render Field ──────────────────────────────────────────────────
 
-function renderField(name: string, value: any, schema: any, onChange: (value: any) => void) {
+function renderField(name: string, value: any, schema: any, onChange: (value: any) => void, allProps?: Record<string, any>) {
+  // Element editor fields (auto-detect images/links/buttons)
+  if (schema.ui === 'element-editor') {
+    return <ElementEditorField key={name} name={name} value={value} schema={schema} onChange={onChange} allProps={allProps} />
+  }
+
   // Code editor fields
   if (schema.ui === 'code') {
     return <CodeField key={name} name={name} value={value} schema={schema} onChange={onChange} />
@@ -727,7 +733,7 @@ export default function PropertiesPanel({
           <div className="space-y-4">
             {(grouped[activeTab] || []).map(([name, propSchema]) => (
               <div key={name}>
-                {renderField(name, localProps[name], propSchema, (val) => handleChange(name, val))}
+                {renderField(name, localProps[name], propSchema, (val) => handleChange(name, val), localProps)}
               </div>
             ))}
           </div>
@@ -793,7 +799,7 @@ export default function PropertiesPanel({
         <div className="space-y-4">
           {(autoGrouped[populatedTabs.length > 1 ? activeTab : defaultTab] || []).map(([name, propSchema]) => (
             <div key={name}>
-              {renderField(name, localProps[name], propSchema, (val) => handleChange(name, val))}
+              {renderField(name, localProps[name], propSchema, (val) => handleChange(name, val), localProps)}
             </div>
           ))}
         </div>

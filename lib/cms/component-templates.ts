@@ -547,6 +547,28 @@ export const COMPONENT_TEMPLATES: ComponentTemplate[] = [
     isActive: true,
   },
   {
+    id: 'tpl-design-block',
+    name: 'design-block',
+    category: 'content',
+    description: 'Paste a full HTML+CSS design from Figma or Google Stitch',
+    icon: 'code-block',
+    schema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', title: 'Design Code', ui: 'code' },
+        overrides: { type: 'string', title: 'Editable Elements', ui: 'element-editor', readFrom: 'code' },
+        padding: { type: 'string', title: 'Padding', enum: ['none', 'small', 'medium', 'large'] },
+        margin: { type: 'string', title: 'Margin', enum: ['none', 'small', 'medium', 'large'] },
+        maxWidth: { type: 'string', title: 'Max Width', enum: ['full', 'container', 'narrow'] },
+        hideOnMobile: { type: 'boolean', title: 'Hide on Mobile' },
+      },
+    },
+    defaultProps: { code: '', overrides: '{}' },
+    thumbnail: null,
+    order: 27,
+    isActive: true,
+  },
+  {
     id: 'tpl-social-links',
     name: 'social-links',
     category: 'content',
