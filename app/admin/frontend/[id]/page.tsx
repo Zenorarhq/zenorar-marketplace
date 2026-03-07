@@ -747,7 +747,7 @@ export default function PageEditorPage() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <div className="h-screen bg-[#0a0a0a] flex flex-col overflow-hidden">
         {/* Top Bar */}
         <header className="h-14 bg-[#111111] border-b border-[#1f1f1f] flex items-center justify-between px-4 flex-shrink-0">
           <div className="flex items-center gap-4">
@@ -1029,6 +1029,10 @@ export default function PageEditorPage() {
                     onDeleteSection={handleDeleteSection}
                     onDuplicateSection={handleDuplicateSection}
                     onMoveSection={handleMoveSection}
+                    onAddSection={() => {
+                      setPendingStructureContainerId(undefined)
+                      setShowStructurePicker(true)
+                    }}
                   />
                 </main>
               ) : (
