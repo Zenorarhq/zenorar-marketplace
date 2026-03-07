@@ -21,6 +21,7 @@ import SectionList from '@/components/cms/SectionList'
 import PropertiesPanel from '@/components/cms/PropertiesPanel'
 import PageRenderer from '@/components/cms/PageRenderer'
 import EditorCanvas from '@/components/page-builder/EditorCanvas'
+import StructurePicker from '@/components/page-builder/StructurePicker'
 import useEditorHistory from '@/components/page-builder/hooks/useEditorHistory'
 import useAutoSave from '@/components/page-builder/hooks/useAutoSave'
 import { pagesApi, componentsApi, Page, Section, ComponentTemplate, PageVersion } from '@/lib/cms/api'
@@ -146,6 +147,8 @@ export default function PageEditorPage() {
   const [versions, setVersions] = useState<PageVersion[]>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null)
+  const [showStructurePicker, setShowStructurePicker] = useState(false)
+  const [pendingStructureContainerId, setPendingStructureContainerId] = useState<string | undefined>(undefined)
 
   // Persist panel toggle state
   useEffect(() => { localStorage.setItem('cms-show-palette', String(showPalette)) }, [showPalette])
@@ -263,6 +266,13 @@ export default function PageEditorPage() {
     async (componentName: string, containerId?: string) => {
       if (!page) return
 
+      // Intercept 'section' type — show structure picker instead of adding directly
+      if (componentName === 'section') {
+        setPendingStructureContainerId(containerId)
+        setShowStructurePicker(true)
+        return
+      }
+
       const template = components.find((c) => c.name === componentName)
       if (!template) return
 
@@ -302,6 +312,61 @@ export default function PageEditorPage() {
       scheduleSave(async () => savePage({ ...page, content: updatedContent }))
     },
     [page, components, targetContainerId]
+  )
+
+  const handleStructureSelect = useCallback(
+    (layout: string) => {
+      if (!page) return
+      setShowStructurePicker(false)
+
+      const sectionTemplate = components.find((c) => c.name === 'section')
+      const columnTemplate = components.find((c) => c.name === 'column')
+      if (!sectionTemplate) return
+
+      const sectionId = generateSectionId()
+      const effectiveContainerId = pendingStructureContainerId || targetContainerId
+
+      // Count columns from layout string
+      const columnCount = layout === '1' ? 1 : layout.split('-').length
+
+      // Create child columns
+      const children: Section[] = Array.from({ length: columnCount }).map((_, i) => ({
+        id: generateSectionId(),
+        type: 'column',
+        order: i,
+        props: { ...(columnTemplate?.defaultProps || {}) },
+        parentId: sectionId,
+      }))
+
+      const newSection: Section = {
+        id: sectionId,
+        type: 'section',
+        order: page.content?.length || 0,
+        props: { ...sectionTemplate.defaultProps, layout },
+        parentId: effectiveContainerId || undefined,
+        children,
+      }
+
+      let updatedContent: Section[]
+
+      if (effectiveContainerId) {
+        const container = findSectionById(page.content || [], effectiveContainerId)
+        if (container && containerTypes.includes(container.type)) {
+          newSection.order = container.children?.length || 0
+          updatedContent = addSectionToContainer(page.content || [], effectiveContainerId, newSection)
+        } else {
+          updatedContent = [...(page.content || []), newSection]
+        }
+      } else {
+        updatedContent = [...(page.content || []), newSection]
+      }
+
+      updateContent(updatedContent)
+      setSelectedSectionId(sectionId)
+      scheduleSave(async () => savePage({ ...page, content: updatedContent }))
+      setPendingStructureContainerId(undefined)
+    },
+    [page, components, targetContainerId, pendingStructureContainerId]
   )
 
   const handleAddSectionAtIndex = useCallback(
@@ -1006,6 +1071,14 @@ export default function PageEditorPage() {
           )}
         </div>
       </div>
+
+      {/* Structure Picker Modal */}
+      {showStructurePicker && (
+        <StructurePicker
+          onSelect={handleStructureSelect}
+          onClose={() => { setShowStructurePicker(false); setPendingStructureContainerId(undefined) }}
+        />
+      )}
 
       {/* Version History Modal */}
       {showVersions && (

@@ -107,13 +107,6 @@ export default function ImageField({ name, value, schema, onChange }: ImageField
           <Icon name="folder" size={14} />
           Library
         </button>
-        <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="https://... or upload"
-          className="flex-1 min-w-0 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-        />
       </div>
 
       <input
