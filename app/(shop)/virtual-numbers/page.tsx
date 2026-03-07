@@ -6,7 +6,7 @@ import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
-import { apiFetch, localApiFetch } from '@/lib/api/client'
+// API client import removed - using direct fetch for backend API
 import { getBalance } from '@/lib/api/wallet'
 import * as virtualNumbersApi from '@/lib/api/virtual-numbers'
 import * as otpNumbersApi from '@/lib/api/otp-numbers'
@@ -1545,20 +1545,31 @@ function PlanSelectionModal({
         total: totalPrice,
       }
 
-      const result = await localApiFetch<{
-        orderId: string
-        orderNumber: string
-        refunded?: boolean
-        newBalance?: number
-        fulfillment?: {
-          success: boolean
-          itemsFailed: number
-          details?: Array<{ status: string; error?: string }>
-        }
-      }>('/orders/instant', {
+      // Use backend instant checkout API
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch('/backend/orders/instant', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
         body: JSON.stringify(orderData),
       })
+      const result = await response.json() as {
+        success: boolean
+        error?: string
+        data?: {
+          orderId: string
+          orderNumber: string
+          refunded?: boolean
+          newBalance?: number
+          fulfillment?: {
+            success: boolean
+            itemsFailed?: number
+            details?: Array<{ status: string; error?: string }>
+          }
+        }
+      }
 
       if (result.success) {
         // Check if fulfillment also succeeded

@@ -602,17 +602,78 @@ export default function PaymentPage() {
   const processCreditsPayment = async () => {
     setPaymentStatus('paying')
     try {
-      const order = await createOrder('wallet_credits')
-      // Backend auto-completes the order when wallet covers full amount
-      queryClient.invalidateQueries({ queryKey: ['wallet'] })
-      clearCart()
-      sessionStorage.setItem('checkoutPayment', JSON.stringify({
-        method: 'wallet_credits',
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-      }))
-      sessionStorage.setItem('pending_order_number', order.orderNumber)
-      router.push('/checkout/success')
+      // Check if cart has virtual numbers - use instant checkout API for fulfillment
+      const hasVirtualNumbers = items.some((item: any) => item.product.metadata?.productType === 'virtual_number')
+
+      if (hasVirtualNumbers) {
+        // Use backend instant checkout API for virtual numbers (handles provisioning)
+        const response = await fetch('/backend/orders/instant', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localStorage.getItem('auth_token') && {
+              Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+            }),
+          },
+          body: JSON.stringify({
+            items: items.map((item: any) => ({
+              productId: item.product.id,
+              quantity: item.quantity,
+              price: item.price,
+              productType: item.product.metadata?.productType || 'virtual_number',
+              metadata: {
+                ...item.product.metadata,
+                friendlyName: item.product.name || item.product.metadata?.friendlyName,
+                phoneNumber: item.product.metadata?.phoneNumber,
+                countryId: item.product.metadata?.countryId,
+                countryFlag: item.product.metadata?.countryFlag,
+                countryName: item.product.metadata?.countryName,
+                planCategory: item.product.metadata?.planCategory,
+                durationDays: item.product.metadata?.durationDays,
+                smsLimit: item.product.metadata?.smsLimit,
+                minuteTier: item.product.metadata?.minuteTier,
+                minuteIncluded: item.product.metadata?.minuteIncluded,
+                minuteTierPrice: item.product.metadata?.minuteTierPrice,
+                numberType: item.product.metadata?.numberType,
+              },
+            })),
+            paymentMethod: 'wallet',
+            total: total,
+          }),
+        })
+
+        const result = await response.json()
+
+        if (!result.success) {
+          // Check if this was a refunded failed order
+          if (result.data?.refunded) {
+            throw new Error(`${result.error}. Your wallet has been refunded.`)
+          }
+          throw new Error(result.error || 'Failed to process order')
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['wallet'] })
+        clearCart()
+        sessionStorage.setItem('checkoutPayment', JSON.stringify({
+          method: 'wallet_credits',
+          orderId: result.data.orderId,
+          orderNumber: result.data.orderNumber,
+        }))
+        sessionStorage.setItem('pending_order_number', result.data.orderNumber)
+        router.push('/checkout/success')
+      } else {
+        // Use backend for regular products
+        const order = await createOrder('wallet_credits')
+        queryClient.invalidateQueries({ queryKey: ['wallet'] })
+        clearCart()
+        sessionStorage.setItem('checkoutPayment', JSON.stringify({
+          method: 'wallet_credits',
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+        }))
+        sessionStorage.setItem('pending_order_number', order.orderNumber)
+        router.push('/checkout/success')
+      }
     } catch (err: any) {
       console.error('Credits payment error:', err)
       setPaymentStatus('error')
@@ -648,16 +709,34 @@ export default function PaymentPage() {
         discountCode: discountCode || undefined,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
         useWalletBalance: useWalletBalance,
-        items: items.map((item: any) => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          license: item.license,
-          price: item.price,
-          // Pass metadata for virtual numbers, eSIMs, gift cards, etc.
-          metadata: item.product.metadata || undefined,
-          // Pass product type for fulfillment routing
-          productType: item.product.metadata?.productType || item.product.category || undefined,
-        })),
+        // Separate dynamic items (virtual numbers, eSIMs, gift cards) from regular cart items
+        // Dynamic items are handled server-side with metadata, regular items are from cart
+        dynamicItems: items
+          .filter((item: any) => {
+            const productType = item.product.metadata?.productType || item.product.product_type
+            return productType === 'virtual_number' || productType === 'esim' || productType === 'gift_card'
+          })
+          .map((item: any) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            price: item.price,
+            productType: item.product.metadata?.productType || item.product.product_type,
+            metadata: {
+              ...item.product.metadata,
+              friendlyName: item.product.name || item.product.metadata?.friendlyName,
+              phoneNumber: item.product.metadata?.phoneNumber,
+              countryId: item.product.metadata?.countryId,
+              countryFlag: item.product.metadata?.countryFlag,
+              countryName: item.product.metadata?.countryName,
+              planCategory: item.product.metadata?.planCategory,
+              durationDays: item.product.metadata?.durationDays,
+              smsLimit: item.product.metadata?.smsLimit,
+              minuteTier: item.product.metadata?.minuteTier,
+              minuteIncluded: item.product.metadata?.minuteIncluded,
+              minuteTierPrice: item.product.metadata?.minuteTierPrice,
+              numberType: item.product.metadata?.numberType,
+            },
+          })),
       }),
     })
 
