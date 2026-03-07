@@ -74,27 +74,44 @@ class VirtualNumberService {
       const countryCode = countryResult.rows[0]?.iso_code || 'US'
       const displayNumber = this.formatPhoneNumber(phoneNumber, countryCode)
 
-      // Create user virtual number record (legacy table for user dashboard)
-      const insertResult = await query(
-        `INSERT INTO user_virtual_numbers
-           (user_id, plan_id, country_id, phone_number, phone_number_display, number_type,
-            provider, provider_number_sid, status, order_id, expires_at, next_billing_at,
-            inventory_id)
-         VALUES ($1, $2, $3, $4, $5, $6, 'twilio', $7, 'active', $8, $9, $9, $10)
-         ON CONFLICT (phone_number, user_id) DO UPDATE SET
-           status = 'active',
-           expires_at = $9,
-           order_id = $8,
-           inventory_id = $10,
-           updated_at = NOW()
-         RETURNING id`,
-        [
-          userId, planId, countryId, phoneNumber, displayNumber, numberType,
-          rentResult.inventoryId, orderId, rentResult.expiresAt, rentResult.inventoryId
-        ]
+      // Check if user already has this number (prevent duplicates)
+      const existingResult = await query(
+        `SELECT id FROM user_virtual_numbers WHERE phone_number = $1 AND user_id = $2`,
+        [phoneNumber, userId]
       )
 
-      const userVirtualNumberId = insertResult.rows[0].id
+      let userVirtualNumberId: string
+
+      if (existingResult.rows.length > 0) {
+        // Update existing record
+        userVirtualNumberId = existingResult.rows[0].id
+        await query(
+          `UPDATE user_virtual_numbers SET
+             status = 'active',
+             plan_id = $1,
+             expires_at = $2,
+             order_id = $3,
+             inventory_id = $4,
+             updated_at = NOW()
+           WHERE id = $5`,
+          [planId, rentResult.expiresAt, orderId, rentResult.inventoryId, userVirtualNumberId]
+        )
+      } else {
+        // Create new user virtual number record
+        const insertResult = await query(
+          `INSERT INTO user_virtual_numbers
+             (id, user_id, plan_id, country_id, phone_number, phone_number_display, number_type,
+              provider, provider_number_sid, status, order_id, expires_at, next_billing_at,
+              inventory_id, created_at, updated_at)
+           VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, 'twilio', $7, 'active', $8, $9, $9, $10, NOW(), NOW())
+           RETURNING id`,
+          [
+            userId, planId, countryId, phoneNumber, displayNumber, numberType,
+            rentResult.inventoryId, orderId, rentResult.expiresAt, rentResult.inventoryId
+          ]
+        )
+        userVirtualNumberId = insertResult.rows[0].id
+      }
 
       return {
         success: true,
