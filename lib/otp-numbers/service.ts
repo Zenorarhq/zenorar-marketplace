@@ -197,8 +197,8 @@ class OtpNumberService {
       // Record wallet transaction
       await query(
         `INSERT INTO wallet_transactions
-           (wallet_balance_id, type, amount, balance_before, balance_after, description, metadata)
-         VALUES ($1, 'DEBIT', $2, $3, $4, $5, $6)`,
+           (id, wallet_balance_id, type, amount, balance_before, balance_after, description, metadata, created_at)
+         VALUES (gen_random_uuid()::text, $1, 'DEBIT', $2, $3, $4, $5, $6, NOW())`,
         [
           walletId,
           price,
@@ -347,8 +347,8 @@ class OtpNumberService {
 
         await query(
           `INSERT INTO wallet_transactions
-             (wallet_balance_id, type, amount, balance_before, balance_after, description, metadata)
-           VALUES ($1, 'REFUND', $2, $3, $4, $5, $6)`,
+             (id, wallet_balance_id, type, amount, balance_before, balance_after, description, metadata, created_at)
+           VALUES (gen_random_uuid()::text, $1, 'REFUND', $2, $3, $4, $5, $6, NOW())`,
           [
             walletId,
             otp.price,
