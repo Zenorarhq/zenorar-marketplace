@@ -9,17 +9,9 @@ import type { OtpProvider, OtpService, OtpCountry, OtpNumber } from './types'
 
 type ProviderName = 'smspool' | '5sim'
 
-// Helper to get OTP settings with fallback to 'api' group for backwards compatibility
+// Helper to get OTP settings from the 'api' group
 async function getOtpSettings(): Promise<Record<string, any>> {
-  // Try 'otp' group first (new)
-  let settings = await getSiteSettingsByGroup('otp')
-
-  // If no settings found, fallback to 'api' group (old)
-  if (!settings || Object.keys(settings).length === 0) {
-    settings = await getSiteSettingsByGroup('api')
-  }
-
-  return settings
+  return getSiteSettingsByGroup('api')
 }
 
 class OtpNumberService {
