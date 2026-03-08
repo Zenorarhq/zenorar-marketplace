@@ -18,6 +18,7 @@ export default function EmailConfigSection() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [testEmail, setTestEmail] = useState('')
+  const [testTemplate, setTestTemplate] = useState('basic')
   const [testStatus, setTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
   const [testMessage, setTestMessage] = useState('')
 
@@ -119,7 +120,7 @@ export default function EmailConfigSection() {
             Authorization: `Bearer ${getAccessToken()}`,
           }),
         },
-        body: JSON.stringify({ testEmail: testEmail.trim() })
+        body: JSON.stringify({ testEmail: testEmail.trim(), templateType: testTemplate })
       })
 
       const data = await res.json()
@@ -205,8 +206,31 @@ export default function EmailConfigSection() {
             Test Email Configuration
           </h3>
           <p className="text-slate-400 text-sm mb-4">
-            Send a test order confirmation email to verify your {activeProvider.toUpperCase()} configuration is working.
+            Send a test email to verify your {activeProvider.toUpperCase()} configuration and preview templates.
           </p>
+          <div className="mb-3">
+            <label className="block text-slate-300 text-sm font-medium mb-2">Email Template</label>
+            <select
+              value={testTemplate}
+              onChange={(e) => setTestTemplate(e.target.value)}
+              className="w-full bg-background-dark border border-border-dark rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+            >
+              <option value="basic">Basic Test Email</option>
+              <option value="order-confirmation">Order Confirmation</option>
+              <option value="order-shipped">Order Shipped</option>
+              <option value="order-cancelled">Order Cancelled</option>
+              <option value="welcome">Welcome</option>
+              <option value="password-reset">Password Reset</option>
+              <option value="deposit-success">Deposit Success</option>
+              <option value="wallet-credit">Wallet Credit</option>
+              <option value="wallet-frozen">Wallet Frozen</option>
+              <option value="referral-reward">Referral Reward</option>
+              <option value="welcome-bonus">Welcome Bonus</option>
+              <option value="esim-delivery">eSIM Delivery</option>
+              <option value="virtual-number">Virtual Number</option>
+              <option value="gift-card">Gift Card</option>
+            </select>
+          </div>
           <div className="flex gap-3">
             <input
               type="email"
