@@ -27,7 +27,7 @@ const TEMPLATE_TYPES = [
 type TemplateType = (typeof TEMPLATE_TYPES)[number]
 
 // Generate test email HTML for a given template type
-function getTestTemplate(templateType: TemplateType, config: { from: string; host?: string; port?: string }): { subject: string; html: string } {
+function getTestTemplate(templateType: TemplateType, config: Record<string, any>): { subject: string; html: string } {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zenorahq.com'
   const supportEmail = process.env.SUPPORT_EMAIL || 'support@zenorahq.com'
 
