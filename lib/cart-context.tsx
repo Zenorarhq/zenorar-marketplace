@@ -210,12 +210,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated])
 
   const removeItem = useCallback(async (productId: string, license?: 'standard' | 'extended' | 'pro') => {
-    // Capture previous items inside setItems to get actual current state
-    let previousItems: CartItem[] = []
-
-    // Optimistic update
+    // Optimistic update - remove immediately from UI
+    // We DON'T rollback on API failure because the user explicitly wants the item removed
     setItems((currentItems) => {
-      previousItems = currentItems // Capture actual state before modification
       return currentItems.filter((item) => {
         if (license) {
           return !(item.product.id === productId && item.license === license)
@@ -224,16 +221,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
       })
     })
 
-    // Sync to API if authenticated
+    // Sync to API if authenticated (fire and forget - don't rollback)
     if (isAuthenticated) {
       const query = license ? `?license=${license}` : ''
-      const result = await apiFetch(`/cart/items/product/${encodeURIComponent(productId)}${query}`, {
+      apiFetch(`/cart/items/product/${encodeURIComponent(productId)}${query}`, {
         method: 'DELETE',
+      }).then((result) => {
+        if (!result.success) {
+          console.warn('Failed to sync cart removal with API:', result.error)
+          // Note: We intentionally do NOT rollback here because the user explicitly removed the item
+        }
+      }).catch((error) => {
+        console.error('Cart removal API error:', error)
       })
-      if (!result.success) {
-        console.warn('Failed to sync cart removal with API:', result.error)
-        setItems(previousItems) // Rollback on failure with actual previous state
-      }
     }
   }, [isAuthenticated])
 

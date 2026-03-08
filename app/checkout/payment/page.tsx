@@ -688,7 +688,8 @@ export default function PaymentPage() {
               productId: item.product.id,
               quantity: item.quantity,
               price: item.price,
-              productType: item.product.metadata?.productType || 'virtual_number',
+              // Use actual productType, default to 'digital' for regular products (not 'virtual_number')
+              productType: item.product.metadata?.productType || item.product.product_type || 'digital',
               metadata: {
                 ...item.product.metadata,
                 friendlyName: item.product.name || item.product.metadata?.friendlyName,
