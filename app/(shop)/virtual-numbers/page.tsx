@@ -13,6 +13,7 @@ import * as virtualNumbersApi from '@/lib/api/virtual-numbers'
 import * as otpNumbersApi from '@/lib/api/otp-numbers'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
+import ServiceLogo from '@/components/ui/ServiceLogo'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
 type NumberType = 'all' | 'local' | 'toll-free' | 'mobile'
@@ -64,30 +65,6 @@ interface OtpCountry {
   code: string
   name: string
   flag?: string
-}
-
-// Popular OTP services with icons
-const SERVICE_ICONS: Record<string, string> = {
-  whatsapp: '💬',
-  telegram: '✈️',
-  google: '🔍',
-  facebook: '👤',
-  instagram: '📷',
-  twitter: '🐦',
-  tiktok: '🎵',
-  discord: '🎮',
-  snapchat: '👻',
-  uber: '🚗',
-  amazon: '📦',
-  netflix: '🎬',
-  spotify: '🎧',
-  paypal: '💳',
-  microsoft: '🪟',
-  apple: '🍎',
-  linkedin: '💼',
-  yahoo: '📧',
-  steam: '🎮',
-  twitch: '📺',
 }
 
 // ============================================================
@@ -916,9 +893,9 @@ export default function VirtualNumbersPage() {
                           : 'bg-charcoal border-border-dark hover:border-primary/50'
                       }`}
                     >
-                      <span className="text-2xl mb-2 block">
-                        {SERVICE_ICONS[service.id.toLowerCase()] || '📱'}
-                      </span>
+                      <div className="mb-2">
+                        <ServiceLogo name={service.name} size={32} />
+                      </div>
                       <h3 className="font-bold text-white text-sm truncate">{service.name}</h3>
                     </button>
                   ))}
@@ -977,9 +954,7 @@ export default function VirtualNumbersPage() {
                   <p className="text-slate-500 text-sm mb-1">Service</p>
                   {selectedOtpService ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">
-                        {SERVICE_ICONS[selectedOtpService.id.toLowerCase()] || '📱'}
-                      </span>
+                      <ServiceLogo name={selectedOtpService.name} size={24} />
                       <span className="text-white font-medium">{selectedOtpService.name}</span>
                     </div>
                   ) : (
