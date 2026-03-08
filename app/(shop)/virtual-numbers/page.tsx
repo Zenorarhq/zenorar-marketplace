@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
@@ -179,11 +179,25 @@ function SmartTypeTabs({
 
 export default function VirtualNumbersPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { addItem } = useCart()
   const { formatPrice } = usePreferences()
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<TabType>('monthly')
+  // Tab state - initialize from URL
+  const tabFromUrl = searchParams.get('tab') as TabType | null
+  const [activeTab, setActiveTab] = useState<TabType>(tabFromUrl === 'otp' ? 'otp' : 'monthly')
+
+  // Update URL when tab changes
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab)
+    const params = new URLSearchParams(searchParams.toString())
+    if (tab === 'otp') {
+      params.set('tab', 'otp')
+    } else {
+      params.delete('tab')
+    }
+    router.replace(`/virtual-numbers${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
+  }, [router, searchParams])
 
   // ===== MONTHLY NUMBERS STATE =====
   const [countries, setCountries] = useState<Country[]>([])
@@ -513,7 +527,7 @@ export default function VirtualNumbersPage() {
           {/* Tab Switcher */}
           <div className="flex gap-2 bg-surface-dark p-1.5 rounded-xl w-fit">
             <button
-              onClick={() => setActiveTab('monthly')}
+              onClick={() => handleTabChange('monthly')}
               className={`flex items-center gap-2 px-5 py-3 rounded-lg font-bold text-sm transition-all ${
                 activeTab === 'monthly'
                   ? 'bg-primary text-black'
@@ -524,7 +538,7 @@ export default function VirtualNumbersPage() {
               Monthly Numbers
             </button>
             <button
-              onClick={() => setActiveTab('otp')}
+              onClick={() => handleTabChange('otp')}
               className={`flex items-center gap-2 px-5 py-3 rounded-lg font-bold text-sm transition-all ${
                 activeTab === 'otp'
                   ? 'bg-primary text-black'

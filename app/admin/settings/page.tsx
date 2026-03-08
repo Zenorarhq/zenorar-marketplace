@@ -694,8 +694,12 @@ export default function AdminSettingsPage() {
           ezpinApiKey: d.ezpinApiKey ?? prev.ezpinApiKey,
           ezpinApiSecret: d.ezpinApiSecret ?? prev.ezpinApiSecret,
         }))
-
-        // OTP Providers settings
+      }
+    })
+    // Load OTP settings
+    settingsApi.getSettingsByGroup('otp').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
         setOtpSettings((prev) => ({
           otpDefaultProvider: d.otpDefaultProvider ?? prev.otpDefaultProvider,
           // SMSPool
@@ -1386,11 +1390,11 @@ export default function AdminSettingsPage() {
       { key: 'ezpinApiKey', value: giftCardSettings.ezpinApiKey, group: 'api', isPublic: false },
       { key: 'ezpinApiSecret', value: giftCardSettings.ezpinApiSecret, group: 'api', isPublic: false },
       // OTP Providers
-      { key: 'otpDefaultProvider', value: otpSettings.otpDefaultProvider, group: 'api', isPublic: false },
-      { key: 'smspoolEnabled', value: otpSettings.smspoolEnabled, group: 'api', isPublic: true },
-      { key: 'smspoolApiKey', value: otpSettings.smspoolApiKey, group: 'api', isPublic: false },
-      { key: 'fivesimEnabled', value: otpSettings.fivesimEnabled, group: 'api', isPublic: true },
-      { key: 'fivesimApiKey', value: otpSettings.fivesimApiKey, group: 'api', isPublic: false },
+      { key: 'otpDefaultProvider', value: otpSettings.otpDefaultProvider, group: 'otp', isPublic: false },
+      { key: 'smspoolEnabled', value: otpSettings.smspoolEnabled, group: 'otp', isPublic: true },
+      { key: 'smspoolApiKey', value: otpSettings.smspoolApiKey, group: 'otp', isPublic: false },
+      { key: 'fivesimEnabled', value: otpSettings.fivesimEnabled, group: 'otp', isPublic: true },
+      { key: 'fivesimApiKey', value: otpSettings.fivesimApiKey, group: 'otp', isPublic: false },
       // Cron Jobs
       { key: 'cronEnabled', value: cronSettings.cronEnabled, group: 'cron', isPublic: false },
       { key: 'cronSecret', value: cronSettings.cronSecret, group: 'cron', isPublic: false },
