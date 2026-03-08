@@ -203,6 +203,7 @@ export default function VirtualNumbersPage() {
   const [otpPrice, setOtpPrice] = useState<number | null>(null)
   const [otpSearchQuery, setOtpSearchQuery] = useState('')
   const [otpCountrySearchQuery, setOtpCountrySearchQuery] = useState('')
+  const [otpActiveStep, setOtpActiveStep] = useState<'service' | 'country'>('service')
   const countrySectionRef = useRef<HTMLDivElement>(null)
 
   // OTP loading states
@@ -859,157 +860,216 @@ export default function VirtualNumbersPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Service & Country Tabs - Side by Side */}
+            {/* Service & Country - Tab Based Selection */}
             <div className="lg:col-span-2">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Service Tab */}
-                <div className="bg-charcoal border border-border-dark rounded-2xl p-4">
-                  <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold">1</span>
+              {/* Tab Headers */}
+              <div className="flex gap-2 mb-4">
+                {/* Service Tab Header */}
+                {selectedOtpService ? (
+                  <button
+                    onClick={() => {
+                      setSelectedOtpService(null)
+                      setSelectedOtpCountry(null)
+                      setOtpPrice(null)
+                      setOtpSearchQuery('')
+                      setOtpActiveStep('service')
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 border border-primary rounded-xl hover:bg-primary/20 transition-all group"
+                  >
+                    <ServiceLogo name={selectedOtpService.name} size={24} />
+                    <span className="text-white font-bold text-sm truncate max-w-[120px]">{selectedOtpService.name}</span>
+                    <Icon name="x" size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setOtpActiveStep('service')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                      otpActiveStep === 'service'
+                        ? 'bg-primary text-black'
+                        : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span className="w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-xs">1</span>
                     Service
-                  </h2>
+                  </button>
+                )}
 
-                  {/* Show selected service as chip OR show search + grid */}
-                  {selectedOtpService ? (
-                    <button
-                      onClick={() => {
-                        setSelectedOtpService(null)
-                        setSelectedOtpCountry(null)
-                        setOtpPrice(null)
-                        setOtpSearchQuery('')
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 bg-primary/10 border border-primary rounded-xl hover:bg-primary/20 transition-all group"
-                    >
-                      <ServiceLogo name={selectedOtpService.name} size={28} />
-                      <span className="text-white font-bold flex-1 text-left truncate">{selectedOtpService.name}</span>
-                      <Icon name="x" size={18} className="text-slate-400 group-hover:text-white transition-colors flex-shrink-0" />
-                    </button>
-                  ) : (
-                    <>
-                      {/* Search Services */}
-                      <div className="mb-3">
-                        <div className="relative">
-                          <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                          <input
-                            type="text"
-                            placeholder="Search services..."
-                            value={otpSearchQuery}
-                            onChange={(e) => setOtpSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-3 py-2.5 bg-surface-dark border border-border-dark rounded-xl text-white text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Services Grid */}
-                      {loadingOtpServices ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                        </div>
-                      ) : filteredOtpServices.length === 0 ? (
-                        <div className="text-center py-8">
-                          <Icon name="search" size={32} className="text-slate-600 mx-auto mb-2" />
-                          <p className="text-slate-500 text-sm">No services found</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1">
-                          {filteredOtpServices.map((service) => (
-                            <button
-                              key={service.id}
-                              onClick={() => {
-                                setSelectedOtpService(service)
-                                setSelectedOtpCountry(null)
-                                setOtpPrice(null)
-                                setOtpSearchQuery('')
-                              }}
-                              className="p-3 rounded-xl border transition-all text-left bg-surface-dark border-border-dark hover:border-primary/50 hover:bg-charcoal"
-                            >
-                              <div className="mb-1.5">
-                                <ServiceLogo name={service.name} size={28} />
-                              </div>
-                              <h3 className="font-bold text-white text-xs truncate">{service.name}</h3>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Country Tab */}
-                <div ref={countrySectionRef} className="bg-charcoal border border-border-dark rounded-2xl p-4">
-                  <h2 className={`text-lg font-bold mb-3 flex items-center gap-2 ${selectedOtpService ? 'text-white' : 'text-slate-600'}`}>
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${selectedOtpService ? 'bg-primary/20 text-primary' : 'bg-slate-800 text-slate-600'}`}>2</span>
+                {/* Country Tab Header */}
+                {selectedOtpCountry ? (
+                  <button
+                    onClick={() => {
+                      setSelectedOtpCountry(null)
+                      setOtpPrice(null)
+                      setOtpCountrySearchQuery('')
+                      setOtpActiveStep('country')
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 border border-primary rounded-xl hover:bg-primary/20 transition-all group"
+                  >
+                    <FlagIcon countryCode={selectedOtpCountry.code} className="w-6 h-6 rounded" />
+                    <span className="text-white font-bold text-sm truncate max-w-[120px]">{selectedOtpCountry.name}</span>
+                    <Icon name="x" size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => selectedOtpService && setOtpActiveStep('country')}
+                    disabled={!selectedOtpService}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                      otpActiveStep === 'country' && selectedOtpService
+                        ? 'bg-primary text-black'
+                        : selectedOtpService
+                        ? 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
+                        : 'bg-charcoal/50 border border-border-dark text-slate-600 cursor-not-allowed'
+                    }`}
+                  >
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+                      selectedOtpService ? 'bg-black/20' : 'bg-slate-800'
+                    }`}>2</span>
                     Country
-                  </h2>
+                  </button>
+                )}
+              </div>
 
-                  {!selectedOtpService ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Icon name="arrow-left" size={24} className="text-slate-600 mb-2" />
-                      <p className="text-slate-500 text-sm">Select a service first</p>
-                    </div>
-                  ) : selectedOtpCountry ? (
-                    <button
-                      onClick={() => {
-                        setSelectedOtpCountry(null)
-                        setOtpPrice(null)
-                        setOtpCountrySearchQuery('')
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 bg-primary/10 border border-primary rounded-xl hover:bg-primary/20 transition-all group"
-                    >
-                      <FlagIcon countryCode={selectedOtpCountry.code} className="w-7 h-7 rounded" />
-                      <span className="text-white font-bold flex-1 text-left truncate">{selectedOtpCountry.name}</span>
-                      <Icon name="x" size={18} className="text-slate-400 group-hover:text-white transition-colors flex-shrink-0" />
-                    </button>
-                  ) : (
-                    <>
-                      {/* Search Countries */}
-                      <div className="mb-3">
-                        <div className="relative">
-                          <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                          <input
-                            type="text"
-                            placeholder="Search countries..."
-                            value={otpCountrySearchQuery}
-                            onChange={(e) => setOtpCountrySearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-3 py-2.5 bg-surface-dark border border-border-dark rounded-xl text-white text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-                          />
-                        </div>
+              {/* Tab Content Area */}
+              <div className="bg-charcoal border border-border-dark rounded-2xl p-5">
+                {/* Service Tab Content */}
+                {otpActiveStep === 'service' && !selectedOtpService && (
+                  <>
+                    <h2 className="text-lg font-bold text-white mb-4">Select a Service</h2>
+
+                    {/* Search Services */}
+                    <div className="mb-4">
+                      <div className="relative">
+                        <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <input
+                          type="text"
+                          placeholder="Search services (WhatsApp, Google, etc.)..."
+                          value={otpSearchQuery}
+                          onChange={(e) => setOtpSearchQuery(e.target.value)}
+                          className="w-full pl-11 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+                        />
                       </div>
+                    </div>
 
-                      {/* Countries Grid */}
-                      {loadingOtpCountries ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                        </div>
-                      ) : filteredOtpCountries.length === 0 ? (
-                        <div className="text-center py-8">
-                          <Icon name="globe" size={32} className="text-slate-600 mx-auto mb-2" />
-                          <p className="text-slate-500 text-sm">
-                            {otpCountrySearchQuery ? 'No countries found' : 'No countries available'}
-                          </p>
-                        </div>
+                    {/* Services Grid */}
+                    {loadingOtpServices ? (
+                      <div className="flex items-center justify-center py-16">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : filteredOtpServices.length === 0 ? (
+                      <div className="text-center py-16">
+                        <Icon name="search" size={48} className="text-slate-600 mx-auto mb-3" />
+                        <h3 className="text-white font-bold mb-1">No Services Found</h3>
+                        <p className="text-slate-500 text-sm">Try a different search term</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2">
+                        {filteredOtpServices.map((service) => (
+                          <button
+                            key={service.id}
+                            onClick={() => {
+                              setSelectedOtpService(service)
+                              setSelectedOtpCountry(null)
+                              setOtpPrice(null)
+                              setOtpSearchQuery('')
+                              setOtpActiveStep('country')
+                            }}
+                            className="p-3 rounded-xl border transition-all text-center bg-surface-dark border-border-dark hover:border-primary/50 hover:bg-charcoal"
+                          >
+                            <div className="flex justify-center mb-2">
+                              <ServiceLogo name={service.name} size={32} />
+                            </div>
+                            <h3 className="font-bold text-white text-xs truncate">{service.name}</h3>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Country Tab Content */}
+                {(otpActiveStep === 'country' || selectedOtpService) && !selectedOtpCountry && selectedOtpService && (
+                  <>
+                    <h2 className="text-lg font-bold text-white mb-4">Select a Country</h2>
+
+                    {/* Search Countries */}
+                    <div className="mb-4">
+                      <div className="relative">
+                        <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <input
+                          type="text"
+                          placeholder="Search countries..."
+                          value={otpCountrySearchQuery}
+                          onChange={(e) => setOtpCountrySearchQuery(e.target.value)}
+                          className="w-full pl-11 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Countries Grid */}
+                    {loadingOtpCountries ? (
+                      <div className="flex items-center justify-center py-16">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : filteredOtpCountries.length === 0 ? (
+                      <div className="text-center py-16">
+                        <Icon name="globe" size={48} className="text-slate-600 mx-auto mb-3" />
+                        <h3 className="text-white font-bold mb-1">
+                          {otpCountrySearchQuery ? 'No Countries Found' : 'No Countries Available'}
+                        </h3>
+                        <p className="text-slate-500 text-sm">
+                          {otpCountrySearchQuery ? 'Try a different search term' : 'This service may not be available right now'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2">
+                        {filteredOtpCountries.map((country) => (
+                          <button
+                            key={country.code}
+                            onClick={() => {
+                              setSelectedOtpCountry(country)
+                              setOtpCountrySearchQuery('')
+                            }}
+                            className="p-3 rounded-xl border transition-all text-center bg-surface-dark border-border-dark hover:border-primary/50"
+                          >
+                            <div className="flex justify-center mb-2">
+                              <FlagIcon countryCode={country.code} className="w-8 h-8 rounded" />
+                            </div>
+                            <h3 className="font-medium text-white text-xs truncate">{country.name}</h3>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Both Selected - Show Summary */}
+                {selectedOtpService && selectedOtpCountry && (
+                  <div className="text-center py-8">
+                    <div className="flex items-center justify-center gap-4 mb-6">
+                      <div className="flex flex-col items-center">
+                        <ServiceLogo name={selectedOtpService.name} size={48} />
+                        <span className="text-white font-bold mt-2">{selectedOtpService.name}</span>
+                      </div>
+                      <Icon name="arrow-right" size={24} className="text-slate-500" />
+                      <div className="flex flex-col items-center">
+                        <FlagIcon countryCode={selectedOtpCountry.code} className="w-12 h-12 rounded" />
+                        <span className="text-white font-bold mt-2">{selectedOtpCountry.name}</span>
+                      </div>
+                    </div>
+                    <div className="mb-6">
+                      {loadingOtpPrice ? (
+                        <div className="animate-pulse bg-slate-700 h-10 w-24 rounded mx-auto"></div>
+                      ) : otpPrice !== null ? (
+                        <span className="text-4xl font-extrabold text-primary">{formatPrice(otpPrice)}</span>
                       ) : (
-                        <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1">
-                          {filteredOtpCountries.map((country) => (
-                            <button
-                              key={country.code}
-                              onClick={() => {
-                                setSelectedOtpCountry(country)
-                                setOtpCountrySearchQuery('')
-                              }}
-                              className="p-2.5 rounded-xl border transition-all text-center bg-surface-dark border-border-dark hover:border-primary/50"
-                            >
-                              <div className="flex justify-center mb-1">
-                                <FlagIcon countryCode={country.code} className="w-5 h-5 rounded" />
-                              </div>
-                              <h3 className="font-medium text-white text-xs truncate">{country.name}</h3>
-                            </button>
-                          ))}
-                        </div>
+                        <span className="text-slate-400">Loading price...</span>
                       )}
-                    </>
-                  )}
-                </div>
+                    </div>
+                    <p className="text-slate-400 text-sm">
+                      Click the pills above to change your selection
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Mobile: Your Selection Panel (inline, not fixed) */}
