@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import Image from 'next/image'
+import { useState, useEffect } from 'react'
 
 interface ServiceLogoProps {
   name: string
@@ -58,16 +57,6 @@ const SERVICE_DOMAINS: Record<string, string> = {
   binance: 'binance.com',
   kraken: 'kraken.com',
   robinhood: 'robinhood.com',
-  etrade: 'etrade.com',
-  fidelity: 'fidelity.com',
-  schwab: 'schwab.com',
-  chase: 'chase.com',
-  bankofamerica: 'bankofamerica.com',
-  wellsfargo: 'wellsfargo.com',
-  citibank: 'citi.com',
-  capitalone: 'capitalone.com',
-  amex: 'americanexpress.com',
-  discover: 'discover.com',
   dropbox: 'dropbox.com',
   slack: 'slack.com',
   zoom: 'zoom.us',
@@ -86,7 +75,6 @@ const SERVICE_DOMAINS: Record<string, string> = {
   walmart: 'walmart.com',
   target: 'target.com',
   bestbuy: 'bestbuy.com',
-  costco: 'costco.com',
   aliexpress: 'aliexpress.com',
   alibaba: 'alibaba.com',
   wish: 'wish.com',
@@ -94,104 +82,77 @@ const SERVICE_DOMAINS: Record<string, string> = {
   nike: 'nike.com',
   adidas: 'adidas.com',
   hulu: 'hulu.com',
-  hbo: 'hbo.com',
+  hbo: 'hbomax.com',
   disney: 'disney.com',
   disneyplus: 'disneyplus.com',
-  primevideo: 'primevideo.com',
-  paramount: 'paramountplus.com',
-  peacock: 'peacocktv.com',
   adobe: 'adobe.com',
   canva: 'canva.com',
   figma: 'figma.com',
   notion: 'notion.so',
   trello: 'trello.com',
-  asana: 'asana.com',
-  monday: 'monday.com',
   github: 'github.com',
   gitlab: 'gitlab.com',
-  bitbucket: 'bitbucket.org',
-  stackoverflow: 'stackoverflow.com',
-  aws: 'aws.amazon.com',
-  azure: 'azure.microsoft.com',
-  gcp: 'cloud.google.com',
-  digitalocean: 'digitalocean.com',
-  heroku: 'heroku.com',
-  vercel: 'vercel.com',
-  netlify: 'netlify.com',
-  cloudflare: 'cloudflare.com',
-  godaddy: 'godaddy.com',
-  namecheap: 'namecheap.com',
-  mailchimp: 'mailchimp.com',
-  hubspot: 'hubspot.com',
-  salesforce: 'salesforce.com',
-  zendesk: 'zendesk.com',
-  intercom: 'intercom.com',
   stripe: 'stripe.com',
-  square: 'squareup.com',
   shopee: 'shopee.com',
-  lazada: 'lazada.com',
   grab: 'grab.com',
   gojek: 'gojek.com',
   olx: 'olx.com',
-  mercadolibre: 'mercadolibre.com',
-  rappi: 'rappi.com',
-  ifood: 'ifood.com.br',
-  deliveroo: 'deliveroo.com',
-  justeat: 'just-eat.com',
-  foodpanda: 'foodpanda.com',
-  swiggy: 'swiggy.com',
-  zomato: 'zomato.com',
-  ola: 'olacabs.com',
-  didi: 'didiglobal.com',
-  bolt: 'bolt.eu',
-  blablacar: 'blablacar.com',
-  '7-eleven': '7-eleven.com',
-  'seven-eleven': '7-eleven.com',
   agoda: 'agoda.com',
-  trivago: 'trivago.com',
-  kayak: 'kayak.com',
-  skyscanner: 'skyscanner.com',
-  tripadvisor: 'tripadvisor.com',
   yelp: 'yelp.com',
-  foursquare: 'foursquare.com',
   starbucks: 'starbucks.com',
-  mcdonalds: 'mcdonalds.com',
-  burgerking: 'bk.com',
-  kfc: 'kfc.com',
-  pizzahut: 'pizzahut.com',
-  dominos: 'dominos.com',
-  subway: 'subway.com',
-  chipotle: 'chipotle.com',
-  '888poker': '888poker.com',
-  poker: 'pokerstars.com',
-  betfair: 'betfair.com',
-  draftkings: 'draftkings.com',
-  fanduel: 'fanduel.com',
-  bet365: 'bet365.com',
+  yandex: 'yandex.com',
+  vk: 'vk.com',
+  odnoklassniki: 'ok.ru',
+  mailru: 'mail.ru',
+  wolt: 'wolt.com',
+  deliveroo: 'deliveroo.com',
+  glovo: 'glovoapp.com',
+  bolt: 'bolt.eu',
+  didi: 'didiglobal.com',
+  careem: 'careem.com',
+  rappi: 'rappi.com',
+  mercadolibre: 'mercadolibre.com',
+  wildberries: 'wildberries.ru',
+  ozon: 'ozon.ru',
+  avito: 'avito.ru',
+  protonmail: 'proton.me',
+  tutanota: 'tutanota.com',
+  outlook: 'outlook.com',
+  icloud: 'icloud.com',
+  yohoho: 'yohoho.io',
+  yalla: 'yalla.live',
+  yippi: 'yippi.biz',
+  imo: 'imo.im',
+  likee: 'likee.video',
+  bigo: 'bigo.tv',
+  momo: 'momo.vn',
+  zalo: 'zalo.me',
+  clubhouse: 'clubhouse.com',
+  threads: 'threads.net',
+  mastodon: 'mastodon.social',
+  bluesky: 'bsky.app',
 }
 
-// Fallback emoji icons for when logo fetch fails
-const FALLBACK_EMOJIS: Record<string, string> = {
-  whatsapp: '💬',
-  telegram: '✈️',
-  google: '🔍',
-  facebook: '👤',
-  instagram: '📷',
-  twitter: '🐦',
-  tiktok: '🎵',
-  discord: '🎮',
-  snapchat: '👻',
-  uber: '🚗',
-  amazon: '📦',
-  netflix: '🎬',
-  spotify: '🎧',
-  paypal: '💳',
-  microsoft: '🪟',
-  apple: '🍎',
-  linkedin: '💼',
-  yahoo: '📧',
-  steam: '🎮',
-  twitch: '📺',
+// Get first letter as fallback
+function getInitial(name: string): string {
+  return name.charAt(0).toUpperCase()
+}
+
+// Generate a consistent color based on the service name
+function getColorFromName(name: string): string {
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+    '#F8B500', '#00CED1', '#FF69B4', '#32CD32', '#FF4500',
+    '#9370DB', '#20B2AA', '#FFD700', '#00FA9A', '#DC143C',
+  ]
+
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+
+  return colors[Math.abs(hash) % colors.length]
 }
 
 function getServiceDomain(serviceName: string): string | null {
@@ -208,102 +169,87 @@ function getServiceDomain(serviceName: string): string | null {
     return SERVICE_DOMAINS[withDots]
   }
 
-  // Try partial match
+  // Try partial match - but be strict about it
   for (const [key, domain] of Object.entries(SERVICE_DOMAINS)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
+    if (normalized === key) {
       return domain
     }
   }
 
-  // Try to construct domain from name
-  // E.g., "Booking.com" -> "booking.com"
-  if (serviceName.toLowerCase().includes('.')) {
-    return serviceName.toLowerCase().replace(/\s+/g, '')
-  }
-
-  // Try common patterns
-  const cleanName = serviceName.toLowerCase().replace(/[^a-z0-9]/g, '')
-  const possibleDomains = [
-    `${cleanName}.com`,
-    `${cleanName}.io`,
-    `${cleanName}.app`,
-    `${cleanName}.co`,
-  ]
-
-  return possibleDomains[0] // Default to .com
-}
-
-function getFallbackEmoji(serviceName: string): string {
-  const normalized = serviceName.toLowerCase().replace(/[^a-z0-9]/g, '')
-
-  for (const [key, emoji] of Object.entries(FALLBACK_EMOJIS)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return emoji
-    }
-  }
-
-  return '📱'
+  return null
 }
 
 export default function ServiceLogo({ name, size = 32, className = '' }: ServiceLogoProps) {
-  const [logoError, setLogoError] = useState(false)
-  const [faviconError, setFaviconError] = useState(false)
+  const [imgSrc, setImgSrc] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   const domain = getServiceDomain(name)
-  const fallbackEmoji = getFallbackEmoji(name)
+  const initial = getInitial(name)
+  const bgColor = getColorFromName(name)
 
-  // Try Clearbit logo first (higher quality)
-  const clearbitUrl = domain ? `https://logo.clearbit.com/${domain}` : null
-  // Fallback to Google favicon
-  const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null
+  useEffect(() => {
+    // Reset state when name changes
+    setLoadFailed(false)
+    setLoadAttempt(0)
 
-  // If both failed, show emoji
-  if (!domain || (logoError && faviconError)) {
-    return (
-      <span className={`text-2xl flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
-        {fallbackEmoji}
-      </span>
-    )
+    if (domain) {
+      // Start with Clearbit
+      setImgSrc(`https://logo.clearbit.com/${domain}`)
+    } else {
+      // No known domain, use letter avatar
+      setLoadFailed(true)
+    }
+  }, [name, domain])
+
+  const handleError = () => {
+    if (loadAttempt === 0 && domain) {
+      // First failure (Clearbit), try Google favicon
+      setLoadAttempt(1)
+      setImgSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`)
+    } else if (loadAttempt === 1 && domain) {
+      // Second failure (Google favicon), try DuckDuckGo
+      setLoadAttempt(2)
+      setImgSrc(`https://icons.duckduckgo.com/ip3/${domain}.ico`)
+    } else {
+      // All attempts failed, show letter avatar
+      setLoadFailed(true)
+    }
   }
 
-  // Try Clearbit logo first
-  if (!logoError && clearbitUrl) {
+  // Show letter avatar if no domain or all load attempts failed
+  if (loadFailed || !imgSrc) {
     return (
-      <div className={`relative bg-white rounded-lg overflow-hidden ${className}`} style={{ width: size, height: size }}>
-        <Image
-          src={clearbitUrl}
-          alt={name}
-          width={size}
-          height={size}
-          className="object-contain p-1"
-          onError={() => setLogoError(true)}
-          unoptimized
-        />
+      <div
+        className={`flex items-center justify-center rounded-lg font-bold text-white ${className}`}
+        style={{
+          width: size,
+          height: size,
+          backgroundColor: bgColor,
+          fontSize: size * 0.5,
+        }}
+      >
+        {initial}
       </div>
     )
   }
 
-  // Fallback to Google favicon
-  if (!faviconError && faviconUrl) {
-    return (
-      <div className={`relative bg-white rounded-lg overflow-hidden ${className}`} style={{ width: size, height: size }}>
-        <Image
-          src={faviconUrl}
-          alt={name}
-          width={size}
-          height={size}
-          className="object-contain p-1"
-          onError={() => setFaviconError(true)}
-          unoptimized
-        />
-      </div>
-    )
-  }
-
-  // Final fallback to emoji
   return (
-    <span className={`text-2xl flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
-      {fallbackEmoji}
-    </span>
+    <div
+      className={`relative bg-white rounded-lg overflow-hidden flex items-center justify-center ${className}`}
+      style={{ width: size, height: size }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imgSrc}
+        alt={name}
+        width={size - 4}
+        height={size - 4}
+        className="object-contain"
+        onError={handleError}
+        loading="lazy"
+        style={{ maxWidth: size - 4, maxHeight: size - 4 }}
+      />
+    </div>
   )
 }
