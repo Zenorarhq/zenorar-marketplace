@@ -1134,6 +1134,24 @@ function PlanSelectionModal({
     fetchPricing()
   }, [country, number.type])
 
+  // Check provider availability when modal opens
+  useEffect(() => {
+    const checkProvider = async () => {
+      setProviderCheckLoading(true)
+      try {
+        const response = await fetch('/backend/orders/check-provider')
+        const result = await response.json()
+        setProviderAvailable(result.success && result.data?.providerAvailable === true)
+      } catch (error) {
+        console.error('Failed to check provider:', error)
+        setProviderAvailable(false)
+      } finally {
+        setProviderCheckLoading(false)
+      }
+    }
+    checkProvider()
+  }, [])
+
   // Wallet checkout state
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
@@ -1145,6 +1163,10 @@ function PlanSelectionModal({
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [showDepositModal, setShowDepositModal] = useState(false)
   const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
+
+  // Provider availability state
+  const [providerAvailable, setProviderAvailable] = useState<boolean | null>(null)
+  const [providerCheckLoading, setProviderCheckLoading] = useState(true)
 
   // Calculate total price - must be before effects that use it
   const calculateTotal = () => {
@@ -1241,7 +1263,16 @@ function PlanSelectionModal({
       }
     }
 
+    // Always add to cart (so user doesn't lose their selection)
     addItem(virtualNumberProduct as any)
+
+    // If provider unavailable, show error but keep item in cart
+    if (providerAvailable === false) {
+      setCheckoutError('Virtual number service is currently unavailable. Your item has been saved to cart - you can complete your purchase when service is restored.')
+      return
+    }
+
+    // Provider available - proceed to cart
     onClose()
     router.push('/cart')
   }

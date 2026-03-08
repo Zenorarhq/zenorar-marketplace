@@ -31,6 +31,13 @@ export default function CartPage() {
   const [validationErrors, setValidationErrors] = useState<Array<{ productId: string; issue: string }>>([])
   const [isCheckingOut, setIsCheckingOut] = useState(false)
 
+  // Virtual number provider availability
+  const [providerAvailable, setProviderAvailable] = useState<boolean | null>(null)
+  const [providerCheckLoading, setProviderCheckLoading] = useState(false)
+
+  // Check if cart has virtual numbers
+  const hasVirtualNumbers = items.some(item => item.product?.metadata?.productType === 'virtual_number')
+
   // Pre-fill promo code and discount from session
   useEffect(() => {
     const savedCode = sessionStorage.getItem('promo_code')
@@ -58,6 +65,29 @@ export default function CartPage() {
       }
     })
   }, [])
+
+  // Check virtual number provider availability when cart has virtual numbers
+  useEffect(() => {
+    if (!hasVirtualNumbers) {
+      setProviderAvailable(true)
+      return
+    }
+
+    const checkProvider = async () => {
+      setProviderCheckLoading(true)
+      try {
+        const response = await fetch('/backend/orders/check-provider')
+        const result = await response.json()
+        setProviderAvailable(result.success && result.data?.providerAvailable === true)
+      } catch (error) {
+        console.error('Failed to check provider:', error)
+        setProviderAvailable(false)
+      } finally {
+        setProviderCheckLoading(false)
+      }
+    }
+    checkProvider()
+  }, [hasVirtualNumbers])
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return
@@ -349,6 +379,21 @@ export default function CartPage() {
                 )}
               </div>
 
+              {/* Provider Unavailable Warning */}
+              {hasVirtualNumbers && providerAvailable === false && (
+                <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Icon name="alert" size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-amber-400 font-bold text-sm mb-1">Service Temporarily Unavailable</p>
+                      <p className="text-amber-400/80 text-xs">
+                        Virtual number service is currently unavailable. Your items are saved - checkout will be enabled when service is restored.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Validation Errors */}
               {validationErrors && validationErrors.length > 0 && (
                 <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
@@ -366,12 +411,17 @@ export default function CartPage() {
 
               <button
                 onClick={handleProceedToCheckout}
-                disabled={isCheckingOut}
+                disabled={isCheckingOut || (hasVirtualNumbers && providerAvailable === false) || providerCheckLoading}
                 className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isCheckingOut ? (
                   <>
                     Validating...
+                    <Icon name="loading" size={24} className="animate-spin" />
+                  </>
+                ) : providerCheckLoading ? (
+                  <>
+                    Checking availability...
                     <Icon name="loading" size={24} className="animate-spin" />
                   </>
                 ) : (
