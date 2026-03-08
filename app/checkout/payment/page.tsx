@@ -87,6 +87,11 @@ export default function PaymentPage() {
   })
   const [useWalletBalance, setUseWalletBalance] = useState(true)
 
+  // Virtual number provider availability state
+  const [providerAvailable, setProviderAvailable] = useState<boolean | null>(null)
+  const [providerCheckLoading, setProviderCheckLoading] = useState(false)
+  const [providerError, setProviderError] = useState<string>('')
+
   // Crypto verification state
   const [cryptoPaymentInitiated, setCryptoPaymentInitiated] = useState(false)
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null)
@@ -247,6 +252,40 @@ export default function PaymentPage() {
       }
     }
   }, [enabledProviders.paystack])
+
+  // Check virtual number provider availability when cart has virtual numbers
+  useEffect(() => {
+    const hasVirtualNumbers = items.some((item: any) =>
+      item.product?.metadata?.productType === 'virtual_number'
+    )
+
+    if (!hasVirtualNumbers) {
+      // No virtual numbers in cart, no need to check provider
+      setProviderAvailable(true)
+      setProviderError('')
+      return
+    }
+
+    // Check provider availability
+    setProviderCheckLoading(true)
+    fetch('/backend/orders/check-provider')
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.success && result.data?.providerAvailable) {
+          setProviderAvailable(true)
+          setProviderError('')
+        } else {
+          setProviderAvailable(false)
+          setProviderError('Virtual number service is currently unavailable. Please try again later or contact support.')
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to check provider availability:', err)
+        setProviderAvailable(false)
+        setProviderError('Unable to verify virtual number service availability. Please try again later.')
+      })
+      .finally(() => setProviderCheckLoading(false))
+  }, [items])
 
   // Polling effect for crypto payment verification
   useEffect(() => {
@@ -1110,6 +1149,34 @@ export default function PaymentPage() {
                 Choose your preferred payment method to complete your order.
               </p>
 
+              {/* Provider unavailable warning - blocks all payments for virtual numbers */}
+              {providerError && providerAvailable === false && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 mb-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                      <Icon name="alert" size={24} className="text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-red-400 font-bold text-base mb-1">Service Temporarily Unavailable</h3>
+                      <p className="text-red-400/80 text-sm">{providerError}</p>
+                      <p className="text-red-400/60 text-xs mt-2">
+                        All payment methods are disabled until the service is restored. You will not be charged.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Provider check loading state */}
+              {providerCheckLoading && (
+                <div className="bg-surface-dark border border-border-dark rounded-2xl p-6 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full" />
+                    <p className="text-slate-400 text-sm">Verifying service availability...</p>
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
                 {/* Wallet Balance Section (Only for authenticated users with balance) */}
                 {isAuthenticated && (
@@ -1182,8 +1249,8 @@ export default function PaymentPage() {
                     <button
                       type="button"
                       onClick={processCreditsPayment}
-                      disabled={paymentStatus === 'paying'}
-                      className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50"
+                      disabled={paymentStatus === 'paying' || providerAvailable === false || providerCheckLoading}
+                      className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {paymentStatus === 'paying' ? (
                         <>
@@ -1211,7 +1278,7 @@ export default function PaymentPage() {
                 )}
 
                 {/* Payment Method Selection */}
-                <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 ${useWalletBalance && finalTotal === 0 ? 'opacity-30 pointer-events-none' : ''}`}>
+                <div className={`grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 ${useWalletBalance && finalTotal === 0 || providerAvailable === false || providerCheckLoading ? 'opacity-30 pointer-events-none' : ''}`}>
                   {enabledProviders.wallet && (
                     <button
                       type="button"
@@ -1409,8 +1476,8 @@ export default function PaymentPage() {
                           <button
                             type="button"
                             onClick={connectWallet}
-                            disabled={paymentStatus === 'connecting'}
-                            className="bg-primary text-black font-bold px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base rounded-xl hover:brightness-105 transition-all disabled:opacity-50"
+                            disabled={paymentStatus === 'connecting' || providerAvailable === false || providerCheckLoading}
+                            className="bg-primary text-black font-bold px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base rounded-xl hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {paymentStatus === 'connecting' ? (
                               <span className="flex items-center gap-2">
@@ -1488,8 +1555,8 @@ export default function PaymentPage() {
                           <button
                             type="button"
                             onClick={processWalletPayment}
-                            disabled={paymentStatus === 'paying'}
-                            className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            disabled={paymentStatus === 'paying' || providerAvailable === false || providerCheckLoading}
+                            className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                           >
                             {paymentStatus === 'paying' ? (
                               <>
@@ -1754,8 +1821,8 @@ export default function PaymentPage() {
                       <button
                         type="button"
                         onClick={initiateCryptoVerification}
-                        disabled={paymentStatus === 'paying'}
-                        className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        disabled={paymentStatus === 'paying' || providerAvailable === false || providerCheckLoading}
+                        className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {paymentStatus === 'paying' ? (
                           <>
@@ -1794,6 +1861,7 @@ export default function PaymentPage() {
                         formatPrice={formatPrice}
                         onSuccess={handleCardPaymentSuccess}
                         onBack={() => router.push('/checkout')}
+                        providerDisabled={providerAvailable === false || providerCheckLoading}
                       />
                     </Elements>
                   ) : stripeConfigError ? (
@@ -1823,6 +1891,7 @@ export default function PaymentPage() {
                       publicKey={paystackPublicKey}
                       onSuccess={handleCardPaymentSuccess}
                       onBack={() => router.push('/checkout')}
+                      providerDisabled={providerAvailable === false || providerCheckLoading}
                     />
                   ) : (
                     <div className="bg-charcoal border border-border-dark rounded-xl p-6 text-center">
@@ -1881,8 +1950,8 @@ export default function PaymentPage() {
                     </Link>
                     <button
                       type="submit"
-                      disabled={isSubmitting}
-                      className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                      disabled={isSubmitting || providerAvailable === false || providerCheckLoading}
+                      className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? 'Processing...' : 'Continue to Review'}
                       {!isSubmitting && <Icon name="arrow-right" size={18} />}
@@ -1982,6 +2051,7 @@ function StripeCardForm({
   formatPrice: formatPriceFn,
   onSuccess,
   onBack,
+  providerDisabled = false,
 }: {
   amount: number
   currency: string
@@ -1992,6 +2062,7 @@ function StripeCardForm({
   formatPrice: (amount: number) => string
   onSuccess: (orderId: string, orderNumber: string) => void
   onBack: () => void
+  providerDisabled?: boolean
 }) {
   const stripe = useStripe()
   const elements = useElements()
@@ -2172,8 +2243,8 @@ function StripeCardForm({
         <button
           type="button"
           onClick={handlePayment}
-          disabled={processing || !stripe}
-          className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          disabled={processing || !stripe || providerDisabled}
+          className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {processing ? (
             <>
@@ -2204,6 +2275,7 @@ function PaystackCardForm({
   publicKey,
   onSuccess,
   onBack,
+  providerDisabled = false,
 }: {
   amount: number
   currency: string
@@ -2215,6 +2287,7 @@ function PaystackCardForm({
   publicKey: string
   onSuccess: (orderId: string, orderNumber: string) => void
   onBack: () => void
+  providerDisabled?: boolean
 }) {
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState('')
@@ -2410,8 +2483,8 @@ function PaystackCardForm({
         <button
           type="button"
           onClick={handlePayment}
-          disabled={processing || !isCurrencySupported || isKeyMissing}
-          className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          disabled={processing || !isCurrencySupported || isKeyMissing || providerDisabled}
+          className="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {processing ? (
             <>
