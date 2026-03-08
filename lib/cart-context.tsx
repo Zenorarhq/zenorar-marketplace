@@ -210,16 +210,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated])
 
   const removeItem = useCallback(async (productId: string, license?: 'standard' | 'extended' | 'pro') => {
-    // Save current state for rollback
-    const previousItems = items
+    // Capture previous items inside setItems to get actual current state
+    let previousItems: CartItem[] = []
 
     // Optimistic update
-    setItems((currentItems) => currentItems.filter((item) => {
-      if (license) {
-        return !(item.product.id === productId && item.license === license)
-      }
-      return item.product.id !== productId
-    }))
+    setItems((currentItems) => {
+      previousItems = currentItems // Capture actual state before modification
+      return currentItems.filter((item) => {
+        if (license) {
+          return !(item.product.id === productId && item.license === license)
+        }
+        return item.product.id !== productId
+      })
+    })
 
     // Sync to API if authenticated
     if (isAuthenticated) {
@@ -229,10 +232,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       })
       if (!result.success) {
         console.warn('Failed to sync cart removal with API:', result.error)
-        setItems(previousItems) // Rollback on failure
+        setItems(previousItems) // Rollback on failure with actual previous state
       }
     }
-  }, [isAuthenticated, items])
+  }, [isAuthenticated])
 
   const updateQuantity = useCallback(async (productId: string, quantity: number, license?: 'standard' | 'extended' | 'pro') => {
     if (quantity <= 0) {
@@ -240,12 +243,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     quantity = Math.min(quantity, 100)
 
-    // Save current state for rollback
-    const previousItems = items
+    // Capture previous items inside setItems to get actual current state
+    let previousItems: CartItem[] = []
 
     // Optimistic update
-    setItems((currentItems) =>
-      currentItems.map((item) => {
+    setItems((currentItems) => {
+      previousItems = currentItems // Capture actual state before modification
+      return currentItems.map((item) => {
         if (license) {
           return item.product.id === productId && item.license === license
             ? { ...item, quantity }
@@ -253,7 +257,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
         return item.product.id === productId ? { ...item, quantity } : item
       })
-    )
+    })
 
     // Sync to API if authenticated
     if (isAuthenticated) {
@@ -266,11 +270,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems(previousItems) // Rollback on failure
       }
     }
-  }, [isAuthenticated, items, removeItem])
+  }, [isAuthenticated, removeItem])
 
   const clearCart = useCallback(async () => {
-    const previousItems = items
-    setItems([])
+    let previousItems: CartItem[] = []
+    setItems((currentItems) => {
+      previousItems = currentItems
+      return []
+    })
     setApiCart(null)
 
     if (isAuthenticated) {
@@ -281,7 +288,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems(previousItems) // Rollback on failure
       }
     }
-  }, [isAuthenticated, items])
+  }, [isAuthenticated])
 
   const mergeGuestCart = useCallback(async () => {
     const guestItems = items
