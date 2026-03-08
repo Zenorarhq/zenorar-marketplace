@@ -172,7 +172,7 @@ const SERVICE_DOMAINS: Record<string, string> = {
   upwork: 'upwork.com',
   freelancer: 'freelancer.com',
   toptal: 'toptal.com',
-  99designs: '99designs.com',
+  '99designs': '99designs.com',
   guru: 'guru.com',
   peopleperhour: 'peopleperhour.com',
 
@@ -336,7 +336,7 @@ const SERVICE_DOMAINS: Record<string, string> = {
   udemy: 'udemy.com',
   udacity: 'udacity.com',
   skillshare: 'skillshare.com',
-  linkedin: 'linkedin.com',
+  linkedinlearning: 'linkedin.com',
   duolingo: 'duolingo.com',
   khan: 'khanacademy.org',
   edx: 'edx.org',
@@ -346,7 +346,6 @@ const SERVICE_DOMAINS: Record<string, string> = {
   giftcards: 'giftcards.com',
   fetchrewards: 'fetchrewards.com',
   ibotta: 'ibotta.com',
-  rakuten: 'rakuten.com',
   swagbucks: 'swagbucks.com',
   erewards: 'e-rewards.com',
 
@@ -362,10 +361,8 @@ const SERVICE_DOMAINS: Record<string, string> = {
 
   // Russian Services
   faberlic: 'faberlic.com',
-  wildberries: 'wildberries.ru',
 
   // Asian Services
-  shopee: 'shopee.com',
   tokopedia: 'tokopedia.com',
   bukalapak: 'bukalapak.com',
   jdcom: 'jd.com',
