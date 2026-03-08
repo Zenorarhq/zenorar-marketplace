@@ -7,6 +7,18 @@ import sgMail from '@sendgrid/mail'
 import { getActiveEmailProvider } from './db-helpers'
 
 // ============================================================================
+// Helpers — no hardcoded URLs
+// ============================================================================
+
+function getSiteUrl(): string {
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://zenorahq.com'
+}
+
+function getSupportEmail(): string {
+  return process.env.SUPPORT_EMAIL || 'support@zenorahq.com'
+}
+
+// ============================================================================
 // TypeScript Interfaces
 // ============================================================================
 
@@ -153,7 +165,7 @@ function generateOrderConfirmationHTML(data: OrderConfirmationData): string {
 
           <!-- Call to Action -->
           <div style="margin-top: 40px; text-align: center;">
-            <a href="https://zenorar.com/profile/orders"
+            <a href="${getSiteUrl()}/profile/orders"
                style="display: inline-block; background: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
               View Order Details
             </a>
@@ -164,7 +176,7 @@ function generateOrderConfirmationHTML(data: OrderConfirmationData): string {
         <div style="padding: 30px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
           <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 13px;">
             Questions? Contact us at
-            <a href="mailto:support@zenorar.com" style="color: #2563eb; text-decoration: none; font-weight: 500;">support@zenorar.com</a>
+            <a href="mailto:${getSupportEmail()}" style="color: #2563eb; text-decoration: none; font-weight: 500;">${getSupportEmail()}</a>
           </p>
           <p style="margin: 0; color: #9ca3af; font-size: 12px;">
             © ${new Date().getFullYear()} Zenorar Marketplace. All rights reserved.
@@ -282,7 +294,7 @@ function generateEsimDeliveryHTML(data: EsimDeliveryData): string {
 
           <!-- CTA -->
           <div style="margin-top: 40px; text-align: center;">
-            <a href="https://zenorar.com/profile/library"
+            <a href="${getSiteUrl()}/profile/library"
                style="display: inline-block; background: #10b981; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
               View in My Library
             </a>
@@ -293,7 +305,7 @@ function generateEsimDeliveryHTML(data: EsimDeliveryData): string {
         <div style="padding: 30px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
           <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 13px;">
             Need help? Contact us at
-            <a href="mailto:support@zenorar.com" style="color: #10b981; text-decoration: none; font-weight: 500;">support@zenorar.com</a>
+            <a href="mailto:${getSupportEmail()}" style="color: #10b981; text-decoration: none; font-weight: 500;">${getSupportEmail()}</a>
           </p>
           <p style="margin: 0; color: #9ca3af; font-size: 12px;">
             © ${new Date().getFullYear()} Zenorar Marketplace. All rights reserved.
@@ -390,7 +402,7 @@ function generateVirtualNumberDeliveryHTML(data: VirtualNumberDeliveryData): str
 
           <!-- CTA -->
           <div style="margin-top: 40px; text-align: center;">
-            <a href="https://zenorar.com/profile/numbers"
+            <a href="${getSiteUrl()}/profile/numbers"
                style="display: inline-block; background: #8b5cf6; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
               Manage Your Number
             </a>
@@ -401,7 +413,7 @@ function generateVirtualNumberDeliveryHTML(data: VirtualNumberDeliveryData): str
         <div style="padding: 30px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
           <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 13px;">
             Need help? Contact us at
-            <a href="mailto:support@zenorar.com" style="color: #8b5cf6; text-decoration: none; font-weight: 500;">support@zenorar.com</a>
+            <a href="mailto:${getSupportEmail()}" style="color: #8b5cf6; text-decoration: none; font-weight: 500;">${getSupportEmail()}</a>
           </p>
           <p style="margin: 0; color: #9ca3af; font-size: 12px;">
             © ${new Date().getFullYear()} Zenorar Marketplace. All rights reserved.
@@ -493,7 +505,7 @@ function generateGiftCardDeliveryHTML(data: GiftCardDeliveryData): string {
 
           <!-- CTA -->
           <div style="margin-top: 40px; text-align: center;">
-            <a href="https://zenorar.com/profile/library"
+            <a href="${getSiteUrl()}/profile/library"
                style="display: inline-block; background: #f59e0b; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
               View in My Library
             </a>
@@ -504,7 +516,7 @@ function generateGiftCardDeliveryHTML(data: GiftCardDeliveryData): string {
         <div style="padding: 30px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
           <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 13px;">
             Need help? Contact us at
-            <a href="mailto:support@zenorar.com" style="color: #f59e0b; text-decoration: none; font-weight: 500;">support@zenorar.com</a>
+            <a href="mailto:${getSupportEmail()}" style="color: #f59e0b; text-decoration: none; font-weight: 500;">${getSupportEmail()}</a>
           </p>
           <p style="margin: 0; color: #9ca3af; font-size: 12px;">
             © ${new Date().getFullYear()} Zenorar Marketplace. All rights reserved.
@@ -860,7 +872,7 @@ function generateLowStockAlertHTML(data: LowStockAlertData): string {
 
           <!-- CTA -->
           <div style="margin-top: 40px; text-align: center;">
-            <a href="https://zenorar.com/admin/gift-cards/inventory"
+            <a href="${getSiteUrl()}/admin/gift-cards/inventory"
                style="display: inline-block; background: #ef4444; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
               Manage Inventory
             </a>
@@ -983,7 +995,7 @@ function generateSmsForwardingHTML(data: SmsForwardingData): string {
 
           <!-- CTA -->
           <div style="margin-top: 30px; text-align: center;">
-            <a href="https://zenorar.com/profile/numbers"
+            <a href="${getSiteUrl()}/profile/numbers"
                style="display: inline-block; background: #8b5cf6; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
               View in Dashboard
             </a>
@@ -1119,7 +1131,7 @@ function generateVoicemailNotificationHTML(data: VoicemailNotificationData): str
 
           <!-- CTA -->
           <div style="margin-top: 30px; text-align: center;">
-            <a href="https://zenorar.com/profile/numbers"
+            <a href="${getSiteUrl()}/profile/numbers"
                style="display: inline-block; background: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 14px;">
               View All Messages
             </a>
