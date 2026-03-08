@@ -12,6 +12,15 @@ interface SmsPoolCredentials {
 let credentialsCache: { credentials: SmsPoolCredentials | null; timestamp: number } | null = null
 const CACHE_TTL = 60 * 1000
 
+// Helper to get OTP settings with fallback to 'api' group for backwards compatibility
+async function getOtpSettings(): Promise<Record<string, any>> {
+  let settings = await getSiteSettingsByGroup('otp')
+  if (!settings || Object.keys(settings).length === 0) {
+    settings = await getSiteSettingsByGroup('api')
+  }
+  return settings
+}
+
 class SmsPoolProvider implements OtpProvider {
   name = 'smspool'
   private baseUrl = 'https://api.smspool.net'
@@ -22,7 +31,7 @@ class SmsPoolProvider implements OtpProvider {
     }
 
     try {
-      const settings = await getSiteSettingsByGroup('otp')
+      const settings = await getOtpSettings()
       const isEnabled = settings.smspoolEnabled === true || settings.smspoolEnabled === 'true'
       const apiKey = settings.smspoolApiKey || process.env.SMSPOOL_API_KEY || ''
 

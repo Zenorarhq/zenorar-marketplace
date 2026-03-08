@@ -12,6 +12,15 @@ interface FiveSimCredentials {
 let credentialsCache: { credentials: FiveSimCredentials | null; timestamp: number } | null = null
 const CACHE_TTL = 60 * 1000
 
+// Helper to get OTP settings with fallback to 'api' group for backwards compatibility
+async function getOtpSettings(): Promise<Record<string, any>> {
+  let settings = await getSiteSettingsByGroup('otp')
+  if (!settings || Object.keys(settings).length === 0) {
+    settings = await getSiteSettingsByGroup('api')
+  }
+  return settings
+}
+
 class FiveSimProvider implements OtpProvider {
   name = '5sim'
   private baseUrl = 'https://5sim.net/v1'
@@ -22,7 +31,7 @@ class FiveSimProvider implements OtpProvider {
     }
 
     try {
-      const settings = await getSiteSettingsByGroup('otp')
+      const settings = await getOtpSettings()
       const isEnabled = settings.fivesimEnabled === true || settings.fivesimEnabled === 'true'
       const apiKey = settings.fivesimApiKey || process.env.FIVESIM_API_KEY || ''
 

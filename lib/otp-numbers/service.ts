@@ -9,6 +9,19 @@ import type { OtpProvider, OtpService, OtpCountry, OtpNumber } from './types'
 
 type ProviderName = 'smspool' | '5sim'
 
+// Helper to get OTP settings with fallback to 'api' group for backwards compatibility
+async function getOtpSettings(): Promise<Record<string, any>> {
+  // Try 'otp' group first (new)
+  let settings = await getSiteSettingsByGroup('otp')
+
+  // If no settings found, fallback to 'api' group (old)
+  if (!settings || Object.keys(settings).length === 0) {
+    settings = await getSiteSettingsByGroup('api')
+  }
+
+  return settings
+}
+
 class OtpNumberService {
   private getProvider(name: ProviderName): OtpProvider {
     switch (name) {
@@ -23,7 +36,7 @@ class OtpNumberService {
 
   private async getDefaultProvider(): Promise<ProviderName> {
     try {
-      const settings = await getSiteSettingsByGroup('otp')
+      const settings = await getOtpSettings()
       return (settings.otpDefaultProvider as ProviderName) || 'smspool'
     } catch {
       return 'smspool'
@@ -32,7 +45,7 @@ class OtpNumberService {
 
   private async getEnabledProviders(): Promise<ProviderName[]> {
     try {
-      const settings = await getSiteSettingsByGroup('otp')
+      const settings = await getOtpSettings()
       const enabled: ProviderName[] = []
 
       if (settings.smspoolEnabled === true || settings.smspoolEnabled === 'true') {
