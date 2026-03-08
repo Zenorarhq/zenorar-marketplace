@@ -56,6 +56,7 @@ export const POST = requireAdmin(async (req: NextRequest, user: AuthenticatedUse
           user: config.user,
           pass: config.password,
         },
+        tls: { rejectUnauthorized: false },
       })
 
       // Verify SMTP connection first

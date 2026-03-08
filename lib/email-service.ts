@@ -535,7 +535,8 @@ async function sendViaSMTP(
       auth: {
         user: config.user,
         pass: config.password
-      }
+      },
+      tls: { rejectUnauthorized: false }
     })
 
     await transporter.sendMail({
