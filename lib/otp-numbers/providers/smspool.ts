@@ -4,6 +4,38 @@
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import type { OtpProvider, OtpService, OtpCountry, OtpNumber } from '../types'
 
+/**
+ * Strip HTML tags from error messages returned by SMSPool API
+ */
+function stripHtmlTags(str: string): string {
+  if (!str) return str
+  return str.replace(/<[^>]*>/g, '').trim()
+}
+
+/**
+ * Convert provider error messages to user-friendly messages
+ */
+function sanitizeErrorMessage(msg: string): string {
+  const cleaned = stripHtmlTags(msg)
+
+  // Provider balance issues - show as service unavailable
+  if (cleaned.toLowerCase().includes('insufficient balance') && cleaned.toLowerCase().includes('pool')) {
+    return 'This number is temporarily unavailable. Please try another country or service.'
+  }
+
+  // No numbers available
+  if (cleaned.toLowerCase().includes('no free phones') || cleaned.toLowerCase().includes('no numbers')) {
+    return 'No numbers available for this service. Please try another country.'
+  }
+
+  // Service not available
+  if (cleaned.toLowerCase().includes('not available') || cleaned.toLowerCase().includes('not supported')) {
+    return 'This service is not available in the selected country.'
+  }
+
+  return cleaned
+}
+
 interface SmsPoolCredentials {
   apiKey: string
   isEnabled: boolean
@@ -144,7 +176,8 @@ class SmsPoolProvider implements OtpProvider {
       const data = await response.json()
 
       if (data.success === 0 || data.error) {
-        return { success: false, error: data.message || data.error || 'Failed to get number' }
+        const errorMsg = sanitizeErrorMessage(data.message || data.error || 'Failed to get number')
+        return { success: false, error: errorMsg }
       }
 
       const expiresAt = new Date()
@@ -230,7 +263,7 @@ class SmsPoolProvider implements OtpProvider {
         return { success: true }
       }
 
-      return { success: false, error: data.message || 'Failed to cancel' }
+      return { success: false, error: sanitizeErrorMessage(data.message || 'Failed to cancel') }
     } catch (error: any) {
       console.error('SMSPool cancel error:', error)
       return { success: false, error: error.message }

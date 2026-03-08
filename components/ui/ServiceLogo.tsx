@@ -384,9 +384,26 @@ const SERVICE_DOMAINS: Record<string, string> = {
   '1688': '1688.com',
   '1xbet': '1xbet.com',
   '1q': '1q.com',
-  aapprewards: 'aapprewards.com',
-  ablo: 'ablo.live',
-  accountkit: 'accountkit.com',
+  '1stopmove': '1stopmove.com',
+  '2dehands': '2dehands.be',
+  '2game': '2game.com',
+  '2redbeans': '2redbeans.com',
+  '3fun': '3fun.co',
+  '360nrs': '360nrs.com',
+  '5ka': '5ka.ru',
+  '5karu': '5ka.ru',
+  '5miles': '5miles.com',
+  '7eleven': '7-eleven.com',
+  '7mall': '7-mall.com',
+  '888poker': '888poker.com',
+  aarprewards: 'aarp.org',
+  aarp: 'aarp.org',
+  aarpreward: 'aarp.org',
+  aditup: 'aditup.com',
+  alignable: 'alignable.com',
+  allset: 'allsetnow.com',
+  altbalaji: 'altbalaji.com',
+  amasia: 'amasia.vc',
   adlist24: 'adlist24.dk',
   afreecatv: 'afreecatv.com',
   airtel: 'airtel.in',
@@ -800,16 +817,18 @@ function getServiceDomain(serviceName: string): string | null {
     return SERVICE_DOMAINS[withDots]
   }
 
-  // 3. Try partial match for compound names (e.g., "Google Firebase" → "firebase")
-  for (const [key, domain] of Object.entries(SERVICE_DOMAINS)) {
-    // Only match if the key is at least 4 chars to avoid false positives
-    if (key.length >= 4 && (normalized.includes(key) || key.includes(normalized))) {
-      return domain
+  // 3. Try splitting by spaces and matching individual words
+  // This handles "Google Firebase" -> check "google" then "firebase"
+  const words = serviceName.toLowerCase().split(/\s+/)
+  for (const word of words) {
+    const cleanWord = word.replace(/[^a-z0-9]/g, '')
+    if (cleanWord.length >= 3 && SERVICE_DOMAINS[cleanWord]) {
+      return SERVICE_DOMAINS[cleanWord]
     }
   }
 
-  // Don't guess domains - return null so we show a nice letter avatar
-  // Guessing leads to showing generic globe icons from Google's favicon service
+  // Don't do fuzzy/partial matching - it causes too many false positives
+  // (e.g., "2RedBeans" incorrectly matching "ea" -> ea.com)
   return null
 }
 
@@ -836,18 +855,61 @@ export default function ServiceLogo({ name, size = 32, className = '' }: Service
     }
   }, [name, domain])
 
+  // Fallback chain: Clearbit -> Google -> DuckDuckGo -> Favicon.ico direct -> Gradient
   const handleError = () => {
     if (loadAttempt === 0 && domain) {
-      // First failure (Clearbit), try Google favicon
+      // Clearbit failed, try Google Favicons
       setLoadAttempt(1)
       setImgSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`)
     } else if (loadAttempt === 1 && domain) {
-      // Second failure (Google favicon), try DuckDuckGo
+      // Google failed or generic, try DuckDuckGo
       setLoadAttempt(2)
       setImgSrc(`https://icons.duckduckgo.com/ip3/${domain}.ico`)
+    } else if (loadAttempt === 2 && domain) {
+      // DuckDuckGo failed or generic, try direct favicon.ico
+      setLoadAttempt(3)
+      setImgSrc(`https://${domain}/favicon.ico`)
+    } else if (loadAttempt === 3 && domain) {
+      // Direct favicon failed, try Yandex (good for international sites)
+      setLoadAttempt(4)
+      setImgSrc(`https://favicon.yandex.net/favicon/${domain}`)
     } else {
-      // All attempts failed, show letter avatar
+      // All sources failed, use gradient letter avatar
       setLoadFailed(true)
+    }
+  }
+
+  const handleLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget
+    const w = img.naturalWidth
+    const h = img.naturalHeight
+
+    // Detect generic/placeholder icons from various sources
+    // Generic icons are typically very small (16x16 or 32x32)
+    // Real favicons/logos should be larger when we request bigger sizes
+
+    // Google Favicons: generic globe is small even when requested at sz=128
+    if (loadAttempt === 1 && w <= 32) {
+      handleError()
+      return
+    }
+
+    // DuckDuckGo: generic placeholder is also small
+    if (loadAttempt === 2 && w <= 32) {
+      handleError()
+      return
+    }
+
+    // Direct favicon.ico: if it's tiny, might be a generic or low-quality icon
+    if (loadAttempt === 3 && w <= 16) {
+      handleError()
+      return
+    }
+
+    // Yandex: generic icons are small
+    if (loadAttempt === 4 && w <= 16) {
+      handleError()
+      return
     }
   }
 
@@ -881,6 +943,7 @@ export default function ServiceLogo({ name, size = 32, className = '' }: Service
         height={size - 4}
         className="object-contain"
         onError={handleError}
+        onLoad={handleLoad}
         loading="lazy"
         style={{ maxWidth: size - 4, maxHeight: size - 4 }}
       />

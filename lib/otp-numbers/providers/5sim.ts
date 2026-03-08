@@ -4,6 +4,38 @@
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import type { OtpProvider, OtpService, OtpCountry, OtpNumber } from '../types'
 
+/**
+ * Strip HTML tags from error messages
+ */
+function stripHtmlTags(str: string): string {
+  if (!str) return str
+  return str.replace(/<[^>]*>/g, '').trim()
+}
+
+/**
+ * Convert provider error messages to user-friendly messages
+ */
+function sanitizeErrorMessage(msg: string): string {
+  const cleaned = stripHtmlTags(msg)
+
+  // Provider balance issues
+  if (cleaned.toLowerCase().includes('not enough')) {
+    return 'This number is temporarily unavailable. Please try another country or service.'
+  }
+
+  // No numbers available
+  if (cleaned.toLowerCase().includes('no free phones') || cleaned.toLowerCase().includes('no numbers')) {
+    return 'No numbers available for this service. Please try another country.'
+  }
+
+  // Service not available
+  if (cleaned.toLowerCase().includes('not available') || cleaned.toLowerCase().includes('not found')) {
+    return 'This service is not available in the selected country.'
+  }
+
+  return cleaned
+}
+
 interface FiveSimCredentials {
   apiKey: string
   isEnabled: boolean
@@ -194,7 +226,7 @@ class FiveSimProvider implements OtpProvider {
 
       if (!response.ok) {
         const errorText = await response.text()
-        return { success: false, error: errorText || 'Failed to get number' }
+        return { success: false, error: sanitizeErrorMessage(errorText) || 'Failed to get number' }
       }
 
       const data = await response.json()
@@ -308,7 +340,7 @@ class FiveSimProvider implements OtpProvider {
 
       if (!response.ok) {
         const errorText = await response.text()
-        return { success: false, error: errorText || 'Failed to cancel' }
+        return { success: false, error: sanitizeErrorMessage(errorText) || 'Failed to cancel' }
       }
 
       return { success: true }
@@ -335,7 +367,7 @@ class FiveSimProvider implements OtpProvider {
 
       if (!response.ok) {
         const errorText = await response.text()
-        return { success: false, error: errorText || 'Failed to finish' }
+        return { success: false, error: sanitizeErrorMessage(errorText) || 'Failed to finish' }
       }
 
       return { success: true }
