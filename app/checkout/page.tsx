@@ -46,6 +46,25 @@ export default function CheckoutPage() {
   const [discountInput, setDiscountInput] = useState('')
   const [discountError, setDiscountError] = useState('')
   const [isValidating, setIsValidating] = useState(false)
+
+  // State for excluding virtual numbers when provider is unavailable
+  const [excludeVirtualNumbers, setExcludeVirtualNumbers] = useState(false)
+
+  // Check if virtual numbers should be excluded (set by CartDropdown when provider unavailable)
+  useEffect(() => {
+    const shouldExclude = sessionStorage.getItem('excludeVirtualNumbers') === 'true'
+    setExcludeVirtualNumbers(shouldExclude)
+    // Don't clear the flag here - let the payment page clear it
+  }, [])
+
+  // Filter items based on exclusion flag
+  const displayItems = excludeVirtualNumbers
+    ? items.filter(item => item.product?.metadata?.productType !== 'virtual_number')
+    : items
+
+  // Recalculate total for display items
+  const displayTotal = displayItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+
   const [formData, setFormData] = useState<ShippingForm>({
     fullName: '',
     email: '',
@@ -68,17 +87,17 @@ export default function CheckoutPage() {
     }
   }, [user])
 
-  // Redirect to cart if cart is empty
+  // Redirect to cart if cart is empty (considering exclusions)
   useEffect(() => {
-    if (!authLoading && (!items || items.length === 0)) {
+    if (!authLoading && (!displayItems || displayItems.length === 0)) {
       router.push('/cart')
     }
-  }, [items, authLoading, router])
+  }, [displayItems, authLoading, router])
 
   // Track InitiateCheckout event
   useEffect(() => {
-    if (items && items.length > 0) {
-      trackInitiateCheckout(total, items.length)
+    if (displayItems && displayItems.length > 0) {
+      trackInitiateCheckout(displayTotal, displayItems.length)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -211,7 +230,7 @@ export default function CheckoutPage() {
   }
 
   // Show empty cart message
-  if (!items || items.length === 0) {
+  if (!displayItems || displayItems.length === 0) {
     return (
       <div className="min-h-screen bg-background-dark flex flex-col">
         <Header />
@@ -450,7 +469,14 @@ export default function CheckoutPage() {
 
           {/* Right Column - Order Summary */}
           <div className="col-span-1 lg:col-span-5 relative lg:order-last">
-            <OrderSummary onSubmit={handleSubmit} isSubmitting={isSubmitting} discountCode={discountCode} discountAmount={discountAmount} />
+            <OrderSummary
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+              discountCode={discountCode}
+              discountAmount={discountAmount}
+              filteredItems={excludeVirtualNumbers ? displayItems : undefined}
+              filteredTotal={excludeVirtualNumbers ? displayTotal : undefined}
+            />
           </div>
         </div>
       </main>

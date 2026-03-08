@@ -227,7 +227,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Sync to API if authenticated
     if (isAuthenticated) {
       const query = license ? `?license=${license}` : ''
-      const result = await apiFetch(`/cart/items/product/${productId}${query}`, {
+      const result = await apiFetch(`/cart/items/product/${encodeURIComponent(productId)}${query}`, {
         method: 'DELETE',
       })
       if (!result.success) {
@@ -261,7 +261,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // Sync to API if authenticated
     if (isAuthenticated) {
-      const result = await apiFetch(`/cart/items/product/${productId}`, {
+      const result = await apiFetch(`/cart/items/product/${encodeURIComponent(productId)}`, {
         method: 'PUT',
         body: JSON.stringify({ quantity, license: license || 'standard' }),
       })

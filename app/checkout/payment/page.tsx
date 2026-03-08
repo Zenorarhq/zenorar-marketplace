@@ -277,15 +277,18 @@ export default function PaymentPage() {
   }, [enabledProviders.paystack])
 
   // Check virtual number provider availability when cart has virtual numbers
+  // Use displayItems (which excludes virtual numbers when exclusion flag is set)
   useEffect(() => {
-    const hasVirtualNumbers = items.some((item: any) =>
+    // If virtual numbers are being excluded, skip the provider check entirely
+    const hasVirtualNumbersInDisplayItems = displayItems.some((item: any) =>
       item.product?.metadata?.productType === 'virtual_number'
     )
 
-    if (!hasVirtualNumbers) {
-      // No virtual numbers in cart, no need to check provider
+    if (!hasVirtualNumbersInDisplayItems) {
+      // No virtual numbers in display items, no need to check provider
       setProviderAvailable(true)
       setProviderError('')
+      setProviderCheckLoading(false)
       return
     }
 
@@ -308,7 +311,7 @@ export default function PaymentPage() {
         setProviderError('Unable to verify virtual number service availability. Please try again later.')
       })
       .finally(() => setProviderCheckLoading(false))
-  }, [items])
+  }, [displayItems])
 
   // Polling effect for crypto payment verification
   useEffect(() => {
@@ -681,7 +684,7 @@ export default function PaymentPage() {
             }),
           },
           body: JSON.stringify({
-            items: items.map((item: any) => ({
+            items: displayItems.map((item: any) => ({
               productId: item.product.id,
               quantity: item.quantity,
               price: item.price,
@@ -703,7 +706,7 @@ export default function PaymentPage() {
               },
             })),
             paymentMethod: 'wallet',
-            total: total,
+            total: effectiveTotal,
           }),
         })
 
@@ -776,7 +779,8 @@ export default function PaymentPage() {
         useWalletBalance: useWalletBalance,
         // Separate dynamic items (virtual numbers, eSIMs, gift cards) from regular cart items
         // Dynamic items are handled server-side with metadata, regular items are from cart
-        dynamicItems: items
+        // Use displayItems to respect exclusion (e.g., when virtual number provider is unavailable)
+        dynamicItems: displayItems
           .filter((item: any) => {
             const productType = item.product.metadata?.productType || item.product.product_type
             return productType === 'virtual_number' || productType === 'esim' || productType === 'gift_card'
@@ -1879,7 +1883,7 @@ export default function PaymentPage() {
                       <StripeCardForm
                         amount={finalTotal}
                         currency={getStripeCurrency(preferences.currency.code)}
-                        items={items}
+                        items={displayItems}
                         discountCode={discountCode}
                         discountAmount={discountAmount}
                         useWalletBalance={useWalletBalance}
@@ -1908,7 +1912,7 @@ export default function PaymentPage() {
                     <PaystackCardForm
                       amount={finalTotal}
                       currency={preferences.currency.code}
-                      items={items}
+                      items={displayItems}
                       discountCode={discountCode}
                       discountAmount={discountAmount}
                       useWalletBalance={useWalletBalance}
@@ -2150,6 +2154,7 @@ function StripeCardForm({
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
           useWalletBalance: useWalletBalance,
           // Separate dynamic items (virtual numbers, eSIMs, gift cards) from regular cart items
+          // items prop already contains filtered displayItems from parent component
           dynamicItems: items
             .filter((item: any) => {
               const productType = item.product.metadata?.productType || item.product.product_type
@@ -2375,6 +2380,7 @@ function PaystackCardForm({
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
           useWalletBalance: useWalletBalance,
           // Separate dynamic items (virtual numbers, eSIMs, gift cards) from regular cart items
+          // items prop already contains filtered displayItems from parent component
           dynamicItems: items
             .filter((item: any) => {
               const productType = item.product.metadata?.productType || item.product.product_type

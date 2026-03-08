@@ -10,14 +10,27 @@ interface OrderSummaryProps {
   isSubmitting?: boolean
   discountCode?: string
   discountAmount?: number
+  // Optional: pass filtered items to override cart items
+  filteredItems?: Array<{
+    product: { id: string; name: string; icon?: string; image?: string; images?: { url: string }[]; metadata?: any }
+    quantity: number
+    license: string
+    price: number
+  }>
+  // Optional: pre-calculated total for filtered items
+  filteredTotal?: number
 }
 
-export default function OrderSummary({ onSubmit, isSubmitting = false, discountCode, discountAmount = 0 }: OrderSummaryProps) {
-  const { items: cartItems, total } = useCart()
+export default function OrderSummary({ onSubmit, isSubmitting = false, discountCode, discountAmount = 0, filteredItems, filteredTotal }: OrderSummaryProps) {
+  const { items: cartItems, total: cartTotal } = useCart()
   const { formatPrice } = usePreferences()
 
-  // Use only actual cart items
-  const displayItems = (cartItems || []).map((item) => ({
+  // Use filtered items if provided, otherwise use cart items
+  const sourceItems = filteredItems ?? cartItems
+  const total = filteredTotal ?? cartTotal
+
+  // Map items for display
+  const displayItems = (sourceItems || []).map((item) => ({
     id: item.product.id,
     name: item.product.metadata?.productType === 'virtual_number'
       ? item.product.metadata?.friendlyName || item.product.name
