@@ -108,7 +108,7 @@ class TestMockProvider implements OtpProvider {
     // SMS will "arrive" in 5-10 seconds
     const receiveDelay = 5000 + Math.random() * 5000
     const receiveAt = new Date(now.getTime() + receiveDelay)
-    const expiresAt = new Date(now.getTime() + 20 * 60 * 1000) // 20 min expiry
+    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000) // 5 min to receive SMS
 
     // Store the activation
     testActivations.set(activationId, {

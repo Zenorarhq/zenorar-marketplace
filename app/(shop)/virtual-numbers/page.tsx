@@ -231,11 +231,12 @@ export default function VirtualNumbersPage() {
   const [otpModalStatus, setOtpModalStatus] = useState<'pending' | 'received' | 'cancelled' | 'expired'>('pending')
   const [otpModalCode, setOtpModalCode] = useState<string | null>(null)
   const [otpModalFullSms, setOtpModalFullSms] = useState<string | null>(null)
-  const [otpModalTimeLeft, setOtpModalTimeLeft] = useState(20 * 60) // 20 minutes in seconds
+  const [otpModalTimeLeft, setOtpModalTimeLeft] = useState(5 * 60) // 5 minutes to receive SMS
   const [otpModalCancelling, setOtpModalCancelling] = useState(false)
   const [otpModalError, setOtpModalError] = useState<string | null>(null)
   const [numberCopied, setNumberCopied] = useState(false)
   const [codeCopied, setCodeCopied] = useState(false)
+  const [otpCodeExpiryTime, setOtpCodeExpiryTime] = useState(3 * 60) // 3 minutes for code expiry
 
   // ===== MONTHLY NUMBERS EFFECTS =====
 
@@ -484,6 +485,7 @@ export default function VirtualNumbersPage() {
             setOtpModalStatus('received')
             setOtpModalCode(result.data.code)
             setOtpModalFullSms(result.data.fullSms || null)
+            setOtpCodeExpiryTime(3 * 60) // Reset code expiry timer to 3 minutes
           } else if (result.data.status === 'expired') {
             setOtpModalStatus('expired')
           } else if (result.data.status === 'cancelled') {
@@ -498,7 +500,7 @@ export default function VirtualNumbersPage() {
     return () => clearInterval(pollInterval)
   }, [showOtpModal, otpSuccessData, otpModalStatus])
 
-  // OTP Modal - Countdown timer
+  // OTP Modal - Countdown timer (waiting for code)
   useEffect(() => {
     if (!showOtpModal || otpModalStatus !== 'pending' || otpModalTimeLeft <= 0) return
 
@@ -514,6 +516,22 @@ export default function VirtualNumbersPage() {
 
     return () => clearInterval(timerInterval)
   }, [showOtpModal, otpModalStatus, otpModalTimeLeft])
+
+  // OTP Modal - Code expiry timer (after code received)
+  useEffect(() => {
+    if (!showOtpModal || otpModalStatus !== 'received' || otpCodeExpiryTime <= 0) return
+
+    const expiryInterval = setInterval(() => {
+      setOtpCodeExpiryTime(prev => {
+        if (prev <= 1) {
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(expiryInterval)
+  }, [showOtpModal, otpModalStatus, otpCodeExpiryTime])
 
   // Handle OTP modal cancel
   const handleOtpModalCancel = async () => {
@@ -560,7 +578,8 @@ export default function VirtualNumbersPage() {
     setOtpModalStatus('pending')
     setOtpModalCode(null)
     setOtpModalFullSms(null)
-    setOtpModalTimeLeft(20 * 60)
+    setOtpModalTimeLeft(5 * 60) // 5 minutes to receive SMS
+    setOtpCodeExpiryTime(3 * 60) // 3 minutes for code expiry
     setOtpModalError(null)
     setShowOtpModal(true)
   }
@@ -1684,6 +1703,23 @@ export default function VirtualNumbersPage() {
                         </button>
                       </div>
                       {codeCopied && <p className="text-green-400 text-xs mt-2">Copied to clipboard!</p>}
+
+                      {/* Code Expiry Timer */}
+                      <div className={`mt-4 pt-3 border-t border-green-500/20 ${otpCodeExpiryTime <= 60 ? 'animate-pulse' : ''}`}>
+                        <p className={`text-xs font-medium ${otpCodeExpiryTime <= 60 ? 'text-red-400' : 'text-slate-400'}`}>
+                          {otpCodeExpiryTime > 0 ? (
+                            <>
+                              <Icon name="clock" size={12} className="inline mr-1" />
+                              Code expires in {Math.floor(otpCodeExpiryTime / 60)}:{(otpCodeExpiryTime % 60).toString().padStart(2, '0')}
+                            </>
+                          ) : (
+                            <>
+                              <Icon name="close" size={12} className="inline mr-1" />
+                              Code may have expired - use quickly!
+                            </>
+                          )}
+                        </p>
+                      </div>
                     </div>
                   )}
 

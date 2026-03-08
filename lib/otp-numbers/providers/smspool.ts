@@ -181,7 +181,7 @@ class SmsPoolProvider implements OtpProvider {
       }
 
       const expiresAt = new Date()
-      expiresAt.setMinutes(expiresAt.getMinutes() + 20) // 20 min expiry
+      expiresAt.setMinutes(expiresAt.getMinutes() + 5) // 5 min to receive SMS
 
       return {
         success: true,
