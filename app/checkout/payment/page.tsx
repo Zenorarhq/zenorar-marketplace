@@ -2204,7 +2204,12 @@ function StripeCardForm({
       const chargeAmount = currency === 'usd' ? amount : convertPrice(amount, currency.toUpperCase())
       const intentResponse = await fetch('/api/payments/stripe/create-intent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('auth_token') && {
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          }),
+        },
         body: JSON.stringify({ amount: chargeAmount, currency, orderId }),
       })
 
@@ -2230,7 +2235,12 @@ function StripeCardForm({
         // Confirm payment on backend so order status updates to CONFIRMED
         await fetch('/api/payments/stripe/confirm', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localStorage.getItem('auth_token') && {
+              Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+            }),
+          },
           body: JSON.stringify({ orderId, paymentIntentId: paymentIntent.id }),
         })
         // Increment discount usage counter
