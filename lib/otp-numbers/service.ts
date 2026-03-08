@@ -138,7 +138,7 @@ class OtpNumberService {
 
     // Check user balance
     const balanceResult = await query(
-      `SELECT balance FROM user_wallets WHERE user_id = $1`,
+      `SELECT id, balance FROM wallet_balances WHERE user_id = $1`,
       [userId]
     )
 
@@ -146,6 +146,7 @@ class OtpNumberService {
       return { success: false, error: 'Wallet not found' }
     }
 
+    const walletId = balanceResult.rows[0].id
     const userBalance = parseFloat(balanceResult.rows[0].balance)
     if (userBalance < price) {
       return { success: false, error: 'Insufficient balance' }
@@ -164,22 +165,22 @@ class OtpNumberService {
     try {
       // Deduct from wallet
       await query(
-        `UPDATE user_wallets SET balance = balance - $1, updated_at = NOW() WHERE user_id = $2`,
+        `UPDATE wallet_balances SET balance = balance - $1, updated_at = NOW() WHERE user_id = $2`,
         [price, userId]
       )
 
       // Record wallet transaction
       await query(
         `INSERT INTO wallet_transactions
-           (user_id, type, amount, balance_before, balance_after, description, reference_type, reference_id)
-         VALUES ($1, 'DEBIT', $2, $3, $4, $5, 'otp_number', $6)`,
+           (wallet_balance_id, type, amount, balance_before, balance_after, description, metadata)
+         VALUES ($1, 'DEBIT', $2, $3, $4, $5, $6)`,
         [
-          userId,
+          walletId,
           price,
           userBalance,
           userBalance - price,
           `OTP Number: ${result.number.phoneNumber} for ${serviceId}`,
-          result.number.id
+          JSON.stringify({ reference_type: 'otp_number', reference_id: result.number.id })
         ]
       )
 
@@ -308,27 +309,28 @@ class OtpNumberService {
 
       try {
         const balanceResult = await query(
-          `SELECT balance FROM user_wallets WHERE user_id = $1`,
+          `SELECT id, balance FROM wallet_balances WHERE user_id = $1`,
           [userId]
         )
+        const walletId = balanceResult.rows[0]?.id
         const currentBalance = parseFloat(balanceResult.rows[0]?.balance || 0)
 
         await query(
-          `UPDATE user_wallets SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2`,
+          `UPDATE wallet_balances SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2`,
           [otp.price, userId]
         )
 
         await query(
           `INSERT INTO wallet_transactions
-             (user_id, type, amount, balance_before, balance_after, description, reference_type, reference_id)
-           VALUES ($1, 'REFUND', $2, $3, $4, $5, 'otp_number_refund', $6)`,
+             (wallet_balance_id, type, amount, balance_before, balance_after, description, metadata)
+           VALUES ($1, 'REFUND', $2, $3, $4, $5, $6)`,
           [
-            userId,
+            walletId,
             otp.price,
             currentBalance,
             currentBalance + parseFloat(otp.price),
             `OTP Number Refund: ${otp.phone_number}`,
-            userOtpId
+            JSON.stringify({ reference_type: 'otp_number_refund', reference_id: userOtpId })
           ]
         )
 
