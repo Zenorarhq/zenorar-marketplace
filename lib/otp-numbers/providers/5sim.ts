@@ -18,9 +18,9 @@ function stripHtmlTags(str: string): string {
 function sanitizeErrorMessage(msg: string): string {
   const cleaned = stripHtmlTags(msg)
 
-  // Provider balance issues
-  if (cleaned.toLowerCase().includes('not enough')) {
-    return 'This number is temporarily unavailable. Please try another country or service.'
+  // Provider balance issues - clearly indicate service issue, not number issue
+  if (cleaned.toLowerCase().includes('not enough') || cleaned.toLowerCase().includes('insufficient balance')) {
+    return 'Service is temporarily unavailable. Please try again later.'
   }
 
   // No numbers available

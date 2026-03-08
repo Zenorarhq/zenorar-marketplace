@@ -880,37 +880,9 @@ export default function ServiceLogo({ name, size = 32, className = '' }: Service
   }
 
   const handleLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget
-    const w = img.naturalWidth
-    const h = img.naturalHeight
-
-    // Detect generic/placeholder icons from various sources
-    // Generic icons are typically very small (16x16 or 32x32)
-    // Real favicons/logos should be larger when we request bigger sizes
-
-    // Google Favicons: generic globe is small even when requested at sz=128
-    if (loadAttempt === 1 && w <= 32) {
-      handleError()
-      return
-    }
-
-    // DuckDuckGo: generic placeholder is also small
-    if (loadAttempt === 2 && w <= 32) {
-      handleError()
-      return
-    }
-
-    // Direct favicon.ico: if it's tiny, might be a generic or low-quality icon
-    if (loadAttempt === 3 && w <= 16) {
-      handleError()
-      return
-    }
-
-    // Yandex: generic icons are small
-    if (loadAttempt === 4 && w <= 16) {
-      handleError()
-      return
-    }
+    // Accept any loaded image - we've already tried to get the best source
+    // Size-based detection was too aggressive and rejected valid favicons
+    // (Many legitimate logos like WhatsApp, 7-Eleven are 32x32 or smaller)
   }
 
   // Show letter avatar if no domain or all load attempts failed
