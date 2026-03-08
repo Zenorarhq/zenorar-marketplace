@@ -1178,7 +1178,7 @@ export default function PaymentPage() {
 
                 {/* Pay with Credits button when wallet covers full amount */}
                 {useWalletBalance && finalTotal === 0 && (
-                  <div className="mb-6">
+                  <div className="mb-6 space-y-3">
                     <button
                       type="button"
                       onClick={processCreditsPayment}
@@ -1197,6 +1197,16 @@ export default function PaymentPage() {
                         </>
                       )}
                     </button>
+                    {/* Error display for wallet credits payment */}
+                    {walletError && (
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <Icon name="alert" size={18} className="text-red-400" />
+                          <p className="text-red-400 font-medium">Payment Failed</p>
+                        </div>
+                        <p className="text-red-400/80 text-sm">{walletError}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
