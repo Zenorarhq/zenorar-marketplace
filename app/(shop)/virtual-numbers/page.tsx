@@ -182,6 +182,7 @@ export default function VirtualNumbersPage() {
   const searchParams = useSearchParams()
   const { addItem } = useCart()
   const { formatPrice } = usePreferences()
+  const { isAuthenticated } = useAuth()
 
   // Tab state - initialize from URL
   const tabFromUrl = searchParams.get('tab') as TabType | null
@@ -231,6 +232,15 @@ export default function VirtualNumbersPage() {
   const [loadingOtpPrice, setLoadingOtpPrice] = useState(false)
   const [purchasingOtp, setPurchasingOtp] = useState(false)
   const [otpError, setOtpError] = useState<string | null>(null)
+  const [otpSuccess, setOtpSuccess] = useState(false)
+  const [otpSuccessData, setOtpSuccessData] = useState<{ id: string; phoneNumber: string } | null>(null)
+
+  // OTP wallet/auth states
+  const [otpWalletBalance, setOtpWalletBalance] = useState<number | null>(null)
+  const [otpLoadingBalance, setOtpLoadingBalance] = useState(false)
+  const [showOtpAuthDialog, setShowOtpAuthDialog] = useState(false)
+  const [showOtpDepositModal, setShowOtpDepositModal] = useState(false)
+  const [pendingOtpPurchase, setPendingOtpPurchase] = useState(false)
 
   // ===== MONTHLY NUMBERS EFFECTS =====
 
@@ -406,6 +416,41 @@ export default function VirtualNumbersPage() {
     fetchPrice()
   }, [selectedOtpService, selectedOtpCountry])
 
+  // Fetch OTP wallet balance when authenticated
+  const fetchOtpWalletBalance = useCallback(async () => {
+    if (!isAuthenticated) return
+    setOtpLoadingBalance(true)
+    try {
+      const result = await getBalance()
+      if (result.success && result.data) {
+        setOtpWalletBalance(result.data.balance || 0)
+      }
+    } catch (error) {
+      console.error('Failed to fetch wallet balance:', error)
+    } finally {
+      setOtpLoadingBalance(false)
+    }
+  }, [isAuthenticated])
+
+  // Fetch balance when authenticated and on OTP tab
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'otp' && otpWalletBalance === null) {
+      fetchOtpWalletBalance()
+    }
+  }, [isAuthenticated, activeTab, otpWalletBalance, fetchOtpWalletBalance])
+
+  // Auto-continue OTP purchase after auth success
+  useEffect(() => {
+    if (pendingOtpPurchase && isAuthenticated && otpWalletBalance !== null && otpPrice !== null) {
+      setPendingOtpPurchase(false)
+      if (otpWalletBalance >= otpPrice) {
+        processOtpPurchase()
+      } else {
+        setShowOtpDepositModal(true)
+      }
+    }
+  }, [pendingOtpPurchase, isAuthenticated, otpWalletBalance, otpPrice])
+
   // ===== HANDLERS =====
 
   // Filter numbers by search
@@ -473,8 +518,8 @@ export default function VirtualNumbersPage() {
     router.push('/cart')
   }
 
-  // Handle OTP purchase
-  const handlePurchaseOtp = async () => {
+  // Process OTP purchase (called after auth and balance checks pass)
+  const processOtpPurchase = async () => {
     if (!selectedOtpService || !selectedOtpCountry || otpPrice === null) return
 
     setPurchasingOtp(true)
@@ -487,8 +532,13 @@ export default function VirtualNumbersPage() {
       )
 
       if (result.success && result.data) {
-        // Redirect to success page with OTP ID for polling
-        router.push(`/checkout/success?otpId=${result.data.id}&type=otp`)
+        // Show success in-page and refresh balance
+        setOtpSuccess(true)
+        setOtpSuccessData({
+          id: result.data.id,
+          phoneNumber: result.data.number?.phoneNumber || ''
+        })
+        fetchOtpWalletBalance()
       } else {
         setOtpError(result.error || 'Failed to purchase OTP number')
       }
@@ -497,6 +547,51 @@ export default function VirtualNumbersPage() {
     } finally {
       setPurchasingOtp(false)
     }
+  }
+
+  // Handle OTP purchase button click
+  const handlePurchaseOtp = async () => {
+    if (!selectedOtpService || !selectedOtpCountry || otpPrice === null) return
+
+    setOtpError(null)
+
+    // If not authenticated, show auth dialog
+    if (!isAuthenticated) {
+      setShowOtpAuthDialog(true)
+      return
+    }
+
+    // Check wallet balance - fetch if null
+    let currentBalance = otpWalletBalance
+    if (currentBalance === null) {
+      setOtpLoadingBalance(true)
+      try {
+        const result = await getBalance()
+        if (result.success && result.data) {
+          currentBalance = result.data.balance || 0
+          setOtpWalletBalance(currentBalance)
+        } else {
+          setOtpError('Failed to fetch wallet balance')
+          setOtpLoadingBalance(false)
+          return
+        }
+      } catch (error) {
+        console.error('Failed to fetch wallet balance:', error)
+        setOtpError('Failed to fetch wallet balance')
+        setOtpLoadingBalance(false)
+        return
+      }
+      setOtpLoadingBalance(false)
+    }
+
+    // If insufficient balance, show deposit modal
+    if (currentBalance < otpPrice) {
+      setShowOtpDepositModal(true)
+      return
+    }
+
+    // Process purchase
+    await processOtpPurchase()
   }
 
   return (
@@ -919,6 +1014,29 @@ export default function VirtualNumbersPage() {
                   )}
                 </div>
 
+                {/* Success Message */}
+                {otpSuccess && otpSuccessData && (
+                  <div className="mb-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Icon name="check" size={24} className="text-green-400" />
+                      <div>
+                        <h4 className="text-white font-bold">Purchase Complete!</h4>
+                        <p className="text-slate-400 text-sm">Your OTP number is ready.</p>
+                      </div>
+                    </div>
+                    <div className="bg-charcoal rounded-lg p-3 mb-3">
+                      <p className="text-slate-500 text-xs">Your Number</p>
+                      <p className="text-white font-mono text-lg">{otpSuccessData.phoneNumber}</p>
+                    </div>
+                    <button
+                      onClick={() => router.push(`/checkout/success?otpId=${otpSuccessData.id}&type=otp`)}
+                      className="w-full py-3 bg-primary text-black font-bold rounded-xl"
+                    >
+                      View OTP Details
+                    </button>
+                  </div>
+                )}
+
                 {/* Error */}
                 {otpError && (
                   <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
@@ -927,27 +1045,77 @@ export default function VirtualNumbersPage() {
                 )}
 
                 {/* Purchase Button */}
-                <button
-                  onClick={handlePurchaseOtp}
-                  disabled={!selectedOtpService || !selectedOtpCountry || otpPrice === null || purchasingOtp}
-                  className="w-full py-4 rounded-xl bg-primary text-black font-bold hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {purchasingOtp ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Icon name="wallet" size={18} />
-                      Buy with Wallet
-                    </>
-                  )}
-                </button>
+                {!otpSuccess && (
+                  <button
+                    onClick={handlePurchaseOtp}
+                    disabled={!selectedOtpService || !selectedOtpCountry || otpPrice === null || purchasingOtp || otpLoadingBalance}
+                    className="w-full py-4 rounded-xl bg-primary text-black font-bold hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {purchasingOtp ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
+                        Processing...
+                      </>
+                    ) : otpLoadingBalance ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
+                        Checking Balance...
+                      </>
+                    ) : isAuthenticated && otpPrice !== null ? (
+                      <>
+                        <Icon name="wallet" size={18} />
+                        Pay {formatPrice(otpPrice)} with Wallet
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="wallet" size={18} />
+                        Buy with Wallet
+                      </>
+                    )}
+                  </button>
+                )}
 
-                <p className="text-slate-500 text-xs text-center mt-3">
-                  Instant deduction from wallet balance
-                </p>
+                {!otpSuccess && (
+                  <p className="text-slate-500 text-xs text-center mt-3">
+                    Instant deduction from wallet balance
+                  </p>
+                )}
+
+                {/* Auth Dialog */}
+                <AuthDialog
+                  isOpen={showOtpAuthDialog}
+                  onClose={() => setShowOtpAuthDialog(false)}
+                  onSuccess={() => {
+                    setShowOtpAuthDialog(false)
+                    setPendingOtpPurchase(true)
+                    fetchOtpWalletBalance()
+                  }}
+                />
+
+                {/* Deposit Modal */}
+                <DepositModal
+                  isOpen={showOtpDepositModal}
+                  onClose={async () => {
+                    setShowOtpDepositModal(false)
+                    // Refresh balance after deposit modal closes
+                    setOtpLoadingBalance(true)
+                    try {
+                      const result = await getBalance()
+                      if (result.success && result.data) {
+                        const newBalance = result.data.balance || 0
+                        setOtpWalletBalance(newBalance)
+                        // Auto-complete purchase if now have enough balance
+                        if (otpPrice !== null && newBalance >= otpPrice) {
+                          processOtpPurchase()
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Failed to fetch wallet balance:', error)
+                    } finally {
+                      setOtpLoadingBalance(false)
+                    }
+                  }}
+                />
               </div>
             </div>
           </div>
