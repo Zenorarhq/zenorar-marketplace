@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { BrowserProvider, parseEther, formatEther, getAddress } from 'ethers'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
@@ -117,6 +118,9 @@ export default function PaymentPage() {
 
   const walletBalance = walletData?.balance || 0
 
+  // State for excluding virtual numbers when provider is unavailable
+  const [excludeVirtualNumbers, setExcludeVirtualNumbers] = useState(false)
+
   // Load discount from sessionStorage
   useEffect(() => {
     const code = sessionStorage.getItem('discount_code')
@@ -126,6 +130,25 @@ export default function PaymentPage() {
       setDiscountAmount(parseFloat(amount))
     }
   }, [])
+
+  // Check if virtual numbers should be excluded (set by CartDropdown when provider unavailable)
+  useEffect(() => {
+    const shouldExclude = sessionStorage.getItem('excludeVirtualNumbers') === 'true'
+    setExcludeVirtualNumbers(shouldExclude)
+    // Clean up the flag after reading
+    if (shouldExclude) {
+      sessionStorage.removeItem('excludeVirtualNumbers')
+    }
+  }, [])
+
+  // Filter items based on exclusion flag
+  const displayItems = excludeVirtualNumbers
+    ? items.filter(item => item.product?.metadata?.productType !== 'virtual_number')
+    : items
+
+  // Recalculate total for display items
+  const displayTotal = displayItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  const excludedVirtualNumberCount = items.length - displayItems.length
 
   // Fetch enabled payment providers on mount
   useEffect(() => {
@@ -353,7 +376,9 @@ export default function PaymentPage() {
   }, [pendingPaymentId, cryptoVerificationStatus, clearCart, router])
 
   // Calculate totals (subtract discount and wallet balance if applicable)
-  const subtotalAfterDiscount = total - discountAmount
+  // Use displayTotal when virtual numbers are excluded
+  const effectiveTotal = excludeVirtualNumbers ? displayTotal : total
+  const subtotalAfterDiscount = effectiveTotal - discountAmount
   const walletAmountToApply = useWalletBalance && walletBalance > 0
     ? Math.min(walletBalance, subtotalAfterDiscount)
     : 0
@@ -1978,12 +2003,34 @@ export default function PaymentPage() {
             <div className="bg-charcoal border border-border-dark rounded-2xl p-4 md:p-8 lg:sticky lg:top-24">
               <h2 className="text-lg md:text-xl font-bold text-white mb-4 md:mb-6">Order Summary</h2>
 
+              {/* Excluded virtual numbers notice */}
+              {excludedVirtualNumberCount > 0 && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                  <div className="flex items-start gap-2">
+                    <Icon name="alert-triangle" size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-200">
+                      {excludedVirtualNumberCount} virtual number{excludedVirtualNumberCount > 1 ? 's' : ''} excluded from checkout due to service unavailability.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4 mb-6">
-                {items.map((item) => (
+                {displayItems.map((item) => (
                   <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-surface-dark rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
-                        <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                          <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
+                        </div>
+                      ) : item.product.image || item.product.images?.[0]?.url ? (
+                        <Image
+                          src={item.product.image || item.product.images?.[0]?.url || ''}
+                          alt={item.product.name}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <Icon name={item.product.icon || (item.product.metadata?.productType === 'virtual_number' ? 'phone' : 'code')} size={20} className="text-slate-500" />
                       )}
@@ -2004,7 +2051,7 @@ export default function PaymentPage() {
               <div className="border-t border-border-dark pt-4 space-y-3">
                 <div className="flex justify-between text-slate-400">
                   <span>Subtotal</span>
-                  <span className="text-white">{formatPrice(total)}</span>
+                  <span className="text-white">{formatPrice(effectiveTotal)}</span>
                 </div>
                 {discountCode && discountAmount > 0 && (
                   <div className="flex justify-between text-slate-400">

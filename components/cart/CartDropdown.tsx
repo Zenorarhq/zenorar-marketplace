@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import { useCart } from '@/lib/cart-context'
@@ -18,6 +19,57 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
   const { items, total, itemCount, removeItem } = useCart()
   const { formatPrice } = usePreferences()
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+
+  // Provider availability state
+  const [providerAvailable, setProviderAvailable] = useState<boolean | null>(null)
+  const [providerCheckLoading, setProviderCheckLoading] = useState(false)
+
+  // Check which items are virtual numbers
+  const virtualNumberItems = items.filter(item => item.product?.metadata?.productType === 'virtual_number')
+  const nonVirtualNumberItems = items.filter(item => item.product?.metadata?.productType !== 'virtual_number')
+  const hasVirtualNumbers = virtualNumberItems.length > 0
+  const hasOnlyVirtualNumbers = hasVirtualNumbers && nonVirtualNumberItems.length === 0
+
+  // Checkout should be disabled if ONLY virtual numbers and provider unavailable
+  const shouldDisableCheckout = hasOnlyVirtualNumbers && providerAvailable === false
+
+  // Check provider availability when cart has virtual numbers
+  useEffect(() => {
+    if (!isOpen || !hasVirtualNumbers) {
+      setProviderAvailable(null)
+      return
+    }
+
+    const checkProvider = async () => {
+      setProviderCheckLoading(true)
+      try {
+        const response = await fetch('/backend/orders/check-provider')
+        const result = await response.json()
+        setProviderAvailable(result.success && result.data?.providerAvailable === true)
+      } catch (error) {
+        console.error('Failed to check provider availability:', error)
+        setProviderAvailable(false)
+      } finally {
+        setProviderCheckLoading(false)
+      }
+    }
+
+    checkProvider()
+  }, [isOpen, hasVirtualNumbers])
+
+  // Handle checkout with exclusion logic for unavailable virtual numbers
+  const handleCheckout = useCallback(() => {
+    // If provider unavailable and we have mixed items, exclude virtual numbers
+    if (providerAvailable === false && hasVirtualNumbers && !hasOnlyVirtualNumbers) {
+      // Store excluded items in sessionStorage so checkout page knows to exclude them
+      sessionStorage.setItem('excludeVirtualNumbers', 'true')
+    } else {
+      sessionStorage.removeItem('excludeVirtualNumbers')
+    }
+    onClose()
+    router.push('/checkout')
+  }, [providerAvailable, hasVirtualNumbers, hasOnlyVirtualNumbers, onClose, router])
 
   // Handle click outside (only if this instance is actually visible in the DOM)
   useEffect(() => {
@@ -197,6 +249,26 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
         <span className="text-white font-bold text-lg">{formatPrice(total)}</span>
       </div>
 
+      {/* Provider unavailable warning */}
+      {hasVirtualNumbers && providerAvailable === false && (
+        <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+          <div className="flex items-start gap-2">
+            <Icon name="alert-triangle" size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+            <div className="text-xs">
+              {hasOnlyVirtualNumbers ? (
+                <p className="text-amber-200">
+                  Virtual number service is currently unavailable. Please try again later.
+                </p>
+              ) : (
+                <p className="text-amber-200">
+                  Virtual number service is unavailable. These items will be excluded from checkout.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="grid grid-cols-2 gap-3">
         <Link
@@ -206,14 +278,32 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
         >
           View Cart
         </Link>
-        <Link
-          href="/checkout"
-          onClick={onClose}
-          className="bg-primary text-black font-bold py-3 px-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2"
-        >
-          Checkout
-          <Icon name="arrow-right" size={18} />
-        </Link>
+        {shouldDisableCheckout || providerCheckLoading ? (
+          <button
+            disabled
+            className="bg-slate-600 text-slate-400 font-bold py-3 px-4 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {providerCheckLoading ? (
+              <>
+                <Icon name="loader" size={18} className="animate-spin" />
+                Checking...
+              </>
+            ) : (
+              <>
+                Checkout
+                <Icon name="arrow-right" size={18} />
+              </>
+            )}
+          </button>
+        ) : (
+          <button
+            onClick={handleCheckout}
+            className="bg-primary text-black font-bold py-3 px-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2"
+          >
+            Checkout
+            <Icon name="arrow-right" size={18} />
+          </button>
+        )}
       </div>
     </div>
   )
