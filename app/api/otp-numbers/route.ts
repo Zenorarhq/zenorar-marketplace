@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
-import { otpNumberService } from '@/lib/otp-numbers/service'
+import { otpNumberService, setTestMode, isTestMode } from '@/lib/otp-numbers/service'
 
 /**
  * GET /api/otp-numbers
@@ -12,9 +12,22 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
-    const provider = searchParams.get('provider') as 'smspool' | '5sim' | undefined
+    const provider = searchParams.get('provider') as 'smspool' | '5sim' | 'test-mock' | undefined
     const serviceId = searchParams.get('service')
     const countryCode = searchParams.get('country')
+    const testMode = searchParams.get('testMode')
+
+    // Handle test mode toggle
+    if (testMode === 'true') {
+      setTestMode(true)
+    } else if (testMode === 'false') {
+      setTestMode(false)
+    }
+
+    // Return test mode status
+    if (action === 'testModeStatus') {
+      return NextResponse.json({ success: true, testMode: isTestMode() })
+    }
 
     // Get services
     if (action === 'services') {
@@ -74,7 +87,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { serviceId, countryCode, provider } = body
+    const { serviceId, countryCode, provider, testMode } = body
+
+    // Enable test mode if requested
+    if (testMode === true) {
+      setTestMode(true)
+    }
 
     if (!serviceId || !countryCode) {
       return NextResponse.json(

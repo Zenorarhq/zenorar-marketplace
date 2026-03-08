@@ -222,6 +222,10 @@ export default function VirtualNumbersPage() {
   const [showOtpDepositModal, setShowOtpDepositModal] = useState(false)
   const [pendingOtpPurchase, setPendingOtpPurchase] = useState(false)
 
+  // Test mode state (for testing OTP flow without real API credentials)
+  const [otpTestMode, setOtpTestMode] = useState(false)
+  const [togglingTestMode, setTogglingTestMode] = useState(false)
+
   // ===== MONTHLY NUMBERS EFFECTS =====
 
   // Fetch countries on mount and auto-select first one
@@ -325,9 +329,35 @@ export default function VirtualNumbersPage() {
 
   // ===== OTP EFFECTS =====
 
-  // Fetch OTP services when OTP tab is active
+  // Toggle test mode
+  const handleToggleTestMode = async () => {
+    setTogglingTestMode(true)
+    try {
+      const newMode = !otpTestMode
+      // Call API to toggle test mode
+      const response = await fetch(`/api/otp-numbers?testMode=${newMode}&action=testModeStatus`)
+      const result = await response.json()
+      if (result.success) {
+        setOtpTestMode(result.testMode)
+        // Clear current selections and refetch services
+        setSelectedOtpService(null)
+        setSelectedOtpCountry(null)
+        setOtpPrice(null)
+        setOtpServices([]) // Force refetch
+        setOtpError(null)
+        setOtpSuccess(false)
+      }
+    } catch (error) {
+      console.error('Error toggling test mode:', error)
+    } finally {
+      setTogglingTestMode(false)
+    }
+  }
+
+  // Fetch OTP services when OTP tab is active or test mode changes
   useEffect(() => {
-    if (activeTab !== 'otp' || otpServices.length > 0) return
+    if (activeTab !== 'otp') return
+    if (otpServices.length > 0) return
 
     async function fetchServices() {
       setLoadingOtpServices(true)
@@ -343,7 +373,7 @@ export default function VirtualNumbersPage() {
       }
     }
     fetchServices()
-  }, [activeTab, otpServices.length])
+  }, [activeTab, otpServices.length, otpTestMode])
 
   // Fetch OTP countries when service is selected
   useEffect(() => {
@@ -515,7 +545,8 @@ export default function VirtualNumbersPage() {
     try {
       const result = await otpNumbersApi.requestNumber(
         selectedOtpService.id,
-        selectedOtpCountry.code
+        selectedOtpCountry.code,
+        { testMode: otpTestMode }
       )
 
       if (result.success && result.data) {
@@ -813,6 +844,52 @@ export default function VirtualNumbersPage() {
       {/* ===== OTP TAB ===== */}
       {activeTab === 'otp' && (
         <>
+          {/* Test Mode Toggle */}
+          <div className={`mb-4 p-4 rounded-xl border ${otpTestMode ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-surface-dark border-border-dark'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Icon name="code" size={20} className={otpTestMode ? 'text-yellow-400' : 'text-slate-500'} />
+                <div>
+                  <p className={`font-bold text-sm ${otpTestMode ? 'text-yellow-400' : 'text-slate-400'}`}>
+                    {otpTestMode ? 'Test Mode Active' : 'Test Mode'}
+                  </p>
+                  <p className="text-slate-500 text-xs">
+                    {otpTestMode
+                      ? 'Using mock data. Real wallet balance will be charged, but OTP will be simulated.'
+                      : 'Enable to test the OTP flow without real provider API'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleToggleTestMode}
+                disabled={togglingTestMode}
+                className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+                  otpTestMode
+                    ? 'bg-yellow-500 text-black hover:bg-yellow-400'
+                    : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white hover:border-primary/50'
+                }`}
+              >
+                {togglingTestMode ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                    Switching...
+                  </span>
+                ) : otpTestMode ? (
+                  'Disable Test Mode'
+                ) : (
+                  'Enable Test Mode'
+                )}
+              </button>
+            </div>
+            {otpTestMode && (
+              <div className="mt-3 pt-3 border-t border-yellow-500/20">
+                <p className="text-yellow-400/80 text-xs">
+                  In test mode: Select any service → Select any country → Buy with wallet → SMS code will auto-arrive in 5-10 seconds. You can also test cancellation and refunds.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* How it works */}
           <div className="bg-surface-dark border border-border-dark rounded-2xl p-6 mb-8">
             <h3 className="text-white font-bold mb-4 flex items-center gap-2">

@@ -5,9 +5,22 @@ import { query } from '@/lib/db'
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import { smsPoolProvider } from './providers/smspool'
 import { fiveSimProvider } from './providers/5sim'
+import { testMockProvider } from './providers/test-mock'
 import type { OtpProvider, OtpService, OtpCountry, OtpNumber } from './types'
 
-type ProviderName = 'smspool' | '5sim'
+type ProviderName = 'smspool' | '5sim' | 'test-mock'
+
+// Test mode flag - can be set externally
+let testModeEnabled = process.env.TEST_OTP_MODE === 'true'
+
+export function setTestMode(enabled: boolean) {
+  testModeEnabled = enabled
+  console.log(`[OTP Service] Test mode ${enabled ? 'ENABLED' : 'DISABLED'}`)
+}
+
+export function isTestMode(): boolean {
+  return testModeEnabled
+}
 
 // Helper to get OTP settings from the 'api' group
 async function getOtpSettings(): Promise<Record<string, any>> {
@@ -21,12 +34,19 @@ class OtpNumberService {
         return smsPoolProvider
       case '5sim':
         return fiveSimProvider
+      case 'test-mock':
+        return testMockProvider
       default:
         throw new Error(`Unknown OTP provider: ${name}`)
     }
   }
 
   private async getDefaultProvider(): Promise<ProviderName> {
+    // In test mode, always use test-mock provider
+    if (testModeEnabled) {
+      return 'test-mock'
+    }
+
     try {
       const settings = await getOtpSettings()
       return (settings.otpDefaultProvider as ProviderName) || 'smspool'
@@ -36,6 +56,11 @@ class OtpNumberService {
   }
 
   private async getEnabledProviders(): Promise<ProviderName[]> {
+    // In test mode, only return test-mock
+    if (testModeEnabled) {
+      return ['test-mock']
+    }
+
     try {
       const settings = await getOtpSettings()
       const enabled: ProviderName[] = []

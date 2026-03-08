@@ -136,7 +136,10 @@ export async function getUserOtpNumbers(): Promise<{
 export async function requestNumber(
   serviceId: string,
   countryCode: string,
-  provider?: 'smspool' | '5sim'
+  options?: {
+    provider?: 'smspool' | '5sim' | 'test-mock'
+    testMode?: boolean
+  }
 ): Promise<{
   success: boolean
   data?: {
@@ -147,7 +150,12 @@ export async function requestNumber(
 }> {
   return localApiFetch('/otp-numbers', {
     method: 'POST',
-    body: JSON.stringify({ serviceId, countryCode, provider })
+    body: JSON.stringify({
+      serviceId,
+      countryCode,
+      provider: options?.provider,
+      testMode: options?.testMode
+    })
   })
 }
 
