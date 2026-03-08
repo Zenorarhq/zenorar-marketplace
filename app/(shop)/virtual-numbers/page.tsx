@@ -226,6 +226,17 @@ export default function VirtualNumbersPage() {
   const [otpTestMode, setOtpTestMode] = useState(false)
   const [togglingTestMode, setTogglingTestMode] = useState(false)
 
+  // OTP Modal state
+  const [showOtpModal, setShowOtpModal] = useState(false)
+  const [otpModalStatus, setOtpModalStatus] = useState<'pending' | 'received' | 'cancelled' | 'expired'>('pending')
+  const [otpModalCode, setOtpModalCode] = useState<string | null>(null)
+  const [otpModalFullSms, setOtpModalFullSms] = useState<string | null>(null)
+  const [otpModalTimeLeft, setOtpModalTimeLeft] = useState(20 * 60) // 20 minutes in seconds
+  const [otpModalCancelling, setOtpModalCancelling] = useState(false)
+  const [otpModalError, setOtpModalError] = useState<string | null>(null)
+  const [numberCopied, setNumberCopied] = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
+
   // ===== MONTHLY NUMBERS EFFECTS =====
 
   // Fetch countries on mount and auto-select first one
@@ -460,6 +471,119 @@ export default function VirtualNumbersPage() {
       }
     }
   }, [pendingOtpPurchase, isAuthenticated, otpWalletBalance, otpPrice])
+
+  // OTP Modal - Poll for SMS when modal is open
+  useEffect(() => {
+    if (!showOtpModal || !otpSuccessData || otpModalStatus !== 'pending') return
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const result = await otpNumbersApi.checkSms(otpSuccessData.id)
+        if (result.success && result.data) {
+          if (result.data.status === 'received' && result.data.code) {
+            setOtpModalStatus('received')
+            setOtpModalCode(result.data.code)
+            setOtpModalFullSms(result.data.fullSms || null)
+          } else if (result.data.status === 'expired') {
+            setOtpModalStatus('expired')
+          } else if (result.data.status === 'cancelled') {
+            setOtpModalStatus('cancelled')
+          }
+        }
+      } catch (err) {
+        console.error('Error polling OTP status:', err)
+      }
+    }, 3000)
+
+    return () => clearInterval(pollInterval)
+  }, [showOtpModal, otpSuccessData, otpModalStatus])
+
+  // OTP Modal - Countdown timer
+  useEffect(() => {
+    if (!showOtpModal || otpModalStatus !== 'pending' || otpModalTimeLeft <= 0) return
+
+    const timerInterval = setInterval(() => {
+      setOtpModalTimeLeft(prev => {
+        if (prev <= 1) {
+          setOtpModalStatus('expired')
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timerInterval)
+  }, [showOtpModal, otpModalStatus, otpModalTimeLeft])
+
+  // Handle OTP modal cancel
+  const handleOtpModalCancel = async () => {
+    if (!otpSuccessData || otpModalCancelling) return
+
+    setOtpModalCancelling(true)
+    setOtpModalError(null)
+
+    try {
+      const result = await otpNumbersApi.cancelNumber(otpSuccessData.id)
+      if (result.success) {
+        setOtpModalStatus('cancelled')
+        fetchOtpWalletBalance() // Refresh balance after refund
+      } else {
+        setOtpModalError(result.error || 'Failed to cancel')
+      }
+    } catch (err: any) {
+      setOtpModalError(err.message || 'Failed to cancel')
+    } finally {
+      setOtpModalCancelling(false)
+    }
+  }
+
+  // Copy number to clipboard
+  const handleCopyNumber = () => {
+    if (otpSuccessData?.phoneNumber) {
+      navigator.clipboard.writeText(otpSuccessData.phoneNumber)
+      setNumberCopied(true)
+      setTimeout(() => setNumberCopied(false), 2000)
+    }
+  }
+
+  // Copy code to clipboard
+  const handleCopyCode = () => {
+    if (otpModalCode) {
+      navigator.clipboard.writeText(otpModalCode)
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 2000)
+    }
+  }
+
+  // Open OTP modal
+  const openOtpModal = () => {
+    setOtpModalStatus('pending')
+    setOtpModalCode(null)
+    setOtpModalFullSms(null)
+    setOtpModalTimeLeft(20 * 60)
+    setOtpModalError(null)
+    setShowOtpModal(true)
+  }
+
+  // Close OTP modal and reset
+  const closeOtpModal = () => {
+    setShowOtpModal(false)
+    // Reset success state if code was received or cancelled
+    if (otpModalStatus === 'received' || otpModalStatus === 'cancelled') {
+      setOtpSuccess(false)
+      setOtpSuccessData(null)
+      setSelectedOtpService(null)
+      setSelectedOtpCountry(null)
+      setOtpPrice(null)
+    }
+  }
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   // ===== HANDLERS =====
 
@@ -1208,14 +1332,31 @@ export default function VirtualNumbersPage() {
                       </div>
                       <div className="bg-surface-dark rounded-lg p-3 mb-3">
                         <p className="text-slate-500 text-xs">Your Number</p>
-                        <p className="text-white font-mono text-lg">{otpSuccessData.phoneNumber}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-white font-mono text-lg">{otpSuccessData.phoneNumber}</p>
+                          <button
+                            onClick={handleCopyNumber}
+                            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                            title="Copy number"
+                          >
+                            <Icon name={numberCopied ? 'check' : 'copy'} size={18} className={numberCopied ? 'text-green-400' : 'text-slate-400'} />
+                          </button>
+                        </div>
+                        {numberCopied && <p className="text-green-400 text-xs mt-1">Copied!</p>}
                       </div>
                       <button
-                        onClick={() => router.push(`/checkout/success?otpId=${otpSuccessData.id}&type=otp`)}
-                        className="w-full py-3 bg-primary text-black font-bold rounded-xl"
+                        onClick={openOtpModal}
+                        className="w-full py-3 bg-primary text-black font-bold rounded-xl animate-pulse hover:animate-none relative overflow-hidden"
                       >
-                        View OTP Details
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                          <Icon name="message" size={18} />
+                          View OTP Details
+                        </span>
                       </button>
+                      <p className="text-yellow-400 text-xs text-center mt-2 flex items-center justify-center gap-1">
+                        <Icon name="alert" size={14} />
+                        Tap now! Code expires soon
+                      </p>
                     </div>
                   )}
 
@@ -1323,14 +1464,31 @@ export default function VirtualNumbersPage() {
                     </div>
                     <div className="bg-charcoal rounded-lg p-3 mb-3">
                       <p className="text-slate-500 text-xs">Your Number</p>
-                      <p className="text-white font-mono text-lg">{otpSuccessData.phoneNumber}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-white font-mono text-lg">{otpSuccessData.phoneNumber}</p>
+                        <button
+                          onClick={handleCopyNumber}
+                          className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                          title="Copy number"
+                        >
+                          <Icon name={numberCopied ? 'check' : 'copy'} size={18} className={numberCopied ? 'text-green-400' : 'text-slate-400'} />
+                        </button>
+                      </div>
+                      {numberCopied && <p className="text-green-400 text-xs mt-1">Copied!</p>}
                     </div>
                     <button
-                      onClick={() => router.push(`/checkout/success?otpId=${otpSuccessData.id}&type=otp`)}
-                      className="w-full py-3 bg-primary text-black font-bold rounded-xl"
+                      onClick={openOtpModal}
+                      className="w-full py-3 bg-primary text-black font-bold rounded-xl animate-pulse hover:animate-none relative overflow-hidden"
                     >
-                      View OTP Details
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        <Icon name="message" size={18} />
+                        View OTP Details
+                      </span>
                     </button>
+                    <p className="text-yellow-400 text-xs text-center mt-2 flex items-center justify-center gap-1">
+                      <Icon name="alert" size={14} />
+                      Tap now! Code expires soon
+                    </p>
                   </div>
                 )}
 
@@ -1416,6 +1574,222 @@ export default function VirtualNumbersPage() {
               }
             }}
           />
+
+          {/* OTP Details Modal */}
+          {showOtpModal && otpSuccessData && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              {/* Backdrop - clicking does NOT close modal */}
+              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+
+              {/* Modal */}
+              <div className="relative bg-charcoal border border-border-dark rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                {/* Close button */}
+                <button
+                  onClick={closeOtpModal}
+                  className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10 transition-colors z-10"
+                >
+                  <Icon name="x" size={20} className="text-slate-400" />
+                </button>
+
+                <div className="p-6">
+                  {/* Header */}
+                  <div className="text-center mb-6">
+                    {otpModalStatus === 'received' ? (
+                      <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                        <Icon name="check" size={32} className="text-green-400" />
+                      </div>
+                    ) : otpModalStatus === 'cancelled' ? (
+                      <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
+                        <Icon name="close" size={32} className="text-yellow-400" />
+                      </div>
+                    ) : otpModalStatus === 'expired' ? (
+                      <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                        <Icon name="alert" size={32} className="text-red-400" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                        <Icon name="message" size={32} className="text-primary animate-pulse" />
+                      </div>
+                    )}
+
+                    <h2 className="text-xl font-bold text-white">
+                      {otpModalStatus === 'received'
+                        ? 'Code Received!'
+                        : otpModalStatus === 'cancelled'
+                        ? 'Number Cancelled'
+                        : otpModalStatus === 'expired'
+                        ? 'Time Expired'
+                        : 'Waiting for SMS...'}
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-1">
+                      {otpModalStatus === 'received'
+                        ? 'Your verification code has arrived'
+                        : otpModalStatus === 'cancelled'
+                        ? 'Your purchase has been refunded'
+                        : otpModalStatus === 'expired'
+                        ? 'You can now request a refund'
+                        : 'Use this number for verification'}
+                    </p>
+                  </div>
+
+                  {/* Phone Number */}
+                  <div className="bg-surface-dark rounded-xl p-4 mb-4">
+                    <p className="text-slate-500 text-xs mb-1">Your Number</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-white font-mono text-lg">{otpSuccessData.phoneNumber}</p>
+                      <button
+                        onClick={handleCopyNumber}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm"
+                      >
+                        <Icon name={numberCopied ? 'check' : 'copy'} size={14} className={numberCopied ? 'text-green-400' : 'text-slate-400'} />
+                        <span className={numberCopied ? 'text-green-400' : 'text-slate-400'}>{numberCopied ? 'Copied!' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Timer - Only show when pending */}
+                  {otpModalStatus === 'pending' && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-slate-400 text-sm">Time remaining</span>
+                        <span className={`font-mono font-bold ${otpModalTimeLeft < 60 ? 'text-red-400' : otpModalTimeLeft < 300 ? 'text-yellow-400' : 'text-white'}`}>
+                          {formatTime(otpModalTimeLeft)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-surface-dark rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-1000 ${otpModalTimeLeft < 60 ? 'bg-red-500' : otpModalTimeLeft < 300 ? 'bg-yellow-500' : 'bg-primary'}`}
+                          style={{ width: `${(otpModalTimeLeft / (20 * 60)) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-slate-500 text-xs mt-2 text-center">
+                        Checking for SMS every 3 seconds...
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Code Display - Only show when received */}
+                  {otpModalStatus === 'received' && otpModalCode && (
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-6 mb-4 text-center">
+                      <p className="text-green-400 text-xs font-medium mb-2">VERIFICATION CODE</p>
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="text-4xl font-mono font-extrabold text-white tracking-widest">
+                          {otpModalCode}
+                        </span>
+                        <button
+                          onClick={handleCopyCode}
+                          className="p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 transition-colors"
+                        >
+                          <Icon name={codeCopied ? 'check' : 'copy'} size={20} className="text-green-400" />
+                        </button>
+                      </div>
+                      {codeCopied && <p className="text-green-400 text-xs mt-2">Copied to clipboard!</p>}
+                    </div>
+                  )}
+
+                  {/* Full SMS - Only show when received */}
+                  {otpModalStatus === 'received' && otpModalFullSms && (
+                    <div className="bg-surface-dark rounded-xl p-3 mb-4">
+                      <p className="text-slate-500 text-xs mb-1">Full Message</p>
+                      <p className="text-white text-sm">{otpModalFullSms}</p>
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {otpModalError && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4">
+                      <p className="text-red-400 text-sm">{otpModalError}</p>
+                    </div>
+                  )}
+
+                  {/* Cancelled/Expired Message */}
+                  {otpModalStatus === 'cancelled' && (
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-4 text-center">
+                      <p className="text-yellow-400 font-medium">Your wallet balance has been refunded</p>
+                    </div>
+                  )}
+
+                  {otpModalStatus === 'expired' && !otpModalCode && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-4 text-center">
+                      <p className="text-red-400 font-medium">No code received within the time limit</p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="space-y-3">
+                    {/* Cancel Button - Only enabled when expired and no code */}
+                    {otpModalStatus === 'pending' && (
+                      <button
+                        onClick={handleOtpModalCancel}
+                        disabled={otpModalTimeLeft > 0 || otpModalCancelling}
+                        className="w-full py-3 rounded-xl border border-border-dark text-slate-400 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:border-red-500/50 hover:text-red-400 disabled:hover:border-border-dark disabled:hover:text-slate-400"
+                      >
+                        {otpModalCancelling ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-400"></div>
+                            Cancelling...
+                          </span>
+                        ) : otpModalTimeLeft > 0 ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Icon name="clock" size={16} />
+                            Cancel available after timer
+                          </span>
+                        ) : (
+                          <span className="flex items-center justify-center gap-2">
+                            <Icon name="close" size={16} />
+                            Cancel & Get Refund
+                          </span>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Cancel Button for expired state */}
+                    {otpModalStatus === 'expired' && !otpModalCode && (
+                      <button
+                        onClick={handleOtpModalCancel}
+                        disabled={otpModalCancelling}
+                        className="w-full py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 font-medium hover:bg-red-500/30 transition-all disabled:opacity-50"
+                      >
+                        {otpModalCancelling ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400"></div>
+                            Cancelling...
+                          </span>
+                        ) : (
+                          <span className="flex items-center justify-center gap-2">
+                            <Icon name="close" size={16} />
+                            Cancel & Get Refund
+                          </span>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Get Another Number - show when received or cancelled */}
+                    {(otpModalStatus === 'received' || otpModalStatus === 'cancelled') && (
+                      <button
+                        onClick={closeOtpModal}
+                        className="w-full py-3 rounded-xl bg-primary text-black font-bold hover:brightness-105 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Icon name="add" size={18} />
+                        Get Another Number
+                      </button>
+                    )}
+
+                    {/* View History */}
+                    {otpModalStatus === 'received' && (
+                      <button
+                        onClick={() => router.push('/profile/library')}
+                        className="w-full py-3 rounded-xl border border-border-dark text-slate-400 font-medium hover:border-primary/50 hover:text-white transition-all flex items-center justify-center gap-2"
+                      >
+                        <Icon name="clock" size={16} />
+                        View History
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
