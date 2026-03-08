@@ -280,7 +280,7 @@ export default function EsimPage() {
                   className="w-full bg-primary text-black font-bold py-3 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {addingToCart === plan.id ? (
-                    <Icon name="loader" size={18} className="animate-spin" />
+                    <Icon name="loading" size={18} className="animate-spin" />
                   ) : (
                     <>
                       <Icon name="cart" size={18} />

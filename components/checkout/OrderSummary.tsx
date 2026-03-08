@@ -1,6 +1,7 @@
 'use client'
 
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
@@ -18,12 +19,18 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
   // Use only actual cart items
   const displayItems = (cartItems || []).map((item) => ({
     id: item.product.id,
-    name: item.product.name,
+    name: item.product.metadata?.productType === 'virtual_number'
+      ? item.product.metadata?.friendlyName || item.product.name
+      : item.product.name,
     icon: item.product.icon || 'code',
     image: item.product.image || item.product.images?.[0]?.url,
-    license: item.license === 'extended' ? 'Extended License' : 'Standard License',
+    license: item.product.metadata?.productType === 'virtual_number'
+      ? 'Standard License'
+      : (item.license === 'extended' ? 'Extended License' : 'Standard License'),
     price: item.price,
     quantity: item.quantity,
+    isVirtualNumber: item.product.metadata?.productType === 'virtual_number',
+    countryIsoCode: item.product.metadata?.countryIsoCode,
   }))
 
   const shipping = 0 // Free shipping
@@ -54,7 +61,11 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
           displayItems.map((item) => (
             <div key={item.id} className="flex gap-4">
               <div className="w-16 h-16 rounded-xl bg-background-dark border border-border-dark overflow-hidden shrink-0 flex items-center justify-center">
-                {item.image ? (
+                {item.isVirtualNumber && item.countryIsoCode ? (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                    <FlagIcon countryCode={item.countryIsoCode} className="w-10 h-10 rounded" />
+                  </div>
+                ) : item.image ? (
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                 ) : (
                   <Icon name={item.icon} size={24} className="text-slate-500" />

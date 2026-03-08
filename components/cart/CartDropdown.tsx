@@ -253,7 +253,7 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
       {hasVirtualNumbers && providerAvailable === false && (
         <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
           <div className="flex items-start gap-2">
-            <Icon name="alert-triangle" size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+            <Icon name="alert" size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
             <div className="text-xs">
               {hasOnlyVirtualNumbers ? (
                 <p className="text-amber-200">
@@ -285,7 +285,7 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
           >
             {providerCheckLoading ? (
               <>
-                <Icon name="loader" size={18} className="animate-spin" />
+                <Icon name="loading" size={18} className="animate-spin" />
                 Checking...
               </>
             ) : (

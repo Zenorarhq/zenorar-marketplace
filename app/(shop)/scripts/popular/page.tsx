@@ -64,7 +64,7 @@ export default function PopularScriptsPage() {
         </div>
       ) : isError ? (
         <div className="text-center py-24">
-          <Icon name="alert-triangle" size={64} className="text-red-500/60 mx-auto mb-4" />
+          <Icon name="alert" size={64} className="text-red-500/60 mx-auto mb-4" />
           <p className="text-slate-400 text-lg">Failed to load scripts</p>
           <p className="text-slate-500 text-sm mt-1">Please try refreshing the page.</p>
         </div>

@@ -1891,7 +1891,7 @@ export default function PaymentPage() {
                     </Elements>
                   ) : stripeConfigError ? (
                     <div className="bg-charcoal border border-border-dark rounded-xl p-6 text-center">
-                      <Icon name="alert-triangle" size={32} className="text-red-400 mx-auto mb-3" />
+                      <Icon name="alert" size={32} className="text-red-400 mx-auto mb-3" />
                       <p className="text-red-400 text-sm">{stripeConfigError}</p>
                     </div>
                   ) : (
@@ -2007,7 +2007,7 @@ export default function PaymentPage() {
               {excludedVirtualNumberCount > 0 && (
                 <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
                   <div className="flex items-start gap-2">
-                    <Icon name="alert-triangle" size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                    <Icon name="alert" size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-amber-200">
                       {excludedVirtualNumberCount} virtual number{excludedVirtualNumberCount > 1 ? 's' : ''} excluded from checkout due to service unavailability.
                     </p>

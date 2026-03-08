@@ -35,8 +35,14 @@ export default function CartPage() {
   const [providerAvailable, setProviderAvailable] = useState<boolean | null>(null)
   const [providerCheckLoading, setProviderCheckLoading] = useState(false)
 
-  // Check if cart has virtual numbers
-  const hasVirtualNumbers = items.some(item => item.product?.metadata?.productType === 'virtual_number')
+  // Check which items are virtual numbers
+  const virtualNumberItems = items.filter(item => item.product?.metadata?.productType === 'virtual_number')
+  const nonVirtualNumberItems = items.filter(item => item.product?.metadata?.productType !== 'virtual_number')
+  const hasVirtualNumbers = virtualNumberItems.length > 0
+  const hasOnlyVirtualNumbers = hasVirtualNumbers && nonVirtualNumberItems.length === 0
+
+  // Checkout should be disabled if ONLY virtual numbers and provider unavailable
+  const shouldDisableCheckout = hasOnlyVirtualNumbers && providerAvailable === false
 
   // Pre-fill promo code and discount from session
   useEffect(() => {
@@ -141,6 +147,13 @@ export default function CartPage() {
     sessionStorage.setItem('shipping_amount', '0.00')
     sessionStorage.setItem('tax_amount', calculatedTax.toFixed(2))
     sessionStorage.setItem('tax_rate', taxRate.toString())
+
+    // If provider unavailable and we have mixed items, set exclusion flag
+    if (providerAvailable === false && hasVirtualNumbers && !hasOnlyVirtualNumbers) {
+      sessionStorage.setItem('excludeVirtualNumbers', 'true')
+    } else {
+      sessionStorage.removeItem('excludeVirtualNumbers')
+    }
 
     // Navigate to checkout
     router.push('/checkout')
@@ -387,7 +400,10 @@ export default function CartPage() {
                     <div>
                       <p className="text-amber-400 font-bold text-sm mb-1">Service Temporarily Unavailable</p>
                       <p className="text-amber-400/80 text-xs">
-                        Virtual number service is currently unavailable. Your items are saved - checkout will be enabled when service is restored.
+                        {hasOnlyVirtualNumbers
+                          ? 'Virtual number service is currently unavailable. Please try again later.'
+                          : 'Virtual number service is unavailable. These items will be excluded from checkout, but you can proceed with other items.'
+                        }
                       </p>
                     </div>
                   </div>
@@ -411,7 +427,7 @@ export default function CartPage() {
 
               <button
                 onClick={handleProceedToCheckout}
-                disabled={isCheckingOut || (hasVirtualNumbers && providerAvailable === false) || providerCheckLoading}
+                disabled={isCheckingOut || shouldDisableCheckout || providerCheckLoading}
                 className="w-full bg-primary text-black font-bold py-4 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isCheckingOut ? (
