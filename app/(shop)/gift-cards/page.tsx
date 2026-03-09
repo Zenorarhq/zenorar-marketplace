@@ -620,6 +620,7 @@ export default function GiftCardsPage() {
                       {/* Card Content */}
                       <div className="p-5">
                         <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{card.brand}</h3>
+                        <p className="text-xs text-slate-500 mb-2">{card.category}</p>
                         <p className="text-sm text-primary font-medium mb-4">{getPriceRange(card)}</p>
 
                         {/* Amount Selection - Different UI for fixed vs variable */}
