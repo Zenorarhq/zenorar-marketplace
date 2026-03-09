@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { profileApi } from '@/lib/api/profile'
 import { settingsApi } from '@/lib/api/settings'
 import { mediaApi } from '@/lib/api/media'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, localApiFetch } from '@/lib/api/client'
 import { usersApi } from '@/lib/api/users'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
@@ -1533,20 +1533,30 @@ export default function AdminSettingsPage() {
       )
 
       if (shouldSyncGiftCards) {
-        // Trigger background sync
-        fetch('/api/admin/gift-cards/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ countryCode: 'US' })
-        }).then(async (res) => {
-          const syncResult = await res.json()
+        // Trigger background sync with authentication (use localApiFetch for Next.js API routes)
+        localApiFetch<any>(
+          '/admin/gift-cards/sync',
+          { method: 'POST', body: JSON.stringify({ countryCode: 'US' }) }
+        ).then((response) => {
+          // Cast to any since the API returns a flat response shape (not wrapped in data)
+          const syncResult = response as { success: boolean; totalSynced?: number; totalUpdated?: number; results?: any[]; error?: string }
           if (syncResult.success) {
-            const total = syncResult.totalSynced + syncResult.totalUpdated
+            const total = (syncResult.totalSynced || 0) + (syncResult.totalUpdated || 0)
             if (total > 0) {
               setMessage({ type: 'success', text: `Settings saved! Synced ${total} gift cards from providers.` })
+            } else {
+              // Show provider errors if no cards synced
+              const errors = syncResult.results?.flatMap((r: any) => r.errors || []).slice(0, 2)
+              if (errors?.length) {
+                setMessage({ type: 'error', text: `Sync issue: ${errors.join('; ')}` })
+              }
             }
+          } else {
+            console.error('Gift card sync failed:', syncResult)
           }
-        }).catch(console.error)
+        }).catch((err) => {
+          console.error('Gift card sync error:', err)
+        })
       }
     } else {
       setMessage({ type: 'error', text: result.error || 'Failed to save settings' })
