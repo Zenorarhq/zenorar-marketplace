@@ -118,7 +118,7 @@ export interface ImportResult {
 // Provider types
 export interface GiftCardProvider {
   name: string
-  getProducts(): Promise<ProviderProduct[]>
+  getProducts(countryCode?: string): Promise<ProviderProduct[]>
   checkStock(productId: string, denomination: number): Promise<number>
   purchaseCard(productId: string, denomination: number): Promise<ProviderPurchaseResult>
 }

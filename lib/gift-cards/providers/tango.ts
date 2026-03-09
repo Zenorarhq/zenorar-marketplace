@@ -26,14 +26,27 @@ class TangoProvider implements GiftCardProvider {
       const settings = await getSiteSettingsByGroup('api')
 
       const enabled = settings.tangoEnabled === true || settings.tangoEnabled === 'true'
-      if (!enabled) {
-        return null
-      }
 
-      const platformName = settings.tangoPlatformName || process.env.TANGO_PLATFORM_NAME || ''
-      const platformKey = settings.tangoPlatformKey || process.env.TANGO_PLATFORM_KEY || ''
+      // Determine mode first
       const isSandbox = settings.tangoMode === 'sandbox' || settings.tangoSandbox === true ||
                         settings.tangoSandbox === 'true' || process.env.TANGO_SANDBOX === 'true'
+
+      // Use new split credential fields based on mode
+      let platformName = ''
+      let platformKey = ''
+
+      if (isSandbox) {
+        platformName = settings.tangoSandboxPlatformName || settings.tangoPlatformName || process.env.TANGO_PLATFORM_NAME || ''
+        platformKey = settings.tangoSandboxPlatformKey || settings.tangoPlatformKey || process.env.TANGO_PLATFORM_KEY || ''
+      } else {
+        platformName = settings.tangoProductionPlatformName || settings.tangoPlatformName || process.env.TANGO_PLATFORM_NAME || ''
+        platformKey = settings.tangoProductionPlatformKey || settings.tangoPlatformKey || process.env.TANGO_PLATFORM_KEY || ''
+      }
+
+      const hasCredentials = platformName || platformKey
+      if (!enabled && !hasCredentials) {
+        return null
+      }
 
       if (!platformName || !platformKey) {
         return null
@@ -56,7 +69,7 @@ class TangoProvider implements GiftCardProvider {
     return 'Basic ' + Buffer.from(`${credentials.platformName}:${credentials.platformKey}`).toString('base64')
   }
 
-  async getProducts(): Promise<ProviderProduct[]> {
+  async getProducts(countryCode?: string): Promise<ProviderProduct[]> {
     const credentials = await this.getCredentials()
     if (!credentials) {
       console.warn('Tango not configured')

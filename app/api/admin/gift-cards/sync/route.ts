@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
-import { query } from '@/lib/db'
-import { reloadlyProvider } from '@/lib/gift-cards/providers/reloadly'
+import { giftCardService } from '@/lib/gift-cards/service'
+import { syncAllGiftCardProviders, syncGiftCardProvider } from '@/lib/gift-cards/sync'
 
 /**
  * GET /api/admin/gift-cards/sync
- * Test Reloadly connection
+ * Test all enabled provider connections
  */
 export async function GET(request: NextRequest) {
   try {
@@ -26,15 +26,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const result = await reloadlyProvider.testConnection()
+    // Test all enabled providers
+    const results = await giftCardService.testAllConnections()
+    const enabledProviders = await giftCardService.getEnabledProviders()
 
     return NextResponse.json({
-      success: result.success,
-      mode: result.mode,
-      error: result.error
+      success: Object.values(results).some(r => r.success),
+      enabledProviders,
+      connections: results
     })
   } catch (error: any) {
-    console.error('Error testing Reloadly connection:', error)
+    console.error('Error testing gift card connections:', error)
     return NextResponse.json(
       { success: false, error: error.message || 'Connection test failed' },
       { status: 500 }
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/admin/gift-cards/sync
- * Sync gift card products from Reloadly
+ * Sync gift card products from all enabled providers (or a specific one)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -65,113 +67,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const countryCode = body.countryCode || 'US'
+    const provider = body.provider // Optional: specific provider to sync
 
-    // Get products from Reloadly
-    const products = await reloadlyProvider.getProducts(countryCode)
+    if (provider) {
+      // Sync specific provider
+      const result = await syncGiftCardProvider(provider, countryCode)
 
-    if (products.length === 0) {
       return NextResponse.json({
-        success: true,
-        synced: 0,
-        message: 'No products found or Reloadly not configured'
+        success: result.success,
+        provider: result.provider,
+        synced: result.synced,
+        updated: result.updated,
+        errors: result.errors.slice(0, 10)
       })
     }
 
-    let synced = 0
-    let updated = 0
-    const errors: string[] = []
-
-    for (const product of products) {
-      try {
-        // Generate slug from brand name
-        const slug = product.brand
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '')
-
-        // Check if product already exists
-        const existing = await query(
-          `SELECT id FROM gift_cards
-           WHERE provider = 'reloadly' AND provider_product_id = $1`,
-          [product.productId]
-        )
-
-        if (existing.rows.length > 0) {
-          // Update existing
-          await query(
-            `UPDATE gift_cards
-             SET brand = $1,
-                 category = $2,
-                 description = $3,
-                 image_url = $4,
-                 denominations = $5,
-                 min_custom_amount = $6,
-                 max_custom_amount = $7,
-                 discount_percent = $8,
-                 updated_at = NOW()
-             WHERE id = $9`,
-            [
-              product.brand,
-              product.category,
-              product.description,
-              product.imageUrl,
-              JSON.stringify(product.denominations),
-              product.minAmount,
-              product.maxAmount,
-              product.discountPercent || 0,
-              existing.rows[0].id
-            ]
-          )
-          updated++
-        } else {
-          // Check if slug exists
-          const slugCheck = await query(
-            `SELECT id FROM gift_cards WHERE slug = $1`,
-            [slug]
-          )
-
-          const finalSlug = slugCheck.rows.length > 0
-            ? `${slug}-${product.productId}`
-            : slug
-
-          // Insert new
-          await query(
-            `INSERT INTO gift_cards
-               (brand, slug, category, description, image_url, denominations,
-                min_custom_amount, max_custom_amount, discount_percent,
-                provider, provider_product_id, is_active)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'reloadly', $10, true)`,
-            [
-              product.brand,
-              finalSlug,
-              product.category,
-              product.description,
-              product.imageUrl,
-              JSON.stringify(product.denominations),
-              product.minAmount,
-              product.maxAmount,
-              product.discountPercent || 0,
-              product.productId
-            ]
-          )
-          synced++
-        }
-      } catch (err: any) {
-        errors.push(`${product.brand}: ${err.message}`)
-      }
-    }
+    // Sync all enabled providers
+    const result = await syncAllGiftCardProviders(countryCode)
 
     return NextResponse.json({
-      success: true,
-      total: products.length,
-      synced,
-      updated,
-      errors: errors.slice(0, 10)
+      success: result.success,
+      totalSynced: result.totalSynced,
+      totalUpdated: result.totalUpdated,
+      results: result.results.map(r => ({
+        provider: r.provider,
+        success: r.success,
+        synced: r.synced,
+        updated: r.updated,
+        errors: r.errors.slice(0, 5)
+      }))
     })
   } catch (error: any) {
-    console.error('Error syncing from Reloadly:', error)
+    console.error('Error syncing gift cards:', error)
     return NextResponse.json(
       { success: false, error: error.message || 'Sync failed' },
       { status: 500 }

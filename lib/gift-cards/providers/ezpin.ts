@@ -19,14 +19,27 @@ class EzPinProvider implements GiftCardProvider {
       const settings = await getSiteSettingsByGroup('api')
 
       const enabled = settings.ezpinEnabled === true || settings.ezpinEnabled === 'true'
-      if (!enabled) {
-        return null
-      }
 
-      const apiKey = settings.ezpinApiKey || process.env.EZPIN_API_KEY || ''
-      const apiSecret = settings.ezpinApiSecret || process.env.EZPIN_API_SECRET || ''
+      // Determine mode first
       const isSandbox = settings.ezpinMode === 'sandbox' || settings.ezpinSandbox === true ||
                         settings.ezpinSandbox === 'true' || process.env.EZPIN_SANDBOX === 'true'
+
+      // Use new split credential fields based on mode
+      let apiKey = ''
+      let apiSecret = ''
+
+      if (isSandbox) {
+        apiKey = settings.ezpinSandboxApiKey || settings.ezpinApiKey || process.env.EZPIN_API_KEY || ''
+        apiSecret = settings.ezpinSandboxApiSecret || settings.ezpinApiSecret || process.env.EZPIN_API_SECRET || ''
+      } else {
+        apiKey = settings.ezpinProductionApiKey || settings.ezpinApiKey || process.env.EZPIN_API_KEY || ''
+        apiSecret = settings.ezpinProductionApiSecret || settings.ezpinApiSecret || process.env.EZPIN_API_SECRET || ''
+      }
+
+      const hasCredentials = apiKey || apiSecret
+      if (!enabled && !hasCredentials) {
+        return null
+      }
 
       if (!apiKey || !apiSecret) {
         return null
@@ -53,7 +66,7 @@ class EzPinProvider implements GiftCardProvider {
     }
   }
 
-  async getProducts(): Promise<ProviderProduct[]> {
+  async getProducts(countryCode?: string): Promise<ProviderProduct[]> {
     const credentials = await this.getCredentials()
     if (!credentials) {
       console.warn('EZ Pin not configured')

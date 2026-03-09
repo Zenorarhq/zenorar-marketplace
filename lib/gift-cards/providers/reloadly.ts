@@ -27,15 +27,27 @@ class ReloadlyProvider implements GiftCardProvider {
       const settings = await getSiteSettingsByGroup('api')
 
       const enabled = settings.reloadlyEnabled === true || settings.reloadlyEnabled === 'true'
-      const hasCredentials = settings.reloadlyClientId || settings.reloadlyClientSecret
+
+      // Check for credentials using new split fields (sandbox/production) or legacy single fields
+      const isSandbox = settings.reloadlyMode === 'sandbox' || settings.reloadlySandbox === true ||
+                        settings.reloadlySandbox === 'true' || process.env.RELOADLY_SANDBOX === 'true'
+
+      // Use new split credential fields based on mode
+      let clientId = ''
+      let clientSecret = ''
+
+      if (isSandbox) {
+        clientId = settings.reloadlySandboxClientId || settings.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || ''
+        clientSecret = settings.reloadlySandboxClientSecret || settings.reloadlyClientSecret || process.env.RELOADLY_CLIENT_SECRET || ''
+      } else {
+        clientId = settings.reloadlyProductionClientId || settings.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || ''
+        clientSecret = settings.reloadlyProductionClientSecret || settings.reloadlyClientSecret || process.env.RELOADLY_CLIENT_SECRET || ''
+      }
+
+      const hasCredentials = clientId || clientSecret
       if (!enabled && !hasCredentials) {
         return null
       }
-
-      const clientId = settings.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || ''
-      const clientSecret = settings.reloadlyClientSecret || process.env.RELOADLY_CLIENT_SECRET || ''
-      const isSandbox = settings.reloadlyMode === 'sandbox' || settings.reloadlySandbox === true ||
-                        settings.reloadlySandbox === 'true' || process.env.RELOADLY_SANDBOX === 'true'
 
       if (!clientId || !clientSecret) {
         return null
