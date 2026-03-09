@@ -389,8 +389,10 @@ export default function AdminSettingsPage() {
     // Reloadly
     reloadlyEnabled: false,
     reloadlyMode: 'sandbox' as 'sandbox' | 'production',
-    reloadlyClientId: '',
-    reloadlyClientSecret: '',
+    reloadlySandboxClientId: '',
+    reloadlySandboxClientSecret: '',
+    reloadlyProductionClientId: '',
+    reloadlyProductionClientSecret: '',
     // EZGiftCard (RapidAPI)
     ezgiftcardEnabled: false,
     ezgiftcardApiKey: '',
@@ -407,9 +409,11 @@ export default function AdminSettingsPage() {
     tangoProductionPlatformKey: '',
     // EZ Pin
     ezpinEnabled: false,
-    ezpinSandbox: true,
-    ezpinApiKey: '',
-    ezpinApiSecret: '',
+    ezpinMode: 'sandbox' as 'sandbox' | 'production',
+    ezpinSandboxApiKey: '',
+    ezpinSandboxApiSecret: '',
+    ezpinProductionApiKey: '',
+    ezpinProductionApiSecret: '',
   })
 
   // OTP Providers Settings State
@@ -672,8 +676,10 @@ export default function AdminSettingsPage() {
           // Reloadly
           reloadlyEnabled: d.reloadlyEnabled ?? prev.reloadlyEnabled,
           reloadlyMode: d.reloadlyMode ?? prev.reloadlyMode,
-          reloadlyClientId: d.reloadlyClientId ?? prev.reloadlyClientId,
-          reloadlyClientSecret: d.reloadlyClientSecret ?? prev.reloadlyClientSecret,
+          reloadlySandboxClientId: d.reloadlySandboxClientId ?? prev.reloadlySandboxClientId,
+          reloadlySandboxClientSecret: d.reloadlySandboxClientSecret ?? prev.reloadlySandboxClientSecret,
+          reloadlyProductionClientId: d.reloadlyProductionClientId ?? prev.reloadlyProductionClientId,
+          reloadlyProductionClientSecret: d.reloadlyProductionClientSecret ?? prev.reloadlyProductionClientSecret,
           // EZGiftCard
           ezgiftcardEnabled: d.ezgiftcardEnabled ?? prev.ezgiftcardEnabled,
           ezgiftcardApiKey: d.ezgiftcardApiKey ?? prev.ezgiftcardApiKey,
@@ -690,9 +696,11 @@ export default function AdminSettingsPage() {
           tangoProductionPlatformKey: d.tangoProductionPlatformKey ?? prev.tangoProductionPlatformKey,
           // EZ Pin
           ezpinEnabled: d.ezpinEnabled ?? prev.ezpinEnabled,
-          ezpinSandbox: d.ezpinSandbox ?? prev.ezpinSandbox,
-          ezpinApiKey: d.ezpinApiKey ?? prev.ezpinApiKey,
-          ezpinApiSecret: d.ezpinApiSecret ?? prev.ezpinApiSecret,
+          ezpinMode: d.ezpinMode ?? prev.ezpinMode,
+          ezpinSandboxApiKey: d.ezpinSandboxApiKey ?? prev.ezpinSandboxApiKey,
+          ezpinSandboxApiSecret: d.ezpinSandboxApiSecret ?? prev.ezpinSandboxApiSecret,
+          ezpinProductionApiKey: d.ezpinProductionApiKey ?? prev.ezpinProductionApiKey,
+          ezpinProductionApiSecret: d.ezpinProductionApiSecret ?? prev.ezpinProductionApiSecret,
         }))
         // OTP Providers (stored in 'api' group)
         setOtpSettings((prev) => ({
@@ -1361,8 +1369,10 @@ export default function AdminSettingsPage() {
       // Reloadly
       { key: 'reloadlyEnabled', value: giftCardSettings.reloadlyEnabled, group: 'api', isPublic: true },
       { key: 'reloadlyMode', value: giftCardSettings.reloadlyMode, group: 'api', isPublic: false },
-      { key: 'reloadlyClientId', value: giftCardSettings.reloadlyClientId, group: 'api', isPublic: false },
-      { key: 'reloadlyClientSecret', value: giftCardSettings.reloadlyClientSecret, group: 'api', isPublic: false },
+      { key: 'reloadlySandboxClientId', value: giftCardSettings.reloadlySandboxClientId, group: 'api', isPublic: false },
+      { key: 'reloadlySandboxClientSecret', value: giftCardSettings.reloadlySandboxClientSecret, group: 'api', isPublic: false },
+      { key: 'reloadlyProductionClientId', value: giftCardSettings.reloadlyProductionClientId, group: 'api', isPublic: false },
+      { key: 'reloadlyProductionClientSecret', value: giftCardSettings.reloadlyProductionClientSecret, group: 'api', isPublic: false },
       // EZGiftCard
       { key: 'ezgiftcardEnabled', value: giftCardSettings.ezgiftcardEnabled, group: 'api', isPublic: true },
       { key: 'ezgiftcardApiKey', value: giftCardSettings.ezgiftcardApiKey, group: 'api', isPublic: false },
@@ -1379,9 +1389,11 @@ export default function AdminSettingsPage() {
       { key: 'tangoProductionPlatformKey', value: giftCardSettings.tangoProductionPlatformKey, group: 'api', isPublic: false },
       // EZ Pin
       { key: 'ezpinEnabled', value: giftCardSettings.ezpinEnabled, group: 'api', isPublic: true },
-      { key: 'ezpinSandbox', value: giftCardSettings.ezpinSandbox, group: 'api', isPublic: false },
-      { key: 'ezpinApiKey', value: giftCardSettings.ezpinApiKey, group: 'api', isPublic: false },
-      { key: 'ezpinApiSecret', value: giftCardSettings.ezpinApiSecret, group: 'api', isPublic: false },
+      { key: 'ezpinMode', value: giftCardSettings.ezpinMode, group: 'api', isPublic: false },
+      { key: 'ezpinSandboxApiKey', value: giftCardSettings.ezpinSandboxApiKey, group: 'api', isPublic: false },
+      { key: 'ezpinSandboxApiSecret', value: giftCardSettings.ezpinSandboxApiSecret, group: 'api', isPublic: false },
+      { key: 'ezpinProductionApiKey', value: giftCardSettings.ezpinProductionApiKey, group: 'api', isPublic: false },
+      { key: 'ezpinProductionApiSecret', value: giftCardSettings.ezpinProductionApiSecret, group: 'api', isPublic: false },
       // OTP Providers (stored in 'api' group for consistency)
       { key: 'otpDefaultProvider', value: otpSettings.otpDefaultProvider, group: 'api', isPublic: false },
       { key: 'smspoolEnabled', value: otpSettings.smspoolEnabled, group: 'api', isPublic: true },
@@ -4365,38 +4377,323 @@ export default function AdminSettingsPage() {
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-300">Client ID</label>
-                              <input
-                                type="text"
-                                value={giftCardSettings.reloadlyClientId}
-                                onChange={(e) => setGiftCardSettings({ ...giftCardSettings, reloadlyClientId: e.target.value })}
-                                placeholder="Your Reloadly Client ID"
-                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-300">Client Secret</label>
-                              <div className="relative">
+                          {/* Credentials based on mode */}
+                          {giftCardSettings.reloadlyMode === 'sandbox' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Sandbox Client ID</label>
                                 <input
-                                  type={showServiceSecrets.reloadlyClientSecret ? 'text' : 'password'}
-                                  value={giftCardSettings.reloadlyClientSecret}
-                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, reloadlyClientSecret: e.target.value })}
-                                  placeholder="Your Reloadly Client Secret"
-                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  type="text"
+                                  value={giftCardSettings.reloadlySandboxClientId}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, reloadlySandboxClientId: e.target.value })}
+                                  placeholder="Your sandbox Client ID"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, reloadlyClientSecret: !prev.reloadlyClientSecret }))}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                >
-                                  <Icon name={showServiceSecrets.reloadlyClientSecret ? 'eye-off' : 'eye'} size={16} />
-                                </button>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Sandbox Client Secret</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.reloadlySandboxClientSecret ? 'text' : 'password'}
+                                    value={giftCardSettings.reloadlySandboxClientSecret}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, reloadlySandboxClientSecret: e.target.value })}
+                                    placeholder="Your sandbox Client Secret"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, reloadlySandboxClientSecret: !prev.reloadlySandboxClientSecret }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.reloadlySandboxClientSecret ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Production Client ID</label>
+                                <input
+                                  type="text"
+                                  value={giftCardSettings.reloadlyProductionClientId}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, reloadlyProductionClientId: e.target.value })}
+                                  placeholder="Your production Client ID"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Production Client Secret</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.reloadlyProductionClientSecret ? 'text' : 'password'}
+                                    value={giftCardSettings.reloadlyProductionClientSecret}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, reloadlyProductionClientSecret: e.target.value })}
+                                    placeholder="Your production Client Secret"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, reloadlyProductionClientSecret: !prev.reloadlyProductionClientSecret }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.reloadlyProductionClientSecret ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           <p className="text-xs text-slate-600">Get your credentials at <a href="https://www.reloadly.com/developers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">reloadly.com/developers</a></p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tango Card */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
+                            <Icon name="gift" size={20} className="text-teal-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">Tango Card</p>
+                            <p className="text-slate-500 text-sm">Enterprise rewards platform, corporate gift cards</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGiftCardSettings({ ...giftCardSettings, tangoEnabled: !giftCardSettings.tangoEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.tangoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.tangoEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {giftCardSettings.tangoEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
+                          {/* Mode Toggle */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
+                              <button
+                                type="button"
+                                onClick={() => setGiftCardSettings({ ...giftCardSettings, tangoMode: 'sandbox' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.tangoMode === 'sandbox' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Sandbox
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setGiftCardSettings({ ...giftCardSettings, tangoMode: 'production' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.tangoMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Production
+                              </button>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${giftCardSettings.tangoMode === 'sandbox' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                              {giftCardSettings.tangoMode === 'sandbox' ? 'SANDBOX' : 'PRODUCTION'}
+                            </span>
+                          </div>
+
+                          {/* Credentials based on mode */}
+                          {giftCardSettings.tangoMode === 'sandbox' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Sandbox Platform Name</label>
+                                <input
+                                  type="text"
+                                  value={giftCardSettings.tangoSandboxPlatformName}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoSandboxPlatformName: e.target.value })}
+                                  placeholder="Your sandbox platform name"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Sandbox Platform Key</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.tangoSandboxPlatformKey ? 'text' : 'password'}
+                                    value={giftCardSettings.tangoSandboxPlatformKey}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoSandboxPlatformKey: e.target.value })}
+                                    placeholder="Your sandbox platform key"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, tangoSandboxPlatformKey: !prev.tangoSandboxPlatformKey }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.tangoSandboxPlatformKey ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Production Platform Name</label>
+                                <input
+                                  type="text"
+                                  value={giftCardSettings.tangoProductionPlatformName}
+                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoProductionPlatformName: e.target.value })}
+                                  placeholder="Your production platform name"
+                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Production Platform Key</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.tangoProductionPlatformKey ? 'text' : 'password'}
+                                    value={giftCardSettings.tangoProductionPlatformKey}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoProductionPlatformKey: e.target.value })}
+                                    placeholder="Your production platform key"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, tangoProductionPlatformKey: !prev.tangoProductionPlatformKey }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.tangoProductionPlatformKey ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-xs text-slate-600">Get your credentials at <a href="https://www.tangocard.com/raas-api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">tangocard.com/raas-api</a></p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* EZ Pin */}
+                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                            <Icon name="gift" size={20} className="text-indigo-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">EZ Pin</p>
+                            <p className="text-slate-500 text-sm">Digital PIN & gift card fulfillment</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGiftCardSettings({ ...giftCardSettings, ezpinEnabled: !giftCardSettings.ezpinEnabled })}
+                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.ezpinEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
+                        >
+                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.ezpinEnabled ? 'left-7' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {giftCardSettings.ezpinEnabled && (
+                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
+                          {/* Mode Toggle */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
+                              <button
+                                type="button"
+                                onClick={() => setGiftCardSettings({ ...giftCardSettings, ezpinMode: 'sandbox' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.ezpinMode === 'sandbox' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Sandbox
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setGiftCardSettings({ ...giftCardSettings, ezpinMode: 'production' })}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.ezpinMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-500 hover:text-slate-300'}`}
+                              >
+                                Production
+                              </button>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${giftCardSettings.ezpinMode === 'sandbox' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                              {giftCardSettings.ezpinMode === 'sandbox' ? 'SANDBOX' : 'PRODUCTION'}
+                            </span>
+                          </div>
+
+                          {/* Credentials based on mode */}
+                          {giftCardSettings.ezpinMode === 'sandbox' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Sandbox API Key</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.ezpinSandboxApiKey ? 'text' : 'password'}
+                                    value={giftCardSettings.ezpinSandboxApiKey}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, ezpinSandboxApiKey: e.target.value })}
+                                    placeholder="Your sandbox API key"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, ezpinSandboxApiKey: !prev.ezpinSandboxApiKey }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.ezpinSandboxApiKey ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Sandbox API Secret</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.ezpinSandboxApiSecret ? 'text' : 'password'}
+                                    value={giftCardSettings.ezpinSandboxApiSecret}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, ezpinSandboxApiSecret: e.target.value })}
+                                    placeholder="Your sandbox API secret"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, ezpinSandboxApiSecret: !prev.ezpinSandboxApiSecret }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.ezpinSandboxApiSecret ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Production API Key</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.ezpinProductionApiKey ? 'text' : 'password'}
+                                    value={giftCardSettings.ezpinProductionApiKey}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, ezpinProductionApiKey: e.target.value })}
+                                    placeholder="Your production API key"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, ezpinProductionApiKey: !prev.ezpinProductionApiKey }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.ezpinProductionApiKey ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Production API Secret</label>
+                                <div className="relative">
+                                  <input
+                                    type={showServiceSecrets.ezpinProductionApiSecret ? 'text' : 'password'}
+                                    value={giftCardSettings.ezpinProductionApiSecret}
+                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, ezpinProductionApiSecret: e.target.value })}
+                                    placeholder="Your production API secret"
+                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, ezpinProductionApiSecret: !prev.ezpinProductionApiSecret }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                  >
+                                    <Icon name={showServiceSecrets.ezpinProductionApiSecret ? 'eye-off' : 'eye'} size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-xs text-slate-600">Get your credentials at <a href="https://ezpins.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">ezpins.com</a></p>
                         </div>
                       )}
                     </div>
@@ -4510,207 +4807,6 @@ export default function AdminSettingsPage() {
                             </div>
                           </div>
                           <p className="text-xs text-slate-600 mt-3">Get your credentials at <a href="https://www.bitrefill.com/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">bitrefill.com/api</a></p>
-                        </div>
-                      )}
-                        </div>
-
-                    {/* Tango Card (RaaS) */}
-                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
-                            <Icon name="gift" size={20} className="text-teal-400" />
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">Tango Card</p>
-                            <p className="text-slate-500 text-sm">RaaS API, 1000+ brands, B2B rewards platform</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setGiftCardSettings({ ...giftCardSettings, tangoEnabled: !giftCardSettings.tangoEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.tangoEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
-                        >
-                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.tangoEnabled ? 'left-7' : 'left-1'}`} />
-                        </button>
-                      </div>
-                      {giftCardSettings.tangoEnabled && (
-                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
-                          {/* Mode Toggle */}
-                          <div className="flex items-center gap-3">
-                            <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
-                              <button
-                                type="button"
-                                onClick={() => setGiftCardSettings({ ...giftCardSettings, tangoMode: 'sandbox' })}
-                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.tangoMode === 'sandbox' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
-                              >
-                                Sandbox
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setGiftCardSettings({ ...giftCardSettings, tangoMode: 'production' })}
-                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${giftCardSettings.tangoMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-500 hover:text-slate-300'}`}
-                              >
-                                Production
-                              </button>
-                            </div>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${giftCardSettings.tangoMode === 'sandbox' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
-                              {giftCardSettings.tangoMode === 'sandbox' ? 'SANDBOX' : 'PRODUCTION'}
-                            </span>
-                          </div>
-
-                          {/* Credentials based on mode */}
-                          {giftCardSettings.tangoMode === 'sandbox' ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Sandbox Platform Name</label>
-                                <input
-                                  type="text"
-                                  value={giftCardSettings.tangoSandboxPlatformName}
-                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoSandboxPlatformName: e.target.value })}
-                                  placeholder="Your sandbox platform name"
-                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Sandbox Platform Key</label>
-                                <div className="relative">
-                                  <input
-                                    type={showServiceSecrets.tangoSandboxPlatformKey ? 'text' : 'password'}
-                                    value={giftCardSettings.tangoSandboxPlatformKey}
-                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoSandboxPlatformKey: e.target.value })}
-                                    placeholder="Your sandbox platform key"
-                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, tangoSandboxPlatformKey: !prev.tangoSandboxPlatformKey }))}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                  >
-                                    <Icon name={showServiceSecrets.tangoSandboxPlatformKey ? 'eye-off' : 'eye'} size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Production Platform Name</label>
-                                <input
-                                  type="text"
-                                  value={giftCardSettings.tangoProductionPlatformName}
-                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoProductionPlatformName: e.target.value })}
-                                  placeholder="Your production platform name"
-                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Production Platform Key</label>
-                                <div className="relative">
-                                  <input
-                                    type={showServiceSecrets.tangoProductionPlatformKey ? 'text' : 'password'}
-                                    value={giftCardSettings.tangoProductionPlatformKey}
-                                    onChange={(e) => setGiftCardSettings({ ...giftCardSettings, tangoProductionPlatformKey: e.target.value })}
-                                    placeholder="Your production platform key"
-                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowServiceSecrets(prev => ({ ...prev, tangoProductionPlatformKey: !prev.tangoProductionPlatformKey }))}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                  >
-                                    <Icon name={showServiceSecrets.tangoProductionPlatformKey ? 'eye-off' : 'eye'} size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          <p className="text-xs text-slate-600">Get your credentials at <a href="https://www.tangocard.com/developers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">tangocard.com/developers</a></p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* EZ Pin */}
-                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a]">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                            <Icon name="gift" size={20} className="text-cyan-400" />
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">EZ Pin</p>
-                            <p className="text-slate-500 text-sm">Digital gift cards, prepaid cards, loyalty programs</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setGiftCardSettings({ ...giftCardSettings, ezpinEnabled: !giftCardSettings.ezpinEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.ezpinEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
-                        >
-                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.ezpinEnabled ? 'left-7' : 'left-1'}`} />
-                        </button>
-                      </div>
-                      {giftCardSettings.ezpinEnabled && (
-                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
-                          {/* Sandbox Toggle */}
-                          <div className="flex items-center justify-between p-3 bg-[#141414] rounded-lg">
-                            <div>
-                              <p className="text-white text-sm font-medium">Sandbox Mode</p>
-                              <p className="text-slate-500 text-xs">Use sandbox environment for testing</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setGiftCardSettings({ ...giftCardSettings, ezpinSandbox: !giftCardSettings.ezpinSandbox })}
-                              className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${giftCardSettings.ezpinSandbox ? 'bg-orange-500' : 'bg-green-500'}`}
-                            >
-                              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${giftCardSettings.ezpinSandbox ? 'left-7' : 'left-1'}`} />
-                            </button>
-                          </div>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border inline-block ${giftCardSettings.ezpinSandbox ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
-                            {giftCardSettings.ezpinSandbox ? 'SANDBOX' : 'PRODUCTION'}
-                          </span>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-300">API Key</label>
-                              <div className="relative">
-                                <input
-                                  type={showServiceSecrets.ezpinApiKey ? 'text' : 'password'}
-                                  value={giftCardSettings.ezpinApiKey}
-                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, ezpinApiKey: e.target.value })}
-                                  placeholder="Your EZ Pin API key"
-                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, ezpinApiKey: !prev.ezpinApiKey }))}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                >
-                                  <Icon name={showServiceSecrets.ezpinApiKey ? 'eye-off' : 'eye'} size={16} />
-                                </button>
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-300">API Secret</label>
-                              <div className="relative">
-                                <input
-                                  type={showServiceSecrets.ezpinApiSecret ? 'text' : 'password'}
-                                  value={giftCardSettings.ezpinApiSecret}
-                                  onChange={(e) => setGiftCardSettings({ ...giftCardSettings, ezpinApiSecret: e.target.value })}
-                                  placeholder="Your EZ Pin API secret"
-                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, ezpinApiSecret: !prev.ezpinApiSecret }))}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                >
-                                  <Icon name={showServiceSecrets.ezpinApiSecret ? 'eye-off' : 'eye'} size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                          <p className="text-xs text-slate-600">Get your credentials at <a href="https://www.ezpin.com/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">ezpin.com/api</a></p>
                         </div>
                       )}
                     </div>
