@@ -168,11 +168,30 @@ export async function POST(req: NextRequest) {
       // Get product ID
       const productId = await getOrCreateProduct(productType, item.productId || item.id)
 
-      // Build metadata
-      const metadata = {
+      // Build metadata based on product type
+      let metadata: Record<string, any> = {
         ...item.metadata,
         originalProductId: item.productId || item.id,
         license: item.license,
+      }
+
+      // Normalize gift card metadata for fulfillment
+      if (productType === 'gift_card') {
+        metadata = {
+          ...metadata,
+          gift_card_id: item.metadata?.gift_card_id || item.metadata?.giftCardId || item.productId || item.id,
+          denomination: item.metadata?.denomination || itemPrice,
+          brand: item.metadata?.brand,
+          imageUrl: item.metadata?.imageUrl,
+        }
+      }
+
+      // Determine proper item name
+      let itemName = item.name || 'Product'
+      if (productType === 'gift_card') {
+        const brand = item.metadata?.brand || 'Gift Card'
+        const denom = item.metadata?.denomination || itemPrice
+        itemName = `${brand} Gift Card ($${denom})`
       }
 
       await query(
@@ -184,11 +203,11 @@ export async function POST(req: NextRequest) {
         [
           orderId,
           productId,
-          item.name || 'Product',
+          itemName,
           itemQuantity,
           itemPrice,
           itemTotal,
-          item.license || 'standard',
+          productType === 'gift_card' ? null : (item.license || 'standard'),
           JSON.stringify(metadata),
           productType
         ]

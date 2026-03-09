@@ -321,6 +321,15 @@ export async function GET(request: Request) {
     // Combine all library items (include pending/failed virtual numbers)
     const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems]
 
+    // Sort all items by purchase date (newest first)
+    libraryItems.sort((a, b) => {
+      const itemA = a as any
+      const itemB = b as any
+      const dateA = new Date(itemA.purchaseDate || itemA.createdAt || 0).getTime()
+      const dateB = new Date(itemB.purchaseDate || itemB.createdAt || 0).getTime()
+      return dateB - dateA
+    })
+
     return NextResponse.json({
       success: true,
       data: libraryItems,

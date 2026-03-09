@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { libraryApi } from '@/lib/api/library'
@@ -386,10 +387,21 @@ export default function LibraryPage() {
                 }`}
               >
                 <div className="p-4 sm:p-6">
-                  {/* Top: icon + info */}
+                  {/* Top: icon/image + info */}
                   <div className="flex gap-4 mb-4">
-                    <div className="h-14 w-14 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 text-primary">
-                      <Icon name={item.icon} size={28} />
+                    <div className="h-14 w-14 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {item.category === 'gift-cards' && item.imageUrl ? (
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.name}
+                          width={56}
+                          height={56}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <Icon name={item.icon} size={28} className="text-primary" />
+                      )}
                     </div>
                     <div className="flex-grow min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-1">

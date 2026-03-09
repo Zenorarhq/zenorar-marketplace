@@ -59,7 +59,10 @@ export default function GiftCardsPage() {
   const router = useRouter()
   const { isAuthenticated } = useAuth()
   const { addItem, showAddedToCartPopup } = useCart()
-  const { formatPrice } = usePreferences()
+  const { formatPrice, preferences } = usePreferences()
+
+  // Get currency symbol based on preferences
+  const currencySymbol = preferences?.currency?.symbol || '$'
 
   const [giftCards, setGiftCards] = useState<GiftCard[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -89,6 +92,30 @@ export default function GiftCardsPage() {
   const [showDepositModal, setShowDepositModal] = useState(false)
   const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
   const [pendingCard, setPendingCard] = useState<GiftCard | null>(null)
+
+  // Helper to expand a card while closing any previously expanded card
+  const handleExpandCard = (cardId: string) => {
+    if (expandedCard && expandedCard !== cardId) {
+      // Clear previous card's selection and custom input
+      setSelectedAmounts(prev => {
+        const newAmounts = { ...prev }
+        delete newAmounts[expandedCard]
+        return newAmounts
+      })
+      setCustomAmountInputs(prev => {
+        const newInputs = { ...prev }
+        delete newInputs[expandedCard]
+        return newInputs
+      })
+      // Clear any errors from previous card
+      setPaymentErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[expandedCard]
+        return newErrors
+      })
+    }
+    setExpandedCard(cardId)
+  }
 
   // Helper to get price range text with currency
   const getPriceRange = (card: GiftCard): string => {
@@ -258,12 +285,16 @@ export default function GiftCardsPage() {
       iconColor: 'primary',
       tags: [card.brand, 'Gift Card'],
       productType: 'gift_card',
-      imageUrl: card.imageUrl,
+      product_type: 'gift_card',
+      image: card.imageUrl || undefined, // For cart popup compatibility
+      imageUrl: card.imageUrl || undefined,
       metadata: {
+        productType: 'gift_card',
         gift_card_id: card.id,
+        giftCardId: card.id,
         denomination: amount,
         brand: card.brand,
-        imageUrl: card.imageUrl,
+        imageUrl: card.imageUrl || undefined,
       }
     }
 
@@ -682,7 +713,7 @@ export default function GiftCardsPage() {
                             {!hasSelection && !isExpanded ? (
                               /* Select Amount Button - centered text */
                               <button
-                                onClick={() => setExpandedCard(card.id)}
+                                onClick={() => handleExpandCard(card.id)}
                                 disabled={!card.inStock}
                                 className={`w-full px-4 py-3 rounded-xl font-bold text-sm transition-all text-center ${
                                   card.inStock
@@ -695,7 +726,7 @@ export default function GiftCardsPage() {
                             ) : !hasSelection ? (
                               /* Custom Amount Input - full width, same style as button */
                               <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
                                 <input
                                   type="number"
                                   min={card.minCustomAmount || 1}
@@ -714,16 +745,15 @@ export default function GiftCardsPage() {
                                       })
                                     }
                                   }}
-                                  onBlur={() => {
-                                    // Auto-confirm on blur if valid
-                                    const value = parseFloat(customAmountInputs[card.id] || '')
-                                    if (!isNaN(value) && value >= (card.minCustomAmount || 1) && value <= (card.maxCustomAmount || 1000)) {
-                                      handleCustomAmountConfirm(card.id, card)
-                                    }
-                                  }}
                                   autoFocus
-                                  className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-primary rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold"
+                                  className="w-full pl-8 pr-12 py-3 bg-surface-dark border border-primary rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold"
                                 />
+                                <button
+                                  onClick={() => handleCustomAmountConfirm(card.id, card)}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-black hover:brightness-105 transition-all"
+                                >
+                                  <Icon name="check" size={16} />
+                                </button>
                               </div>
                             ) : (
                               /* Selected Variable Amount Display */
@@ -734,7 +764,12 @@ export default function GiftCardsPage() {
                                     delete newAmounts[card.id]
                                     return newAmounts
                                   })
-                                  setExpandedCard(card.id)
+                                  setPaymentErrors(prev => {
+                                    const newErrors = { ...prev }
+                                    delete newErrors[card.id]
+                                    return newErrors
+                                  })
+                                  handleExpandCard(card.id)
                                 }}
                                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-lg font-bold text-sm hover:brightness-105 transition-all"
                               >

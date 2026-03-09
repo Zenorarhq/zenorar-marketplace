@@ -549,12 +549,14 @@ async function processGiftCardItem(
 
     let giftCardId: string | null = null
     let denomination: number | null = null
+    let reservedCodeId: string | undefined
 
     if (orderItemResult.rows.length > 0) {
       const itemMeta = orderItemResult.rows[0].metadata || {}
 
       giftCardId = itemMeta.gift_card_id
       denomination = itemMeta.denomination
+      reservedCodeId = itemMeta.reservedCodeId || undefined
     }
 
     if (!giftCardId) {
@@ -593,7 +595,8 @@ async function processGiftCardItem(
       giftCardId,
       denomination,
       userId,
-      orderId
+      orderId,
+      reservedCodeId
     )
 
     if (!provisionResult.success) {

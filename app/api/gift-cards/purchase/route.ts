@@ -3,6 +3,7 @@ import { query } from '@/lib/db'
 import { fulfillOrder } from '@/lib/order-fulfillment'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
+import { checkStock, reserveCode } from '@/lib/gift-cards/inventory'
 
 /**
  * Get or create the Gift Card product
@@ -138,6 +139,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check stock availability and reserve a code
+    const bulkStock = await checkStock(giftCardId, denomination)
+    let reservedCodeId: string | undefined
+
+    if (bulkStock > 0) {
+      // Reserve a code from bulk inventory
+      const reserveResult = await reserveCode(giftCardId, denomination, user.id)
+      if (reserveResult.success && reserveResult.codeId) {
+        reservedCodeId = reserveResult.codeId
+      }
+    }
+
+    // If no bulk stock and no Reloadly provider configured, fail early
+    const hasReloadlyProvider = await query(
+      `SELECT provider, provider_product_id FROM gift_cards WHERE id = $1`,
+      [giftCardId]
+    )
+    const providerInfo = hasReloadlyProvider.rows[0]
+    const hasApiProvider = providerInfo?.provider === 'reloadly' && providerInfo?.provider_product_id
+
+    if (!reservedCodeId && !hasApiProvider) {
+      return NextResponse.json(
+        { success: false, error: 'This gift card is currently out of stock. Please try a different card or denomination.' },
+        { status: 400 }
+      )
+    }
+
     // Calculate final price with markup and discount
     const discountPercent = giftCard.discount_percent || 0
     const finalPrice = await calculateFinalPrice(denomination, discountPercent)
@@ -229,7 +257,8 @@ export async function POST(request: NextRequest) {
           imageUrl: giftCard.image_url,
           discountPercent,
           originalAmount: denomination,
-          finalPrice
+          finalPrice,
+          reservedCodeId: reservedCodeId || null
         }),
         'gift_card'
       ]

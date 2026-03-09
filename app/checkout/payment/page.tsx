@@ -761,30 +761,46 @@ export default function PaymentPage() {
     const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
 
     // Transform cart items to order items format
-    const orderItems = displayItems.map((item: any) => ({
-      id: item.product.id,
-      productId: item.product.id,
-      name: item.product.name,
-      quantity: item.quantity,
-      price: item.price,
-      license: item.license || 'standard',
-      productType: item.product.metadata?.productType || item.product.product_type || 'default',
-      metadata: {
-        ...item.product.metadata,
-        friendlyName: item.product.name || item.product.metadata?.friendlyName,
-        phoneNumber: item.product.metadata?.phoneNumber,
-        countryId: item.product.metadata?.countryId,
-        countryFlag: item.product.metadata?.countryFlag,
-        countryName: item.product.metadata?.countryName,
-        planCategory: item.product.metadata?.planCategory,
-        durationDays: item.product.metadata?.durationDays,
-        smsLimit: item.product.metadata?.smsLimit,
-        minuteTier: item.product.metadata?.minuteTier,
-        minuteIncluded: item.product.metadata?.minuteIncluded,
-        minuteTierPrice: item.product.metadata?.minuteTierPrice,
-        numberType: item.product.metadata?.numberType,
-      },
-    }))
+    const orderItems = displayItems.map((item: any) => {
+      const productType = item.product.metadata?.productType || item.product.product_type || 'default'
+      const isGiftCard = productType === 'gift_card'
+
+      return {
+        id: item.product.id,
+        productId: item.product.id,
+        name: isGiftCard
+          ? `${item.product.metadata?.brand || item.product.name} Gift Card ($${item.product.metadata?.denomination || item.price})`
+          : item.product.name,
+        quantity: item.quantity,
+        price: item.price,
+        license: isGiftCard ? null : (item.license || 'standard'),
+        productType,
+        metadata: {
+          ...item.product.metadata,
+          // Common fields
+          friendlyName: item.product.name || item.product.metadata?.friendlyName,
+          // Virtual number fields
+          phoneNumber: item.product.metadata?.phoneNumber,
+          countryId: item.product.metadata?.countryId,
+          countryFlag: item.product.metadata?.countryFlag,
+          countryName: item.product.metadata?.countryName,
+          planCategory: item.product.metadata?.planCategory,
+          durationDays: item.product.metadata?.durationDays,
+          smsLimit: item.product.metadata?.smsLimit,
+          minuteTier: item.product.metadata?.minuteTier,
+          minuteIncluded: item.product.metadata?.minuteIncluded,
+          minuteTierPrice: item.product.metadata?.minuteTierPrice,
+          numberType: item.product.metadata?.numberType,
+          // Gift card fields (normalized for fulfillment)
+          ...(isGiftCard && {
+            gift_card_id: item.product.metadata?.gift_card_id || item.product.metadata?.giftCardId || item.product.id,
+            denomination: item.product.metadata?.denomination || item.price,
+            brand: item.product.metadata?.brand || item.product.name,
+            imageUrl: item.product.imageUrl || item.product.metadata?.imageUrl,
+          }),
+        },
+      }
+    })
 
     // Use local order creation API
     const orderResponse = await fetch('/api/orders/create', {

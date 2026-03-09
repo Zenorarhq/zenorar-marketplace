@@ -31,7 +31,7 @@ export interface LibraryItem {
   name: string
   slug?: string
   description: string
-  category: 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers'
+  category: 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers' | 'gift-cards'
   icon: string
   purchaseDate: string
   status: 'active' | 'expired' | 'update-available' | 'suspended' | 'pending' | 'failed'
@@ -39,6 +39,7 @@ export interface LibraryItem {
   downloadCount?: number
   expiresAt?: string
   orderId?: string
+  imageUrl?: string
   // Virtual number specific fields
   phoneNumber?: string
   phoneNumberDisplay?: string
