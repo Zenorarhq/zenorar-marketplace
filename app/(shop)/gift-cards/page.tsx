@@ -1,9 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
+import { useAuth } from '@/contexts/AuthContext'
+import { localApiFetch } from '@/lib/api/client'
+import { getBalance } from '@/lib/api/wallet'
+import AuthDialog from '@/components/dialogs/AuthDialog'
+import DepositModal from '@/components/wallet/DepositModal'
 
 interface GiftCard {
   id: string
@@ -23,6 +29,10 @@ interface GiftCard {
 interface Category {
   name: string
   count: number
+}
+
+interface MarkupSettings {
+  giftCardMarkupPercent: number
 }
 
 const categoryIcons: Record<string, string> = {
@@ -48,8 +58,25 @@ const categoryGradients: Record<string, string> = {
   other: 'from-slate-800/80 via-slate-700/60 to-slate-800/80'
 }
 
+// Helper to get price range text
+function getPriceRange(card: GiftCard): string {
+  if (card.denominations.length > 0) {
+    const min = Math.min(...card.denominations)
+    const max = Math.max(...card.denominations)
+    if (min === max) return `$${min}`
+    return `$${min} - $${max}`
+  }
+  if (card.minCustomAmount && card.maxCustomAmount) {
+    return `$${card.minCustomAmount} - $${card.maxCustomAmount}`
+  }
+  return 'Variable'
+}
+
 export default function GiftCardsPage() {
-  const { addItem, showAddedToCartPopup, buyNow } = useCart()
+  const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
+  const { addItem, showAddedToCartPopup } = useCart()
+
   const [giftCards, setGiftCards] = useState<GiftCard[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,10 +84,23 @@ export default function GiftCardsPage() {
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCard, setSelectedCard] = useState<string | null>(null)
-  const [selectedDenomination, setSelectedDenomination] = useState<number | null>(null)
-  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({})
-  const [showCustomInput, setShowCustomInput] = useState<Record<string, boolean>>({})
+
+  // New state for redesigned UI
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
+  const [selectedAmounts, setSelectedAmounts] = useState<Record<string, number>>({})
+  const [customAmountInputs, setCustomAmountInputs] = useState<Record<string, string>>({})
+  const [markupPercent, setMarkupPercent] = useState(10) // Default 10%
+
+  // Payment state
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [processingPayment, setProcessingPayment] = useState<string | null>(null)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
+  // Wallet state (like virtual numbers page)
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [loadingBalance, setLoadingBalance] = useState(false)
+  const [showDepositModal, setShowDepositModal] = useState(false)
+  const [pendingPurchaseCard, setPendingPurchaseCard] = useState<GiftCard | null>(null)
 
   // Fetch gift cards from API
   useEffect(() => {
@@ -92,47 +132,126 @@ export default function GiftCardsPage() {
     fetchGiftCards()
   }, [selectedCategory, searchQuery])
 
+  // Fetch markup settings
+  useEffect(() => {
+    localApiFetch<any>('/settings/public?keys=giftCardMarkupPercent')
+      .then((res) => {
+        if (res.success && res.data?.giftCardMarkupPercent) {
+          setMarkupPercent(Number(res.data.giftCardMarkupPercent) || 10)
+        }
+      })
+      .catch(() => {
+        // Use default markup
+      })
+  }, [])
+
+  // Fetch wallet balance
+  const fetchWalletBalance = async () => {
+    setLoadingBalance(true)
+    try {
+      const result = await getBalance()
+      if (result.success && result.data) {
+        setWalletBalance(result.data.balance || 0)
+      }
+    } catch (error) {
+      console.error('Failed to fetch wallet balance:', error)
+    } finally {
+      setLoadingBalance(false)
+    }
+  }
+
+  // Fetch wallet balance when authenticated
+  useEffect(() => {
+    if (isAuthenticated && walletBalance === null) {
+      fetchWalletBalance()
+    }
+  }, [isAuthenticated])
+
+  // Auto-continue purchase after successful login
+  useEffect(() => {
+    if (pendingPurchaseCard && isAuthenticated && walletBalance !== null) {
+      const card = pendingPurchaseCard
+      const amount = getSelectedAmount(card.id)
+      if (!amount) {
+        setPendingPurchaseCard(null)
+        return
+      }
+
+      const finalPrice = calculateFinalPrice(amount, card.discountPercent)
+
+      if (walletBalance >= finalPrice) {
+        // Has enough balance, proceed with purchase
+        setPendingPurchaseCard(null)
+        processWalletPayment(card, amount, finalPrice)
+      } else {
+        // Show deposit modal
+        setPendingPurchaseCard(null)
+        setShowDepositModal(true)
+      }
+    }
+  }, [pendingPurchaseCard, isAuthenticated, walletBalance])
+
   const popularCards = giftCards.filter(card => card.isFeatured)
 
-  const getEffectiveAmount = (cardId: string): number | null => {
-    if (showCustomInput[cardId] && customAmounts[cardId]) {
-      const amount = parseFloat(customAmounts[cardId])
-      return isNaN(amount) ? null : amount
-    }
-    return selectedCard === cardId ? selectedDenomination : null
+  // Calculate final price with markup and discount
+  const calculateFinalPrice = (amount: number, discountPercent: number): number => {
+    const withMarkup = amount * (1 + markupPercent / 100)
+    const discount = amount * (discountPercent / 100)
+    return withMarkup - discount
   }
 
-  const handleAddToCart = async (card: GiftCard) => {
-    const amount = getEffectiveAmount(card.id)
+  // Get selected amount for a card
+  const getSelectedAmount = (cardId: string): number | null => {
+    return selectedAmounts[cardId] || null
+  }
+
+  // Handle amount selection
+  const handleSelectAmount = (cardId: string, amount: number) => {
+    setSelectedAmounts(prev => ({ ...prev, [cardId]: amount }))
+    setExpandedCard(null) // Collapse after selection
+  }
+
+  // Handle custom amount confirmation
+  const handleCustomAmountConfirm = (cardId: string, card: GiftCard) => {
+    const value = parseFloat(customAmountInputs[cardId] || '')
+    if (isNaN(value)) return
+
+    const min = card.minCustomAmount || 1
+    const max = card.maxCustomAmount || 1000
+
+    if (value >= min && value <= max) {
+      handleSelectAmount(cardId, value)
+    }
+  }
+
+  // Clear selection (tap pill to deselect)
+  const handleClearSelection = (cardId: string) => {
+    setSelectedAmounts(prev => {
+      const newAmounts = { ...prev }
+      delete newAmounts[cardId]
+      return newAmounts
+    })
+    setExpandedCard(cardId) // Reopen selection
+  }
+
+  // Toggle expansion
+  const toggleExpanded = (cardId: string) => {
+    setExpandedCard(expandedCard === cardId ? null : cardId)
+  }
+
+  // Add to cart handler
+  const handleAddToCart = (card: GiftCard) => {
+    const amount = getSelectedAmount(card.id)
     if (!amount) return
 
-    const discountedPrice = amount * (1 - card.discountPercent / 100)
+    const finalPrice = calculateFinalPrice(amount, card.discountPercent)
 
-    // Try to reserve a code first (only for authenticated users with bulk inventory)
-    let reservedCodeId: string | undefined
-    try {
-      const reserveResponse = await fetch('/api/gift-cards/reserve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ giftCardId: card.id, denomination: amount })
-      })
-      const reserveData = await reserveResponse.json()
-      if (reserveData.success) {
-        reservedCodeId = reserveData.codeId
-      }
-      // If reservation fails, we can still add to cart - the code will be assigned at checkout
-    } catch (err) {
-      // Reservation is optional - continue without it
-      console.log('Code reservation not available:', err)
-    }
-
-    // Create a product object for the cart with gift card metadata
     const product = {
       id: `gc-${card.id}-${amount}`,
       name: `${card.brand} Gift Card ($${amount})`,
       slug: card.slug,
       description: card.description || '',
-      price: discountedPrice,
+      price: finalPrice,
       rating: 5,
       reviewCount: 0,
       category: 'Gift Cards',
@@ -140,77 +259,140 @@ export default function GiftCardsPage() {
       iconColor: 'primary',
       tags: [card.brand, 'Gift Card'],
       productType: 'gift_card',
+      imageUrl: card.imageUrl,
       metadata: {
         gift_card_id: card.id,
         denomination: amount,
         brand: card.brand,
-        reserved_code_id: reservedCodeId
+        imageUrl: card.imageUrl,
       }
     }
 
-    addItem(product, 'standard', discountedPrice)
-    showAddedToCartPopup(product, discountedPrice)
+    addItem(product, 'standard', finalPrice)
+    showAddedToCartPopup(product, finalPrice)
   }
 
-  const handleBuyNow = async (card: GiftCard) => {
-    const amount = getEffectiveAmount(card.id)
+  // Process wallet payment (actual API call)
+  const processWalletPayment = async (card: GiftCard, amount: number, finalPrice: number) => {
+    setProcessingPayment(card.id)
+    setPaymentError(null)
+
+    try {
+      const response = await localApiFetch<any>('/gift-cards/purchase', {
+        method: 'POST',
+        body: JSON.stringify({
+          giftCardId: card.id,
+          denomination: amount,
+          paymentMethod: 'wallet'
+        })
+      })
+
+      if (response.success) {
+        // Refresh wallet balance
+        await fetchWalletBalance()
+
+        // Clear selection and redirect to library
+        setSelectedAmounts(prev => {
+          const newAmounts = { ...prev }
+          delete newAmounts[card.id]
+          return newAmounts
+        })
+        router.push('/profile/library?tab=gift-cards&purchased=true')
+      } else {
+        setPaymentError(response.error || 'Payment failed')
+      }
+    } catch (err: any) {
+      console.error('Payment error:', err)
+      setPaymentError(err.message || 'Payment failed')
+    } finally {
+      setProcessingPayment(null)
+    }
+  }
+
+  // Pay with wallet handler
+  const handlePayWithWallet = async (card: GiftCard) => {
+    const amount = getSelectedAmount(card.id)
     if (!amount) return
 
-    const discountedPrice = amount * (1 - card.discountPercent / 100)
+    // Check if logged in
+    if (!isAuthenticated) {
+      setPendingPurchaseCard(card)
+      setShowLoginModal(true)
+      return
+    }
 
-    // Try to reserve a code first
-    let reservedCodeId: string | undefined
-    try {
-      const reserveResponse = await fetch('/api/gift-cards/reserve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ giftCardId: card.id, denomination: amount })
-      })
-      const reserveData = await reserveResponse.json()
-      if (reserveData.success) {
-        reservedCodeId = reserveData.codeId
+    const finalPrice = calculateFinalPrice(amount, card.discountPercent)
+
+    // Fetch wallet balance if not yet loaded
+    let currentBalance = walletBalance
+    if (currentBalance === null) {
+      setLoadingBalance(true)
+      try {
+        const result = await getBalance()
+        if (result.success && result.data) {
+          currentBalance = result.data.balance || 0
+          setWalletBalance(currentBalance)
+        } else {
+          setPaymentError('Failed to check wallet balance')
+          setLoadingBalance(false)
+          return
+        }
+      } catch {
+        setPaymentError('Failed to check wallet balance')
+        setLoadingBalance(false)
+        return
       }
-    } catch (err) {
-      console.log('Code reservation not available:', err)
+      setLoadingBalance(false)
     }
 
-    const product = {
-      id: `gc-${card.id}-${amount}`,
-      name: `${card.brand} Gift Card ($${amount})`,
-      slug: card.slug,
-      description: card.description || '',
-      price: discountedPrice,
-      rating: 5,
-      reviewCount: 0,
-      category: 'Gift Cards',
-      icon: 'gift',
-      iconColor: 'primary',
-      tags: [card.brand, 'Gift Card'],
-      productType: 'gift_card',
-      metadata: {
-        gift_card_id: card.id,
-        denomination: amount,
-        brand: card.brand,
-        reserved_code_id: reservedCodeId
-      }
+    // Check if balance is sufficient
+    if (currentBalance < finalPrice) {
+      // Show deposit modal
+      setShowDepositModal(true)
+      return
     }
 
-    buyNow(product, 'standard', discountedPrice)
-  }
-
-  const toggleCustomInput = (cardId: string) => {
-    setShowCustomInput(prev => ({
-      ...prev,
-      [cardId]: !prev[cardId]
-    }))
-    if (!showCustomInput[cardId]) {
-      setSelectedCard(cardId)
-      setSelectedDenomination(null)
-    }
+    // Process payment
+    await processWalletPayment(card, amount, finalPrice)
   }
 
   return (
     <main className="max-w-container mx-auto px-4 lg:px-12 pb-24">
+      {/* Auth Dialog */}
+      <AuthDialog
+        isOpen={showLoginModal}
+        onClose={() => {
+          setShowLoginModal(false)
+          setPendingPurchaseCard(null)
+        }}
+        onSuccess={() => {
+          setShowLoginModal(false)
+          // Auto-continue will trigger via useEffect
+        }}
+        defaultTab="login"
+      />
+
+      {/* Deposit Modal */}
+      <DepositModal
+        isOpen={showDepositModal}
+        onClose={() => {
+          setShowDepositModal(false)
+          // Refresh balance after deposit modal closes (user may have deposited)
+          fetchWalletBalance()
+        }}
+      />
+
+      {/* Payment Error Toast */}
+      {paymentError && (
+        <div className="fixed bottom-4 right-4 bg-red-500/90 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3">
+          <Icon name="alert-circle" size={20} />
+          <span>{paymentError}</span>
+          <button onClick={() => setPaymentError(null)} className="text-white/80 hover:text-white">
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+      )}
+
       {/* Breadcrumbs */}
       <div className="py-4">
         <Breadcrumbs
@@ -273,7 +455,11 @@ export default function GiftCardsPage() {
                 {popularCards.slice(0, 5).map((card) => (
                   <button
                     key={card.id}
-                    onClick={() => setSelectedCard(card.id)}
+                    onClick={() => {
+                      setExpandedCard(card.id)
+                      // Scroll to the card in the main grid
+                      document.getElementById(`card-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    }}
                     className="bg-charcoal border border-border-dark hover:border-primary/50 rounded-2xl overflow-hidden transition-all text-center group"
                   >
                     <div className={`relative h-24 ${!card.imageUrl ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden`}>
@@ -355,14 +541,18 @@ export default function GiftCardsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {giftCards.map((card) => {
-                  const effectiveAmount = getEffectiveAmount(card.id)
-                  const hasAmount = effectiveAmount !== null && effectiveAmount > 0
+                  const selectedAmount = getSelectedAmount(card.id)
+                  const hasSelection = selectedAmount !== null
+                  const isExpanded = expandedCard === card.id
+                  const finalPrice = hasSelection ? calculateFinalPrice(selectedAmount, card.discountPercent) : 0
+                  const discountAmount = hasSelection ? selectedAmount * (card.discountPercent / 100) : 0
 
                   return (
                     <div
+                      id={`card-${card.id}`}
                       key={card.id}
                       className={`bg-charcoal border rounded-2xl overflow-hidden transition-all ${
-                        selectedCard === card.id
+                        hasSelection || isExpanded
                           ? 'border-primary ring-2 ring-primary/20'
                           : 'border-border-dark hover:border-primary/50'
                       }`}
@@ -375,12 +565,7 @@ export default function GiftCardsPage() {
                             alt={card.brand}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              // Fallback to gradient + icon if image fails to load
                               e.currentTarget.style.display = 'none'
-                              const parent = e.currentTarget.parentElement
-                              if (parent) {
-                                parent.classList.add('bg-gradient-to-br', categoryGradients[card.category?.toLowerCase()] || categoryGradients.other)
-                              }
                               e.currentTarget.nextElementSibling?.classList.remove('hidden')
                             }}
                           />
@@ -408,109 +593,137 @@ export default function GiftCardsPage() {
                       {/* Card Content */}
                       <div className="p-5">
                         <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{card.brand}</h3>
-                        <p className="text-sm text-slate-500 mb-4 line-clamp-1">{card.description || card.category}</p>
+                        <p className="text-sm text-primary font-medium mb-4">{getPriceRange(card)}</p>
 
-                        {/* Denomination Selector */}
-                        <div className="mb-4">
-                          <p className="text-xs text-slate-500 mb-2">Select Amount</p>
-                          <div className="flex flex-wrap gap-2">
-                            {card.denominations.map((amount) => (
-                              <button
-                                key={amount}
-                                onClick={() => {
-                                  setSelectedCard(card.id)
-                                  setSelectedDenomination(amount)
-                                  setShowCustomInput(prev => ({ ...prev, [card.id]: false }))
-                                }}
-                                className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
-                                  selectedCard === card.id && selectedDenomination === amount && !showCustomInput[card.id]
-                                    ? 'bg-primary text-white'
-                                    : 'bg-surface-dark border border-border-dark text-slate-300 hover:border-primary/50'
-                                }`}
-                              >
-                                ${amount}
-                              </button>
-                            ))}
-                            {card.maxCustomAmount && (
-                              <button
-                                onClick={() => toggleCustomInput(card.id)}
-                                className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
-                                  showCustomInput[card.id]
-                                    ? 'bg-primary text-white'
-                                    : 'bg-surface-dark border border-border-dark text-slate-300 hover:border-primary/50'
-                                }`}
-                              >
-                                Other
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Custom Amount Input */}
-                          {showCustomInput[card.id] && (
-                            <div className="mt-3">
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                <input
-                                  type="number"
-                                  min={card.minCustomAmount || 1}
-                                  max={card.maxCustomAmount || undefined}
-                                  placeholder={`${card.minCustomAmount || 1} - ${card.maxCustomAmount || '500'}`}
-                                  value={customAmounts[card.id] || ''}
-                                  onChange={(e) => setCustomAmounts(prev => ({ ...prev, [card.id]: e.target.value }))}
-                                  className="w-full pl-7 pr-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Price Display */}
-                        {hasAmount && (
-                          <div className="mb-4 p-3 bg-surface-dark rounded-xl">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">Card Value</span>
-                              <span className="text-white">${effectiveAmount!.toFixed(2)}</span>
-                            </div>
-                            {card.discountPercent > 0 && (
-                              <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">Discount ({card.discountPercent}%)</span>
-                                <span className="text-green-400">-${(effectiveAmount! * card.discountPercent / 100).toFixed(2)}</span>
-                              </div>
-                            )}
-                            <div className="border-t border-border-dark my-2"></div>
-                            <div className="flex justify-between">
-                              <span className="text-slate-400 font-bold">You Pay</span>
-                              <span className="text-white font-extrabold">
-                                ${(effectiveAmount! * (1 - card.discountPercent / 100)).toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="space-y-2">
-                          <button
-                            onClick={() => handleAddToCart(card)}
-                            disabled={!hasAmount || !card.inStock}
-                            className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 ${
-                              hasAmount && card.inStock
-                                ? 'bg-primary text-black hover:brightness-105'
-                                : 'bg-surface-dark text-slate-400 border border-border-dark cursor-not-allowed'
-                            }`}
-                          >
-                            <Icon name="cart" size={18} />
-                            {!card.inStock ? 'Out of Stock' : hasAmount ? 'Add to Cart' : 'Select Amount'}
-                          </button>
-                          {hasAmount && card.inStock && (
+                        {/* Selection State */}
+                        {!hasSelection ? (
+                          <>
+                            {/* Select Amount Button */}
                             <button
-                              onClick={() => handleBuyNow(card)}
-                              className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
+                              onClick={() => toggleExpanded(card.id)}
+                              disabled={!card.inStock}
+                              className={`w-full mb-4 px-4 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-between ${
+                                isExpanded
+                                  ? 'bg-primary/20 border border-primary text-primary'
+                                  : card.inStock
+                                  ? 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
+                                  : 'bg-surface-dark border border-border-dark text-slate-500 cursor-not-allowed'
+                              }`}
                             >
-                              <Icon name="flash" size={18} />
-                              Buy Now
+                              <span>Select Amount</span>
+                              <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} />
                             </button>
-                          )}
-                        </div>
+
+                            {/* Expanded Selection */}
+                            {isExpanded && (
+                              <div className="mb-4 p-4 bg-surface-dark rounded-xl space-y-4">
+                                {/* Fixed Denominations */}
+                                {card.denominations.length > 0 && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {card.denominations.map((amount) => (
+                                      <button
+                                        key={amount}
+                                        onClick={() => handleSelectAmount(card.id, amount)}
+                                        className="px-4 py-2 rounded-lg text-sm font-bold bg-charcoal border border-border-dark text-white hover:border-primary hover:bg-primary/10 transition-all"
+                                      >
+                                        ${amount}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Custom Amount */}
+                                {(card.maxCustomAmount || card.denominations.length === 0) && (
+                                  <div>
+                                    <p className="text-xs text-slate-500 mb-2">
+                                      {card.denominations.length > 0 ? 'Or enter custom amount:' : 'Enter amount:'}
+                                    </p>
+                                    <div className="flex gap-2">
+                                      <div className="relative flex-1">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                                        <input
+                                          type="number"
+                                          min={card.minCustomAmount || 1}
+                                          max={card.maxCustomAmount || 1000}
+                                          placeholder={`${card.minCustomAmount || 1} - ${card.maxCustomAmount || 1000}`}
+                                          value={customAmountInputs[card.id] || ''}
+                                          onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleCustomAmountConfirm(card.id, card)
+                                          }}
+                                          className="w-full pl-7 pr-4 py-2 bg-charcoal border border-border-dark rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                                        />
+                                      </div>
+                                      <button
+                                        onClick={() => handleCustomAmountConfirm(card.id, card)}
+                                        className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105"
+                                      >
+                                        <Icon name="check" size={18} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {/* Selected Amount Pill */}
+                            <button
+                              onClick={() => handleClearSelection(card.id)}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 border border-primary text-primary rounded-xl font-bold text-sm mb-4 hover:bg-primary/30 transition-all"
+                            >
+                              <span>${selectedAmount}</span>
+                              <Icon name="x" size={14} />
+                            </button>
+
+                            {/* Price Summary */}
+                            <div className="mb-4 p-3 bg-surface-dark rounded-xl space-y-2">
+                              {card.discountPercent > 0 && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-slate-500">Discount ({card.discountPercent}%)</span>
+                                  <span className="text-green-400">-${discountAmount.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between">
+                                <span className="text-slate-400 font-bold">You Pay</span>
+                                <span className="text-white font-extrabold">${finalPrice.toFixed(2)}</span>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons - Side by Side */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <button
+                                onClick={() => handleAddToCart(card)}
+                                className="font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
+                              >
+                                <Icon name="cart" size={16} />
+                                <span className="hidden sm:inline">Add to Cart</span>
+                                <span className="sm:hidden">Cart</span>
+                              </button>
+                              <button
+                                onClick={() => handlePayWithWallet(card)}
+                                disabled={processingPayment === card.id}
+                                className="font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50"
+                              >
+                                {processingPayment === card.id ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                                ) : (
+                                  <>
+                                    <Icon name="wallet" size={16} />
+                                    <span className="hidden sm:inline">Pay with Wallet</span>
+                                    <span className="sm:hidden">Wallet</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Payment Error */}
+                            {paymentError && processingPayment === null && (
+                              <p className="mt-2 text-xs text-red-400 text-center">{paymentError}</p>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   )
@@ -542,14 +755,14 @@ export default function GiftCardsPage() {
                   3
                 </div>
                 <h3 className="font-bold text-white mb-2">Pay Securely</h3>
-                <p className="text-slate-500 text-sm">Complete purchase with crypto or card.</p>
+                <p className="text-slate-500 text-sm">Pay with your wallet balance or add to cart.</p>
               </div>
               <div className="text-center">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
                   4
                 </div>
                 <h3 className="font-bold text-white mb-2">Instant Delivery</h3>
-                <p className="text-slate-500 text-sm">Receive your code instantly via email.</p>
+                <p className="text-slate-500 text-sm">Receive your code instantly in your library.</p>
               </div>
             </div>
           </div>

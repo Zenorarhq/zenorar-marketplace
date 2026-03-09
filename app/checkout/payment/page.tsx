@@ -670,12 +670,17 @@ export default function PaymentPage() {
   const processCreditsPayment = async () => {
     setPaymentStatus('paying')
     try {
-      // Check if cart has virtual numbers - use instant checkout API for fulfillment
+      // Check if cart has digital products requiring instant fulfillment
       const hasVirtualNumbers = items.some((item: any) => item.product.metadata?.productType === 'virtual_number')
+      const hasGiftCards = items.some((item: any) =>
+        (item.product as any).productType === 'gift_card' ||
+        item.product.metadata?.productType === 'gift_card'
+      )
+      const hasDigitalProducts = hasVirtualNumbers || hasGiftCards
 
-      if (hasVirtualNumbers) {
-        // Use backend instant checkout API for virtual numbers (handles provisioning)
-        const response = await fetch('/backend/orders/instant', {
+      if (hasDigitalProducts) {
+        // Use local instant checkout API for digital products (handles provisioning)
+        const response = await fetch('/api/orders/instant', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2453,16 +2458,15 @@ function PaystackCardForm({
         ref: `ORDER_${orderNumber}_${Date.now()}`,
         callback: (response: any) => {
           // Wrap async verification in a non-async callback (Paystack requires a plain function)
-          fetch('/backend/payments/paystack/verify', {
+          fetch('/api/payments/paystack/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reference: response.reference }),
           })
-            .then(verifyResponse => {
-              if (verifyResponse.ok) {
-                // Run digital product fulfillment (licenses, eSIMs, etc.)
-                fetch(`/api/orders/${orderId}/fulfill`, { method: 'POST' })
-                  .catch(err => console.error('Paystack: fulfillment error:', err))
+            .then(verifyResponse => verifyResponse.json())
+            .then(verifyData => {
+              if (verifyData.success) {
+                // Fulfillment is handled by the verify endpoint
                 // Increment discount usage counter
                 if (discountCode && discountAmount > 0) {
                   apiFetch('/discounts/use', {
@@ -2472,7 +2476,7 @@ function PaystackCardForm({
                 }
                 onSuccess(orderId, orderNumber)
               } else {
-                setError('Payment verification failed. Please contact support.')
+                setError(verifyData.error || 'Payment verification failed. Please contact support.')
                 setProcessing(false)
               }
             })

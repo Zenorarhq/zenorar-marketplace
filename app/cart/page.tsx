@@ -227,13 +227,23 @@ export default function CartPage() {
                 key={`${item.product.id}-${item.license}`}
                 className="bg-surface-dark border border-border-dark rounded-2xl p-4 md:p-6 flex gap-4 md:gap-6"
               >
-                {/* Product Image / Flag for Virtual Numbers */}
+                {/* Product Image / Flag for Virtual Numbers / Gift Card Image */}
                 <div className="w-24 h-24 bg-charcoal rounded-xl overflow-hidden flex-shrink-0">
                   {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
                     // Virtual number - show country flag image
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                       <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-16 h-16 rounded" />
                     </div>
+                  ) : ((item.product as any).productType === 'gift_card' || (item.product as any).product_type === 'gift_card' || item.product.metadata?.productType === 'gift_card') && ((item.product as any).imageUrl || item.product.metadata?.imageUrl) ? (
+                    // Gift card - show brand image
+                    <Image
+                      src={(item.product as any).imageUrl || item.product.metadata?.imageUrl || ''}
+                      alt={item.product.name}
+                      width={96}
+                      height={96}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                    />
                   ) : (item.product.image || item.product.images?.[0]?.url) ? (
                     <Image
                       src={item.product.image || item.product.images?.[0]?.url || ''}

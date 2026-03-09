@@ -4,46 +4,54 @@ import { fulfillOrder } from '@/lib/order-fulfillment'
 import { verifyAccessToken } from '@/lib/auth-utils'
 
 /**
- * Get or create the Virtual Number product
- * This is a real product representing the virtual number service
+ * Get or create a product by type
  */
-async function getVirtualNumberProductId(): Promise<string> {
-  // Check if product exists with correct product_type
+async function getOrCreateProduct(productType: string): Promise<string> {
+  const config: Record<string, { slug: string; name: string; description: string }> = {
+    virtual_number: {
+      slug: 'virtual-number',
+      name: 'Virtual Number',
+      description: 'Virtual phone number rental service for SMS verification and calls'
+    },
+    gift_card: {
+      slug: 'gift-card-service',
+      name: 'Gift Card',
+      description: 'Digital gift card delivery service'
+    },
+    esim: {
+      slug: 'esim-service',
+      name: 'eSIM',
+      description: 'Digital eSIM service'
+    }
+  }
+
+  const productConfig = config[productType] || config.virtual_number
+
   const existing = await query(
-    `SELECT id, product_type FROM products WHERE slug = 'virtual-number'`
+    `SELECT id, product_type FROM products WHERE slug = $1`,
+    [productConfig.slug]
   )
 
   if (existing.rows.length > 0) {
-    // Ensure product_type is correct
-    if (existing.rows[0].product_type !== 'virtual_number') {
+    if (existing.rows[0].product_type !== productType) {
       await query(
-        `UPDATE products SET product_type = 'virtual_number', "updatedAt" = NOW() WHERE id = $1`,
-        [existing.rows[0].id]
+        `UPDATE products SET product_type = $1, "updatedAt" = NOW() WHERE id = $2`,
+        [productType, existing.rows[0].id]
       )
     }
     return existing.rows[0].id
   }
 
-  // Create the product
   const result = await query(
     `INSERT INTO products (
        id, name, slug, description, price, stock, status,
        "is_digital", product_type, "createdAt", "updatedAt"
      ) VALUES (
-       gen_random_uuid()::text,
-       'Virtual Number',
-       'virtual-number',
-       'Virtual phone number rental service for SMS verification and calls',
-       0,
-       999999,
-       'ACTIVE',
-       true,
-       'virtual_number',
-       NOW(),
-       NOW()
+       gen_random_uuid()::text, $1, $2, $3, 0, 999999, 'ACTIVE', true, $4, NOW(), NOW()
      )
-     ON CONFLICT (slug) DO UPDATE SET product_type = 'virtual_number', "updatedAt" = NOW()
-     RETURNING id`
+     ON CONFLICT (slug) DO UPDATE SET product_type = $4, "updatedAt" = NOW()
+     RETURNING id`,
+    [productConfig.name, productConfig.slug, productConfig.description, productType]
   )
 
   return result.rows[0].id
@@ -150,9 +158,6 @@ export async function POST(req: NextRequest) {
     )
     const userEmail = userResult.rows[0]?.email || 'unknown@zenorar.com'
 
-    // Get the virtual number product ID
-    const virtualNumberProductId = await getVirtualNumberProductId()
-
     // Generate order number
     const orderNumber = `ZN${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
@@ -171,11 +176,47 @@ export async function POST(req: NextRequest) {
     const orderId = orderResult.rows[0].id
     const finalOrderNumber = orderResult.rows[0].orderNumber
 
-    // Create order items
+    // Create order items - handle different product types
     for (const item of items) {
       const itemQuantity = item.quantity || 1
       const itemPrice = item.price
       const itemTotal = itemPrice * itemQuantity
+      const productType = item.productType || item.metadata?.productType || 'virtual_number'
+
+      // Get appropriate product ID for this item type
+      const productId = await getOrCreateProduct(productType)
+
+      // Build metadata based on product type
+      let metadata: Record<string, any> = { ...item.metadata, amount_paid: item.price }
+
+      if (productType === 'virtual_number') {
+        metadata = {
+          ...metadata,
+          phone_number: item.metadata?.phoneNumber,
+          country_id: item.metadata?.countryId,
+          plan_id: item.metadata?.planCategory === 'basic' ? 'basic' : 'business',
+          number_type: item.metadata?.numberType,
+          duration_days: item.metadata?.durationDays,
+          sms_limit: item.metadata?.smsLimit,
+          minute_tier: item.metadata?.minuteTier,
+          minute_included: item.metadata?.minuteIncluded,
+          minute_tier_price: item.metadata?.minuteTierPrice,
+        }
+      } else if (productType === 'gift_card') {
+        metadata = {
+          ...metadata,
+          gift_card_id: item.metadata?.gift_card_id,
+          denomination: item.metadata?.denomination,
+          brand: item.metadata?.brand,
+          imageUrl: item.metadata?.imageUrl,
+        }
+      }
+
+      const itemName = productType === 'virtual_number'
+        ? (item.metadata?.friendlyName || 'Virtual Number')
+        : productType === 'gift_card'
+          ? `${item.metadata?.brand || 'Gift Card'} ($${item.metadata?.denomination || itemPrice})`
+          : (item.name || 'Digital Product')
 
       await query(
         `INSERT INTO order_items (
@@ -185,26 +226,14 @@ export async function POST(req: NextRequest) {
          )`,
         [
           orderId,
-          virtualNumberProductId,
-          item.metadata?.friendlyName || 'Virtual Number',
+          productId,
+          itemName,
           itemQuantity,
           itemPrice,
           itemTotal,
           null,
-          JSON.stringify({
-            ...item.metadata,
-            phone_number: item.metadata?.phoneNumber,
-            country_id: item.metadata?.countryId,
-            plan_id: item.metadata?.planCategory === 'basic' ? 'basic' : 'business',
-            number_type: item.metadata?.numberType,
-            duration_days: item.metadata?.durationDays,
-            sms_limit: item.metadata?.smsLimit,
-            minute_tier: item.metadata?.minuteTier,
-            minute_included: item.metadata?.minuteIncluded,
-            minute_tier_price: item.metadata?.minuteTierPrice,
-            amount_paid: item.price,
-          }),
-          'virtual_number'
+          JSON.stringify(metadata),
+          productType
         ]
       )
     }

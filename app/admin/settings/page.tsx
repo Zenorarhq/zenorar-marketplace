@@ -14,7 +14,7 @@ import ProtectionLevelsSection from '@/components/admin/ProtectionLevelsSection'
 import PinSetupForm from '@/components/admin/PinSetupForm'
 import VirtualNumberPricingSection from '@/components/admin/VirtualNumberPricingSection'
 
-type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'virtual-numbers' | 'email' | 'marketing' | 'seo' | 'activity'
+type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'markup' | 'email' | 'marketing' | 'seo' | 'activity'
 
 const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'profile', label: 'Profile', icon: 'user' },
@@ -24,7 +24,7 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'payments', label: 'Payments', icon: 'credit-card' },
   { id: 'referral', label: 'Referral Program', icon: 'gift' },
   { id: 'api', label: 'API Keys', icon: 'key' },
-  { id: 'virtual-numbers', label: 'Virtual Numbers', icon: 'phone' },
+  { id: 'markup', label: 'Markup', icon: 'tag' },
   { id: 'email', label: 'Email Service', icon: 'mail' },
   { id: 'marketing', label: 'Marketing', icon: 'campaign' },
   { id: 'seo', label: 'SEO', icon: 'search' },
@@ -408,6 +408,7 @@ export default function AdminSettingsPage() {
   // Gift Card Providers Settings State
   const [giftCardSettings, setGiftCardSettings] = useState({
     giftCardDefaultProvider: 'reloadly' as 'reloadly' | 'ezgiftcard' | 'bitrefill' | 'tango' | 'ezpin',
+    giftCardMarkupPercent: 10, // Markup percentage on gift cards
     // Reloadly
     reloadlyEnabled: false,
     reloadlyMode: 'sandbox' as 'sandbox' | 'production',
@@ -695,6 +696,7 @@ export default function AdminSettingsPage() {
         // Gift Card Providers settings
         setGiftCardSettings((prev) => ({
           giftCardDefaultProvider: d.giftCardDefaultProvider ?? prev.giftCardDefaultProvider,
+          giftCardMarkupPercent: d.giftCardMarkupPercent ?? prev.giftCardMarkupPercent,
           // Reloadly
           reloadlyEnabled: d.reloadlyEnabled ?? prev.reloadlyEnabled,
           reloadlyMode: d.reloadlyMode ?? prev.reloadlyMode,
@@ -1478,6 +1480,7 @@ export default function AdminSettingsPage() {
       { key: 'vonageApiSecret', value: virtualNumberSettings.vonageApiSecret, group: 'api', isPublic: false },
       // Gift Card Providers
       { key: 'giftCardDefaultProvider', value: giftCardSettings.giftCardDefaultProvider, group: 'api', isPublic: false },
+      { key: 'giftCardMarkupPercent', value: giftCardSettings.giftCardMarkupPercent, group: 'markup', isPublic: true },
       // Reloadly
       { key: 'reloadlyEnabled', value: giftCardSettings.reloadlyEnabled, group: 'api', isPublic: true },
       { key: 'reloadlyMode', value: giftCardSettings.reloadlyMode, group: 'api', isPublic: false },
@@ -5438,9 +5441,70 @@ export default function AdminSettingsPage() {
             </div>
           )}
 
-          {/* Virtual Numbers Settings */}
-          {activeTab === 'virtual-numbers' && (
+          {/* Markup Settings */}
+          {activeTab === 'markup' && (
             <div className="space-y-6">
+              {/* Gift Card Markup */}
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-pink-500/10 flex items-center justify-center">
+                    <Icon name="gift" size={24} className="text-pink-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-lg">Gift Card Markup</p>
+                    <p className="text-slate-500 text-sm">Percentage added on top of provider cost</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Gift Card Markup %</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={giftCardSettings.giftCardMarkupPercent || 10}
+                        onChange={(e) => setGiftCardSettings({ ...giftCardSettings, giftCardMarkupPercent: Number(e.target.value) })}
+                        className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      />
+                      <span className="text-slate-400">%</span>
+                    </div>
+                    <p className="text-xs text-slate-600">10% = $50 card costs user $55 before provider discount</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Price Preview</label>
+                    <div className="bg-[#1a1a1a] rounded-lg p-4">
+                      <p className="text-slate-500 text-sm mb-2">$50 card with 7.5% provider discount:</p>
+                      <p className="text-white">
+                        Provider cost: <span className="text-slate-400">$50</span>
+                      </p>
+                      <p className="text-white">
+                        + Markup ({giftCardSettings.giftCardMarkupPercent || 10}%): <span className="text-primary">+${((50 * (giftCardSettings.giftCardMarkupPercent || 10)) / 100).toFixed(2)}</span>
+                      </p>
+                      <p className="text-white">
+                        - Discount (7.5%): <span className="text-green-400">-$3.75</span>
+                      </p>
+                      <div className="border-t border-[#2a2a2a] my-2"></div>
+                      <p className="text-primary font-bold">
+                        You Pay: ${(50 * (1 + (giftCardSettings.giftCardMarkupPercent || 10) / 100) - 3.75).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* eSIM Markup (Future) */}
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6 opacity-60">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center">
+                    <Icon name="sim" size={24} className="text-cyan-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-lg">eSIM Markup <span className="text-xs text-slate-500 font-normal ml-2">Coming Soon</span></p>
+                    <p className="text-slate-500 text-sm">Markup for eSIM data plans</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Virtual Numbers Markup */}
               <VirtualNumberPricingSection />
             </div>
           )}

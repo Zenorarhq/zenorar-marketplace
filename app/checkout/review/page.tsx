@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
@@ -148,21 +150,53 @@ export default function ReviewPage() {
                   Order Items ({items.length})
                 </h2>
                 <div className="space-y-3 md:space-y-4">
-                  {items.map((item) => (
-                    <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-surface-dark rounded-xl">
-                      <div className="w-12 h-12 md:w-16 md:h-16 bg-charcoal rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Icon name={item.product.icon || 'code'} size={20} className="md:w-24 md:h-24 text-slate-500" />
+                  {items.map((item) => {
+                    const isVirtualNumber = item.product.metadata?.productType === 'virtual_number'
+                    const isGiftCard = (item.product as any).productType === 'gift_card' || item.product.metadata?.productType === 'gift_card'
+                    const giftCardImage = (item.product as any).imageUrl || item.product.metadata?.imageUrl
+                    const countryIsoCode = item.product.metadata?.countryIsoCode
+
+                    return (
+                      <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-surface-dark rounded-xl">
+                        <div className="w-12 h-12 md:w-16 md:h-16 bg-charcoal rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {isVirtualNumber && countryIsoCode ? (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                              <FlagIcon countryCode={countryIsoCode} className="w-8 h-8 md:w-10 md:h-10 rounded" />
+                            </div>
+                          ) : isGiftCard && giftCardImage ? (
+                            <Image
+                              src={giftCardImage}
+                              alt={item.product.name}
+                              width={64}
+                              height={64}
+                              className="w-full h-full object-cover"
+                              unoptimized
+                            />
+                          ) : (item.product as any).image || item.product.images?.[0]?.url ? (
+                            <Image
+                              src={(item.product as any).image || item.product.images?.[0]?.url}
+                              alt={item.product.name}
+                              width={64}
+                              height={64}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Icon name={item.product.icon || 'code'} size={20} className="text-slate-500" />
+                          )}
+                        </div>
+                        <div className="flex-grow min-w-0">
+                          <p className="text-white font-bold text-sm md:text-base truncate">{item.product.name}</p>
+                          <p className="text-primary text-[10px] md:text-xs uppercase font-bold">
+                            {isVirtualNumber
+                              ? `${item.product.metadata?.planCategory?.toUpperCase() || 'BASIC'} - ${item.product.metadata?.durationDays || 30} DAYS`
+                              : (item.license === 'extended' ? 'Extended License' : 'Standard License')}
+                          </p>
+                          <p className="text-slate-500 text-xs md:text-sm">Qty: {item.quantity}</p>
+                        </div>
+                        <p className="text-white font-bold text-base md:text-lg">{formatPrice(item.price * item.quantity)}</p>
                       </div>
-                      <div className="flex-grow min-w-0">
-                        <p className="text-white font-bold text-sm md:text-base truncate">{item.product.name}</p>
-                        <p className="text-primary text-[10px] md:text-xs uppercase font-bold">
-                          {item.license === 'extended' ? 'Extended License' : 'Standard License'}
-                        </p>
-                        <p className="text-slate-500 text-xs md:text-sm">Qty: {item.quantity}</p>
-                      </div>
-                      <p className="text-white font-bold text-base md:text-lg">{formatPrice(item.price * item.quantity)}</p>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 

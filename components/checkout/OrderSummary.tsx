@@ -44,6 +44,8 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
     quantity: item.quantity,
     isVirtualNumber: item.product.metadata?.productType === 'virtual_number',
     countryIsoCode: item.product.metadata?.countryIsoCode,
+    isGiftCard: (item.product as any).productType === 'gift_card' || item.product.metadata?.productType === 'gift_card',
+    giftCardImage: (item.product as any).imageUrl || item.product.metadata?.imageUrl,
   }))
 
   const shipping = 0 // Free shipping
@@ -78,6 +80,8 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                     <FlagIcon countryCode={item.countryIsoCode} className="w-10 h-10 rounded" />
                   </div>
+                ) : item.isGiftCard && item.giftCardImage ? (
+                  <img src={item.giftCardImage} alt={item.name} className="w-full h-full object-cover" />
                 ) : item.image ? (
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                 ) : (
