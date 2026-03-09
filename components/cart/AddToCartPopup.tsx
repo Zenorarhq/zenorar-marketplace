@@ -117,7 +117,8 @@ export default function AddToCartPopup({
         <div className="max-h-[240px] overflow-y-auto space-y-2 mb-4" style={{ scrollbarWidth: 'thin' }}>
           {cartItems.map((item) => {
             const isJustAdded = item.product.id === product.id
-            const itemImageUrl = item.product.image || item.product.images?.[0]?.url
+            // Support multiple image sources: standard image, images array, imageUrl, metadata imageUrl
+            const itemImageUrl = item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl
             return (
               <div
                 key={`${item.product.id}-${item.license}`}

@@ -27,7 +27,7 @@ function maskLicenseKey(key: string): string {
   return [first, ...middle, last].join('-')
 }
 
-type LibraryFilter = 'all' | 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers'
+type LibraryFilter = 'all' | 'scripts' | 'esims' | 'gift-cards' | 'virtual-numbers'
 
 export default function LibraryPage() {
   const router = useRouter()
@@ -281,8 +281,7 @@ export default function LibraryPage() {
     { key: 'scripts', label: 'Scripts', icon: 'code' },
     { key: 'esims', label: 'eSIMs', icon: 'sim-card' },
     { key: 'virtual-numbers', label: 'Numbers', icon: 'phone' },
-    { key: 'tools', label: 'Tools', icon: 'terminal' },
-    { key: 'api', label: 'API', icon: 'api' },
+    { key: 'gift-cards', label: 'Gift Cards', icon: 'gift' },
   ]
 
   return (

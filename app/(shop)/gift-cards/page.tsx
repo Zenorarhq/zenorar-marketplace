@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePreferences } from '@/contexts/PreferencesContext'
 import { localApiFetch } from '@/lib/api/client'
 import { getBalance } from '@/lib/api/wallet'
 import AuthDialog from '@/components/dialogs/AuthDialog'
@@ -76,6 +77,7 @@ export default function GiftCardsPage() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
   const { addItem, showAddedToCartPopup } = useCart()
+  const { formatPrice } = usePreferences()
 
   const [giftCards, setGiftCards] = useState<GiftCard[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -85,16 +87,19 @@ export default function GiftCardsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Refs for auto-scroll
+  const categoryScrollRef = useRef<HTMLDivElement>(null)
+
   // New state for redesigned UI
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const [selectedAmounts, setSelectedAmounts] = useState<Record<string, number>>({})
   const [customAmountInputs, setCustomAmountInputs] = useState<Record<string, string>>({})
   const [markupPercent, setMarkupPercent] = useState(10) // Default 10%
 
-  // Payment state
+  // Payment state - card-specific to prevent error bleeding
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [processingPayment, setProcessingPayment] = useState<string | null>(null)
-  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({})
 
   // Wallet state (like virtual numbers page)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
@@ -166,6 +171,16 @@ export default function GiftCardsPage() {
       fetchWalletBalance()
     }
   }, [isAuthenticated])
+
+  // Auto-scroll to selected category
+  useEffect(() => {
+    if (categoryScrollRef.current && selectedCategory) {
+      const selectedEl = categoryScrollRef.current.querySelector(`[data-category="${selectedCategory}"]`)
+      if (selectedEl) {
+        selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+      }
+    }
+  }, [selectedCategory])
 
   // Auto-continue purchase after successful login
   useEffect(() => {
@@ -275,7 +290,12 @@ export default function GiftCardsPage() {
   // Process wallet payment (actual API call)
   const processWalletPayment = async (card: GiftCard, amount: number, finalPrice: number) => {
     setProcessingPayment(card.id)
-    setPaymentError(null)
+    // Clear error for this specific card
+    setPaymentErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[card.id]
+      return newErrors
+    })
 
     try {
       const response = await localApiFetch<any>('/gift-cards/purchase', {
@@ -299,11 +319,11 @@ export default function GiftCardsPage() {
         })
         router.push('/profile/library?tab=gift-cards&purchased=true')
       } else {
-        setPaymentError(response.error || 'Payment failed')
+        setPaymentErrors(prev => ({ ...prev, [card.id]: response.error || 'Payment failed' }))
       }
     } catch (err: any) {
       console.error('Payment error:', err)
-      setPaymentError(err.message || 'Payment failed')
+      setPaymentErrors(prev => ({ ...prev, [card.id]: err.message || 'Payment failed' }))
     } finally {
       setProcessingPayment(null)
     }
@@ -333,12 +353,12 @@ export default function GiftCardsPage() {
           currentBalance = result.data.balance || 0
           setWalletBalance(currentBalance)
         } else {
-          setPaymentError('Failed to check wallet balance')
+          setPaymentErrors(prev => ({ ...prev, [card.id]: 'Failed to check wallet balance' }))
           setLoadingBalance(false)
           return
         }
       } catch {
-        setPaymentError('Failed to check wallet balance')
+        setPaymentErrors(prev => ({ ...prev, [card.id]: 'Failed to check wallet balance' }))
         setLoadingBalance(false)
         return
       }
@@ -382,12 +402,12 @@ export default function GiftCardsPage() {
         }}
       />
 
-      {/* Payment Error Toast */}
-      {paymentError && (
+      {/* Payment Error Toast - shows most recent error */}
+      {Object.keys(paymentErrors).length > 0 && (
         <div className="fixed bottom-4 right-4 bg-red-500/90 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3">
           <Icon name="alert-circle" size={20} />
-          <span>{paymentError}</span>
-          <button onClick={() => setPaymentError(null)} className="text-white/80 hover:text-white">
+          <span>{Object.values(paymentErrors)[0]}</span>
+          <button onClick={() => setPaymentErrors({})} className="text-white/80 hover:text-white">
             <Icon name="x" size={18} />
           </button>
         </div>
@@ -492,8 +512,9 @@ export default function GiftCardsPage() {
           {/* Category Filter */}
           <div className="mb-10">
             <h2 className="text-xl font-bold text-white mb-4">Browse by Category</h2>
-            <div className="flex gap-3 overflow-x-auto no-scrollbar">
+            <div ref={categoryScrollRef} className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
               <button
+                data-category="all"
                 onClick={() => setSelectedCategory(null)}
                 className={`flex-shrink-0 px-5 py-3 rounded-xl font-bold text-sm transition-all ${
                   !selectedCategory
@@ -506,6 +527,7 @@ export default function GiftCardsPage() {
               {categories.map((category) => (
                 <button
                   key={category.name}
+                  data-category={category.name}
                   onClick={() => setSelectedCategory(selectedCategory === category.name ? null : category.name)}
                   className={`flex-shrink-0 px-5 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
                     selectedCategory === category.name
@@ -595,132 +617,177 @@ export default function GiftCardsPage() {
                         <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{card.brand}</h3>
                         <p className="text-sm text-primary font-medium mb-4">{getPriceRange(card)}</p>
 
-                        {/* Selection State */}
-                        {!hasSelection ? (
-                          <>
-                            {/* Select Amount Button */}
-                            <button
-                              onClick={() => toggleExpanded(card.id)}
-                              disabled={!card.inStock}
-                              className={`w-full mb-4 px-4 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-between ${
-                                isExpanded
-                                  ? 'bg-primary/20 border border-primary text-primary'
-                                  : card.inStock
-                                  ? 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
-                                  : 'bg-surface-dark border border-border-dark text-slate-500 cursor-not-allowed'
-                              }`}
+                        {/* Amount Selection - Different UI for fixed vs variable */}
+                        {card.denominations.length > 0 ? (
+                          /* Fixed Denominations - Show pills immediately */
+                          <div className="mb-4">
+                            <div
+                              className="flex gap-2 overflow-x-auto no-scrollbar pb-1"
+                              ref={(el) => {
+                                // Auto-scroll to selected pill
+                                if (el && selectedAmount) {
+                                  const selectedPill = el.querySelector(`[data-amount="${selectedAmount}"]`)
+                                  if (selectedPill) {
+                                    selectedPill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+                                  }
+                                }
+                              }}
                             >
-                              <span>Select Amount</span>
-                              <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} />
-                            </button>
+                              {card.denominations.map((amount) => (
+                                <button
+                                  key={amount}
+                                  data-amount={amount}
+                                  onClick={() => {
+                                    if (selectedAmount === amount) {
+                                      // Deselect if clicking the same amount
+                                      setSelectedAmounts(prev => {
+                                        const newAmounts = { ...prev }
+                                        delete newAmounts[card.id]
+                                        return newAmounts
+                                      })
+                                    } else {
+                                      // Select new amount
+                                      setSelectedAmounts(prev => ({ ...prev, [card.id]: amount }))
+                                      // Clear any errors when selecting new amount
+                                      setPaymentErrors(prev => {
+                                        const newErrors = { ...prev }
+                                        delete newErrors[card.id]
+                                        return newErrors
+                                      })
+                                    }
+                                  }}
+                                  disabled={!card.inStock}
+                                  className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                                    selectedAmount === amount
+                                      ? 'bg-primary text-black'
+                                      : card.inStock
+                                      ? 'bg-charcoal border border-border-dark text-white hover:border-primary hover:bg-primary/10'
+                                      : 'bg-charcoal border border-border-dark text-slate-500 cursor-not-allowed'
+                                  }`}
+                                >
+                                  ${amount}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          /* Variable Amount Only - Show Select Amount button */
+                          <div className="mb-4">
+                            {!hasSelection && !isExpanded && (
+                              <button
+                                onClick={() => toggleExpanded(card.id)}
+                                disabled={!card.inStock}
+                                className={`w-full px-4 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-between ${
+                                  card.inStock
+                                    ? 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
+                                    : 'bg-surface-dark border border-border-dark text-slate-500 cursor-not-allowed'
+                                }`}
+                              >
+                                <span>Select Amount</span>
+                                <Icon name="chevron-down" size={18} />
+                              </button>
+                            )}
 
-                            {/* Expanded Selection */}
-                            {isExpanded && (
-                              <div className="mb-4 p-4 bg-surface-dark rounded-xl space-y-4">
-                                {/* Fixed Denominations */}
-                                {card.denominations.length > 0 && (
-                                  <div className="flex flex-wrap gap-2">
-                                    {card.denominations.map((amount) => (
-                                      <button
-                                        key={amount}
-                                        onClick={() => handleSelectAmount(card.id, amount)}
-                                        className="px-4 py-2 rounded-lg text-sm font-bold bg-charcoal border border-border-dark text-white hover:border-primary hover:bg-primary/10 transition-all"
-                                      >
-                                        ${amount}
-                                      </button>
-                                    ))}
+                            {/* Custom Amount Input - Variable Only */}
+                            {(isExpanded || hasSelection) && !hasSelection && (
+                              <div className="p-4 bg-surface-dark rounded-xl">
+                                <p className="text-xs text-green-400 mb-2">
+                                  ${card.minCustomAmount || 1} - ${card.maxCustomAmount || 1000}
+                                </p>
+                                <div className="flex gap-2">
+                                  <div className="relative flex-1">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                                    <input
+                                      type="number"
+                                      min={card.minCustomAmount || 1}
+                                      max={card.maxCustomAmount || 1000}
+                                      placeholder={`${card.minCustomAmount || 1} - ${card.maxCustomAmount || 1000}`}
+                                      value={customAmountInputs[card.id] || ''}
+                                      onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleCustomAmountConfirm(card.id, card)
+                                      }}
+                                      className="w-full pl-7 pr-4 py-2 bg-charcoal border border-border-dark rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                                    />
                                   </div>
-                                )}
-
-                                {/* Custom Amount */}
-                                {(card.maxCustomAmount || card.denominations.length === 0) && (
-                                  <div>
-                                    <p className="text-xs text-slate-500 mb-2">
-                                      {card.denominations.length > 0 ? 'Or enter custom amount:' : 'Enter amount:'}
-                                    </p>
-                                    <div className="flex gap-2">
-                                      <div className="relative flex-1">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                        <input
-                                          type="number"
-                                          min={card.minCustomAmount || 1}
-                                          max={card.maxCustomAmount || 1000}
-                                          placeholder={`${card.minCustomAmount || 1} - ${card.maxCustomAmount || 1000}`}
-                                          value={customAmountInputs[card.id] || ''}
-                                          onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') handleCustomAmountConfirm(card.id, card)
-                                          }}
-                                          className="w-full pl-7 pr-4 py-2 bg-charcoal border border-border-dark rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-                                        />
-                                      </div>
-                                      <button
-                                        onClick={() => handleCustomAmountConfirm(card.id, card)}
-                                        className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105"
-                                      >
-                                        <Icon name="check" size={18} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
+                                  <button
+                                    onClick={() => handleCustomAmountConfirm(card.id, card)}
+                                    disabled={!customAmountInputs[card.id] || isNaN(parseFloat(customAmountInputs[card.id])) ||
+                                      parseFloat(customAmountInputs[card.id]) < (card.minCustomAmount || 1) ||
+                                      parseFloat(customAmountInputs[card.id]) > (card.maxCustomAmount || 1000)}
+                                    className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <Icon name="check" size={18} />
+                                  </button>
+                                </div>
                               </div>
                             )}
-                          </>
-                        ) : (
-                          <>
-                            {/* Selected Amount Pill */}
-                            <button
-                              onClick={() => handleClearSelection(card.id)}
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 border border-primary text-primary rounded-xl font-bold text-sm mb-4 hover:bg-primary/30 transition-all"
-                            >
-                              <span>${selectedAmount}</span>
-                              <Icon name="x" size={14} />
-                            </button>
 
+                            {/* Selected Variable Amount Display */}
+                            {hasSelection && (
+                              <button
+                                onClick={() => {
+                                  setSelectedAmounts(prev => {
+                                    const newAmounts = { ...prev }
+                                    delete newAmounts[card.id]
+                                    return newAmounts
+                                  })
+                                  setExpandedCard(card.id)
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-lg font-bold text-sm hover:brightness-105 transition-all"
+                              >
+                                <span>${selectedAmount}</span>
+                                <Icon name="x" size={14} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Price Summary & Buttons - Only show when amount is selected */}
+                        {hasSelection && (
+                          <>
                             {/* Price Summary */}
                             <div className="mb-4 p-3 bg-surface-dark rounded-xl space-y-2">
                               {card.discountPercent > 0 && (
                                 <div className="flex justify-between text-sm">
                                   <span className="text-slate-500">Discount ({card.discountPercent}%)</span>
-                                  <span className="text-green-400">-${discountAmount.toFixed(2)}</span>
+                                  <span className="text-green-400">-{formatPrice(discountAmount)}</span>
                                 </div>
                               )}
                               <div className="flex justify-between">
                                 <span className="text-slate-400 font-bold">You Pay</span>
-                                <span className="text-white font-extrabold">${finalPrice.toFixed(2)}</span>
+                                <span className="text-white font-extrabold">{formatPrice(finalPrice)}</span>
                               </div>
                             </div>
 
-                            {/* Action Buttons - Side by Side */}
-                            <div className="grid grid-cols-2 gap-3">
-                              <button
-                                onClick={() => handleAddToCart(card)}
-                                className="font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
-                              >
-                                <Icon name="cart" size={16} />
-                                <span className="hidden sm:inline">Add to Cart</span>
-                                <span className="sm:hidden">Cart</span>
-                              </button>
+                            {/* Action Buttons - Stacked (Pay with Wallet on top, Add to Cart below) */}
+                            <div className="space-y-2">
                               <button
                                 onClick={() => handlePayWithWallet(card)}
                                 disabled={processingPayment === card.id}
-                                className="font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50"
+                                className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50"
                               >
                                 {processingPayment === card.id ? (
                                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
                                 ) : (
                                   <>
                                     <Icon name="wallet" size={16} />
-                                    <span className="hidden sm:inline">Pay with Wallet</span>
-                                    <span className="sm:hidden">Wallet</span>
+                                    <span>Pay with Wallet</span>
                                   </>
                                 )}
                               </button>
+                              <button
+                                onClick={() => handleAddToCart(card)}
+                                className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
+                              >
+                                <Icon name="cart" size={16} />
+                                <span>Add to Cart</span>
+                              </button>
                             </div>
 
-                            {/* Payment Error */}
-                            {paymentError && processingPayment === null && (
-                              <p className="mt-2 text-xs text-red-400 text-center">{paymentError}</p>
+                            {/* Payment Error - card specific */}
+                            {paymentErrors[card.id] && processingPayment !== card.id && (
+                              <p className="mt-2 text-xs text-red-400 text-center">{paymentErrors[card.id]}</p>
                             )}
                           </>
                         )}

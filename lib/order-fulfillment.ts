@@ -277,19 +277,17 @@ async function processEsimItem(
       }
     }
 
-    // Look up the eSIM plan from the product
-    const planResult = await query(
-      `SELECT ep.id as plan_id, ep.name as plan_name
-       FROM products p
-       LEFT JOIN esim_plans ep ON ep.id = (p.metadata->>'esim_plan_id')::uuid
-       WHERE p.id = $1`,
-      [item.product_id]
+    // Look up the eSIM plan from order item metadata
+    const orderItemResult = await query(
+      `SELECT metadata FROM order_items
+       WHERE "orderId" = $1 AND "productId" = $2`,
+      [orderId, item.product_id]
     )
 
     let planId: string
 
-    if (planResult.rows.length > 0 && planResult.rows[0].plan_id) {
-      planId = planResult.rows[0].plan_id
+    if (orderItemResult.rows.length > 0 && orderItemResult.rows[0].metadata?.esim_plan_id) {
+      planId = orderItemResult.rows[0].metadata.esim_plan_id
     } else {
       const planByNameResult = await query(
         `SELECT id FROM esim_plans WHERE name ILIKE $1 OR slug ILIKE $2 LIMIT 1`,
@@ -542,26 +540,21 @@ async function processGiftCardItem(
       }
     }
 
-    // Get gift card details from product metadata or order item metadata
-    const productResult = await query(
-      `SELECT
-         p.metadata,
-         oi.metadata as item_metadata
-       FROM products p
-       LEFT JOIN order_items oi ON oi."productId" = p.id AND oi."orderId" = $2
-       WHERE p.id = $1`,
-      [item.product_id, orderId]
+    // Get gift card details from order item metadata
+    const orderItemResult = await query(
+      `SELECT metadata FROM order_items
+       WHERE "orderId" = $1 AND "productId" = $2`,
+      [orderId, item.product_id]
     )
 
     let giftCardId: string | null = null
     let denomination: number | null = null
 
-    if (productResult.rows.length > 0) {
-      const productMeta = productResult.rows[0].metadata || {}
-      const itemMeta = productResult.rows[0].item_metadata || {}
+    if (orderItemResult.rows.length > 0) {
+      const itemMeta = orderItemResult.rows[0].metadata || {}
 
-      giftCardId = itemMeta.gift_card_id || productMeta.gift_card_id
-      denomination = itemMeta.denomination || productMeta.denomination
+      giftCardId = itemMeta.gift_card_id
+      denomination = itemMeta.denomination
     }
 
     if (!giftCardId) {

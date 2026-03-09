@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { fulfillOrder } from '@/lib/order-fulfillment'
+import { getSiteSetting } from '@/lib/db-helpers'
 
 /**
  * POST /api/payments/paystack/verify
@@ -18,19 +19,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get Paystack secret key from settings or env
+    // Get Paystack secret key based on mode (test/live)
     let secretKey = process.env.PAYSTACK_SECRET_KEY
 
     if (!secretKey) {
-      // Try to get from database settings
-      const settingsResult = await query(
-        `SELECT value FROM site_settings WHERE key = 'paystackSecretKey'`
-      )
-      if (settingsResult.rows.length > 0) {
-        try {
-          secretKey = JSON.parse(settingsResult.rows[0].value)
-        } catch {
-          secretKey = settingsResult.rows[0].value
+      // Get mode and mode-specific secret key from database settings
+      const mode = await getSiteSetting('paystackMode') || 'test'
+      secretKey = mode === 'live'
+        ? await getSiteSetting('paystackLiveSecretKey')
+        : await getSiteSetting('paystackTestSecretKey')
+
+      // Fallback to legacy key name if mode-specific not found
+      if (!secretKey) {
+        const legacyResult = await query(
+          `SELECT value FROM site_settings WHERE key = 'paystackSecretKey'`
+        )
+        if (legacyResult.rows.length > 0) {
+          try {
+            secretKey = JSON.parse(legacyResult.rows[0].value)
+          } catch {
+            secretKey = legacyResult.rows[0].value
+          }
         }
       }
     }
