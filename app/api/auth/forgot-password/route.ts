@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     // Look up user by email
     const result = await query(
-      `SELECT id, name, email FROM "User" WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+      `SELECT id, name, email FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`,
       [email.trim()]
     )
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
       // Store token in DB
       await query(
-        `UPDATE "User" SET "resetToken" = $1, "resetTokenExpiry" = $2 WHERE id = $3`,
+        `UPDATE users SET "resetToken" = $1, "resetTokenExpiry" = $2 WHERE id = $3`,
         [resetToken, resetTokenExpiry, user.id]
       )
 
