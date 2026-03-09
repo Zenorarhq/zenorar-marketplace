@@ -381,7 +381,7 @@ export default function GiftCardsPage() {
         }}
         onSuccess={() => {
           setShowLoginModal(false)
-          // Fetch balance - auto-continue will trigger via useEffect
+          setPendingWalletCheckout(true)  // Set BEFORE fetching balance - triggers auto-continue
           fetchWalletBalance()
         }}
         defaultTab="login"
@@ -565,7 +565,7 @@ export default function GiftCardsPage() {
                 <p className="text-slate-500">Try adjusting your search or filters</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
                 {giftCards.map((card) => {
                   const selectedAmount = getSelectedAmount(card.id)
                   const hasSelection = selectedAmount !== null
@@ -769,8 +769,21 @@ export default function GiftCardsPage() {
                                 disabled={processingPayment === card.id || loadingBalance}
                                 className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50"
                               >
-                                {processingPayment === card.id || loadingBalance ? (
-                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                                {processingPayment === card.id ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                                    <span>Processing...</span>
+                                  </>
+                                ) : loadingBalance ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                                    <span>Checking Balance...</span>
+                                  </>
+                                ) : isAuthenticated ? (
+                                  <>
+                                    <Icon name="wallet" size={16} />
+                                    <span>Pay {formatPrice(finalPrice)} with Wallet</span>
+                                  </>
                                 ) : (
                                   <>
                                     <Icon name="wallet" size={16} />

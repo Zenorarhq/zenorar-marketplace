@@ -21,6 +21,7 @@ export default function ReviewPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [discountCode, setDiscountCode] = useState('')
   const [discountAmount, setDiscountAmount] = useState(0)
+  const [paymentInfo, setPaymentInfo] = useState<{ method?: string; crypto?: string } | null>(null)
 
   useEffect(() => {
     const code = sessionStorage.getItem('discount_code')
@@ -29,7 +30,40 @@ export default function ReviewPage() {
       setDiscountCode(code)
       setDiscountAmount(parseFloat(amount))
     }
+    // Load payment method from session
+    const storedPayment = sessionStorage.getItem('checkoutPayment')
+    if (storedPayment) {
+      try {
+        setPaymentInfo(JSON.parse(storedPayment))
+      } catch {
+        // Ignore parse errors
+      }
+    }
   }, [])
+
+  // Helper to get payment display info
+  const getPaymentDisplay = () => {
+    if (!paymentInfo?.method) {
+      return { icon: 'credit-card', name: 'Payment Method', detail: 'Not selected' }
+    }
+
+    switch (paymentInfo.method) {
+      case 'wallet':
+      case 'wallet_credits':
+        return { icon: 'wallet', name: 'Wallet Credits', detail: 'Pay from your balance' }
+      case 'stripe':
+        return { icon: 'credit-card', name: 'Credit Card', detail: 'Via Stripe' }
+      case 'paystack':
+        return { icon: 'credit-card', name: 'Debit Card', detail: 'Via Paystack' }
+      case 'paypal':
+        return { icon: 'paypal', name: 'PayPal', detail: 'Express Checkout' }
+      case 'manual-crypto':
+        const crypto = paymentInfo.crypto || 'BTC'
+        return { icon: 'bitcoin', name: 'Cryptocurrency', detail: crypto }
+      default:
+        return { icon: 'credit-card', name: paymentInfo.method, detail: '' }
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -229,13 +263,18 @@ export default function ReviewPage() {
                     Edit
                   </Link>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Icon name="bitcoin" size={24} className="text-primary" />
-                  <div>
-                    <p className="text-white">Cryptocurrency</p>
-                    <p className="text-slate-500 text-sm">Bitcoin (BTC)</p>
-                  </div>
-                </div>
+                {(() => {
+                  const pd = getPaymentDisplay()
+                  return (
+                    <div className="flex items-center gap-3">
+                      <Icon name={pd.icon} size={24} className="text-primary" />
+                      <div>
+                        <p className="text-white">{pd.name}</p>
+                        <p className="text-slate-500 text-sm">{pd.detail}</p>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* Terms Agreement */}

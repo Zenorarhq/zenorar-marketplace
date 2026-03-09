@@ -760,58 +760,59 @@ export default function PaymentPage() {
     const shippingDataStr = sessionStorage.getItem('checkoutShipping')
     const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
 
-    // Use Railway backend via rewrite proxy
-    const orderResponse = await fetch('/backend/orders', {
+    // Transform cart items to order items format
+    const orderItems = displayItems.map((item: any) => ({
+      id: item.product.id,
+      productId: item.product.id,
+      name: item.product.name,
+      quantity: item.quantity,
+      price: item.price,
+      license: item.license || 'standard',
+      productType: item.product.metadata?.productType || item.product.product_type || 'default',
+      metadata: {
+        ...item.product.metadata,
+        friendlyName: item.product.name || item.product.metadata?.friendlyName,
+        phoneNumber: item.product.metadata?.phoneNumber,
+        countryId: item.product.metadata?.countryId,
+        countryFlag: item.product.metadata?.countryFlag,
+        countryName: item.product.metadata?.countryName,
+        planCategory: item.product.metadata?.planCategory,
+        durationDays: item.product.metadata?.durationDays,
+        smsLimit: item.product.metadata?.smsLimit,
+        minuteTier: item.product.metadata?.minuteTier,
+        minuteIncluded: item.product.metadata?.minuteIncluded,
+        minuteTierPrice: item.product.metadata?.minuteTierPrice,
+        numberType: item.product.metadata?.numberType,
+      },
+    }))
+
+    // Use local order creation API
+    const orderResponse = await fetch('/api/orders/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Session-ID': getSessionId(),
         ...(localStorage.getItem('auth_token') && {
           Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         }),
       },
       body: JSON.stringify({
-        fullName: shippingData.fullName || 'Guest',
-        email: shippingData.email || '',
-        phone: shippingData.phone || '',
-        address: shippingData.address || 'Digital Delivery',
-        city: shippingData.city || 'N/A',
-        state: shippingData.state || 'N/A',
-        zipCode: shippingData.zipCode || '00000',
-        customerNote: shippingData.notes || '',
+        items: orderItems,
+        total: finalTotal,
+        subtotal: displayTotal,
         paymentMethod: overridePaymentMethod || `crypto_${selectedNetwork.toLowerCase()}`,
+        shippingData: {
+          fullName: shippingData.fullName || 'Guest',
+          email: shippingData.email || '',
+          phone: shippingData.phone || '',
+          address: shippingData.address || 'Digital Delivery',
+          city: shippingData.city || 'N/A',
+          state: shippingData.state || 'N/A',
+          zipCode: shippingData.zipCode || '00000',
+          notes: shippingData.notes || '',
+        },
         discountCode: discountCode || undefined,
         discountAmount: discountAmount > 0 ? discountAmount : undefined,
-        useWalletBalance: useWalletBalance,
-        // Separate dynamic items (virtual numbers, eSIMs, gift cards) from regular cart items
-        // Dynamic items are handled server-side with metadata, regular items are from cart
-        // Use displayItems to respect exclusion (e.g., when virtual number provider is unavailable)
-        dynamicItems: displayItems
-          .filter((item: any) => {
-            const productType = item.product.metadata?.productType || item.product.product_type
-            return productType === 'virtual_number' || productType === 'esim' || productType === 'gift_card'
-          })
-          .map((item: any) => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-            price: item.price,
-            productType: item.product.metadata?.productType || item.product.product_type,
-            metadata: {
-              ...item.product.metadata,
-              friendlyName: item.product.name || item.product.metadata?.friendlyName,
-              phoneNumber: item.product.metadata?.phoneNumber,
-              countryId: item.product.metadata?.countryId,
-              countryFlag: item.product.metadata?.countryFlag,
-              countryName: item.product.metadata?.countryName,
-              planCategory: item.product.metadata?.planCategory,
-              durationDays: item.product.metadata?.durationDays,
-              smsLimit: item.product.metadata?.smsLimit,
-              minuteTier: item.product.metadata?.minuteTier,
-              minuteIncluded: item.product.metadata?.minuteIncluded,
-              minuteTierPrice: item.product.metadata?.minuteTierPrice,
-              numberType: item.product.metadata?.numberType,
-            },
-          })),
+        sessionId: getSessionId(),
       }),
     })
 

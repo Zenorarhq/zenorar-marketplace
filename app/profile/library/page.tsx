@@ -29,9 +29,12 @@ function maskLicenseKey(key: string): string {
 
 type LibraryFilter = 'all' | 'scripts' | 'esims' | 'gift-cards' | 'virtual-numbers'
 
+const ITEMS_PER_PAGE = 5
+
 export default function LibraryPage() {
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<LibraryFilter>('all')
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Read ?tab= from URL on mount (client-only, avoids useSearchParams Suspense requirement)
   useEffect(() => {
@@ -225,6 +228,11 @@ export default function LibraryPage() {
     }
   }
 
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeFilter, searchQuery])
+
   const filteredItems = libraryItems.filter((item) => {
     const matchesFilter = activeFilter === 'all' || item.category === activeFilter
     const matchesSearch =
@@ -232,6 +240,13 @@ export default function LibraryPage() {
       item.description.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesFilter && matchesSearch
   })
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE)
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -356,7 +371,7 @@ export default function LibraryPage() {
             </p>
           </div>
         ) : (
-          filteredItems.map((item) => {
+          paginatedItems.map((item) => {
             const cardId = item.licenseId || item.id
             const license = item.licenseId
               ? licenses.find(l => l.id === item.licenseId)
@@ -591,6 +606,66 @@ export default function LibraryPage() {
           })
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-sm text-slate-500">
+            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} of {filteredItems.length} items
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Icon name="chevron-left" size={16} />
+              Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {(() => {
+                const pages: (number | 'ellipsis')[] = []
+                if (totalPages <= 5) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i)
+                } else {
+                  pages.push(1)
+                  if (currentPage > 3) pages.push('ellipsis')
+                  for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+                    pages.push(i)
+                  }
+                  if (currentPage < totalPages - 2) pages.push('ellipsis')
+                  pages.push(totalPages)
+                }
+                return pages.map((page, idx) =>
+                  page === 'ellipsis' ? (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-slate-500">...</span>
+                  ) : (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'bg-primary text-black font-bold'
+                          : 'bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626]'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )
+              })()}
+            </div>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <Icon name="chevron-right" size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stats Summary */}
       <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -129,10 +129,10 @@ export async function provisionGiftCard(
         }
       }
 
-      return { success: false, error: apiResult.error || 'API provider failed' }
+      return { success: false, error: apiResult.error || 'Gift card provider is temporarily unavailable. Please try again later or contact support.' }
     }
 
-    return { success: false, error: 'No available codes' }
+    return { success: false, error: 'This gift card is currently out of stock. Please try a different card or denomination.' }
   } catch (error: any) {
     console.error('Error provisioning gift card:', error)
     return { success: false, error: error.message || 'Provisioning failed' }
