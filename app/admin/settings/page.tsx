@@ -5889,46 +5889,41 @@ export default function AdminSettingsPage() {
 
       </div>
 
-      {/* Sticky Save Bar at Bottom */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#0a0a0a] border-t border-[#1f1f1f] py-3 px-4 sm:px-6 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-end gap-3 sm:gap-4">
-          {hasUnsavedChanges ? (
-            <>
-              <button
-                onClick={handleCancelChanges}
-                className="px-4 sm:px-6 py-2 sm:py-2.5 text-slate-400 hover:text-white border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg transition-colors text-sm sm:text-base"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-primary hover:bg-primary/90 text-black font-semibold px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base min-w-[140px]"
-              >
-                {saving ? (
-                  <>
-                    <Icon name="loading" size={16} className="animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="check" size={16} />
-                    Save Changes
-                  </>
-                )}
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2 text-emerald-500 text-sm sm:text-base">
-              <Icon name="check" size={18} />
-              <span>Saved</span>
-            </div>
-          )}
-        </div>
+      {/* Floating Save Buttons */}
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+        {hasUnsavedChanges ? (
+          <>
+            <button
+              onClick={handleCancelChanges}
+              className="px-4 py-2.5 bg-[#1a1a1a] hover:bg-[#252525] text-slate-300 hover:text-white border border-[#2a2a2a] rounded-lg transition-colors text-sm shadow-lg"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-primary hover:bg-primary/90 text-black font-semibold px-5 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 text-sm shadow-lg min-w-[130px]"
+            >
+              {saving ? (
+                <>
+                  <Icon name="loading" size={16} className="animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Icon name="check" size={16} />
+                  Save Changes
+                </>
+              )}
+            </button>
+          </>
+        ) : (
+          <div className="flex items-center gap-2 bg-emerald-500/10 text-emerald-500 px-4 py-2.5 rounded-lg text-sm border border-emerald-500/20 shadow-lg">
+            <Icon name="check" size={16} />
+            <span>Saved</span>
+          </div>
+        )}
       </div>
-
-      {/* Bottom padding to account for sticky save bar */}
-      <div className="h-20" />
     </AdminLayout>
   )
 }
