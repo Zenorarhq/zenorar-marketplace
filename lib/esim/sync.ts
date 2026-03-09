@@ -195,6 +195,11 @@ async function getEnabledProviders(): Promise<string[]> {
       enabled.push('mobimatter')
     }
 
+    // Check eSIM.sm
+    if (settings.esimSmEnabled === true || settings.esimSmEnabled === 'true') {
+      enabled.push('esimsm')
+    }
+
     return enabled
   } catch {
     // Default to checking env vars
@@ -207,6 +212,9 @@ async function getEnabledProviders(): Promise<string[]> {
     }
     if (process.env.MOBIMATTER_API_KEY && process.env.MOBIMATTER_MERCHANT_ID) {
       enabled.push('mobimatter')
+    }
+    if (process.env.ESIMSM_API_KEY) {
+      enabled.push('esimsm')
     }
     return enabled
   }
