@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db-helpers'
+import aj from '@/lib/arcjet'
 
 // Railway backend URL (from next.config.js rewrite destination)
 const RAILWAY_API = 'https://api-production-8db8.up.railway.app/api'
@@ -30,6 +31,17 @@ function getClientIp(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
+  // Arcjet: rate limit + bot detection
+  if (process.env.ARCJET_KEY) {
+    const decision = await aj.protect(request)
+    if (decision.isDenied()) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      )
+    }
+  }
+
   try {
     const body = await request.json()
     const { email, password } = body

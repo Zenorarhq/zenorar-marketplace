@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db-helpers'
+import aj from '@/lib/arcjet'
 
 export async function POST(request: NextRequest) {
+  // Arcjet: rate limit + bot detection
+  if (process.env.ARCJET_KEY) {
+    const decision = await aj.protect(request)
+    if (decision.isDenied()) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      )
+    }
+  }
+
   try {
     const { email } = await request.json()
 
