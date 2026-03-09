@@ -36,6 +36,18 @@ const categoryIcons: Record<string, string> = {
   other: 'gift'
 }
 
+// Category-based gradient colors for card image backgrounds
+const categoryGradients: Record<string, string> = {
+  gaming: 'from-purple-900/80 via-purple-800/60 to-indigo-900/80',
+  streaming: 'from-red-900/80 via-rose-800/60 to-pink-900/80',
+  shopping: 'from-blue-900/80 via-cyan-800/60 to-teal-900/80',
+  food: 'from-orange-900/80 via-amber-800/60 to-yellow-900/80',
+  travel: 'from-sky-900/80 via-blue-800/60 to-indigo-900/80',
+  entertainment: 'from-pink-900/80 via-fuchsia-800/60 to-purple-900/80',
+  retail: 'from-emerald-900/80 via-green-800/60 to-teal-900/80',
+  other: 'from-slate-800/80 via-slate-700/60 to-slate-800/80'
+}
+
 export default function GiftCardsPage() {
   const { addItem, showAddedToCartPopup, buyNow } = useCart()
   const [giftCards, setGiftCards] = useState<GiftCard[]>([])
@@ -262,15 +274,29 @@ export default function GiftCardsPage() {
                   <button
                     key={card.id}
                     onClick={() => setSelectedCard(card.id)}
-                    className="bg-charcoal border border-border-dark hover:border-primary/50 rounded-2xl p-4 transition-all text-center group"
+                    className="bg-charcoal border border-border-dark hover:border-primary/50 rounded-2xl overflow-hidden transition-all text-center group"
                   >
-                    <div className="w-16 h-16 rounded-xl bg-surface-dark flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                      <Icon name="gift" size={28} className="text-primary" />
+                    <div className={`relative h-24 ${!card.imageUrl ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden`}>
+                      {card.imageUrl ? (
+                        <img
+                          src={card.imageUrl}
+                          alt={card.brand}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Icon name="gift" size={24} className="text-white/80" />
+                        </div>
+                      )}
+                      {card.discountPercent > 0 && (
+                        <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-lg">
+                          {card.discountPercent}%
+                        </span>
+                      )}
                     </div>
-                    <h3 className="font-bold text-white text-sm mb-1">{card.brand}</h3>
-                    {card.discountPercent > 0 && (
-                      <p className="text-xs text-green-400 font-bold">Save {card.discountPercent}%</p>
-                    )}
+                    <div className="p-3">
+                      <h3 className="font-bold text-white text-sm line-clamp-1">{card.brand}</h3>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -335,134 +361,156 @@ export default function GiftCardsPage() {
                   return (
                     <div
                       key={card.id}
-                      className={`bg-charcoal border rounded-2xl p-6 transition-all ${
+                      className={`bg-charcoal border rounded-2xl overflow-hidden transition-all ${
                         selectedCard === card.id
                           ? 'border-primary ring-2 ring-primary/20'
                           : 'border-border-dark hover:border-primary/50'
                       }`}
                     >
-                      {/* Card Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="w-16 h-16 rounded-xl bg-surface-dark flex items-center justify-center">
-                          <Icon name="gift" size={28} className="text-primary" />
+                      {/* Card Image Header */}
+                      <div className={`relative h-32 ${!card.imageUrl ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden`}>
+                        {card.imageUrl ? (
+                          <img
+                            src={card.imageUrl}
+                            alt={card.brand}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to gradient + icon if image fails to load
+                              e.currentTarget.style.display = 'none'
+                              const parent = e.currentTarget.parentElement
+                              if (parent) {
+                                parent.classList.add('bg-gradient-to-br', categoryGradients[card.category?.toLowerCase()] || categoryGradients.other)
+                              }
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                            }}
+                          />
+                        ) : null}
+                        <div className={`${card.imageUrl ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
+                          <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                            <Icon name="gift" size={32} className="text-white/80" />
+                          </div>
                         </div>
-                        <div className="flex flex-col items-end gap-1">
+                        {/* Badges overlaid on image */}
+                        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
                           {card.discountPercent > 0 && (
-                            <span className="bg-green-500/10 text-green-400 text-xs font-bold px-3 py-1 rounded-full">
+                            <span className="bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-md shadow-lg">
                               {card.discountPercent}% OFF
                             </span>
                           )}
                           {!card.inStock && (
-                            <span className="bg-red-500/10 text-red-400 text-xs font-bold px-3 py-1 rounded-full">
+                            <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-md shadow-lg">
                               Out of Stock
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <h3 className="font-bold text-white text-lg mb-2">{card.brand}</h3>
-                      <p className="text-sm text-slate-500 mb-4">{card.description}</p>
+                      {/* Card Content */}
+                      <div className="p-5">
+                        <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{card.brand}</h3>
+                        <p className="text-sm text-slate-500 mb-4 line-clamp-1">{card.description || card.category}</p>
 
-                      {/* Denomination Selector */}
-                      <div className="mb-4">
-                        <p className="text-xs text-slate-500 mb-2">Select Amount</p>
-                        <div className="flex flex-wrap gap-2">
-                          {card.denominations.map((amount) => (
-                            <button
-                              key={amount}
-                              onClick={() => {
-                                setSelectedCard(card.id)
-                                setSelectedDenomination(amount)
-                                setShowCustomInput(prev => ({ ...prev, [card.id]: false }))
-                              }}
-                              className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
-                                selectedCard === card.id && selectedDenomination === amount && !showCustomInput[card.id]
-                                  ? 'bg-primary text-white'
-                                  : 'bg-surface-dark border border-border-dark text-slate-300 hover:border-primary/50'
-                              }`}
-                            >
-                              ${amount}
-                            </button>
-                          ))}
-                          {card.maxCustomAmount && (
-                            <button
-                              onClick={() => toggleCustomInput(card.id)}
-                              className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
-                                showCustomInput[card.id]
-                                  ? 'bg-primary text-white'
-                                  : 'bg-surface-dark border border-border-dark text-slate-300 hover:border-primary/50'
-                              }`}
-                            >
-                              Other
-                            </button>
+                        {/* Denomination Selector */}
+                        <div className="mb-4">
+                          <p className="text-xs text-slate-500 mb-2">Select Amount</p>
+                          <div className="flex flex-wrap gap-2">
+                            {card.denominations.map((amount) => (
+                              <button
+                                key={amount}
+                                onClick={() => {
+                                  setSelectedCard(card.id)
+                                  setSelectedDenomination(amount)
+                                  setShowCustomInput(prev => ({ ...prev, [card.id]: false }))
+                                }}
+                                className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                                  selectedCard === card.id && selectedDenomination === amount && !showCustomInput[card.id]
+                                    ? 'bg-primary text-white'
+                                    : 'bg-surface-dark border border-border-dark text-slate-300 hover:border-primary/50'
+                                }`}
+                              >
+                                ${amount}
+                              </button>
+                            ))}
+                            {card.maxCustomAmount && (
+                              <button
+                                onClick={() => toggleCustomInput(card.id)}
+                                className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                                  showCustomInput[card.id]
+                                    ? 'bg-primary text-white'
+                                    : 'bg-surface-dark border border-border-dark text-slate-300 hover:border-primary/50'
+                                }`}
+                              >
+                                Other
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Custom Amount Input */}
+                          {showCustomInput[card.id] && (
+                            <div className="mt-3">
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                                <input
+                                  type="number"
+                                  min={card.minCustomAmount || 1}
+                                  max={card.maxCustomAmount || undefined}
+                                  placeholder={`${card.minCustomAmount || 1} - ${card.maxCustomAmount || '500'}`}
+                                  value={customAmounts[card.id] || ''}
+                                  onChange={(e) => setCustomAmounts(prev => ({ ...prev, [card.id]: e.target.value }))}
+                                  className="w-full pl-7 pr-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                                />
+                              </div>
+                            </div>
                           )}
                         </div>
 
-                        {/* Custom Amount Input */}
-                        {showCustomInput[card.id] && (
-                          <div className="mt-3">
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                              <input
-                                type="number"
-                                min={card.minCustomAmount || 1}
-                                max={card.maxCustomAmount || undefined}
-                                placeholder={`${card.minCustomAmount || 1} - ${card.maxCustomAmount || '500'}`}
-                                value={customAmounts[card.id] || ''}
-                                onChange={(e) => setCustomAmounts(prev => ({ ...prev, [card.id]: e.target.value }))}
-                                className="w-full pl-7 pr-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Price Display */}
-                      {hasAmount && (
-                        <div className="mb-4 p-3 bg-surface-dark rounded-xl">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">Card Value</span>
-                            <span className="text-white">${effectiveAmount!.toFixed(2)}</span>
-                          </div>
-                          {card.discountPercent > 0 && (
+                        {/* Price Display */}
+                        {hasAmount && (
+                          <div className="mb-4 p-3 bg-surface-dark rounded-xl">
                             <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">Discount ({card.discountPercent}%)</span>
-                              <span className="text-green-400">-${(effectiveAmount! * card.discountPercent / 100).toFixed(2)}</span>
+                              <span className="text-slate-500">Card Value</span>
+                              <span className="text-white">${effectiveAmount!.toFixed(2)}</span>
                             </div>
-                          )}
-                          <div className="border-t border-border-dark my-2"></div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400 font-bold">You Pay</span>
-                            <span className="text-white font-extrabold">
-                              ${(effectiveAmount! * (1 - card.discountPercent / 100)).toFixed(2)}
-                            </span>
+                            {card.discountPercent > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">Discount ({card.discountPercent}%)</span>
+                                <span className="text-green-400">-${(effectiveAmount! * card.discountPercent / 100).toFixed(2)}</span>
+                              </div>
+                            )}
+                            <div className="border-t border-border-dark my-2"></div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400 font-bold">You Pay</span>
+                              <span className="text-white font-extrabold">
+                                ${(effectiveAmount! * (1 - card.discountPercent / 100)).toFixed(2)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      )}
-
-                      {/* Action Buttons */}
-                      <div className="space-y-2">
-                        <button
-                          onClick={() => handleAddToCart(card)}
-                          disabled={!hasAmount || !card.inStock}
-                          className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 ${
-                            hasAmount && card.inStock
-                              ? 'bg-primary text-black hover:brightness-105'
-                              : 'bg-surface-dark text-slate-400 border border-border-dark cursor-not-allowed'
-                          }`}
-                        >
-                          <Icon name="cart" size={18} />
-                          {!card.inStock ? 'Out of Stock' : hasAmount ? 'Add to Cart' : 'Select Amount'}
-                        </button>
-                        {hasAmount && card.inStock && (
-                          <button
-                            onClick={() => handleBuyNow(card)}
-                            className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
-                          >
-                            <Icon name="flash" size={18} />
-                            Buy Now
-                          </button>
                         )}
+
+                        {/* Action Buttons */}
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => handleAddToCart(card)}
+                            disabled={!hasAmount || !card.inStock}
+                            className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 ${
+                              hasAmount && card.inStock
+                                ? 'bg-primary text-black hover:brightness-105'
+                                : 'bg-surface-dark text-slate-400 border border-border-dark cursor-not-allowed'
+                            }`}
+                          >
+                            <Icon name="cart" size={18} />
+                            {!card.inStock ? 'Out of Stock' : hasAmount ? 'Add to Cart' : 'Select Amount'}
+                          </button>
+                          {hasAmount && card.inStock && (
+                            <button
+                              onClick={() => handleBuyNow(card)}
+                              className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
+                            >
+                              <Icon name="flash" size={18} />
+                              Buy Now
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )
