@@ -8,7 +8,7 @@ import Header from '@/components/layout/Header'
 import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
-import { apiFetch } from '@/lib/api/client'
+import { localApiFetch } from '@/lib/api/client'
 import { trackPurchase } from '@/lib/tracking'
 import * as otpNumbersApi from '@/lib/api/otp-numbers'
 
@@ -230,7 +230,7 @@ function SuccessPageContent() {
       }
 
       try {
-        const result = await apiFetch<OrderData>(`/orders/lookup/${orderNumberParam}`)
+        const result = await localApiFetch<OrderData>(`/orders/lookup/${orderNumberParam}`)
         if (result.success && result.data) {
           setOrderData(result.data)
           setError(null)
@@ -238,7 +238,7 @@ function SuccessPageContent() {
           trackPurchase(
             result.data.orderNumber,
             result.data.total,
-            result.data.items.map(i => ({ id: i.productId, name: i.product.name, price: i.price, quantity: i.quantity }))
+            result.data.items.map(i => ({ id: i.productId, name: i.product?.name || 'Product', price: i.price, quantity: i.quantity }))
           )
         } else {
           setError('Order not found')
@@ -549,7 +549,7 @@ function SuccessPageContent() {
                       {orderData.items.map((item) => (
                         <li key={item.id} className="flex justify-between items-center text-sm">
                           <span className="text-white">
-                            {item.product.name} <span className="text-slate-500">x{item.quantity}</span>
+                            {item.product?.name || 'Product'} <span className="text-slate-500">x{item.quantity}</span>
                           </span>
                           <span className="text-slate-400">${(Number(item.price) * item.quantity).toFixed(2)}</span>
                         </li>

@@ -254,14 +254,12 @@ export default function GiftCardsPage() {
     const max = card.maxCustomAmount || 1000
 
     if (value >= min && value <= max) {
-      setSelectedAmounts(prev => ({ ...prev, [cardId]: value }))
+      // Select this amount - clear ALL other cards first
+      setSelectedAmounts({ [cardId]: value })
       setExpandedCard(null) // Collapse after selection
-      // Clear any errors
-      setPaymentErrors(prev => {
-        const newErrors = { ...prev }
-        delete newErrors[cardId]
-        return newErrors
-      })
+      // Clear ALL errors and custom inputs
+      setPaymentErrors({})
+      setCustomAmountInputs({})
     }
   }
 
@@ -272,8 +270,9 @@ export default function GiftCardsPage() {
 
     const finalPrice = calculateFinalPrice(amount, card.discountPercent)
 
+    // Use unique ID to prevent quantity stacking - each gift card should be a separate purchase
     const product = {
-      id: `gc-${card.id}-${amount}`,
+      id: `gc-${card.id}-${amount}-${Date.now()}`,
       name: `${card.brand} Gift Card (${formatPrice(amount)})`,
       slug: card.slug,
       description: card.description || '',
@@ -677,20 +676,14 @@ export default function GiftCardsPage() {
                                   onClick={() => {
                                     if (selectedAmount === amount) {
                                       // Deselect if clicking the same amount
-                                      setSelectedAmounts(prev => {
-                                        const newAmounts = { ...prev }
-                                        delete newAmounts[card.id]
-                                        return newAmounts
-                                      })
+                                      setSelectedAmounts({})
                                     } else {
-                                      // Select new amount
-                                      setSelectedAmounts(prev => ({ ...prev, [card.id]: amount }))
-                                      // Clear any errors when selecting new amount
-                                      setPaymentErrors(prev => {
-                                        const newErrors = { ...prev }
-                                        delete newErrors[card.id]
-                                        return newErrors
-                                      })
+                                      // Select new amount - clear ALL other cards first
+                                      setSelectedAmounts({ [card.id]: amount })
+                                      // Clear ALL errors and custom inputs
+                                      setPaymentErrors({})
+                                      setCustomAmountInputs({})
+                                      setExpandedCard(null)
                                     }
                                   }}
                                   disabled={!card.inStock}
@@ -731,7 +724,7 @@ export default function GiftCardsPage() {
                                   type="number"
                                   min={card.minCustomAmount || 1}
                                   max={card.maxCustomAmount || 1000}
-                                  placeholder={`${card.minCustomAmount || 1} - ${card.maxCustomAmount || 1000}`}
+                                  placeholder={`${formatPrice(card.minCustomAmount || 1).replace(/[^\d.,]/g, '')} - ${formatPrice(card.maxCustomAmount || 1000).replace(/[^\d.,]/g, '')}`}
                                   value={customAmountInputs[card.id] || ''}
                                   onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
                                   onKeyDown={(e) => {
@@ -746,7 +739,7 @@ export default function GiftCardsPage() {
                                     }
                                   }}
                                   autoFocus
-                                  className="w-full pl-8 pr-12 py-3 bg-surface-dark border border-primary rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold"
+                                  className="w-full pl-8 pr-12 py-3 bg-surface-dark border border-primary rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                                 <button
                                   onClick={() => handleCustomAmountConfirm(card.id, card)}

@@ -17,6 +17,55 @@ interface AddToCartPopupProps {
   cartItemCount?: number
 }
 
+// Separate component for cart item row to properly handle image error state
+function CartItemRow({
+  item,
+  isJustAdded,
+  formatPrice,
+}: {
+  item: CartItem
+  isJustAdded: boolean
+  formatPrice: (price: number) => string
+}) {
+  const [imageError, setImageError] = useState(false)
+
+  // Support multiple image sources: standard image, images array, imageUrl, metadata imageUrl
+  const itemImageUrl = item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl
+
+  return (
+    <div
+      className={`flex gap-3 p-3 rounded-xl ${isJustAdded ? 'bg-primary/10 border border-primary/20' : 'bg-surface-dark'}`}
+    >
+      <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
+        {itemImageUrl && !imageError ? (
+          <img
+            src={itemImageUrl}
+            alt={item.product.name}
+            className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Icon name={item.product.icon || 'box'} size={20} className="text-slate-600" />
+          </div>
+        )}
+      </div>
+      <div className="flex-grow min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-white font-bold text-xs truncate">{item.product.name}</h3>
+          {isJustAdded && (
+            <span className="text-primary text-[10px] font-bold flex-shrink-0">NEW</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-slate-500 text-xs">Qty: {item.quantity}</span>
+          <span className="text-white font-bold text-sm">{formatPrice(item.price * item.quantity)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AddToCartPopup({
   isOpen,
   onClose,
@@ -115,43 +164,14 @@ export default function AddToCartPopup({
 
         {/* Cart Items List */}
         <div className="max-h-[240px] overflow-y-auto space-y-2 mb-4" style={{ scrollbarWidth: 'thin' }}>
-          {cartItems.map((item) => {
-            const isJustAdded = item.product.id === product.id
-            // Support multiple image sources: standard image, images array, imageUrl, metadata imageUrl
-            const itemImageUrl = item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl
-            return (
-              <div
-                key={`${item.product.id}-${item.license}`}
-                className={`flex gap-3 p-3 rounded-xl ${isJustAdded ? 'bg-primary/10 border border-primary/20' : 'bg-surface-dark'}`}
-              >
-                <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
-                  {itemImageUrl ? (
-                    <img
-                      src={itemImageUrl}
-                      alt={item.product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Icon name={item.product.icon || 'box'} size={20} className="text-slate-600" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-grow min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-white font-bold text-xs truncate">{item.product.name}</h3>
-                    {isJustAdded && (
-                      <span className="text-primary text-[10px] font-bold flex-shrink-0">NEW</span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-slate-500 text-xs">Qty: {item.quantity}</span>
-                    <span className="text-white font-bold text-sm">{formatPrice(item.price * item.quantity)}</span>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+          {cartItems.map((item) => (
+            <CartItemRow
+              key={`${item.product.id}-${item.license}`}
+              item={item}
+              isJustAdded={item.product.id === product.id}
+              formatPrice={formatPrice}
+            />
+          ))}
         </div>
 
         {/* Cart Total */}
