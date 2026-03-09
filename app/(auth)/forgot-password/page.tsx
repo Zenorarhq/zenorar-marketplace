@@ -3,12 +3,25 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api/client'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+
+  const { data: brandingData } = useQuery({
+    queryKey: ['branding-settings'],
+    queryFn: async () => {
+      const res = await apiFetch<any>('/settings/public')
+      return res.success ? res.data : null
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const siteLogo = brandingData?.logoUrl || null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,8 +56,14 @@ export default function ForgotPasswordPage() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary">
-            <Icon name="grid-view" size={24} />
-            Marketplace
+            {siteLogo ? (
+              <img src={siteLogo} alt="Site Logo" className="h-8 w-auto object-contain" />
+            ) : (
+              <>
+                <Icon name="grid-view" size={24} />
+                Marketplace
+              </>
+            )}
           </Link>
         </div>
 

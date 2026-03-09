@@ -12,12 +12,14 @@
     "db:reset": "tsx scripts/db/reset.ts"
   },
   "dependencies": {
+    "@arcjet/next": "^1.2.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@paralleldrive/cuid2": "^3.3.0",
     "@react-oauth/google": "^0.13.4",
     "@sendgrid/mail": "^8.1.6",
+    "@sentry/nextjs": "^10.42.0",
     "@stripe/react-stripe-js": "^5.6.0",
     "@stripe/stripe-js": "^8.7.0",
     "@tanstack/react-query": "^5.90.20",

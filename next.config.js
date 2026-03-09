@@ -1,3 +1,5 @@
+const { withSentryConfig } = require('@sentry/nextjs')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable SWC minification for faster builds
@@ -41,4 +43,9 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig
+module.exports = withSentryConfig(nextConfig, {
+  silent: true,
+  org: undefined,
+  project: undefined,
+  disableSourceMapUpload: true,
+})
