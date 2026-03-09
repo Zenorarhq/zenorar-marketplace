@@ -39,6 +39,7 @@ export default function AdminSettingsPage() {
 
   // Track initial settings values to detect unsaved changes
   const [settingsLoaded, setSettingsLoaded] = useState(false)
+  const [settingsSaveCount, setSettingsSaveCount] = useState(0) // Triggers re-render after save
   const initialSettingsRef = useRef<{
     general?: any
     security?: any
@@ -832,6 +833,7 @@ export default function AdminSettingsPage() {
       exchangeRate: { ...exchangeRateKeys },
     }
     setSettingsLoaded(true)
+    setSettingsSaveCount(c => c + 1) // Force re-render to update hasUnsavedChanges
   }, [generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys])
 
   // Capture initial state after a short delay to ensure all API calls complete
@@ -874,7 +876,8 @@ export default function AdminSettingsPage() {
       (initial.profile && initial.profile.name !== profileSettings.name) ||
       compareObjects(initial.exchangeRate, exchangeRateKeys)
     )
-  }, [settingsLoaded, generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsLoaded, settingsSaveCount, generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys])
 
   // Reset settings to initial values (for Cancel button)
   const handleCancelChanges = useCallback(() => {
