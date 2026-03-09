@@ -32,10 +32,6 @@ interface Category {
   count: number
 }
 
-interface MarkupSettings {
-  giftCardMarkupPercent: number
-}
-
 const categoryIcons: Record<string, string> = {
   gaming: 'game-controller',
   streaming: 'play-circle',
@@ -59,23 +55,9 @@ const categoryGradients: Record<string, string> = {
   other: 'from-slate-800/80 via-slate-700/60 to-slate-800/80'
 }
 
-// Helper to get price range text
-function getPriceRange(card: GiftCard): string {
-  if (card.denominations.length > 0) {
-    const min = Math.min(...card.denominations)
-    const max = Math.max(...card.denominations)
-    if (min === max) return `$${min}`
-    return `$${min} - $${max}`
-  }
-  if (card.minCustomAmount && card.maxCustomAmount) {
-    return `$${card.minCustomAmount} - $${card.maxCustomAmount}`
-  }
-  return 'Variable'
-}
-
 export default function GiftCardsPage() {
   const router = useRouter()
-  const { user, isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuth()
   const { addItem, showAddedToCartPopup } = useCart()
   const { formatPrice } = usePreferences()
 
@@ -90,7 +72,7 @@ export default function GiftCardsPage() {
   // Refs for auto-scroll
   const categoryScrollRef = useRef<HTMLDivElement>(null)
 
-  // New state for redesigned UI
+  // Card state
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const [selectedAmounts, setSelectedAmounts] = useState<Record<string, number>>({})
   const [customAmountInputs, setCustomAmountInputs] = useState<Record<string, string>>({})
@@ -101,11 +83,26 @@ export default function GiftCardsPage() {
   const [processingPayment, setProcessingPayment] = useState<string | null>(null)
   const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({})
 
-  // Wallet state (like virtual numbers page)
+  // Wallet state (exactly like virtual numbers page)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
   const [showDepositModal, setShowDepositModal] = useState(false)
-  const [pendingPurchaseCard, setPendingPurchaseCard] = useState<GiftCard | null>(null)
+  const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
+  const [pendingCard, setPendingCard] = useState<GiftCard | null>(null)
+
+  // Helper to get price range text with currency
+  const getPriceRange = (card: GiftCard): string => {
+    if (card.denominations.length > 0) {
+      const min = Math.min(...card.denominations)
+      const max = Math.max(...card.denominations)
+      if (min === max) return formatPrice(min)
+      return `${formatPrice(min)} - ${formatPrice(max)}`
+    }
+    if (card.minCustomAmount && card.maxCustomAmount) {
+      return `${formatPrice(card.minCustomAmount)} - ${formatPrice(card.maxCustomAmount)}`
+    }
+    return 'Variable'
+  }
 
   // Fetch gift cards from API
   useEffect(() => {
@@ -157,9 +154,12 @@ export default function GiftCardsPage() {
       const result = await getBalance()
       if (result.success && result.data) {
         setWalletBalance(result.data.balance || 0)
+        return result.data.balance || 0
       }
+      return null
     } catch (error) {
       console.error('Failed to fetch wallet balance:', error)
+      return null
     } finally {
       setLoadingBalance(false)
     }
@@ -182,29 +182,27 @@ export default function GiftCardsPage() {
     }
   }, [selectedCategory])
 
-  // Auto-continue purchase after successful login
+  // Auto-continue purchase after login (like virtual numbers)
   useEffect(() => {
-    if (pendingPurchaseCard && isAuthenticated && walletBalance !== null) {
-      const card = pendingPurchaseCard
-      const amount = getSelectedAmount(card.id)
+    if (pendingWalletCheckout && isAuthenticated && walletBalance !== null && pendingCard) {
+      setPendingWalletCheckout(false)
+      const card = pendingCard
+      const amount = selectedAmounts[card.id]
       if (!amount) {
-        setPendingPurchaseCard(null)
+        setPendingCard(null)
         return
       }
-
       const finalPrice = calculateFinalPrice(amount, card.discountPercent)
 
       if (walletBalance >= finalPrice) {
         // Has enough balance, proceed with purchase
-        setPendingPurchaseCard(null)
         processWalletPayment(card, amount, finalPrice)
       } else {
-        // Show deposit modal
-        setPendingPurchaseCard(null)
+        // Show deposit modal immediately
         setShowDepositModal(true)
       }
     }
-  }, [pendingPurchaseCard, isAuthenticated, walletBalance])
+  }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingCard])
 
   const popularCards = giftCards.filter(card => card.isFeatured)
 
@@ -220,12 +218,6 @@ export default function GiftCardsPage() {
     return selectedAmounts[cardId] || null
   }
 
-  // Handle amount selection
-  const handleSelectAmount = (cardId: string, amount: number) => {
-    setSelectedAmounts(prev => ({ ...prev, [cardId]: amount }))
-    setExpandedCard(null) // Collapse after selection
-  }
-
   // Handle custom amount confirmation
   const handleCustomAmountConfirm = (cardId: string, card: GiftCard) => {
     const value = parseFloat(customAmountInputs[cardId] || '')
@@ -235,23 +227,15 @@ export default function GiftCardsPage() {
     const max = card.maxCustomAmount || 1000
 
     if (value >= min && value <= max) {
-      handleSelectAmount(cardId, value)
+      setSelectedAmounts(prev => ({ ...prev, [cardId]: value }))
+      setExpandedCard(null) // Collapse after selection
+      // Clear any errors
+      setPaymentErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[cardId]
+        return newErrors
+      })
     }
-  }
-
-  // Clear selection (tap pill to deselect)
-  const handleClearSelection = (cardId: string) => {
-    setSelectedAmounts(prev => {
-      const newAmounts = { ...prev }
-      delete newAmounts[cardId]
-      return newAmounts
-    })
-    setExpandedCard(cardId) // Reopen selection
-  }
-
-  // Toggle expansion
-  const toggleExpanded = (cardId: string) => {
-    setExpandedCard(expandedCard === cardId ? null : cardId)
   }
 
   // Add to cart handler
@@ -263,7 +247,7 @@ export default function GiftCardsPage() {
 
     const product = {
       id: `gc-${card.id}-${amount}`,
-      name: `${card.brand} Gift Card ($${amount})`,
+      name: `${card.brand} Gift Card (${formatPrice(amount)})`,
       slug: card.slug,
       description: card.description || '',
       price: finalPrice,
@@ -317,6 +301,7 @@ export default function GiftCardsPage() {
           delete newAmounts[card.id]
           return newAmounts
         })
+        setPendingCard(null)
         router.push('/profile/library?tab=gift-cards&purchased=true')
       } else {
         setPaymentErrors(prev => ({ ...prev, [card.id]: response.error || 'Payment failed' }))
@@ -329,21 +314,29 @@ export default function GiftCardsPage() {
     }
   }
 
-  // Pay with wallet handler
+  // Pay with wallet handler (exactly like virtual numbers handleInstantCheckout)
   const handlePayWithWallet = async (card: GiftCard) => {
     const amount = getSelectedAmount(card.id)
     if (!amount) return
 
-    // Check if logged in
+    // Clear any previous error for this card
+    setPaymentErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[card.id]
+      return newErrors
+    })
+
+    // If not authenticated, show auth dialog
     if (!isAuthenticated) {
-      setPendingPurchaseCard(card)
+      setPendingCard(card)
+      setPendingWalletCheckout(true)
       setShowLoginModal(true)
       return
     }
 
     const finalPrice = calculateFinalPrice(amount, card.discountPercent)
 
-    // Fetch wallet balance if not yet loaded
+    // Check wallet balance - fetch if null
     let currentBalance = walletBalance
     if (currentBalance === null) {
       setLoadingBalance(true)
@@ -353,21 +346,21 @@ export default function GiftCardsPage() {
           currentBalance = result.data.balance || 0
           setWalletBalance(currentBalance)
         } else {
-          setPaymentErrors(prev => ({ ...prev, [card.id]: 'Failed to check wallet balance' }))
+          setPaymentErrors(prev => ({ ...prev, [card.id]: 'Failed to fetch wallet balance' }))
           setLoadingBalance(false)
           return
         }
       } catch {
-        setPaymentErrors(prev => ({ ...prev, [card.id]: 'Failed to check wallet balance' }))
+        setPaymentErrors(prev => ({ ...prev, [card.id]: 'Failed to fetch wallet balance' }))
         setLoadingBalance(false)
         return
       }
       setLoadingBalance(false)
     }
 
-    // Check if balance is sufficient
-    if (currentBalance < finalPrice) {
-      // Show deposit modal
+    // If insufficient balance, show deposit modal immediately
+    if (currentBalance === null || currentBalance < finalPrice) {
+      setPendingCard(card)
       setShowDepositModal(true)
       return
     }
@@ -383,11 +376,13 @@ export default function GiftCardsPage() {
         isOpen={showLoginModal}
         onClose={() => {
           setShowLoginModal(false)
-          setPendingPurchaseCard(null)
+          setPendingWalletCheckout(false)
+          setPendingCard(null)
         }}
         onSuccess={() => {
           setShowLoginModal(false)
-          // Auto-continue will trigger via useEffect
+          // Fetch balance - auto-continue will trigger via useEffect
+          fetchWalletBalance()
         }}
         defaultTab="login"
       />
@@ -395,10 +390,20 @@ export default function GiftCardsPage() {
       {/* Deposit Modal */}
       <DepositModal
         isOpen={showDepositModal}
-        onClose={() => {
+        onClose={async () => {
           setShowDepositModal(false)
-          // Refresh balance after deposit modal closes (user may have deposited)
-          fetchWalletBalance()
+          // Refresh balance after deposit modal closes
+          const newBalance = await fetchWalletBalance()
+          // Auto-complete purchase if now have enough balance (like virtual numbers)
+          if (pendingCard && newBalance !== null) {
+            const amount = selectedAmounts[pendingCard.id]
+            if (amount) {
+              const finalPrice = calculateFinalPrice(amount, pendingCard.discountPercent)
+              if (newBalance >= finalPrice) {
+                processWalletPayment(pendingCard, amount, finalPrice)
+              }
+            }
+          }
         }}
       />
 
@@ -476,7 +481,6 @@ export default function GiftCardsPage() {
                   <button
                     key={card.id}
                     onClick={() => {
-                      setExpandedCard(card.id)
                       // Scroll to the card in the main grid
                       document.getElementById(`card-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                     }}
@@ -566,6 +570,7 @@ export default function GiftCardsPage() {
                   const selectedAmount = getSelectedAmount(card.id)
                   const hasSelection = selectedAmount !== null
                   const isExpanded = expandedCard === card.id
+                  const isVariableOnly = card.denominations.length === 0 && (card.minCustomAmount || card.maxCustomAmount)
                   const finalPrice = hasSelection ? calculateFinalPrice(selectedAmount, card.discountPercent) : 0
                   const discountAmount = hasSelection ? selectedAmount * (card.discountPercent / 100) : 0
 
@@ -574,7 +579,7 @@ export default function GiftCardsPage() {
                       id={`card-${card.id}`}
                       key={card.id}
                       className={`bg-charcoal border rounded-2xl overflow-hidden transition-all ${
-                        hasSelection || isExpanded
+                        hasSelection
                           ? 'border-primary ring-2 ring-primary/20'
                           : 'border-border-dark hover:border-primary/50'
                       }`}
@@ -665,66 +670,62 @@ export default function GiftCardsPage() {
                                       : 'bg-charcoal border border-border-dark text-slate-500 cursor-not-allowed'
                                   }`}
                                 >
-                                  ${amount}
+                                  {formatPrice(amount)}
                                 </button>
                               ))}
                             </div>
                           </div>
-                        ) : (
-                          /* Variable Amount Only - Show Select Amount button */
+                        ) : isVariableOnly ? (
+                          /* Variable Amount Only - Show Select Amount button or input */
                           <div className="mb-4">
-                            {!hasSelection && !isExpanded && (
+                            {!hasSelection && !isExpanded ? (
+                              /* Select Amount Button - centered text */
                               <button
-                                onClick={() => toggleExpanded(card.id)}
+                                onClick={() => setExpandedCard(card.id)}
                                 disabled={!card.inStock}
-                                className={`w-full px-4 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-between ${
+                                className={`w-full px-4 py-3 rounded-xl font-bold text-sm transition-all text-center ${
                                   card.inStock
                                     ? 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
                                     : 'bg-surface-dark border border-border-dark text-slate-500 cursor-not-allowed'
                                 }`}
                               >
-                                <span>Select Amount</span>
-                                <Icon name="chevron-down" size={18} />
+                                Select Amount
                               </button>
-                            )}
-
-                            {/* Custom Amount Input - Variable Only */}
-                            {(isExpanded || hasSelection) && !hasSelection && (
-                              <div className="p-4 bg-surface-dark rounded-xl">
-                                <p className="text-xs text-green-400 mb-2">
-                                  ${card.minCustomAmount || 1} - ${card.maxCustomAmount || 1000}
-                                </p>
-                                <div className="flex gap-2">
-                                  <div className="relative flex-1">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                                    <input
-                                      type="number"
-                                      min={card.minCustomAmount || 1}
-                                      max={card.maxCustomAmount || 1000}
-                                      placeholder={`${card.minCustomAmount || 1} - ${card.maxCustomAmount || 1000}`}
-                                      value={customAmountInputs[card.id] || ''}
-                                      onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleCustomAmountConfirm(card.id, card)
-                                      }}
-                                      className="w-full pl-7 pr-4 py-2 bg-charcoal border border-border-dark rounded-lg text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-                                    />
-                                  </div>
-                                  <button
-                                    onClick={() => handleCustomAmountConfirm(card.id, card)}
-                                    disabled={!customAmountInputs[card.id] || isNaN(parseFloat(customAmountInputs[card.id])) ||
-                                      parseFloat(customAmountInputs[card.id]) < (card.minCustomAmount || 1) ||
-                                      parseFloat(customAmountInputs[card.id]) > (card.maxCustomAmount || 1000)}
-                                    className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    <Icon name="check" size={18} />
-                                  </button>
-                                </div>
+                            ) : !hasSelection ? (
+                              /* Custom Amount Input - full width, same style as button */
+                              <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                                <input
+                                  type="number"
+                                  min={card.minCustomAmount || 1}
+                                  max={card.maxCustomAmount || 1000}
+                                  placeholder={`${card.minCustomAmount || 1} - ${card.maxCustomAmount || 1000}`}
+                                  value={customAmountInputs[card.id] || ''}
+                                  onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleCustomAmountConfirm(card.id, card)
+                                    if (e.key === 'Escape') {
+                                      setExpandedCard(null)
+                                      setCustomAmountInputs(prev => {
+                                        const newInputs = { ...prev }
+                                        delete newInputs[card.id]
+                                        return newInputs
+                                      })
+                                    }
+                                  }}
+                                  onBlur={() => {
+                                    // Auto-confirm on blur if valid
+                                    const value = parseFloat(customAmountInputs[card.id] || '')
+                                    if (!isNaN(value) && value >= (card.minCustomAmount || 1) && value <= (card.maxCustomAmount || 1000)) {
+                                      handleCustomAmountConfirm(card.id, card)
+                                    }
+                                  }}
+                                  autoFocus
+                                  className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-primary rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold"
+                                />
                               </div>
-                            )}
-
-                            {/* Selected Variable Amount Display */}
-                            {hasSelection && (
+                            ) : (
+                              /* Selected Variable Amount Display */
                               <button
                                 onClick={() => {
                                   setSelectedAmounts(prev => {
@@ -736,14 +737,14 @@ export default function GiftCardsPage() {
                                 }}
                                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-lg font-bold text-sm hover:brightness-105 transition-all"
                               >
-                                <span>${selectedAmount}</span>
+                                <span>{formatPrice(selectedAmount)}</span>
                                 <Icon name="x" size={14} />
                               </button>
                             )}
                           </div>
-                        )}
+                        ) : null}
 
-                        {/* Price Summary & Buttons - Only show when amount is selected */}
+                        {/* Price Summary & Buttons - Only show when THIS card has selection */}
                         {hasSelection && (
                           <>
                             {/* Price Summary */}
@@ -764,10 +765,10 @@ export default function GiftCardsPage() {
                             <div className="space-y-2">
                               <button
                                 onClick={() => handlePayWithWallet(card)}
-                                disabled={processingPayment === card.id}
+                                disabled={processingPayment === card.id || loadingBalance}
                                 className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50"
                               >
-                                {processingPayment === card.id ? (
+                                {processingPayment === card.id || loadingBalance ? (
                                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
                                 ) : (
                                   <>
