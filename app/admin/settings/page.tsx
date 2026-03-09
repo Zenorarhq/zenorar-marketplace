@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { profileApi } from '@/lib/api/profile'
 import { settingsApi } from '@/lib/api/settings'
@@ -36,6 +36,27 @@ export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Track initial settings values to detect unsaved changes
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
+  const initialSettingsRef = useRef<{
+    general?: any
+    security?: any
+    notification?: any
+    payment?: any
+    api?: any
+    esim?: any
+    voiceEsim?: any
+    virtualNumber?: any
+    giftCard?: any
+    otp?: any
+    cron?: any
+    referral?: any
+    marketing?: any
+    seo?: any
+    profile?: any
+    exchangeRate?: any
+  }>({})
 
   // Auto-clear message after 4 seconds
   useEffect(() => {
@@ -790,6 +811,94 @@ export default function AdminSettingsPage() {
     }).catch(() => {})
   }, [])
 
+  // Capture initial settings after all API calls complete
+  const captureInitialSettings = useCallback(() => {
+    initialSettingsRef.current = {
+      general: { ...generalSettings },
+      security: { ...securitySettings },
+      notification: { ...notificationSettings },
+      payment: { ...paymentSettings },
+      api: { ...apiSettings },
+      esim: { ...esimSettings },
+      voiceEsim: { ...voiceEsimSettings },
+      virtualNumber: { ...virtualNumberSettings },
+      giftCard: { ...giftCardSettings },
+      otp: { ...otpSettings },
+      cron: { ...cronSettings },
+      referral: { ...referralSettings },
+      marketing: { ...marketingSettings },
+      seo: { ...seoSettings },
+      profile: { name: profileSettings.name },
+      exchangeRate: { ...exchangeRateKeys },
+    }
+    setSettingsLoaded(true)
+  }, [generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys])
+
+  // Capture initial state after a short delay to ensure all API calls complete
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!settingsLoaded) {
+        captureInitialSettings()
+      }
+    }, 1500) // Wait for API calls to complete
+    return () => clearTimeout(timer)
+  }, [captureInitialSettings, settingsLoaded])
+
+  // Compute whether there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!settingsLoaded) return false
+
+    const initial = initialSettingsRef.current
+
+    // Compare each settings group
+    const compareObjects = (a: any, b: any): boolean => {
+      if (!a || !b) return false
+      return JSON.stringify(a) !== JSON.stringify(b)
+    }
+
+    return (
+      compareObjects(initial.general, generalSettings) ||
+      compareObjects(initial.security, securitySettings) ||
+      compareObjects(initial.notification, notificationSettings) ||
+      compareObjects(initial.payment, paymentSettings) ||
+      compareObjects(initial.api, apiSettings) ||
+      compareObjects(initial.esim, esimSettings) ||
+      compareObjects(initial.voiceEsim, voiceEsimSettings) ||
+      compareObjects(initial.virtualNumber, virtualNumberSettings) ||
+      compareObjects(initial.giftCard, giftCardSettings) ||
+      compareObjects(initial.otp, otpSettings) ||
+      compareObjects(initial.cron, cronSettings) ||
+      compareObjects(initial.referral, referralSettings) ||
+      compareObjects(initial.marketing, marketingSettings) ||
+      compareObjects(initial.seo, seoSettings) ||
+      (initial.profile && initial.profile.name !== profileSettings.name) ||
+      compareObjects(initial.exchangeRate, exchangeRateKeys)
+    )
+  }, [settingsLoaded, generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys])
+
+  // Reset settings to initial values (for Cancel button)
+  const handleCancelChanges = useCallback(() => {
+    const initial = initialSettingsRef.current
+    if (initial.general) setGeneralSettings(initial.general)
+    if (initial.security) setSecuritySettings(initial.security)
+    if (initial.notification) setNotificationSettings(initial.notification)
+    if (initial.payment) setPaymentSettings(initial.payment)
+    if (initial.api) setApiSettings(initial.api)
+    if (initial.esim) setEsimSettings(initial.esim)
+    if (initial.voiceEsim) setVoiceEsimSettings(initial.voiceEsim)
+    if (initial.virtualNumber) setVirtualNumberSettings(initial.virtualNumber)
+    if (initial.giftCard) setGiftCardSettings(initial.giftCard)
+    if (initial.otp) setOtpSettings(initial.otp)
+    if (initial.cron) setCronSettings(initial.cron)
+    if (initial.referral) setReferralSettings(initial.referral)
+    if (initial.marketing) setMarketingSettings(initial.marketing)
+    if (initial.seo) setSeoSettings(initial.seo)
+    if (initial.profile) setProfileSettings(prev => ({ ...prev, name: initial.profile.name }))
+    if (initial.exchangeRate) setExchangeRateKeys(initial.exchangeRate)
+    setMessage(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
   // Generate new API key
   const handleGenerateKey = async () => {
     if (!newKeyName.trim()) return
@@ -1409,6 +1518,9 @@ export default function AdminSettingsPage() {
 
     if (result.success) {
       setMessage({ type: 'success', text: 'Settings saved successfully!' })
+
+      // Update initial settings ref to match current state (so "Saved" shows correctly)
+      captureInitialSettings()
 
       // Auto-sync gift card providers if any are enabled with credentials
       const shouldSyncGiftCards = (
@@ -5775,33 +5887,48 @@ export default function AdminSettingsPage() {
           )}
         </div>
 
-        {/* Save Button */}
-        <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6">
-          <button
-            onClick={() => { setMessage(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-            className="px-4 sm:px-6 py-2.5 sm:py-3 text-slate-400 hover:text-white transition-colors text-sm sm:text-base order-2 sm:order-1"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-primary hover:bg-primary/90 text-black font-semibold px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base order-1 sm:order-2"
-          >
-            {saving ? (
-              <>
-                <Icon name="loading" size={16} className="animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Icon name="check" size={16} />
-                Save Changes
-              </>
-            )}
-          </button>
+      </div>
+
+      {/* Sticky Save Bar at Bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-[#0a0a0a] border-t border-[#1f1f1f] py-3 px-4 sm:px-6 z-50">
+        <div className="max-w-7xl mx-auto flex items-center justify-end gap-3 sm:gap-4">
+          {hasUnsavedChanges ? (
+            <>
+              <button
+                onClick={handleCancelChanges}
+                className="px-4 sm:px-6 py-2 sm:py-2.5 text-slate-400 hover:text-white border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg transition-colors text-sm sm:text-base"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-black font-semibold px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base min-w-[140px]"
+              >
+                {saving ? (
+                  <>
+                    <Icon name="loading" size={16} className="animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="check" size={16} />
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-emerald-500 text-sm sm:text-base">
+              <Icon name="check" size={18} />
+              <span>Saved</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Bottom padding to account for sticky save bar */}
+      <div className="h-20" />
     </AdminLayout>
   )
 }
