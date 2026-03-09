@@ -190,7 +190,14 @@ export async function getSiteSetting(key: string): Promise<any> {
     'SELECT value FROM site_settings WHERE key = $1',
     [key]
   )
-  return result.rows[0]?.value ?? null
+  const value = result.rows[0]?.value ?? null
+  if (value === null) return null
+  // Parse JSON values - settings are stored as JSON strings
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
 }
 
 // Get all settings in a group
@@ -201,7 +208,14 @@ export async function getSiteSettingsByGroup(group: string): Promise<Record<stri
   )
   const settings: Record<string, any> = {}
   for (const row of result.rows) {
-    settings[row.key] = row.value
+    // Parse JSON values - settings are stored as JSON strings
+    let parsedValue = row.value
+    try {
+      parsedValue = JSON.parse(row.value)
+    } catch {
+      // Keep original value if not valid JSON
+    }
+    settings[row.key] = parsedValue
   }
   return settings
 }
