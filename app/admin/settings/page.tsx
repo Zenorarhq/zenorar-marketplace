@@ -1409,6 +1409,30 @@ export default function AdminSettingsPage() {
 
     if (result.success) {
       setMessage({ type: 'success', text: 'Settings saved successfully!' })
+
+      // Auto-sync gift card providers if any are enabled with credentials
+      const shouldSyncGiftCards = (
+        (giftCardSettings.reloadlyEnabled && (giftCardSettings.reloadlySandboxClientId || giftCardSettings.reloadlyProductionClientId)) ||
+        (giftCardSettings.tangoEnabled && (giftCardSettings.tangoSandboxPlatformName || giftCardSettings.tangoProductionPlatformName)) ||
+        (giftCardSettings.ezpinEnabled && (giftCardSettings.ezpinSandboxApiKey || giftCardSettings.ezpinProductionApiKey))
+      )
+
+      if (shouldSyncGiftCards) {
+        // Trigger background sync
+        fetch('/api/admin/gift-cards/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ countryCode: 'US' })
+        }).then(async (res) => {
+          const syncResult = await res.json()
+          if (syncResult.success) {
+            const total = syncResult.totalSynced + syncResult.totalUpdated
+            if (total > 0) {
+              setMessage({ type: 'success', text: `Settings saved! Synced ${total} gift cards from providers.` })
+            }
+          }
+        }).catch(console.error)
+      }
     } else {
       setMessage({ type: 'error', text: result.error || 'Failed to save settings' })
     }
