@@ -16,14 +16,22 @@ export default function ForgotPasswordPage() {
     setIsLoading(true)
 
     try {
-      // TODO: Implement actual password reset logic
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
+      const res = await fetch(`${apiUrl}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'An error occurred')
+      }
 
       setSubmitted(true)
-    } catch {
-      setError('An error occurred. Please try again.')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred. Please try again.')
     } finally {
       setIsLoading(false)
     }
