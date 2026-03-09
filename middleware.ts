@@ -26,6 +26,11 @@ const aj = arcjet({
 })
 
 export async function middleware(request: NextRequest) {
+  // Skip Arcjet during build / when key is not configured
+  if (!process.env.ARCJET_KEY) {
+    return NextResponse.next()
+  }
+
   const decision = await aj.protect(request)
 
   if (decision.isDenied()) {
