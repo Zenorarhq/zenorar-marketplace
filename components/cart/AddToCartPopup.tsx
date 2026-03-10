@@ -46,7 +46,7 @@ function CartItemRow({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Icon name={item.product.icon || 'box'} size={20} className="text-slate-600" />
+            <Icon name={item.product.icon || ((item.product as any).metadata?.productType === 'gift_card' ? 'gift' : 'box')} size={20} className="text-slate-600" />
           </div>
         )}
       </div>

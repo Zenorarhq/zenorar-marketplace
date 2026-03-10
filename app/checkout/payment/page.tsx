@@ -2050,16 +2050,26 @@ export default function PaymentPage() {
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                           <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
                         </div>
-                      ) : item.product.image || item.product.images?.[0]?.url ? (
-                        <Image
-                          src={item.product.image || item.product.images?.[0]?.url || ''}
-                          alt={item.product.name}
-                          width={48}
-                          height={48}
-                          className="w-full h-full object-cover"
-                        />
+                      ) : item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl ? (
+                        <>
+                          <img
+                            src={item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl || ''}
+                            alt={item.product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Hide broken image and show fallback icon
+                              const target = e.currentTarget
+                              target.style.display = 'none'
+                              const fallback = target.nextElementSibling as HTMLElement
+                              if (fallback) fallback.style.display = 'flex'
+                            }}
+                          />
+                          <div className="w-full h-full items-center justify-center hidden">
+                            <Icon name={item.product.icon || (item.product.metadata?.productType === 'gift_card' ? 'gift' : 'code')} size={20} className="text-slate-500" />
+                          </div>
+                        </>
                       ) : (
-                        <Icon name={item.product.icon || (item.product.metadata?.productType === 'virtual_number' ? 'phone' : 'code')} size={20} className="text-slate-500" />
+                        <Icon name={item.product.icon || (item.product.metadata?.productType === 'virtual_number' ? 'phone' : item.product.metadata?.productType === 'gift_card' ? 'gift' : 'code')} size={20} className="text-slate-500" />
                       )}
                     </div>
                     <div className="flex-grow min-w-0">
@@ -2153,57 +2163,70 @@ function StripeCardForm({
       const shippingDataStr = sessionStorage.getItem('checkoutShipping')
       const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
 
-      // 1. Create order via Railway API (using rewrite proxy for consistency)
-      const orderResponse = await fetch('/backend/orders', {
+      // 1. Create order via local API (fixes doubled total issue)
+      const orderItems = items.map((item: any) => {
+        const productType = item.product.metadata?.productType || item.product.product_type || 'default'
+        const isGiftCard = productType === 'gift_card'
+        return {
+          id: item.product.id,
+          productId: item.product.id,
+          name: isGiftCard
+            ? `${item.product.metadata?.brand || item.product.name} Gift Card ($${item.product.metadata?.denomination || item.price})`
+            : item.product.name,
+          quantity: item.quantity,
+          price: item.price,
+          license: isGiftCard ? null : (item.license || 'standard'),
+          productType,
+          metadata: {
+            ...item.product.metadata,
+            friendlyName: item.product.name || item.product.metadata?.friendlyName,
+            phoneNumber: item.product.metadata?.phoneNumber,
+            countryId: item.product.metadata?.countryId,
+            countryFlag: item.product.metadata?.countryFlag,
+            countryName: item.product.metadata?.countryName,
+            planCategory: item.product.metadata?.planCategory,
+            durationDays: item.product.metadata?.durationDays,
+            smsLimit: item.product.metadata?.smsLimit,
+            minuteTier: item.product.metadata?.minuteTier,
+            minuteIncluded: item.product.metadata?.minuteIncluded,
+            minuteTierPrice: item.product.metadata?.minuteTierPrice,
+            numberType: item.product.metadata?.numberType,
+            ...(isGiftCard && {
+              gift_card_id: item.product.metadata?.gift_card_id || item.product.metadata?.giftCardId || item.product.id,
+              denomination: item.product.metadata?.denomination || item.price,
+              brand: item.product.metadata?.brand || item.product.name,
+              imageUrl: item.product.imageUrl || item.product.metadata?.imageUrl,
+            }),
+          },
+        }
+      })
+
+      const orderResponse = await fetch('/api/orders/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Session-ID': getSessionId(),
           ...(localStorage.getItem('auth_token') && {
             Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
           }),
         },
         body: JSON.stringify({
-          fullName: shippingData.fullName || 'Guest',
-          email: shippingData.email || '',
-          phone: shippingData.phone || '',
-          address: shippingData.address || 'Digital Delivery',
-          city: shippingData.city || 'N/A',
-          state: shippingData.state || 'N/A',
-          zipCode: shippingData.zipCode || '00000',
-          customerNote: shippingData.notes || '',
-          paymentMethod: 'card_stripe',
+          items: orderItems,
+          total: amount,
+          subtotal: amount + discountAmount,
+          paymentMethod: 'stripe',
+          shippingData: {
+            fullName: shippingData.fullName || 'Guest',
+            email: shippingData.email || '',
+            phone: shippingData.phone || '',
+            address: shippingData.address || 'Digital Delivery',
+            city: shippingData.city || 'N/A',
+            state: shippingData.state || 'N/A',
+            zipCode: shippingData.zipCode || '00000',
+            notes: shippingData.notes || '',
+          },
           discountCode: discountCode || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
-          useWalletBalance: useWalletBalance,
-          // Separate dynamic items (virtual numbers, eSIMs, gift cards) from regular cart items
-          // items prop already contains filtered displayItems from parent component
-          dynamicItems: items
-            .filter((item: any) => {
-              const productType = item.product.metadata?.productType || item.product.product_type
-              return productType === 'virtual_number' || productType === 'esim' || productType === 'gift_card'
-            })
-            .map((item: any) => ({
-              productId: item.product.id,
-              quantity: item.quantity,
-              price: item.price,
-              productType: item.product.metadata?.productType || item.product.product_type,
-              metadata: {
-                ...item.product.metadata,
-                friendlyName: item.product.name || item.product.metadata?.friendlyName,
-                phoneNumber: item.product.metadata?.phoneNumber,
-                countryId: item.product.metadata?.countryId,
-                countryFlag: item.product.metadata?.countryFlag,
-                countryName: item.product.metadata?.countryName,
-                planCategory: item.product.metadata?.planCategory,
-                durationDays: item.product.metadata?.durationDays,
-                smsLimit: item.product.metadata?.smsLimit,
-                minuteTier: item.product.metadata?.minuteTier,
-                minuteIncluded: item.product.metadata?.minuteIncluded,
-                minuteTierPrice: item.product.metadata?.minuteTierPrice,
-                numberType: item.product.metadata?.numberType,
-              },
-            })),
+          sessionId: getSessionId(),
         }),
       })
 
@@ -2389,57 +2412,70 @@ function PaystackCardForm({
       const shippingDataStr = sessionStorage.getItem('checkoutShipping')
       const shippingData = shippingDataStr ? JSON.parse(shippingDataStr) : {}
 
-      // 1. Create order via Railway API (using rewrite proxy for consistency)
-      const orderResponse = await fetch('/backend/orders', {
+      // 1. Create order via local API (fixes doubled total issue)
+      const orderItems = items.map((item: any) => {
+        const productType = item.product.metadata?.productType || item.product.product_type || 'default'
+        const isGiftCard = productType === 'gift_card'
+        return {
+          id: item.product.id,
+          productId: item.product.id,
+          name: isGiftCard
+            ? `${item.product.metadata?.brand || item.product.name} Gift Card ($${item.product.metadata?.denomination || item.price})`
+            : item.product.name,
+          quantity: item.quantity,
+          price: item.price,
+          license: isGiftCard ? null : (item.license || 'standard'),
+          productType,
+          metadata: {
+            ...item.product.metadata,
+            friendlyName: item.product.name || item.product.metadata?.friendlyName,
+            phoneNumber: item.product.metadata?.phoneNumber,
+            countryId: item.product.metadata?.countryId,
+            countryFlag: item.product.metadata?.countryFlag,
+            countryName: item.product.metadata?.countryName,
+            planCategory: item.product.metadata?.planCategory,
+            durationDays: item.product.metadata?.durationDays,
+            smsLimit: item.product.metadata?.smsLimit,
+            minuteTier: item.product.metadata?.minuteTier,
+            minuteIncluded: item.product.metadata?.minuteIncluded,
+            minuteTierPrice: item.product.metadata?.minuteTierPrice,
+            numberType: item.product.metadata?.numberType,
+            ...(isGiftCard && {
+              gift_card_id: item.product.metadata?.gift_card_id || item.product.metadata?.giftCardId || item.product.id,
+              denomination: item.product.metadata?.denomination || item.price,
+              brand: item.product.metadata?.brand || item.product.name,
+              imageUrl: item.product.imageUrl || item.product.metadata?.imageUrl,
+            }),
+          },
+        }
+      })
+
+      const orderResponse = await fetch('/api/orders/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Session-ID': getSessionId(),
           ...(localStorage.getItem('auth_token') && {
             Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
           }),
         },
         body: JSON.stringify({
-          fullName: shippingData.fullName || 'Guest',
-          email: shippingData.email || '',
-          phone: shippingData.phone || '',
-          address: shippingData.address || 'Digital Delivery',
-          city: shippingData.city || 'N/A',
-          state: shippingData.state || 'N/A',
-          zipCode: shippingData.zipCode || '00000',
-          customerNote: shippingData.notes || '',
-          paymentMethod: 'card_paystack',
+          items: orderItems,
+          total: amount,
+          subtotal: amount + discountAmount,
+          paymentMethod: 'paystack',
+          shippingData: {
+            fullName: shippingData.fullName || 'Guest',
+            email: shippingData.email || '',
+            phone: shippingData.phone || '',
+            address: shippingData.address || 'Digital Delivery',
+            city: shippingData.city || 'N/A',
+            state: shippingData.state || 'N/A',
+            zipCode: shippingData.zipCode || '00000',
+            notes: shippingData.notes || '',
+          },
           discountCode: discountCode || undefined,
           discountAmount: discountAmount > 0 ? discountAmount : undefined,
-          useWalletBalance: useWalletBalance,
-          // Separate dynamic items (virtual numbers, eSIMs, gift cards) from regular cart items
-          // items prop already contains filtered displayItems from parent component
-          dynamicItems: items
-            .filter((item: any) => {
-              const productType = item.product.metadata?.productType || item.product.product_type
-              return productType === 'virtual_number' || productType === 'esim' || productType === 'gift_card'
-            })
-            .map((item: any) => ({
-              productId: item.product.id,
-              quantity: item.quantity,
-              price: item.price,
-              productType: item.product.metadata?.productType || item.product.product_type,
-              metadata: {
-                ...item.product.metadata,
-                friendlyName: item.product.name || item.product.metadata?.friendlyName,
-                phoneNumber: item.product.metadata?.phoneNumber,
-                countryId: item.product.metadata?.countryId,
-                countryFlag: item.product.metadata?.countryFlag,
-                countryName: item.product.metadata?.countryName,
-                planCategory: item.product.metadata?.planCategory,
-                durationDays: item.product.metadata?.durationDays,
-                smsLimit: item.product.metadata?.smsLimit,
-                minuteTier: item.product.metadata?.minuteTier,
-                minuteIncluded: item.product.metadata?.minuteIncluded,
-                minuteTierPrice: item.product.metadata?.minuteTierPrice,
-                numberType: item.product.metadata?.numberType,
-              },
-            })),
+          sessionId: getSessionId(),
         }),
       })
 

@@ -94,26 +94,12 @@ export default function GiftCardsPage() {
   const [pendingCard, setPendingCard] = useState<GiftCard | null>(null)
 
   // Helper to expand a card while closing any previously expanded card
+  // Also clears ALL selections (both fixed and variable) when expanding
   const handleExpandCard = (cardId: string) => {
-    if (expandedCard && expandedCard !== cardId) {
-      // Clear previous card's selection and custom input
-      setSelectedAmounts(prev => {
-        const newAmounts = { ...prev }
-        delete newAmounts[expandedCard]
-        return newAmounts
-      })
-      setCustomAmountInputs(prev => {
-        const newInputs = { ...prev }
-        delete newInputs[expandedCard]
-        return newInputs
-      })
-      // Clear any errors from previous card
-      setPaymentErrors(prev => {
-        const newErrors = { ...prev }
-        delete newErrors[expandedCard]
-        return newErrors
-      })
-    }
+    // Clear ALL selections, custom inputs, and errors when expanding any card
+    setSelectedAmounts({})
+    setCustomAmountInputs({})
+    setPaymentErrors({})
     setExpandedCard(cardId)
   }
 
@@ -718,36 +704,71 @@ export default function GiftCardsPage() {
                               </button>
                             ) : !hasSelection ? (
                               /* Custom Amount Input - full width, same style as button */
-                              <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
-                                <input
-                                  type="number"
-                                  min={card.minCustomAmount || 1}
-                                  max={card.maxCustomAmount || 1000}
-                                  placeholder={`${formatPrice(card.minCustomAmount || 1).replace(/[^\d.,]/g, '')} - ${formatPrice(card.maxCustomAmount || 1000).replace(/[^\d.,]/g, '')}`}
-                                  value={customAmountInputs[card.id] || ''}
-                                  onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleCustomAmountConfirm(card.id, card)
-                                    if (e.key === 'Escape') {
-                                      setExpandedCard(null)
-                                      setCustomAmountInputs(prev => {
-                                        const newInputs = { ...prev }
-                                        delete newInputs[card.id]
-                                        return newInputs
-                                      })
-                                    }
-                                  }}
-                                  autoFocus
-                                  className="w-full pl-8 pr-12 py-3 bg-surface-dark border border-primary rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                                <button
-                                  onClick={() => handleCustomAmountConfirm(card.id, card)}
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-black hover:brightness-105 transition-all"
-                                >
-                                  <Icon name="check" size={16} />
-                                </button>
-                              </div>
+                              (() => {
+                                const inputValue = customAmountInputs[card.id] || ''
+                                const parsedValue = parseFloat(inputValue)
+                                const min = card.minCustomAmount || 1
+                                const max = card.maxCustomAmount || 1000
+                                const isValidInput = !isNaN(parsedValue) && parsedValue >= min && parsedValue <= max
+
+                                return (
+                                  <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
+                                    <input
+                                      type="number"
+                                      min={min}
+                                      max={max}
+                                      placeholder={`${formatPrice(min).replace(/[^\d.,]/g, '')} - ${formatPrice(max).replace(/[^\d.,]/g, '')}`}
+                                      value={inputValue}
+                                      onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
+                                      onKeyDown={(e) => {
+                                        // Block non-numeric characters (e, E, +, -)
+                                        if (['e', 'E', '+', '-'].includes(e.key)) {
+                                          e.preventDefault()
+                                          return
+                                        }
+                                        if (e.key === 'Enter' && isValidInput) {
+                                          handleCustomAmountConfirm(card.id, card)
+                                        }
+                                        if (e.key === 'Escape') {
+                                          setExpandedCard(null)
+                                          setCustomAmountInputs(prev => {
+                                            const newInputs = { ...prev }
+                                            delete newInputs[card.id]
+                                            return newInputs
+                                          })
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        // On blur: if valid, lock in; if invalid/empty, revert to Select Amount
+                                        if (isValidInput) {
+                                          handleCustomAmountConfirm(card.id, card)
+                                        } else {
+                                          setExpandedCard(null)
+                                          setCustomAmountInputs(prev => {
+                                            const newInputs = { ...prev }
+                                            delete newInputs[card.id]
+                                            return newInputs
+                                          })
+                                        }
+                                      }}
+                                      autoFocus
+                                      className="w-full pl-8 pr-12 py-3 bg-surface-dark border border-primary rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    />
+                                    <button
+                                      onClick={() => isValidInput && handleCustomAmountConfirm(card.id, card)}
+                                      disabled={!isValidInput}
+                                      className={`absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                                        isValidInput
+                                          ? 'bg-primary text-black hover:brightness-105 cursor-pointer'
+                                          : 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                                      }`}
+                                    >
+                                      <Icon name="check" size={16} />
+                                    </button>
+                                  </div>
+                                )
+                              })()
                             ) : (
                               /* Selected Variable Amount Display */
                               <button
