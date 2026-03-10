@@ -7,6 +7,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { convertPrice } from '@/lib/currency'
 import { localApiFetch } from '@/lib/api/client'
 import { getBalance } from '@/lib/api/wallet'
 import AuthDialog from '@/components/dialogs/AuthDialog'
@@ -246,8 +247,9 @@ export default function GiftCardsPage() {
     const value = parseFloat(customAmountInputs[cardId] || '')
     if (isNaN(value)) return
 
-    const min = card.minCustomAmount || 1
-    const max = card.maxCustomAmount || 1000
+    const currencyCode = preferences?.currency?.code || 'USD'
+    const min = convertPrice(card.minCustomAmount || 1, currencyCode)
+    const max = convertPrice(card.maxCustomAmount || 1000, currencyCode)
 
     if (value >= min && value <= max) {
       // Select this amount - clear ALL other cards first
@@ -717,8 +719,11 @@ export default function GiftCardsPage() {
                               (() => {
                                 const inputValue = customAmountInputs[card.id] || ''
                                 const parsedValue = parseFloat(inputValue)
-                                const min = card.minCustomAmount || 1
-                                const max = card.maxCustomAmount || 1000
+                                const currencyCode = preferences?.currency?.code || 'USD'
+                                const minUsd = card.minCustomAmount || 1
+                                const maxUsd = card.maxCustomAmount || 1000
+                                const min = convertPrice(minUsd, currencyCode)
+                                const max = convertPrice(maxUsd, currencyCode)
                                 const isValidInput = !isNaN(parsedValue) && parsedValue >= min && parsedValue <= max
 
                                 return (
@@ -728,7 +733,7 @@ export default function GiftCardsPage() {
                                       type="number"
                                       min={min}
                                       max={max}
-                                      placeholder={`${formatPrice(min).replace(/[^\d.,]/g, '')} - ${formatPrice(max).replace(/[^\d.,]/g, '')}`}
+                                      placeholder={`${formatPrice(minUsd).replace(/[^\d.,]/g, '')} - ${formatPrice(maxUsd).replace(/[^\d.,]/g, '')}`}
                                       value={inputValue}
                                       onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
                                       onKeyDown={(e) => {
