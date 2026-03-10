@@ -80,6 +80,8 @@ export default function GiftCardsPage() {
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const [selectedAmounts, setSelectedAmounts] = useState<Record<string, number>>({})
   const [customAmountInputs, setCustomAmountInputs] = useState<Record<string, string>>({})
+  // Store original local currency amounts for display (avoids round-trip precision loss)
+  const [confirmedLocalAmounts, setConfirmedLocalAmounts] = useState<Record<string, number>>({})
   const [markupPercent, setMarkupPercent] = useState(10) // Default 10%
 
   // Payment state - card-specific to prevent error bleeding
@@ -107,8 +109,9 @@ export default function GiftCardsPage() {
   // Helper to expand a card while closing any previously expanded card
   // Also clears ALL selections (both fixed and variable) when expanding
   const handleExpandCard = (cardId: string) => {
-    // Clear ALL selections, custom inputs, and errors when expanding any card
+    // Clear ALL selections, custom inputs, local amounts, and errors when expanding any card
     setSelectedAmounts({})
+    setConfirmedLocalAmounts({})
     setCustomAmountInputs({})
     setPaymentErrors({})
     setExpandedCard(cardId)
@@ -248,8 +251,9 @@ export default function GiftCardsPage() {
     if (isNaN(value)) return
 
     const currencyCode = preferences?.currency?.code || 'USD'
-    const min = convertPrice(card.minCustomAmount || 1, currencyCode)
-    const max = convertPrice(card.maxCustomAmount || 1000, currencyCode)
+    // Round min UP and max DOWN to stay within API bounds and avoid decimals
+    const min = Math.ceil(convertPrice(card.minCustomAmount || 1, currencyCode))
+    const max = Math.floor(convertPrice(card.maxCustomAmount || 1000, currencyCode))
 
     if (value >= min && value <= max) {
       // Convert from user's currency back to USD for storage
@@ -257,6 +261,8 @@ export default function GiftCardsPage() {
       const valueInUsd = Math.round((value / getExchangeRate(currencyCode)) * 100) / 100
       // Select this amount - clear ALL other cards first
       setSelectedAmounts({ [cardId]: valueInUsd })
+      // Store original local currency value for display (avoids round-trip precision loss)
+      setConfirmedLocalAmounts({ [cardId]: value })
       setExpandedCard(null) // Collapse after selection
       // Clear ALL errors and custom inputs
       setPaymentErrors({})
@@ -678,9 +684,11 @@ export default function GiftCardsPage() {
                                     if (selectedAmount === amount) {
                                       // Deselect if clicking the same amount
                                       setSelectedAmounts({})
+                                      setConfirmedLocalAmounts({})
                                     } else {
                                       // Select new amount - clear ALL other cards first
                                       setSelectedAmounts({ [card.id]: amount })
+                                      setConfirmedLocalAmounts({}) // Fixed denominations don't use local amounts
                                       // Clear ALL errors and custom inputs
                                       setPaymentErrors({})
                                       setCustomAmountInputs({})
@@ -725,8 +733,9 @@ export default function GiftCardsPage() {
                                 const currencyCode = preferences?.currency?.code || 'USD'
                                 const minUsd = card.minCustomAmount || 1
                                 const maxUsd = card.maxCustomAmount || 1000
-                                const min = convertPrice(minUsd, currencyCode)
-                                const max = convertPrice(maxUsd, currencyCode)
+                                // Round min UP and max DOWN to stay within API bounds and show clean whole numbers
+                                const min = Math.ceil(convertPrice(minUsd, currencyCode))
+                                const max = Math.floor(convertPrice(maxUsd, currencyCode))
                                 const isValidInput = !isNaN(parsedValue) && parsedValue >= min && parsedValue <= max
 
                                 return (
@@ -736,7 +745,7 @@ export default function GiftCardsPage() {
                                       type="number"
                                       min={min}
                                       max={max}
-                                      placeholder={`${formatPrice(minUsd).replace(/[^\d.,]/g, '')} - ${formatPrice(maxUsd).replace(/[^\d.,]/g, '')}`}
+                                      placeholder={`${min.toLocaleString()} - ${max.toLocaleString()}`}
                                       value={inputValue}
                                       onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
                                       onKeyDown={(e) => {
@@ -796,6 +805,11 @@ export default function GiftCardsPage() {
                                     delete newAmounts[card.id]
                                     return newAmounts
                                   })
+                                  setConfirmedLocalAmounts(prev => {
+                                    const newAmounts = { ...prev }
+                                    delete newAmounts[card.id]
+                                    return newAmounts
+                                  })
                                   setPaymentErrors(prev => {
                                     const newErrors = { ...prev }
                                     delete newErrors[card.id]
@@ -805,7 +819,10 @@ export default function GiftCardsPage() {
                                 }}
                                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-lg font-bold text-sm hover:brightness-105 transition-all"
                               >
-                                <span>{formatPrice(selectedAmount)}</span>
+                                {/* Show original local currency value to avoid round-trip precision loss */}
+                                <span>{confirmedLocalAmounts[card.id]
+                                  ? `${currencySymbol}${confirmedLocalAmounts[card.id].toLocaleString()}`
+                                  : formatPrice(selectedAmount)}</span>
                                 <Icon name="x" size={14} />
                               </button>
                             )}
