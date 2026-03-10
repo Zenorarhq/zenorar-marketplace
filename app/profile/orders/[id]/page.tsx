@@ -162,15 +162,28 @@ export default function OrderDetailPage() {
                   }`}
                 >
                   <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {item.product?.images?.[0]?.url ? (
-                      <img
-                        src={item.product.images[0].url}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Icon name="box" size={36} className="text-slate-500" />
-                    )}
+                    {(() => {
+                      const imageUrl = item.product?.images?.[0]?.url
+                        || (item.product as any)?.image
+                        || (item.product as any)?.imageUrl
+                        || (item as any).metadata?.imageUrl
+                      const isGiftCard = (item as any).product_type === 'gift_card'
+                        || (item as any).metadata?.productType === 'gift_card'
+                      return imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                          }}
+                        />
+                      ) : null
+                    })()}
+                    <div className={`${item.product?.images?.[0]?.url || (item.product as any)?.image || (item.product as any)?.imageUrl || (item as any).metadata?.imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
+                      <Icon name={(item as any).product_type === 'gift_card' || (item as any).metadata?.productType === 'gift_card' ? 'gift' : 'box'} size={36} className="text-slate-500" />
+                    </div>
                   </div>
                   <div className="flex-grow">
                     <div className="flex items-start justify-between gap-4">

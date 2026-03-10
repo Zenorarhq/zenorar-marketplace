@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { getSiteSetting, executeQuery } from '@/lib/db-helpers'
+import { convertPrice } from '@/lib/currency'
 
 // POST /api/payments/stripe/create-intent
 // Creates a Stripe PaymentIntent for one-time card payment
@@ -27,15 +28,21 @@ export async function POST(req: NextRequest) {
     if (orderResult.rows.length === 0) {
       return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 })
     }
-    const amount = Number(orderResult.rows[0].total) - Number(orderResult.rows[0].discountAmount || 0)
+    const amountUSD = Number(orderResult.rows[0].total) - Number(orderResult.rows[0].discountAmount || 0)
 
-    // Stripe requires minimum 50 cents
-    if (Math.round(amount * 100) < 50) {
+    // Stripe requires minimum 50 cents (check in USD)
+    if (Math.round(amountUSD * 100) < 50) {
       return NextResponse.json(
         { success: false, error: 'Order total must be at least $0.50 for card payments' },
         { status: 400 }
       )
     }
+
+    // Convert USD to target currency if not USD
+    const currencyLower = currency.toLowerCase()
+    const chargeAmount = currencyLower === 'usd'
+      ? amountUSD
+      : convertPrice(amountUSD, currency.toUpperCase())
 
     // Get Stripe secret key from site settings
     const mode = (await getSiteSetting('stripeMode')) || 'test'
@@ -52,10 +59,10 @@ export async function POST(req: NextRequest) {
 
     const stripe = new Stripe(secretKey)
 
-    // Create PaymentIntent (amount in cents)
+    // Create PaymentIntent (amount in smallest currency unit - cents/kobo/etc.)
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100),
-      currency,
+      amount: Math.round(chargeAmount * 100),
+      currency: currencyLower,
       metadata: { orderId },
       automatic_payment_methods: { enabled: true },
     })

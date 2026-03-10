@@ -194,23 +194,46 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
             className="flex gap-3 p-3 bg-surface-dark rounded-xl"
           >
             <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
-              {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                  <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
-                </div>
-              ) : (item.product.image || item.product.images?.[0]?.url) ? (
-                <Image
-                  src={item.product.image || item.product.images?.[0]?.url || ''}
-                  alt={item.product.name}
-                  width={48}
-                  height={48}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Icon name={item.product.icon || 'package'} size={20} className="text-slate-600" />
-                </div>
-              )}
+              {(() => {
+                const imageUrl = item.product.image
+                  || item.product.images?.[0]?.url
+                  || (item.product as any).imageUrl
+                  || item.product.metadata?.imageUrl
+                const isVirtualNumber = item.product.metadata?.productType === 'virtual_number'
+                const isGiftCard = item.product.metadata?.productType === 'gift_card'
+
+                if (isVirtualNumber && item.product.metadata?.countryIsoCode) {
+                  return (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                      <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
+                    </div>
+                  )
+                }
+                if (imageUrl) {
+                  return (
+                    <>
+                      <img
+                        src={imageUrl}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                          if (fallback) fallback.style.display = 'flex'
+                        }}
+                      />
+                      <div className="w-full h-full items-center justify-center hidden">
+                        <Icon name={isGiftCard ? 'gift' : (item.product.icon || 'package')} size={20} className="text-slate-600" />
+                      </div>
+                    </>
+                  )
+                }
+                return (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Icon name={isGiftCard ? 'gift' : (item.product.icon || 'package')} size={20} className="text-slate-600" />
+                  </div>
+                )
+              })()}
             </div>
             <div className="flex-grow min-w-0">
               <h3 className="text-white font-bold text-sm truncate">
