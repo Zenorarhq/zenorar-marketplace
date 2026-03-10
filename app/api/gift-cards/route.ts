@@ -40,11 +40,12 @@ export async function GET(request: NextRequest) {
       ? `WHERE ${whereConditions.join(' AND ')}`
       : ''
 
-    // Get gift cards with inventory counts
+    // Get gift cards with inventory counts and popularity (purchase count)
     const result = await query(
       `SELECT
          gc.*,
          COALESCE(inv.available_count, 0) as available_count,
+         COALESCE(sales.purchase_count, 0) as purchase_count,
          CASE WHEN gc.provider IS NOT NULL THEN true ELSE false END as has_api_fallback
        FROM gift_cards gc
        LEFT JOIN (
@@ -54,8 +55,13 @@ export async function GET(request: NextRequest) {
          FROM gift_card_codes
          GROUP BY gift_card_id
        ) inv ON gc.id = inv.gift_card_id
+       LEFT JOIN (
+         SELECT gift_card_id, COUNT(*) as purchase_count
+         FROM user_gift_cards
+         GROUP BY gift_card_id
+       ) sales ON gc.id = sales.gift_card_id
        ${whereClause}
-       ORDER BY gc.is_featured DESC, gc.brand ASC
+       ORDER BY gc.is_featured DESC, COALESCE(sales.purchase_count, 0) DESC, gc.brand ASC
        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
       [...params, limit, offset]
     )

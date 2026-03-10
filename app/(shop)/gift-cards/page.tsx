@@ -33,7 +33,7 @@ interface Category {
 }
 
 const categoryIcons: Record<string, string> = {
-  gaming: 'game-controller',
+  gaming: 'zap',
   streaming: 'play-circle',
   shopping: 'cart',
   food: 'coffee',
@@ -85,6 +85,16 @@ export default function GiftCardsPage() {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [processingPayment, setProcessingPayment] = useState<string | null>(null)
   const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({})
+
+  // Auto-clear payment errors after 2 seconds
+  useEffect(() => {
+    if (Object.keys(paymentErrors).length > 0) {
+      const timer = setTimeout(() => {
+        setPaymentErrors({})
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [paymentErrors])
 
   // Wallet state (exactly like virtual numbers page)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
@@ -581,7 +591,7 @@ export default function GiftCardsPage() {
                 <p className="text-slate-500">Try adjusting your search or filters</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
+              <div className="grid grid-cols-1 min-[350px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
                 {giftCards.map((card) => {
                   const selectedAmount = getSelectedAmount(card.id)
                   const hasSelection = selectedAmount !== null

@@ -29,6 +29,14 @@ export async function POST(req: NextRequest) {
     }
     const amount = Number(orderResult.rows[0].total) - Number(orderResult.rows[0].discountAmount || 0)
 
+    // Stripe requires minimum 50 cents
+    if (Math.round(amount * 100) < 50) {
+      return NextResponse.json(
+        { success: false, error: 'Order total must be at least $0.50 for card payments' },
+        { status: 400 }
+      )
+    }
+
     // Get Stripe secret key from site settings
     const mode = (await getSiteSetting('stripeMode')) || 'test'
     const secretKey = mode === 'live'
