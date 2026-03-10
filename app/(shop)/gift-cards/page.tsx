@@ -7,7 +7,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
-import { convertPrice } from '@/lib/currency'
+import { convertPrice, getExchangeRate } from '@/lib/currency'
 import { localApiFetch } from '@/lib/api/client'
 import { getBalance } from '@/lib/api/wallet'
 import AuthDialog from '@/components/dialogs/AuthDialog'
@@ -252,8 +252,10 @@ export default function GiftCardsPage() {
     const max = convertPrice(card.maxCustomAmount || 1000, currencyCode)
 
     if (value >= min && value <= max) {
+      // Convert from user's currency back to USD for storage
+      const valueInUsd = value / getExchangeRate(currencyCode)
       // Select this amount - clear ALL other cards first
-      setSelectedAmounts({ [cardId]: value })
+      setSelectedAmounts({ [cardId]: valueInUsd })
       setExpandedCard(null) // Collapse after selection
       // Clear ALL errors and custom inputs
       setPaymentErrors({})
