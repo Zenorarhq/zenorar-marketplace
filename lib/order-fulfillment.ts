@@ -541,10 +541,10 @@ async function processGiftCardItem(
     }
 
     // Get gift card details from order item metadata
+    // Use item_id for precise lookup (productId may be shared across gift card items)
     const orderItemResult = await query(
-      `SELECT metadata FROM order_items
-       WHERE "orderId" = $1 AND "productId" = $2`,
-      [orderId, item.product_id]
+      `SELECT metadata FROM order_items WHERE id = $1`,
+      [item.item_id]
     )
 
     let giftCardId: string | null = null

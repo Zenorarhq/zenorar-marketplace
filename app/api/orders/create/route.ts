@@ -177,10 +177,13 @@ export async function POST(req: NextRequest) {
 
       // Normalize gift card metadata for fulfillment
       if (productType === 'gift_card') {
+        // Round denomination to 2 decimal places to avoid floating point issues
+        const rawDenom = item.metadata?.denomination || itemPrice
+        const cleanDenom = Math.round(Number(rawDenom) * 100) / 100
         metadata = {
           ...metadata,
           gift_card_id: item.metadata?.gift_card_id || item.metadata?.giftCardId || item.productId || item.id,
-          denomination: item.metadata?.denomination || itemPrice,
+          denomination: cleanDenom,
           brand: item.metadata?.brand,
           imageUrl: item.metadata?.imageUrl,
         }
@@ -190,8 +193,9 @@ export async function POST(req: NextRequest) {
       let itemName = item.name || 'Product'
       if (productType === 'gift_card') {
         const brand = item.metadata?.brand || 'Gift Card'
-        const denom = item.metadata?.denomination || itemPrice
-        itemName = `${brand} Gift Card ($${denom})`
+        const rawDenom = item.metadata?.denomination || itemPrice
+        const cleanDenom = Math.round(Number(rawDenom) * 100) / 100
+        itemName = `${brand} Gift Card ($${cleanDenom})`
       }
 
       await query(

@@ -253,7 +253,8 @@ export default function GiftCardsPage() {
 
     if (value >= min && value <= max) {
       // Convert from user's currency back to USD for storage
-      const valueInUsd = value / getExchangeRate(currencyCode)
+      // Round to 2 decimal places to avoid floating point imprecision
+      const valueInUsd = Math.round((value / getExchangeRate(currencyCode)) * 100) / 100
       // Select this amount - clear ALL other cards first
       setSelectedAmounts({ [cardId]: valueInUsd })
       setExpandedCard(null) // Collapse after selection
