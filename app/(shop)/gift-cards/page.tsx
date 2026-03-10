@@ -121,10 +121,13 @@ export default function GiftCardsPage() {
   const getPriceRange = (card: GiftCard): string => {
     const currencyCode = preferences?.currency?.code || 'USD'
     if (card.denominations.length > 0) {
-      const min = Math.min(...card.denominations)
-      const max = Math.max(...card.denominations)
-      if (min === max) return formatPrice(min)
-      return `${formatPrice(min)} - ${formatPrice(max)}`
+      const minUsd = Math.min(...card.denominations)
+      const maxUsd = Math.max(...card.denominations)
+      // Round min UP and max DOWN for clean whole numbers
+      const minConverted = Math.ceil(convertPrice(minUsd, currencyCode))
+      const maxConverted = Math.floor(convertPrice(maxUsd, currencyCode))
+      if (minConverted === maxConverted) return `${currencySymbol}${minConverted.toLocaleString()}`
+      return `${currencySymbol}${minConverted.toLocaleString()} - ${currencySymbol}${maxConverted.toLocaleString()}`
     }
     if (card.minCustomAmount && card.maxCustomAmount) {
       // Round min UP and max DOWN to stay within API bounds and show clean whole numbers
@@ -680,7 +683,11 @@ export default function GiftCardsPage() {
                                 }
                               }}
                             >
-                              {card.denominations.map((amount) => (
+                              {card.denominations.map((amount) => {
+                                const currencyCode = preferences?.currency?.code || 'USD'
+                                // Round to nearest whole number for clean display
+                                const displayAmount = Math.round(convertPrice(amount, currencyCode))
+                                return (
                                 <button
                                   key={amount}
                                   data-amount={amount}
@@ -708,9 +715,9 @@ export default function GiftCardsPage() {
                                       : 'bg-charcoal border border-border-dark text-slate-500 cursor-not-allowed'
                                   }`}
                                 >
-                                  {formatPrice(amount)}
+                                  {currencySymbol}{displayAmount.toLocaleString()}
                                 </button>
-                              ))}
+                              )})}
                             </div>
                           </div>
                         ) : isVariableOnly ? (
