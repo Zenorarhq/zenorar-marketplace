@@ -119,6 +119,7 @@ export default function GiftCardsPage() {
 
   // Helper to get price range text with currency
   const getPriceRange = (card: GiftCard): string => {
+    const currencyCode = preferences?.currency?.code || 'USD'
     if (card.denominations.length > 0) {
       const min = Math.min(...card.denominations)
       const max = Math.max(...card.denominations)
@@ -126,7 +127,10 @@ export default function GiftCardsPage() {
       return `${formatPrice(min)} - ${formatPrice(max)}`
     }
     if (card.minCustomAmount && card.maxCustomAmount) {
-      return `${formatPrice(card.minCustomAmount)} - ${formatPrice(card.maxCustomAmount)}`
+      // Round min UP and max DOWN to stay within API bounds and show clean whole numbers
+      const minConverted = Math.ceil(convertPrice(card.minCustomAmount, currencyCode))
+      const maxConverted = Math.floor(convertPrice(card.maxCustomAmount, currencyCode))
+      return `${currencySymbol}${minConverted.toLocaleString()} - ${currencySymbol}${maxConverted.toLocaleString()}`
     }
     return 'Variable'
   }
