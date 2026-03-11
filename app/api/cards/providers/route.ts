@@ -41,20 +41,65 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get enabled providers
+    // Get enabled providers from database
     const providers = await getEnabledProviders()
 
-    // For Reloadly, also get available instant card denominations
-    const reloadlyProvider = providers.find(p => p.provider === 'reloadly')
-    let instantCardOptions: any[] = []
+    // Check if Reloadly is enabled and configured (for instant cards)
+    // Use reloadlyCardsEnabled OR fallback to gift card settings since they share credentials
+    const reloadlyEnabled =
+      settings.reloadlyCardsEnabled === true ||
+      settings.reloadlyCardsEnabled === 'true' ||
+      settings.reloadlyEnabled === true ||
+      settings.reloadlyEnabled === 'true'
 
-    if (reloadlyProvider) {
-      instantCardOptions = await reloadlyCardsProvider.getInstantCardOptions()
+    const reloadlyConfigured = !!(
+      settings.reloadlySandboxClientId ||
+      settings.reloadlyProductionClientId ||
+      settings.reloadlyClientId ||
+      process.env.RELOADLY_CLIENT_ID
+    )
+
+    let instantCardOptions: any[] = []
+    let reloadlyProvider = providers.find(p => p.provider === 'reloadly')
+
+    // If Reloadly is enabled and configured, fetch instant card options
+    if (reloadlyEnabled && reloadlyConfigured) {
+      try {
+        instantCardOptions = await reloadlyCardsProvider.getInstantCardOptions()
+      } catch (err) {
+        console.error('Error fetching instant card options:', err)
+      }
+
+      // If no reloadly provider in database, create a synthetic one using gift card markup
+      if (!reloadlyProvider && instantCardOptions.length > 0) {
+        const giftCardMarkup = parseFloat(settings.giftCardMarkupPercent) || 5
+        reloadlyProvider = {
+          provider: 'reloadly',
+          displayName: 'Instant Card',
+          cardType: 'instant',
+          cardBrand: 'visa',
+          isPremium: false,
+          creationFee: 0,
+          topUpFeePercent: 0,
+          instantMarkupPercent: giftCardMarkup,
+          minTopUp: 5,
+          maxTopUp: 10000,
+          minDenomination: 5,
+          maxDenomination: 500,
+          features: { instant: true },
+          isEnabled: true
+        }
+      }
     }
 
     // Group providers by card type
     const virtualProviders = providers.filter(p => p.cardType === 'virtual')
-    const instantProviders = providers.filter(p => p.cardType === 'instant')
+    let instantProviders = providers.filter(p => p.cardType === 'instant')
+
+    // Add synthetic reloadly provider if we have instant card options but no DB entry
+    if (reloadlyProvider && !instantProviders.find(p => p.provider === 'reloadly') && instantCardOptions.length > 0) {
+      instantProviders = [reloadlyProvider as any]
+    }
 
     // Check if any providers exist in the database
     const hasProviderConfig = allPricingResult.rows.length > 0
@@ -81,10 +126,16 @@ export async function GET(request: NextRequest) {
         })),
         status: {
           hasProviderConfig,
-          providers: providerStatus,
+          providers: {
+            ...providerStatus,
+            reloadly: {
+              enabled: reloadlyEnabled,
+              configured: reloadlyConfigured
+            }
+          },
           anyVirtualEnabled: providerStatus.sudo.enabled || providerStatus.lithic.enabled,
-          anyInstantEnabled: providerStatus.reloadly.enabled,
-          anyConfigured: providerStatus.sudo.configured || providerStatus.lithic.configured || providerStatus.reloadly.configured
+          anyInstantEnabled: reloadlyEnabled,
+          anyConfigured: providerStatus.sudo.configured || providerStatus.lithic.configured || reloadlyConfigured
         }
       }
     })
