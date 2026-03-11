@@ -149,49 +149,49 @@ export default function GiftCardDetailModal({
 
               {/* Code Section */}
               <div className="bg-black border border-border-dark rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Gift Card Code
                   </label>
-                  <button
-                    onClick={() => setCodeRevealed(!codeRevealed)}
-                    className="text-xs text-primary hover:text-green-400 transition-colors"
-                  >
-                    {codeRevealed ? 'Hide' : 'Reveal'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCodeRevealed(!codeRevealed)}
+                      className="text-xs text-primary hover:text-green-400 transition-colors"
+                    >
+                      {codeRevealed ? 'Hide' : 'Reveal'}
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(giftCard.code, 'code')}
+                      className="p-1.5 rounded-lg bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626] transition-colors"
+                      title="Copy code"
+                    >
+                      <Icon name={copiedField === 'code' ? 'check' : 'copy'} size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <code className="flex-grow font-mono text-lg text-white tracking-wider select-all">
-                    {codeRevealed ? giftCard.code : maskCode(giftCard.code)}
-                  </code>
-                  <button
-                    onClick={() => copyToClipboard(giftCard.code, 'code')}
-                    className="p-2 rounded-lg bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626] transition-colors"
-                    title="Copy code"
-                  >
-                    <Icon name={copiedField === 'code' ? 'check' : 'copy'} size={16} />
-                  </button>
-                </div>
+                <code className="block font-mono text-base text-white tracking-wide select-all break-all leading-relaxed">
+                  {codeRevealed ? giftCard.code : maskCode(giftCard.code)}
+                </code>
               </div>
 
               {/* PIN Section (if exists) */}
               {giftCard.pin && (
                 <div className="bg-black border border-border-dark rounded-xl p-4">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">
-                    PIN
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-grow font-mono text-lg text-white tracking-wider select-all">
-                      {codeRevealed ? giftCard.pin : '••••'}
-                    </code>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      PIN
+                    </label>
                     <button
                       onClick={() => copyToClipboard(giftCard.pin!, 'pin')}
-                      className="p-2 rounded-lg bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626] transition-colors"
+                      className="p-1.5 rounded-lg bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626] transition-colors"
                       title="Copy PIN"
                     >
-                      <Icon name={copiedField === 'pin' ? 'check' : 'copy'} size={16} />
+                      <Icon name={copiedField === 'pin' ? 'check' : 'copy'} size={14} />
                     </button>
                   </div>
+                  <code className="block font-mono text-base text-white tracking-wide select-all break-all leading-relaxed">
+                    {codeRevealed ? giftCard.pin : '••••'}
+                  </code>
                 </div>
               )}
 
