@@ -8,6 +8,7 @@ import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { libraryApi } from '@/lib/api/library'
 import EsimDetailModal from '@/components/library/EsimDetailModal'
+import GiftCardDetailModal from '@/components/library/GiftCardDetailModal'
 import { apiFetch } from '@/lib/api/client'
 
 interface License {
@@ -47,6 +48,7 @@ export default function LibraryPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [selectedEsimId, setSelectedEsimId] = useState<string | null>(null)
+  const [selectedGiftCardId, setSelectedGiftCardId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [apiKeyModal, setApiKeyModal] = useState<{ key: string; productName: string } | null>(null)
   const [copied, setCopied] = useState(false)
@@ -557,6 +559,15 @@ export default function LibraryPage() {
                             )}
                           </button>
                         )}
+                        {item.category === 'gift-cards' && (
+                          <button
+                            onClick={() => setSelectedGiftCardId(item.id)}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+                          >
+                            <Icon name="gift" size={16} />
+                            View Code
+                          </button>
+                        )}
                         {item.category === 'api' && (
                           <button
                             onClick={() => handleApiKey(item.id, item.name, cardId)}
@@ -585,20 +596,34 @@ export default function LibraryPage() {
                           </button>
                           {openMenuId === cardId && (
                             <div className="absolute right-0 bottom-full mb-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
-                              <button
-                                onClick={() => { setOpenMenuId(null); router.push(`/products/${item.slug}`) }}
-                                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
-                              >
-                                <Icon name="eye" size={16} />
-                                View Product Page
-                              </button>
-                              <button
-                                onClick={() => { setOpenMenuId(null); router.push(`/profile/orders/${item.orderId}`) }}
-                                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
-                              >
-                                <Icon name="receipt" size={16} />
-                                View Order
-                              </button>
+                              {/* View Product Page - handle different categories */}
+                              {item.category === 'gift-cards' && item.slug ? (
+                                <button
+                                  onClick={() => { setOpenMenuId(null); router.push(`/gift-cards/${item.slug}`) }}
+                                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                                >
+                                  <Icon name="eye" size={16} />
+                                  View Product Page
+                                </button>
+                              ) : item.category !== 'gift-cards' && item.slug ? (
+                                <button
+                                  onClick={() => { setOpenMenuId(null); router.push(`/products/${item.slug}`) }}
+                                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                                >
+                                  <Icon name="eye" size={16} />
+                                  View Product Page
+                                </button>
+                              ) : null}
+                              {/* View Order - only show if orderId exists */}
+                              {item.orderId && (
+                                <button
+                                  onClick={() => { setOpenMenuId(null); router.push(`/profile/orders/${item.orderId}`) }}
+                                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                                >
+                                  <Icon name="receipt" size={16} />
+                                  View Order
+                                </button>
+                              )}
                               <button
                                 onClick={() => { setOpenMenuId(null); router.push('/profile/tickets') }}
                                 className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
@@ -722,6 +747,13 @@ export default function LibraryPage() {
         esimId={selectedEsimId || ''}
         isOpen={!!selectedEsimId}
         onClose={() => setSelectedEsimId(null)}
+      />
+
+      {/* Gift Card Detail Modal */}
+      <GiftCardDetailModal
+        giftCardId={selectedGiftCardId || ''}
+        isOpen={!!selectedGiftCardId}
+        onClose={() => setSelectedGiftCardId(null)}
       />
 
       {/* API Key Modal */}

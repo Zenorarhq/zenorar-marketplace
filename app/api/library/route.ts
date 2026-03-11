@@ -66,8 +66,12 @@ export async function GET(request: Request) {
         ugc.image_url,
         ugc.delivered_at as purchase_date,
         ugc.expires_at,
-        ugc.redeemed_at
+        ugc.redeemed_at,
+        ugc.order_id,
+        ugc.gift_card_id,
+        gc.slug as gift_card_slug
       FROM user_gift_cards ugc
+      LEFT JOIN gift_cards gc ON ugc.gift_card_id = gc.id
       WHERE ugc.user_id = $1
       ORDER BY ugc.delivered_at DESC
       `,
@@ -263,7 +267,7 @@ export async function GET(request: Request) {
       return {
         id: row.id,
         name: `${row.brand} $${row.denomination}`,
-        slug: `gift-card-${row.id}`,
+        slug: row.gift_card_slug || null, // Actual gift card product slug for navigation
         description: `${row.brand} Gift Card - $${row.denomination}`,
         category: 'gift-cards',
         icon: 'gift',
@@ -279,6 +283,8 @@ export async function GET(request: Request) {
         giftCardCategory: row.category,
         expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : null,
         redeemedAt: row.redeemed_at ? new Date(row.redeemed_at).toISOString() : null,
+        orderId: row.order_id,
+        giftCardId: row.gift_card_id,
       }
     })
 

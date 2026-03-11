@@ -34,7 +34,7 @@ export interface LibraryItem {
   category: 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers' | 'gift-cards'
   icon: string
   purchaseDate: string
-  status: 'active' | 'expired' | 'update-available' | 'suspended' | 'pending' | 'failed'
+  status: 'active' | 'expired' | 'update-available' | 'suspended' | 'pending' | 'failed' | 'delivered' | 'redeemed'
   version?: string
   downloadCount?: number
   expiresAt?: string
@@ -47,6 +47,12 @@ export interface LibraryItem {
   smsUsed?: number
   smsIncluded?: number
   errorMessage?: string
+  // Gift card specific fields
+  denomination?: number
+  brand?: string
+  giftCardCategory?: string
+  redeemedAt?: string
+  giftCardId?: string
 }
 
 export interface DownloadLink {
