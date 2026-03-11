@@ -31,12 +31,10 @@ export async function GET(request: NextRequest) {
       },
       reloadly: {
         enabled: settings.reloadlyCardsEnabled === true || settings.reloadlyCardsEnabled === 'true',
-        // Check both dedicated cards settings and shared Reloadly credentials
+        // Check ONLY cards-specific credentials (separate from gift cards)
         configured: !!(
-          settings.reloadlySandboxClientId ||
-          settings.reloadlyProductionClientId ||
-          settings.reloadlyClientId ||
-          process.env.RELOADLY_CLIENT_ID
+          settings.reloadlyCardsSandboxClientId ||
+          settings.reloadlyCardsProductionClientId
         )
       }
     }
@@ -44,19 +42,14 @@ export async function GET(request: NextRequest) {
     // Get enabled providers from database
     const providers = await getEnabledProviders()
 
-    // Check if Reloadly is enabled and configured (for instant cards)
-    // Use reloadlyCardsEnabled OR fallback to gift card settings since they share credentials
+    // Check if Reloadly Cards is enabled and configured (separate from gift cards)
     const reloadlyEnabled =
       settings.reloadlyCardsEnabled === true ||
-      settings.reloadlyCardsEnabled === 'true' ||
-      settings.reloadlyEnabled === true ||
-      settings.reloadlyEnabled === 'true'
+      settings.reloadlyCardsEnabled === 'true'
 
     const reloadlyConfigured = !!(
-      settings.reloadlySandboxClientId ||
-      settings.reloadlyProductionClientId ||
-      settings.reloadlyClientId ||
-      process.env.RELOADLY_CLIENT_ID
+      settings.reloadlyCardsSandboxClientId ||
+      settings.reloadlyCardsProductionClientId
     )
 
     let instantCardOptions: any[] = []

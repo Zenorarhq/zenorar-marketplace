@@ -33,48 +33,40 @@ class ReloadlyCardsProvider implements CardProviderInterface {
     try {
       const settings = await getSiteSettingsByGroup('api')
 
-      const enabled = settings.reloadlyCardsEnabled === true || settings.reloadlyCardsEnabled === 'true' ||
-                      settings.reloadlyEnabled === true || settings.reloadlyEnabled === 'true'
+      // Check if Reloadly Cards is enabled (separate from gift cards)
+      const enabled = settings.reloadlyCardsEnabled === true || settings.reloadlyCardsEnabled === 'true'
 
-      const isSandbox = settings.reloadlyMode === 'sandbox' || settings.reloadlySandbox === true ||
-                        settings.reloadlySandbox === 'true' || process.env.RELOADLY_SANDBOX === 'true'
+      if (!enabled) {
+        console.log('[Reloadly Cards] Not enabled in settings')
+        return null
+      }
+
+      // Use cards-specific mode setting (NOT the gift cards mode)
+      const isSandbox = settings.reloadlyCardsMode === 'sandbox' ||
+                        settings.reloadlyCardsMode !== 'production'
 
       let clientId = ''
       let clientSecret = ''
 
+      // Use ONLY cards-specific credentials (NOT gift card credentials)
       if (isSandbox) {
-        clientId = settings.reloadlySandboxClientId || settings.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || ''
-        clientSecret = settings.reloadlySandboxClientSecret || settings.reloadlyClientSecret || process.env.RELOADLY_CLIENT_SECRET || ''
+        clientId = settings.reloadlyCardsSandboxClientId || ''
+        clientSecret = settings.reloadlyCardsSandboxClientSecret || ''
       } else {
-        clientId = settings.reloadlyProductionClientId || settings.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || ''
-        clientSecret = settings.reloadlyProductionClientSecret || settings.reloadlyClientSecret || process.env.RELOADLY_CLIENT_SECRET || ''
-      }
-
-      const hasCredentials = clientId || clientSecret
-      if (!enabled && !hasCredentials) {
-        return null
+        clientId = settings.reloadlyCardsProductionClientId || ''
+        clientSecret = settings.reloadlyCardsProductionClientSecret || ''
       }
 
       if (!clientId || !clientSecret) {
+        console.log('[Reloadly Cards] Missing credentials for mode:', isSandbox ? 'sandbox' : 'production')
         return null
       }
 
+      console.log('[Reloadly Cards] Using credentials in mode:', isSandbox ? 'sandbox' : 'production')
       return { clientId, clientSecret, isSandbox }
     } catch (error) {
-      console.error('Error getting Reloadly credentials:', error)
-
-      const clientId = process.env.RELOADLY_CLIENT_ID || ''
-      const clientSecret = process.env.RELOADLY_CLIENT_SECRET || ''
-
-      if (!clientId || !clientSecret) {
-        return null
-      }
-
-      return {
-        clientId,
-        clientSecret,
-        isSandbox: process.env.RELOADLY_SANDBOX === 'true'
-      }
+      console.error('[Reloadly Cards] Error getting credentials:', error)
+      return null
     }
   }
 
