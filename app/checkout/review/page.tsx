@@ -12,6 +12,7 @@ import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { CardVisualMini } from '@/components/cards/CardVisual'
 
 export default function ReviewPage() {
   const router = useRouter()
@@ -187,35 +188,53 @@ export default function ReviewPage() {
                   {items.map((item) => {
                     const isVirtualNumber = item.product.metadata?.productType === 'virtual_number'
                     const isGiftCard = (item.product as any).productType === 'gift_card' || item.product.metadata?.productType === 'gift_card'
+                    const isInstantCard = (item.product as any).metadata?.productType === 'instant_card' ||
+                      (item.product as any).productType === 'instant_card' ||
+                      (item.product as any).product_type === 'instant_card'
+                    const isVirtualCard = (item.product as any).metadata?.productType === 'virtual_card' ||
+                      (item.product as any).productType === 'virtual_card' ||
+                      (item.product as any).product_type === 'virtual_card'
                     const giftCardImage = (item.product as any).imageUrl || item.product.metadata?.imageUrl
                     const countryIsoCode = item.product.metadata?.countryIsoCode
+                    const cardMetadata = (item.product as any).metadata || {}
 
                     return (
                       <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-surface-dark rounded-xl">
-                        <div className="w-12 h-12 md:w-16 md:h-16 bg-charcoal rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                          {isVirtualNumber && countryIsoCode ? (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                              <FlagIcon countryCode={countryIsoCode} className="w-8 h-8 md:w-10 md:h-10 rounded" />
-                            </div>
-                          ) : isGiftCard && giftCardImage ? (
-                            <Image
-                              src={giftCardImage}
-                              alt={item.product.name}
-                              width={64}
-                              height={64}
-                              className="w-full h-full object-cover"
-                              unoptimized
-                            />
-                          ) : (item.product as any).image || item.product.images?.[0]?.url ? (
-                            <Image
-                              src={(item.product as any).image || item.product.images?.[0]?.url}
-                              alt={item.product.name}
-                              width={64}
-                              height={64}
-                              className="w-full h-full object-cover"
+                        <div className="flex-shrink-0">
+                          {(isInstantCard || isVirtualCard) ? (
+                            <CardVisualMini
+                              brand={cardMetadata.cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
+                              type={isInstantCard ? 'instant' : 'virtual'}
+                              isPremium={cardMetadata.isPremium}
+                              denomination={cardMetadata.denomination}
                             />
                           ) : (
-                            <Icon name={item.product.icon || 'code'} size={20} className="text-slate-500" />
+                            <div className="w-12 h-12 md:w-16 md:h-16 bg-charcoal rounded-lg overflow-hidden flex items-center justify-center">
+                              {isVirtualNumber && countryIsoCode ? (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                                  <FlagIcon countryCode={countryIsoCode} className="w-8 h-8 md:w-10 md:h-10 rounded" />
+                                </div>
+                              ) : isGiftCard && giftCardImage ? (
+                                <Image
+                                  src={giftCardImage}
+                                  alt={item.product.name}
+                                  width={64}
+                                  height={64}
+                                  className="w-full h-full object-cover"
+                                  unoptimized
+                                />
+                              ) : (item.product as any).image || item.product.images?.[0]?.url ? (
+                                <Image
+                                  src={(item.product as any).image || item.product.images?.[0]?.url}
+                                  alt={item.product.name}
+                                  width={64}
+                                  height={64}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Icon name={item.product.icon || 'code'} size={20} className="text-slate-500" />
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="flex-grow min-w-0">

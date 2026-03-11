@@ -233,6 +233,17 @@ async function processOrderItem(
       case 'virtual_number':
         return await processVirtualNumberItem(orderId, userId, item)
 
+      case 'instant_card':
+      case 'virtual_card':
+        // Cards are already provisioned during purchase via /api/cards/purchase
+        // No additional fulfillment needed - just mark as success
+        return {
+          itemId: item.item_id,
+          productType: productType,
+          status: 'success' as const,
+          provisionedId: item.item_id
+        }
+
       default:
         // Generic digital product - just grant access
         return await processDigitalDownload(orderId, userId, item)

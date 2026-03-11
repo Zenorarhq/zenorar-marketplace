@@ -214,6 +214,15 @@ import {
   RedoIcon,
   Tablet01Icon,
   GridTableIcon,
+  AlertDiamondIcon,
+  CircleIcon as CircleIconBase,
+  AddCircleIcon,
+  MinusSignCircleIcon,
+  ArrowDownCircleIcon,
+  ArrowUpCircleIcon,
+  Tick02Icon,
+  Snowflake01Icon,
+  RecycleIcon,
 } from 'hugeicons-react'
 
 // Map of icon names to HugeIcon components
@@ -486,9 +495,20 @@ const iconMap = {
   // Status
   alert: AlertCircleIcon,
   'alert-circle': AlertCircleIcon,
+  'alert-triangle': AlertDiamondIcon,
+  'warning': AlertDiamondIcon,
   info: InformationCircleIcon,
   'info-circle': InformationCircleIcon,
   question: QuestionIcon,
+  circle: CircleIconBase,
+  'plus-circle': AddCircleIcon,
+  'minus-circle': MinusSignCircleIcon,
+  'arrow-down-circle': ArrowDownCircleIcon,
+  'arrow-up-circle': ArrowUpCircleIcon,
+  'check-02': Tick02Icon,
+  snowflake: Snowflake01Icon,
+  frozen: Snowflake01Icon,
+  recycle: RecycleIcon,
 
   // Theme
   sun: Sun01Icon,

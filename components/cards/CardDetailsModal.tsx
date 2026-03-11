@@ -16,6 +16,12 @@ interface CardTransaction {
   createdAt: string
 }
 
+interface RevealedDetails {
+  cardNumber: string
+  cvv: string
+  expiry: string
+}
+
 interface CardDetailsModalProps {
   isOpen: boolean
   onClose: () => void
@@ -33,6 +39,9 @@ export default function CardDetailsModal({
   const [card, setCard] = useState<any>(null)
   const [transactions, setTransactions] = useState<CardTransaction[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [revealedDetails, setRevealedDetails] = useState<RevealedDetails | null>(null)
+  const [revealing, setRevealing] = useState(false)
+  const [copied, setCopied] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isOpen || !cardId) return
@@ -57,7 +66,44 @@ export default function CardDetailsModal({
     }
 
     fetchCardDetails()
+    // Reset revealed details when modal opens
+    setRevealedDetails(null)
   }, [isOpen, cardId])
+
+  const handleReveal = async () => {
+    if (revealing || revealedDetails) return
+
+    try {
+      setRevealing(true)
+      const data = await localApiFetch<any>(`/cards/${cardId}/reveal`, {
+        method: 'POST'
+      })
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to reveal card details')
+      }
+
+      setRevealedDetails({
+        cardNumber: data.data.cardNumber || '',
+        cvv: data.data.cvv || '',
+        expiry: data.data.expiry || card?.cardExpiry || ''
+      })
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setRevealing(false)
+    }
+  }
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(field)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  const formatCardNumber = (number: string) => {
+    return number.replace(/(.{4})/g, '$1 ').trim()
+  }
 
   if (!isOpen) return null
 
@@ -179,6 +225,106 @@ export default function CardDetailsModal({
                   <div className="mt-4 flex items-center gap-2 text-amber-400">
                     <Icon name="shield" size={16} />
                     <span className="text-sm">3D Secure Enabled</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Card Number & CVV Section */}
+              <div className="bg-[#1a1a1a] rounded-xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white font-medium">Card Credentials</h3>
+                  {card.status === 'active' && !revealedDetails && (
+                    <button
+                      onClick={handleReveal}
+                      disabled={revealing}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors text-sm font-medium disabled:opacity-50"
+                    >
+                      {revealing ? (
+                        <>
+                          <Icon name="loader" size={14} className="animate-spin" />
+                          Revealing...
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="eye" size={14} />
+                          Reveal Details
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {revealedDetails ? (
+                  <div className="space-y-3">
+                    {/* Card Number */}
+                    <div className="flex items-center justify-between p-3 bg-[#252525] rounded-lg">
+                      <div>
+                        <p className="text-slate-400 text-xs mb-1">Card Number</p>
+                        <p className="text-white font-mono text-sm tracking-wider">
+                          {formatCardNumber(revealedDetails.cardNumber)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(revealedDetails.cardNumber, 'number')}
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                        <Icon
+                          name={copied === 'number' ? 'check' : 'copy'}
+                          size={16}
+                          className={copied === 'number' ? 'text-green-400' : 'text-slate-400'}
+                        />
+                      </button>
+                    </div>
+
+                    {/* CVV & Expiry */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center justify-between p-3 bg-[#252525] rounded-lg">
+                        <div>
+                          <p className="text-slate-400 text-xs mb-1">CVV</p>
+                          <p className="text-white font-mono text-sm">{revealedDetails.cvv}</p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(revealedDetails.cvv, 'cvv')}
+                          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                        >
+                          <Icon
+                            name={copied === 'cvv' ? 'check' : 'copy'}
+                            size={16}
+                            className={copied === 'cvv' ? 'text-green-400' : 'text-slate-400'}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-[#252525] rounded-lg">
+                        <div>
+                          <p className="text-slate-400 text-xs mb-1">Expiry</p>
+                          <p className="text-white font-mono text-sm">{revealedDetails.expiry}</p>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(revealedDetails.expiry, 'expiry')}
+                          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                        >
+                          <Icon
+                            name={copied === 'expiry' ? 'check' : 'copy'}
+                            size={16}
+                            className={copied === 'expiry' ? 'text-green-400' : 'text-slate-400'}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-amber-400 flex items-center gap-1.5 mt-2">
+                      <Icon name="alert-triangle" size={12} />
+                      Keep these details secure. Do not share with anyone.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-slate-400 text-sm">
+                    {card.status === 'active' ? (
+                      <p>Click "Reveal Details" to view your card credentials</p>
+                    ) : (
+                      <p>Card credentials are not available for {card.status} cards</p>
+                    )}
                   </div>
                 )}
               </div>

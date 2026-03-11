@@ -15,6 +15,7 @@ import Footer from '@/components/layout/Footer'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
+import { CardVisualMini } from '@/components/cards/CardVisual'
 import { useCart } from '@/lib/cart-context'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -2043,33 +2044,49 @@ export default function PaymentPage() {
               )}
 
               <div className="space-y-4 mb-6">
-                {displayItems.map((item) => (
+                {displayItems.map((item) => {
+                  const productType = (item.product as any).productType || (item.product as any).product_type || item.product.metadata?.productType
+                  const isInstantCard = productType === 'instant_card'
+                  const isVirtualCard = productType === 'virtual_card'
+                  const cardMetadata = (item.product as any).metadata || item.product.metadata || {}
+
+                  return (
                   <div key={`${item.product.id}-${item.license}`} className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-surface-dark rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                          <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
-                        </div>
-                      ) : item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl ? (
-                        <>
-                          <img
-                            src={item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl || ''}
-                            alt={item.product.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Hide broken image and show fallback icon
-                              const target = e.currentTarget
-                              target.style.display = 'none'
-                              const fallback = target.nextElementSibling as HTMLElement
-                              if (fallback) fallback.style.display = 'flex'
-                            }}
-                          />
-                          <div className="w-full h-full items-center justify-center hidden">
-                            <Icon name={item.product.icon || (item.product.metadata?.productType === 'gift_card' ? 'gift' : 'code')} size={20} className="text-slate-500" />
-                          </div>
-                        </>
+                    <div className="flex-shrink-0">
+                      {(isInstantCard || isVirtualCard) ? (
+                        <CardVisualMini
+                          brand={cardMetadata.cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
+                          type={isInstantCard ? 'instant' : 'virtual'}
+                          isPremium={cardMetadata.isPremium}
+                          denomination={cardMetadata.denomination}
+                        />
                       ) : (
-                        <Icon name={item.product.icon || (item.product.metadata?.productType === 'virtual_number' ? 'phone' : item.product.metadata?.productType === 'gift_card' ? 'gift' : 'code')} size={20} className="text-slate-500" />
+                        <div className="w-12 h-12 bg-surface-dark rounded-lg flex items-center justify-center overflow-hidden">
+                          {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                              <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
+                            </div>
+                          ) : item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl ? (
+                            <>
+                              <img
+                                src={item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl || ''}
+                                alt={item.product.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.currentTarget
+                                  target.style.display = 'none'
+                                  const fallback = target.nextElementSibling as HTMLElement
+                                  if (fallback) fallback.style.display = 'flex'
+                                }}
+                              />
+                              <div className="w-full h-full items-center justify-center hidden">
+                                <Icon name={item.product.icon || (item.product.metadata?.productType === 'gift_card' ? 'gift' : 'code')} size={20} className="text-slate-500" />
+                              </div>
+                            </>
+                          ) : (
+                            <Icon name={item.product.icon || (item.product.metadata?.productType === 'virtual_number' ? 'phone' : item.product.metadata?.productType === 'gift_card' ? 'gift' : 'code')} size={20} className="text-slate-500" />
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="flex-grow min-w-0">
@@ -2082,7 +2099,8 @@ export default function PaymentPage() {
                     </div>
                     <p className="text-white font-bold">{formatPrice(item.price * item.quantity)}</p>
                   </div>
-                ))}
+                  )
+                })}
               </div>
 
               <div className="border-t border-border-dark pt-4 space-y-3">

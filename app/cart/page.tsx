@@ -14,6 +14,7 @@ import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { discountsApi, type ValidateDiscountResponse } from '@/lib/api/discounts'
 import { settingsApi } from '@/lib/api/settings'
+import { CardVisualCompact } from '@/components/cards/CardVisual'
 
 export default function CartPage() {
   const router = useRouter()
@@ -227,36 +228,58 @@ export default function CartPage() {
                 key={`${item.product.id}-${item.license}`}
                 className="bg-surface-dark border border-border-dark rounded-2xl p-4 md:p-6 flex gap-4 md:gap-6"
               >
-                {/* Product Image / Flag for Virtual Numbers / Gift Card Image */}
-                <div className="w-24 h-24 bg-charcoal rounded-xl overflow-hidden flex-shrink-0">
-                  {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
-                    // Virtual number - show country flag image
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                      <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-16 h-16 rounded" />
-                    </div>
-                  ) : ((item.product as any).productType === 'gift_card' || (item.product as any).product_type === 'gift_card' || item.product.metadata?.productType === 'gift_card') && ((item.product as any).imageUrl || item.product.metadata?.imageUrl) ? (
-                    // Gift card - show brand image
-                    <Image
-                      src={(item.product as any).imageUrl || item.product.metadata?.imageUrl || ''}
-                      alt={item.product.name}
-                      width={96}
-                      height={96}
-                      className="w-full h-full object-cover"
-                      unoptimized
-                    />
-                  ) : (item.product.image || item.product.images?.[0]?.url) ? (
-                    <Image
-                      src={item.product.image || item.product.images?.[0]?.url || ''}
-                      alt={item.product.name}
-                      width={96}
-                      height={96}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Icon name={item.product.icon || 'phone'} size={30} className="text-slate-600" />
-                    </div>
-                  )}
+                {/* Product Image / Flag for Virtual Numbers / Gift Card Image / Card Visual */}
+                <div className="flex-shrink-0">
+                  {(() => {
+                    const productType = (item.product as any).productType || (item.product as any).product_type || item.product.metadata?.productType
+                    const isInstantCard = productType === 'instant_card'
+                    const isVirtualCard = productType === 'virtual_card'
+                    const isVirtualNumber = productType === 'virtual_number'
+                    const isGiftCard = productType === 'gift_card'
+                    const cardMetadata = (item.product as any).metadata || item.product.metadata || {}
+
+                    if (isInstantCard || isVirtualCard) {
+                      return (
+                        <CardVisualCompact
+                          brand={cardMetadata.cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
+                          type={isInstantCard ? 'instant' : 'virtual'}
+                          isPremium={cardMetadata.isPremium}
+                          denomination={cardMetadata.denomination}
+                        />
+                      )
+                    }
+
+                    return (
+                      <div className="w-24 h-24 bg-charcoal rounded-xl overflow-hidden">
+                        {isVirtualNumber && cardMetadata.countryIsoCode ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                            <FlagIcon countryCode={cardMetadata.countryIsoCode} className="w-16 h-16 rounded" />
+                          </div>
+                        ) : isGiftCard && ((item.product as any).imageUrl || cardMetadata.imageUrl) ? (
+                          <Image
+                            src={(item.product as any).imageUrl || cardMetadata.imageUrl || ''}
+                            alt={item.product.name}
+                            width={96}
+                            height={96}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                          />
+                        ) : (item.product.image || item.product.images?.[0]?.url) ? (
+                          <Image
+                            src={item.product.image || item.product.images?.[0]?.url || ''}
+                            alt={item.product.name}
+                            width={96}
+                            height={96}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Icon name={item.product.icon || 'phone'} size={30} className="text-slate-600" />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()
                 </div>
 
                 {/* Product Details */}

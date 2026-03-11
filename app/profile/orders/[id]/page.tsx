@@ -7,6 +7,7 @@ import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { CardVisualMini } from '@/components/cards/CardVisual'
 
 function getStatusBadge(status: string) {
   const styles: Record<string, { bg: string; text: string; dot?: string; icon?: string }> = {
@@ -161,29 +162,51 @@ export default function OrderDetailPage() {
                     index > 0 ? 'border-t border-dashed border-border-dark pt-6' : ''
                   }`}
                 >
-                  <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="flex-shrink-0">
                     {(() => {
+                      const productType = (item as any).product_type || (item as any).metadata?.productType
+                      const isInstantCard = productType === 'instant_card'
+                      const isVirtualCard = productType === 'virtual_card'
+                      const isGiftCard = productType === 'gift_card'
+                      const metadata = (item as any).metadata || {}
+                      const cardBrand = metadata.cardBrand || 'visa'
+                      const denomination = metadata.denomination
+
+                      if (isInstantCard || isVirtualCard) {
+                        return (
+                          <CardVisualMini
+                            brand={cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
+                            type={isInstantCard ? 'instant' : 'virtual'}
+                            isPremium={metadata.isPremium}
+                            denomination={denomination}
+                          />
+                        )
+                      }
+
                       const imageUrl = item.product?.images?.[0]?.url
                         || (item.product as any)?.image
                         || (item.product as any)?.imageUrl
-                        || (item as any).metadata?.imageUrl
-                      const isGiftCard = (item as any).product_type === 'gift_card'
-                        || (item as any).metadata?.productType === 'gift_card'
-                      return imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt={item.name}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                          }}
-                        />
-                      ) : null
+                        || metadata.imageUrl
+
+                      return (
+                        <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center overflow-hidden">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={item.name}
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                              }}
+                            />
+                          ) : null}
+                          <div className={`${imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
+                            <Icon name={isGiftCard ? 'gift' : 'box'} size={36} className="text-slate-500" />
+                          </div>
+                        </div>
+                      )
                     })()}
-                    <div className={`${item.product?.images?.[0]?.url || (item.product as any)?.image || (item.product as any)?.imageUrl || (item as any).metadata?.imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
-                      <Icon name={(item as any).product_type === 'gift_card' || (item as any).metadata?.productType === 'gift_card' ? 'gift' : 'box'} size={36} className="text-slate-500" />
-                    </div>
                   </div>
                   <div className="flex-grow">
                     <div className="flex items-start justify-between gap-4">
