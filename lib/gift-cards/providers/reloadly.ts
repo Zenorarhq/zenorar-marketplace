@@ -332,10 +332,40 @@ class ReloadlyProvider implements GiftCardProvider {
         }
       }
 
-      console.log('[Reloadly] Purchase successful:', { transactionId: data.transactionId, hasCards: !!data.cards })
+      console.log('[Reloadly] Purchase successful:', { transactionId: data.transactionId, hasCards: !!data.cards, cardsLength: data.cards?.length })
 
       // Get the redemption code from the response
-      const card = data.cards?.[0] || data
+      let card = data.cards?.[0]
+
+      // If cards array is missing or empty, fetch card details separately
+      if (!card || !card.cardNumber) {
+        console.log('[Reloadly] Cards not in response, fetching via getOrderStatus...')
+        const orderDetails = await this.getOrderStatus(String(data.transactionId))
+        console.log('[Reloadly] Order status result:', { status: orderDetails.status, hasCode: !!orderDetails.code, hasPin: !!orderDetails.pin })
+
+        if (orderDetails.status === 'completed' && orderDetails.code) {
+          return {
+            success: true,
+            orderId: String(data.transactionId),
+            code: orderDetails.code,
+            pin: orderDetails.pin,
+            expiresAt: undefined
+          }
+        } else if (orderDetails.error) {
+          console.error('[Reloadly] Failed to get card details:', orderDetails.error)
+          // Purchase succeeded but couldn't get card - return success with orderId so we can retry fetching
+          return {
+            success: false,
+            orderId: String(data.transactionId),
+            error: `Purchase completed but failed to retrieve card code: ${orderDetails.error}`
+          }
+        }
+      }
+
+      // Use card from initial response if available
+      if (!card) {
+        card = data
+      }
 
       return {
         success: true,
