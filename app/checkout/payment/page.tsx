@@ -1312,7 +1312,7 @@ export default function PaymentPage() {
                       ) : (
                         <>
                           <Icon name="wallet" size={24} />
-                          Pay with Account Credits
+                          Pay with Wallet
                         </>
                       )}
                     </button>

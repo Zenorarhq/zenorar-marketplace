@@ -89,16 +89,6 @@ export default function GiftCardsPage() {
   const [processingPayment, setProcessingPayment] = useState<string | null>(null)
   const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({})
 
-  // Auto-clear payment errors after 2 seconds
-  useEffect(() => {
-    if (Object.keys(paymentErrors).length > 0) {
-      const timer = setTimeout(() => {
-        setPaymentErrors({})
-      }, 2000)
-      return () => clearTimeout(timer)
-    }
-  }, [paymentErrors])
-
   // Wallet state (exactly like virtual numbers page)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
@@ -370,10 +360,11 @@ export default function GiftCardsPage() {
       return newErrors
     })
 
-    // If not authenticated, show auth dialog
+    // If not authenticated, show auth dialog (match virtual numbers pattern)
     if (!isAuthenticated) {
       setPendingCard(card)
-      setPendingWalletCheckout(true)
+      // Don't set pendingWalletCheckout here - let onSuccess set it
+      // This matches virtual numbers handleInstantCheckout pattern
       setShowLoginModal(true)
       return
     }
@@ -418,15 +409,7 @@ export default function GiftCardsPage() {
       {/* Auth Dialog */}
       <AuthDialog
         isOpen={showLoginModal}
-        onClose={() => {
-          setShowLoginModal(false)
-          // Only clear pending state if user hasn't authenticated (manual dismiss)
-          // Don't clear unconditionally since AuthDialog calls onClose() after onSuccess()
-          if (!isAuthenticated) {
-            setPendingWalletCheckout(false)
-            setPendingCard(null)
-          }
-        }}
+        onClose={() => setShowLoginModal(false)}
         onSuccess={() => {
           setShowLoginModal(false)
           setPendingWalletCheckout(true)  // Set BEFORE fetching balance - triggers auto-continue
@@ -454,17 +437,6 @@ export default function GiftCardsPage() {
           }
         }}
       />
-
-      {/* Payment Error Toast - shows most recent error */}
-      {Object.keys(paymentErrors).length > 0 && (
-        <div className="fixed bottom-4 right-4 bg-red-500/90 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3">
-          <Icon name="alert-circle" size={20} />
-          <span>{Object.values(paymentErrors)[0]}</span>
-          <button onClick={() => setPaymentErrors({})} className="text-white/80 hover:text-white">
-            <Icon name="x" size={18} />
-          </button>
-        </div>
-      )}
 
       {/* Breadcrumbs */}
       <div className="py-4">

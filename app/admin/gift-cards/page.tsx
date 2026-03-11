@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
@@ -48,6 +48,15 @@ export default function AdminGiftCardsPage() {
   const [importData, setImportData] = useState('')
   const [importError, setImportError] = useState('')
   const [formError, setFormError] = useState('')
+
+  // Refresh provider status when window gains focus (e.g., after changing settings)
+  useEffect(() => {
+    const handleFocus = () => {
+      queryClient.invalidateQueries({ queryKey: ['reloadly-status'] })
+    }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [queryClient])
 
   // Form state
   const [formData, setFormData] = useState({
@@ -218,7 +227,7 @@ export default function AdminGiftCardsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-gift-cards'] })
       queryClient.invalidateQueries({ queryKey: ['reloadly-status'] })
-      alert(`Sync complete: ${data.synced} new products, ${data.updated} updated`)
+      alert(`Sync complete: ${data.totalSynced} new products, ${data.totalUpdated} updated`)
     },
     onError: (error: any) => {
       alert(`Sync failed: ${error.message}`)

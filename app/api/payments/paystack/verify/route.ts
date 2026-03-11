@@ -125,9 +125,13 @@ export async function POST(request: NextRequest) {
       } else {
         console.error('Fulfillment had issues:', fulfillmentResult)
         // Order is paid but fulfillment failed - needs manual review
+        // Log the actual error details in adminNote for debugging
+        const failedItems = fulfillmentResult.details?.filter((d: any) => d.status === 'failed') || []
+        const errorDetails = failedItems.map((d: any) => `${d.productType}: ${d.error || 'Unknown error'}`).join('; ')
+
         await query(
-          `UPDATE orders SET status = 'PROCESSING', "updatedAt" = NOW() WHERE id = $1`,
-          [order.id]
+          `UPDATE orders SET status = 'PROCESSING', "adminNote" = $2, "updatedAt" = NOW() WHERE id = $1`,
+          [order.id, `[Auto] Fulfillment failed: ${errorDetails || 'No details'}`]
         )
       }
     } catch (fulfillError) {
