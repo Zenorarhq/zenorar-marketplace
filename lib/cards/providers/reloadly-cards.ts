@@ -160,11 +160,16 @@ class ReloadlyCardsProvider implements CardProviderInterface {
         const data = await response.json()
         const products = data.content || data || []
 
+        console.log(`[Reloadly Cards] Total products in ${code}: ${products.length}`)
+
         // Filter for Visa and Mastercard prepaid/virtual cards
-        // Be more flexible with the filter - just look for visa/mastercard
+        // Be more flexible with the filter - also include "prepaid", "virtual card"
         const cardProducts = products.filter((p: any) => {
           const name = (p.productName || p.brandName || '').toLowerCase()
-          const isCard = name.includes('visa') || name.includes('mastercard')
+          const isCard = name.includes('visa') ||
+                        name.includes('mastercard') ||
+                        name.includes('prepaid') ||
+                        name.includes('virtual card')
           return isCard
         })
 
@@ -195,8 +200,27 @@ class ReloadlyCardsProvider implements CardProviderInterface {
         }
       }
 
-      // If no card products found, log some available products for debugging
-      console.log('[Reloadly Cards] No Visa/Mastercard products found in any region')
+      // If no card products found, log available products for debugging
+      console.log('[Reloadly Cards] No Visa/Mastercard/Prepaid products found in any region')
+
+      // In sandbox mode, if no products found, provide test options
+      // so users can still test the purchase flow
+      if (credentials.isSandbox) {
+        console.log('[Reloadly Cards] Sandbox mode - providing test card options')
+
+        // Use a generic test product ID - in sandbox mode, Reloadly accepts test purchases
+        // These are synthetic options to allow testing the UI and flow
+        const testOptions: InstantCardOption[] = [
+          { productId: 'test-5', brand: 'visa', denomination: 5, totalPrice: 5, currency: 'USD' },
+          { productId: 'test-10', brand: 'visa', denomination: 10, totalPrice: 10, currency: 'USD' },
+          { productId: 'test-25', brand: 'visa', denomination: 25, totalPrice: 25, currency: 'USD' },
+          { productId: 'test-50', brand: 'visa', denomination: 50, totalPrice: 50, currency: 'USD' },
+          { productId: 'test-100', brand: 'mastercard', denomination: 100, totalPrice: 100, currency: 'USD' },
+        ]
+
+        return testOptions
+      }
+
       return []
     } catch (error) {
       console.error('Reloadly getInstantCardOptions error:', error)
@@ -260,6 +284,25 @@ class ReloadlyCardsProvider implements CardProviderInterface {
 
     if (!matchingOption) {
       return { success: false, error: `No card available for denomination $${params.denomination}` }
+    }
+
+    // Handle test products in sandbox mode
+    if (matchingOption.productId.startsWith('test-') && credentials.isSandbox) {
+      console.log('[Reloadly Cards] Sandbox test purchase for', matchingOption)
+
+      // Generate a mock card for sandbox testing
+      const mockCardNumber = '4' + Array(15).fill(0).map(() => Math.floor(Math.random() * 10)).join('')
+      const mockCvv = Math.floor(100 + Math.random() * 900).toString()
+
+      return {
+        success: true,
+        cardId: `TEST_${Date.now()}`,
+        cardNumber: mockCardNumber,
+        cvv: mockCvv,
+        expiry: this.formatExpiry(),
+        lastFour: mockCardNumber.slice(-4),
+        balance: params.denomination
+      }
     }
 
     try {

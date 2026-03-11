@@ -114,9 +114,32 @@ export async function POST(request: NextRequest) {
 
     // Check user's wallet balance
     const walletResult = await executeQuery<any>(
-      'SELECT balance FROM users WHERE id = $1',
+      'SELECT id, balance, is_frozen FROM wallet_balances WHERE user_id = $1',
       [user.id]
     )
+
+    if (walletResult.rows.length === 0) {
+      // Create wallet if doesn't exist
+      await executeQuery(
+        `INSERT INTO wallet_balances (id, user_id, balance, currency, is_frozen, created_at, updated_at)
+         VALUES (gen_random_uuid()::text, $1, 0, 'USD', false, NOW(), NOW())`,
+        [user.id]
+      )
+      return NextResponse.json(
+        { success: false, error: 'Insufficient balance. Please add funds to your wallet.' },
+        { status: 400 }
+      )
+    }
+
+    const walletBalanceId = walletResult.rows[0].id
+    const isFrozen = walletResult.rows[0].is_frozen
+
+    if (isFrozen) {
+      return NextResponse.json(
+        { success: false, error: 'Your wallet is currently frozen. Please contact support.' },
+        { status: 403 }
+      )
+    }
 
     const walletBalance = parseFloat(walletResult.rows[0]?.balance || '0')
 
@@ -156,7 +179,7 @@ export async function POST(request: NextRequest) {
 
     // Deduct from wallet
     await executeQuery(
-      'UPDATE users SET balance = balance - $1 WHERE id = $2',
+      'UPDATE wallet_balances SET balance = balance - $1, updated_at = NOW() WHERE user_id = $2',
       [totalCost, user.id]
     )
 

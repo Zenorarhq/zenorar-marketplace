@@ -75,6 +75,16 @@ export default function CardsPage() {
   const [loadingBalance, setLoadingBalance] = useState(false)
   const [showDepositModal, setShowDepositModal] = useState(false)
 
+  // Auto-dismiss payment error after 5 seconds
+  useEffect(() => {
+    if (paymentError) {
+      const timer = setTimeout(() => {
+        setPaymentError(null)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [paymentError])
+
   // Fetch providers
   useEffect(() => {
     async function fetchProviders() {
@@ -316,15 +326,18 @@ export default function CardsPage() {
         </div>
       )}
 
-      {/* Payment Error */}
+      {/* Payment Error - Shows below the cards grid */}
       {paymentError && (
-        <div className="fixed bottom-4 right-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl max-w-md z-50">
-          <p className="text-red-400">{paymentError}</p>
+        <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Icon name="alert-circle" size={20} className="text-red-400 flex-shrink-0" />
+            <p className="text-red-400">{paymentError}</p>
+          </div>
           <button
             onClick={() => setPaymentError(null)}
-            className="mt-2 text-sm text-red-300 hover:text-red-200"
+            className="text-red-300 hover:text-red-200 p-1"
           >
-            Dismiss
+            <Icon name="x" size={18} />
           </button>
         </div>
       )}
