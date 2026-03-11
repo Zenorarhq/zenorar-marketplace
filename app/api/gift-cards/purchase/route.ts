@@ -285,10 +285,16 @@ export async function POST(request: NextRequest) {
     )
 
     // Run fulfillment
+    console.log('[Purchase] Running fulfillment for order:', orderId, { giftCardId, denomination, reservedCodeId })
     const fulfillmentResult = await fulfillOrder(orderId)
+    console.log('[Purchase] Fulfillment result:', JSON.stringify(fulfillmentResult, null, 2))
 
     if (!fulfillmentResult.success) {
-      console.error('Gift card fulfillment failed:', fulfillmentResult)
+      console.error('[Purchase] Gift card fulfillment failed:', {
+        success: fulfillmentResult.success,
+        details: fulfillmentResult.details,
+        fullResult: JSON.stringify(fulfillmentResult)
+      })
 
       const allFailed = fulfillmentResult.details?.every((d: any) => d.status === 'failed')
 
@@ -318,6 +324,7 @@ export async function POST(request: NextRequest) {
 
         const failedItem = fulfillmentResult.details?.find((d: any) => d.status === 'failed')
         const errorMessage = failedItem?.error || 'Failed to provision gift card'
+        console.error('[Purchase] All items failed. Error from provider:', { failedItem, errorMessage })
 
         // Send notification
         await query(

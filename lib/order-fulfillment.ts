@@ -591,6 +591,14 @@ async function processGiftCardItem(
       throw new Error('Invalid denomination for gift card')
     }
 
+    console.log('[OrderFulfillment] Calling provisionGiftCard:', {
+      giftCardId,
+      denomination,
+      userId,
+      orderId,
+      reservedCodeId
+    })
+
     const provisionResult = await provisionGiftCard(
       giftCardId,
       denomination,
@@ -598,6 +606,12 @@ async function processGiftCardItem(
       orderId,
       reservedCodeId
     )
+
+    console.log('[OrderFulfillment] provisionGiftCard result:', {
+      success: provisionResult.success,
+      userGiftCardId: provisionResult.userGiftCardId,
+      error: provisionResult.error
+    })
 
     if (!provisionResult.success) {
       throw new Error(provisionResult.error || 'Gift card provisioning failed')

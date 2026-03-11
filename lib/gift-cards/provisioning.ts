@@ -161,7 +161,9 @@ export async function provisionGiftCard(
         giftCardId,
         denomination,
         providerProductId: giftCard.providerProductId,
-        mode: currentMode
+        syncedMode: giftCard.syncedMode,
+        currentMode,
+        brand: giftCard.brand
       })
 
       // Get the appropriate provider
@@ -171,10 +173,19 @@ export async function provisionGiftCard(
       }
 
       // Call the provider's purchaseCard method
+      console.log(`[Provisioning] Calling ${providerName}.purchaseCard with productId=${giftCard.providerProductId}, denomination=${denomination}`)
+
       const apiResult = await provider.purchaseCard(
         giftCard.providerProductId,
         denomination
       )
+
+      console.log(`[Provisioning] ${providerName} result:`, {
+        success: apiResult.success,
+        hasCode: !!apiResult.code,
+        orderId: apiResult.orderId,
+        error: apiResult.error
+      })
 
       if (apiResult.success && apiResult.code) {
         // Create user gift card record

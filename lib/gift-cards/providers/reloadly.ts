@@ -276,12 +276,13 @@ class ReloadlyProvider implements GiftCardProvider {
       return { success: false, error: 'Reloadly not configured' }
     }
 
-    console.log('[Reloadly] Using mode:', credentials.isSandbox ? 'sandbox' : 'production')
+    console.log('[Reloadly] Using mode:', credentials.isSandbox ? 'sandbox' : 'production',
+      'clientId starts with:', credentials.clientId?.slice(0, 8) + '...')
 
     const token = await this.getAccessToken()
     if (!token) {
-      console.error('[Reloadly] Purchase failed: Could not get access token')
-      return { success: false, error: 'Failed to authenticate with Reloadly' }
+      console.error('[Reloadly] Purchase failed: Could not get access token - check credentials')
+      return { success: false, error: 'Failed to authenticate with Reloadly. Please check your API credentials in Admin → Settings → API.' }
     }
 
     console.log('[Reloadly] Got access token, making purchase request...')
@@ -315,9 +316,16 @@ class ReloadlyProvider implements GiftCardProvider {
 
       const data = await response.json()
 
+      // Log full response for debugging
+      console.log('[Reloadly] Purchase API response:', {
+        status: response.status,
+        ok: response.ok,
+        responseData: JSON.stringify(data).slice(0, 1000)
+      })
+
       if (!response.ok) {
-        const errorMsg = data.message || data.errorMessage || 'Purchase failed'
-        console.error('[Reloadly] Purchase API error:', { status: response.status, error: errorMsg, details: data })
+        const errorMsg = data.message || data.errorMessage || data.error || 'Purchase failed'
+        console.error('[Reloadly] Purchase API error:', { status: response.status, error: errorMsg, fullData: data })
         return {
           success: false,
           error: errorMsg
