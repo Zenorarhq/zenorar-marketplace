@@ -9,6 +9,7 @@ import Icon from '@/components/ui/Icon'
 import { libraryApi } from '@/lib/api/library'
 import EsimDetailModal from '@/components/library/EsimDetailModal'
 import GiftCardDetailModal from '@/components/library/GiftCardDetailModal'
+import CardDetailsModal from '@/components/cards/CardDetailsModal'
 import { apiFetch } from '@/lib/api/client'
 
 interface License {
@@ -29,7 +30,7 @@ function maskLicenseKey(key: string): string {
   return [first, ...middle, last].join('-')
 }
 
-type LibraryFilter = 'all' | 'scripts' | 'esims' | 'gift-cards' | 'virtual-numbers'
+type LibraryFilter = 'all' | 'scripts' | 'virtual-numbers' | 'esims' | 'cards' | 'gift-cards'
 
 const ITEMS_PER_PAGE = 5
 
@@ -49,10 +50,15 @@ export default function LibraryPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [selectedEsimId, setSelectedEsimId] = useState<string | null>(null)
   const [selectedGiftCardId, setSelectedGiftCardId] = useState<string | null>(null)
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [apiKeyModal, setApiKeyModal] = useState<{ key: string; productName: string } | null>(null)
   const [copied, setCopied] = useState(false)
   const [licenseModal, setLicenseModal] = useState<{ licenseKey: string; productName: string } | null>(null)
+
+  // Refs for auto-centering filter tabs on mobile
+  const filterScrollRef = useRef<HTMLDivElement>(null)
+  const activeFilterRef = useRef<HTMLButtonElement>(null)
 
   // Domain activation state
   const [domainModal, setDomainModal] = useState<{ licenseId: string; licenseKey: string; productName: string; registeredDomains: string[] } | null>(null)
@@ -236,6 +242,20 @@ export default function LibraryPage() {
     setCurrentPage(1)
   }, [activeFilter, searchQuery])
 
+  // Auto-center active filter tab on mobile
+  useEffect(() => {
+    if (activeFilterRef.current && filterScrollRef.current) {
+      const container = filterScrollRef.current
+      const activeTab = activeFilterRef.current
+      const containerRect = container.getBoundingClientRect()
+      const tabRect = activeTab.getBoundingClientRect()
+
+      // Calculate scroll position to center the active tab
+      const scrollLeft = activeTab.offsetLeft - (containerRect.width / 2) + (tabRect.width / 2)
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' })
+    }
+  }, [activeFilter])
+
   const filteredItems = libraryItems.filter((item) => {
     const matchesFilter = activeFilter === 'all' || item.category === activeFilter
     const matchesSearch =
@@ -297,8 +317,9 @@ export default function LibraryPage() {
   const filterButtons: { key: LibraryFilter; label: string; icon: string }[] = [
     { key: 'all', label: 'All Items', icon: 'grid-view' },
     { key: 'scripts', label: 'Scripts', icon: 'code' },
-    { key: 'esims', label: 'eSIMs', icon: 'sim-card' },
     { key: 'virtual-numbers', label: 'Numbers', icon: 'phone' },
+    { key: 'esims', label: 'eSIMs', icon: 'sim-card' },
+    { key: 'cards', label: 'Cards', icon: 'credit-card' },
     { key: 'gift-cards', label: 'Gift Cards', icon: 'gift' },
   ]
 
@@ -332,21 +353,28 @@ export default function LibraryPage() {
               placeholder="Search your library..."
             />
           </div>
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full md:w-auto p-1">
-            {filterButtons.map((filter) => (
-              <button
-                key={filter.key}
-                onClick={() => setActiveFilter(filter.key)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
-                  activeFilter === filter.key
-                    ? 'bg-primary text-black font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Icon name={filter.icon} size={16} />
-                {filter.label}
-              </button>
-            ))}
+          <div
+            ref={filterScrollRef}
+            className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full md:w-auto p-1"
+          >
+            {filterButtons.map((filter) => {
+              const isActive = activeFilter === filter.key
+              return (
+                <button
+                  key={filter.key}
+                  ref={isActive ? activeFilterRef : null}
+                  onClick={() => setActiveFilter(filter.key)}
+                  className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
+                    isActive
+                      ? 'bg-primary text-black font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Icon name={filter.icon} size={16} />
+                  {filter.label}
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -559,6 +587,15 @@ export default function LibraryPage() {
                             )}
                           </button>
                         )}
+                        {item.category === 'cards' && (
+                          <button
+                            onClick={() => setSelectedCardId(item.id)}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+                          >
+                            <Icon name="credit-card" size={16} />
+                            View Details
+                          </button>
+                        )}
                         {item.category === 'gift-cards' && (
                           <button
                             onClick={() => setSelectedGiftCardId(item.id)}
@@ -754,6 +791,14 @@ export default function LibraryPage() {
         giftCardId={selectedGiftCardId || ''}
         isOpen={!!selectedGiftCardId}
         onClose={() => setSelectedGiftCardId(null)}
+      />
+
+      {/* Card Details Modal */}
+      <CardDetailsModal
+        cardId={selectedCardId || ''}
+        isOpen={!!selectedCardId}
+        onClose={() => setSelectedCardId(null)}
+        formatPrice={(price: number) => `$${price.toFixed(2)}`}
       />
 
       {/* API Key Modal */}

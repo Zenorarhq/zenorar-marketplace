@@ -160,6 +160,30 @@ export async function GET(request: Request) {
       [userId]
     )
 
+    // Query user's virtual cards (from user_cards table)
+    const cardsResult = await query(
+      `
+      SELECT
+        uc.id,
+        uc.provider,
+        uc.card_type,
+        uc.card_brand,
+        uc.card_last_four,
+        uc.card_expiry,
+        uc.currency,
+        uc.balance,
+        uc.denomination,
+        uc.status,
+        uc.nickname,
+        uc.created_at as purchase_date,
+        uc.expires_at
+      FROM user_cards uc
+      WHERE uc.user_id = $1 AND uc.status NOT IN ('used', 'expired')
+      ORDER BY uc.created_at DESC
+      `,
+      [userId]
+    ).catch(() => ({ rows: [] })) // Table may not exist yet
+
     // Transform product results to library item format
     const productItems = productsResult.rows.map((row: any) => {
       // Map category slugs to library filter types
@@ -324,8 +348,42 @@ export async function GET(request: Request) {
       }
     })
 
+    // Transform cards to library item format
+    const cardItems = cardsResult.rows.map((row: any) => {
+      const brandDisplay = row.card_brand === 'mastercard' ? 'Mastercard' : 'Visa'
+      const typeDisplay = row.card_type === 'instant' ? 'Instant Card' : 'Virtual Card'
+      const valueDisplay = row.denomination
+        ? `$${parseFloat(row.denomination).toFixed(0)}`
+        : `$${parseFloat(row.balance || 0).toFixed(2)}`
+
+      return {
+        id: row.id,
+        name: `${brandDisplay} ${valueDisplay}`,
+        slug: null,
+        description: `${typeDisplay} - ${row.card_last_four ? `****${row.card_last_four}` : 'Card'}`,
+        category: 'cards',
+        icon: 'credit-card',
+        purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        status: row.status === 'active' ? 'active' : row.status,
+        cardBrand: row.card_brand,
+        cardType: row.card_type,
+        cardLastFour: row.card_last_four,
+        cardExpiry: row.card_expiry,
+        balance: parseFloat(row.balance || 0),
+        denomination: row.denomination ? parseFloat(row.denomination) : null,
+        currency: row.currency || 'USD',
+        provider: row.provider,
+        nickname: row.nickname,
+        expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : null,
+      }
+    })
+
     // Combine all library items (include pending/failed virtual numbers)
-    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems]
+    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...cardItems]
 
     // Sort all items by purchase date (newest first)
     libraryItems.sort((a, b) => {

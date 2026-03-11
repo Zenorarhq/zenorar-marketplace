@@ -31,7 +31,7 @@ export interface LibraryItem {
   name: string
   slug?: string
   description: string
-  category: 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers' | 'gift-cards'
+  category: 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers' | 'gift-cards' | 'cards'
   icon: string
   purchaseDate: string
   status: 'active' | 'expired' | 'update-available' | 'suspended' | 'pending' | 'failed' | 'delivered' | 'redeemed'
@@ -53,6 +53,15 @@ export interface LibraryItem {
   giftCardCategory?: string
   redeemedAt?: string
   giftCardId?: string
+  // Card specific fields
+  cardBrand?: string
+  cardType?: string
+  cardLastFour?: string
+  cardExpiry?: string
+  balance?: number
+  currency?: string
+  provider?: string
+  nickname?: string
 }
 
 export interface DownloadLink {
