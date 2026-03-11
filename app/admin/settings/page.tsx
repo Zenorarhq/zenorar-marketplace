@@ -58,6 +58,8 @@ export default function AdminSettingsPage() {
     seo?: any
     profile?: any
     exchangeRate?: any
+    virtualNumberPricing?: any
+    virtualCards?: any
   }>({})
 
   // Auto-clear message after 4 seconds
@@ -934,10 +936,12 @@ export default function AdminSettingsPage() {
       seo: { ...seoSettings },
       profile: { name: profileSettings.name },
       exchangeRate: { ...exchangeRateKeys },
+      virtualNumberPricing: { ...virtualNumberPricing },
+      virtualCards: { ...virtualCardsSettings },
     }
     setSettingsLoaded(true)
     setSettingsSaveCount(c => c + 1) // Force re-render to update hasUnsavedChanges
-  }, [generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys])
+  }, [generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys, virtualNumberPricing, virtualCardsSettings])
 
   // Capture initial state when all settings groups have loaded from API
   useEffect(() => {
@@ -982,10 +986,12 @@ export default function AdminSettingsPage() {
       compareObjects(initial.marketing, marketingSettings) ||
       compareObjects(initial.seo, seoSettings) ||
       (initial.profile && initial.profile.name !== profileSettings.name) ||
-      compareObjects(initial.exchangeRate, exchangeRateKeys)
+      compareObjects(initial.exchangeRate, exchangeRateKeys) ||
+      compareObjects(initial.virtualNumberPricing, virtualNumberPricing) ||
+      compareObjects(initial.virtualCards, virtualCardsSettings)
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsLoaded, settingsSaveCount, generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys])
+  }, [settingsLoaded, settingsSaveCount, generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys, virtualNumberPricing, virtualCardsSettings])
 
   // Reset settings to initial values (for Cancel button)
   const handleCancelChanges = useCallback(() => {
@@ -1006,6 +1012,8 @@ export default function AdminSettingsPage() {
     if (initial.seo) setSeoSettings(initial.seo)
     if (initial.profile) setProfileSettings(prev => ({ ...prev, name: initial.profile.name }))
     if (initial.exchangeRate) setExchangeRateKeys(initial.exchangeRate)
+    if (initial.virtualNumberPricing) setVirtualNumberPricing(initial.virtualNumberPricing)
+    if (initial.virtualCards) setVirtualCardsSettings(initial.virtualCards)
     setMessage(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
