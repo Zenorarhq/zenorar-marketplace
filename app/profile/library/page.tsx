@@ -597,15 +597,15 @@ export default function LibraryPage() {
                           {openMenuId === cardId && (
                             <div className="absolute right-0 bottom-full mb-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
                               {/* View Product Page - handle different categories */}
-                              {item.category === 'gift-cards' && item.slug ? (
+                              {item.category === 'gift-cards' ? (
                                 <button
-                                  onClick={() => { setOpenMenuId(null); router.push(`/gift-cards/${item.slug}`) }}
+                                  onClick={() => { setOpenMenuId(null); router.push('/gift-cards') }}
                                   className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
                                 >
                                   <Icon name="eye" size={16} />
-                                  View Product Page
+                                  Browse Gift Cards
                                 </button>
-                              ) : item.category !== 'gift-cards' && item.slug ? (
+                              ) : item.slug ? (
                                 <button
                                   onClick={() => { setOpenMenuId(null); router.push(`/products/${item.slug}`) }}
                                   className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"

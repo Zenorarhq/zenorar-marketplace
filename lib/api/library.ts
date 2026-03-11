@@ -73,6 +73,22 @@ export interface QRCode {
   expiresAt: string
 }
 
+export interface GiftCardDetails {
+  id: string
+  brand: string
+  category: string
+  denomination: number
+  code: string
+  pin?: string
+  status: string
+  imageUrl?: string
+  deliveredAt?: string
+  expiresAt?: string
+  redeemedAt?: string
+  giftCardSlug?: string
+  productDescription?: string
+}
+
 export const libraryApi = {
   /**
    * Get user's library (purchased products)
@@ -124,6 +140,23 @@ export const libraryApi = {
   async downloadAll(): Promise<ApiResponse<DownloadLink>> {
     return localApiFetch<DownloadLink>('/library/download-all', {
       method: 'POST',
+    })
+  },
+
+  /**
+   * Get gift card details including code
+   */
+  async getGiftCard(giftCardId: string): Promise<ApiResponse<GiftCardDetails>> {
+    return localApiFetch<GiftCardDetails>(`/library/gift-cards/${giftCardId}`)
+  },
+
+  /**
+   * Update gift card status (e.g., mark as redeemed)
+   */
+  async updateGiftCardStatus(giftCardId: string, status: 'delivered' | 'redeemed'): Promise<ApiResponse<any>> {
+    return localApiFetch<any>(`/library/gift-cards/${giftCardId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
     })
   },
 }

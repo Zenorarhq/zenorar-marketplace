@@ -3,23 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
-import { apiFetch } from '@/lib/api/client'
-
-interface GiftCardDetails {
-  id: string
-  brand: string
-  category: string
-  denomination: number
-  code: string
-  pin?: string
-  status: string
-  imageUrl?: string
-  deliveredAt?: string
-  expiresAt?: string
-  redeemedAt?: string
-  giftCardSlug?: string
-  productDescription?: string
-}
+import { libraryApi, GiftCardDetails } from '@/lib/api/library'
 
 interface GiftCardDetailModalProps {
   giftCardId: string
@@ -45,7 +29,7 @@ export default function GiftCardDetailModal({
       setError(null)
       setCodeRevealed(false)
 
-      apiFetch<GiftCardDetails>(`/library/gift-cards/${giftCardId}`)
+      libraryApi.getGiftCard(giftCardId)
         .then((res) => {
           if (res.success && res.data) {
             setGiftCard(res.data)
@@ -81,10 +65,7 @@ export default function GiftCardDetailModal({
     if (!giftCard) return
     setMarkingRedeemed(true)
 
-    const res = await apiFetch(`/library/gift-cards/${giftCard.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'redeemed' }),
-    })
+    const res = await libraryApi.updateGiftCardStatus(giftCard.id, 'redeemed')
 
     if (res.success) {
       setGiftCard({ ...giftCard, status: 'redeemed', redeemedAt: new Date().toISOString() })
