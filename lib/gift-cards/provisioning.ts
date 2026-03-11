@@ -2,10 +2,56 @@
 // Orchestrates bulk inventory and API provider fallback
 
 import { query } from '@/lib/db'
+import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import { sellCode, checkStock as checkBulkStock } from './inventory'
 import { reloadlyProvider } from './providers/reloadly'
+import { tangoProvider } from './providers/tango'
+import { ezPinProvider } from './providers/ezpin'
 import { encryptCode, decryptCode } from './encryption'
-import type { GiftCardPurchaseResult, GiftCardAvailability, UserGiftCard } from './types'
+import type { GiftCardPurchaseResult, GiftCardAvailability, UserGiftCard, ProviderPurchaseResult, GiftCardProvider } from './types'
+
+// Provider map for easy access
+const providerMap: Record<ProviderName, GiftCardProvider> = {
+  reloadly: reloadlyProvider,
+  tango: tangoProvider,
+  ezpin: ezPinProvider
+}
+
+type ProviderName = 'reloadly' | 'tango' | 'ezpin'
+
+/**
+ * Get the current mode for a provider from settings
+ */
+async function getCurrentProviderMode(providerName: ProviderName): Promise<'sandbox' | 'live'> {
+  try {
+    const settings = await getSiteSettingsByGroup('api')
+
+    switch (providerName) {
+      case 'reloadly': {
+        const isSandbox = settings.reloadlyMode === 'sandbox' ||
+                          settings.reloadlySandbox === true ||
+                          settings.reloadlySandbox === 'true'
+        return isSandbox ? 'sandbox' : 'live'
+      }
+      case 'tango': {
+        const isSandbox = settings.tangoMode === 'sandbox' ||
+                          settings.tangoSandbox === true ||
+                          settings.tangoSandbox === 'true'
+        return isSandbox ? 'sandbox' : 'live'
+      }
+      case 'ezpin': {
+        const isSandbox = settings.ezpinMode === 'sandbox' ||
+                          settings.ezpinSandbox === true ||
+                          settings.ezpinSandbox === 'true'
+        return isSandbox ? 'sandbox' : 'live'
+      }
+      default:
+        return 'sandbox'
+    }
+  } catch {
+    return 'sandbox'
+  }
+}
 
 /**
  * Check availability for a gift card denomination
@@ -29,14 +75,17 @@ export async function checkAvailability(
 
   // Check if gift card has API provider configured
   const giftCard = await getGiftCard(giftCardId)
-  if (giftCard?.provider === 'reloadly' && giftCard?.providerProductId) {
-    const apiStock = await reloadlyProvider.checkStock(giftCard.providerProductId, denomination)
-    if (apiStock > 0) {
-      return {
-        denomination,
-        available: true,
-        stock: apiStock,
-        source: 'api'
+  if (giftCard?.provider && giftCard?.providerProductId) {
+    const provider = providerMap[giftCard.provider as ProviderName]
+    if (provider) {
+      const apiStock = await provider.checkStock(giftCard.providerProductId, denomination)
+      if (apiStock > 0) {
+        return {
+          denomination,
+          available: true,
+          stock: apiStock,
+          source: 'api'
+        }
       }
     }
   }
@@ -97,10 +146,32 @@ export async function provisionGiftCard(
     }
 
     // Try API provider if bulk failed and provider is configured
-    if (giftCard.provider === 'reloadly' && giftCard.providerProductId) {
-      console.log('[Provisioning] Attempting API purchase via Reloadly:', { giftCardId, denomination, providerProductId: giftCard.providerProductId })
+    if (giftCard.provider && giftCard.providerProductId) {
+      // Check for sandbox/production mode mismatch
+      const providerName = giftCard.provider as ProviderName
+      const currentMode = await getCurrentProviderMode(providerName)
+      if (giftCard.syncedMode && giftCard.syncedMode !== currentMode) {
+        const providerDisplayName = providerName.charAt(0).toUpperCase() + providerName.slice(1)
+        const errorMsg = `This gift card was synced from ${providerDisplayName} ${giftCard.syncedMode} mode, but you're currently in ${currentMode} mode. Product IDs differ between modes. Please re-sync gift cards from Admin → Gift Cards → Sync Providers, or switch to ${giftCard.syncedMode} mode in Admin → Settings → API.`
+        console.error('[Provisioning] Mode mismatch:', { provider: providerName, syncedMode: giftCard.syncedMode, currentMode })
+        return { success: false, error: errorMsg }
+      }
 
-      const apiResult = await reloadlyProvider.purchaseCard(
+      console.log(`[Provisioning] Attempting API purchase via ${providerName}:`, {
+        giftCardId,
+        denomination,
+        providerProductId: giftCard.providerProductId,
+        mode: currentMode
+      })
+
+      // Get the appropriate provider
+      const provider = providerMap[providerName]
+      if (!provider) {
+        return { success: false, error: `Provider ${providerName} is not supported.` }
+      }
+
+      // Call the provider's purchaseCard method
+      const apiResult = await provider.purchaseCard(
         giftCard.providerProductId,
         denomination
       )
@@ -117,12 +188,12 @@ export async function provisionGiftCard(
           denomination,
           code: apiResult.code,
           pin: apiResult.pin,
-          source: 'reloadly',
+          source: providerName,
           expiresAt: apiResult.expiresAt,
           providerOrderId: apiResult.orderId
         })
 
-        console.log('[Provisioning] API purchase successful:', { userGiftCardId: userGiftCard.id })
+        console.log(`[Provisioning] API purchase via ${providerName} successful:`, { userGiftCardId: userGiftCard.id })
 
         return {
           success: true,
@@ -134,7 +205,13 @@ export async function provisionGiftCard(
       }
 
       // Return the actual error from the provider for better debugging
-      const errorMsg = apiResult.error || 'Gift card purchase failed'
+      let errorMsg = apiResult.error || 'Gift card purchase failed'
+
+      // Enhance error message for common issues
+      if (errorMsg.toLowerCase().includes('product') && errorMsg.toLowerCase().includes('not found')) {
+        errorMsg = `${errorMsg}. This may be due to a sandbox/production mode mismatch. Please re-sync gift cards from Admin → Gift Cards → Sync Providers.`
+      }
+
       console.error('[Provisioning] API purchase failed:', errorMsg)
       return { success: false, error: errorMsg }
     }
@@ -156,10 +233,11 @@ async function getGiftCard(giftCardId: string): Promise<{
   imageUrl?: string
   provider?: string
   providerProductId?: string
+  syncedMode?: 'sandbox' | 'live'
 } | null> {
   try {
     const result = await query(
-      `SELECT id, brand, category, image_url, provider, provider_product_id
+      `SELECT id, brand, category, image_url, provider, provider_product_id, provider_data
        FROM gift_cards
        WHERE id = $1`,
       [giftCardId]
@@ -170,13 +248,20 @@ async function getGiftCard(giftCardId: string): Promise<{
     }
 
     const row = result.rows[0]
+    // Extract synced_mode from provider_data if available
+    let syncedMode: 'sandbox' | 'live' | undefined
+    if (row.provider_data && typeof row.provider_data === 'object') {
+      syncedMode = row.provider_data.synced_mode
+    }
+
     return {
       id: row.id,
       brand: row.brand,
       category: row.category,
       imageUrl: row.image_url,
       provider: row.provider,
-      providerProductId: row.provider_product_id
+      providerProductId: row.provider_product_id,
+      syncedMode
     }
   } catch (error) {
     console.error('Error getting gift card:', error)
@@ -198,7 +283,7 @@ async function createUserGiftCard(data: {
   denomination: number
   code: string
   pin?: string
-  source: 'bulk' | 'reloadly' | 'manual'
+  source: 'bulk' | 'reloadly' | 'tango' | 'ezpin' | 'manual'
   expiresAt?: Date
   providerOrderId?: string
 }): Promise<{ id: string }> {

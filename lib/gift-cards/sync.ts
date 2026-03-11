@@ -8,6 +8,40 @@ import { tangoProvider } from './providers/tango'
 import { ezPinProvider } from './providers/ezpin'
 import type { ProviderProduct, GiftCardProvider } from './types'
 
+/**
+ * Get the current mode for a provider from settings
+ */
+async function getProviderMode(providerName: ProviderName): Promise<'sandbox' | 'live'> {
+  try {
+    const settings = await getSiteSettingsByGroup('api')
+
+    switch (providerName) {
+      case 'reloadly': {
+        const isSandbox = settings.reloadlyMode === 'sandbox' ||
+                          settings.reloadlySandbox === true ||
+                          settings.reloadlySandbox === 'true'
+        return isSandbox ? 'sandbox' : 'live'
+      }
+      case 'tango': {
+        const isSandbox = settings.tangoMode === 'sandbox' ||
+                          settings.tangoSandbox === true ||
+                          settings.tangoSandbox === 'true'
+        return isSandbox ? 'sandbox' : 'live'
+      }
+      case 'ezpin': {
+        const isSandbox = settings.ezpinMode === 'sandbox' ||
+                          settings.ezpinSandbox === true ||
+                          settings.ezpinSandbox === 'true'
+        return isSandbox ? 'sandbox' : 'live'
+      }
+      default:
+        return 'sandbox'
+    }
+  } catch {
+    return 'sandbox'
+  }
+}
+
 interface SyncResult {
   provider: string
   success: boolean
@@ -29,11 +63,15 @@ const providerMap: Record<ProviderName, GiftCardProvider> = {
  */
 async function syncProductsToDb(
   providerName: ProviderName,
-  products: ProviderProduct[]
+  products: ProviderProduct[],
+  syncMode?: 'sandbox' | 'live'
 ): Promise<{ synced: number; updated: number; errors: string[] }> {
   let synced = 0
   let updated = 0
   const errors: string[] = []
+
+  // Build provider_data with sync mode
+  const providerData = syncMode ? JSON.stringify({ synced_mode: syncMode, synced_at: new Date().toISOString() }) : null
 
   for (const product of products) {
     try {
@@ -51,7 +89,7 @@ async function syncProductsToDb(
       )
 
       if (existing.rows.length > 0) {
-        // Update existing
+        // Update existing - also update provider_data with current mode
         await query(
           `UPDATE gift_cards
            SET brand = $1,
@@ -63,8 +101,9 @@ async function syncProductsToDb(
                max_custom_amount = $7,
                discount_percent = $8,
                is_active = true,
+               provider_data = COALESCE($9::jsonb, provider_data),
                updated_at = NOW()
-           WHERE id = $9`,
+           WHERE id = $10`,
           [
             product.brand,
             product.category,
@@ -74,6 +113,7 @@ async function syncProductsToDb(
             product.minAmount,
             product.maxAmount,
             product.discountPercent || 0,
+            providerData,
             existing.rows[0].id
           ]
         )
@@ -89,13 +129,13 @@ async function syncProductsToDb(
           ? `${slug}-${providerName}-${product.productId}`
           : slug
 
-        // Insert new
+        // Insert new with provider_data containing sync mode
         await query(
           `INSERT INTO gift_cards
              (brand, slug, category, description, image_url, denominations,
               min_custom_amount, max_custom_amount, discount_percent,
-              provider, provider_product_id, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)`,
+              provider, provider_product_id, provider_data, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, true)`,
           [
             product.brand,
             finalSlug,
@@ -107,7 +147,8 @@ async function syncProductsToDb(
             product.maxAmount,
             product.discountPercent || 0,
             providerName,
-            product.productId
+            product.productId,
+            providerData
           ]
         )
         synced++
@@ -140,6 +181,10 @@ async function syncFromReloadly(countryCode: string = 'US'): Promise<SyncResult>
       return result
     }
 
+    // Get current mode to store with synced products
+    const currentMode = await getProviderMode('reloadly')
+    console.log(`[Sync] Syncing Reloadly products in ${currentMode} mode`)
+
     // Get products from Reloadly
     const products = await reloadlyProvider.getProducts(countryCode)
 
@@ -148,7 +193,8 @@ async function syncFromReloadly(countryCode: string = 'US'): Promise<SyncResult>
       return result
     }
 
-    const dbResult = await syncProductsToDb('reloadly', products)
+    // Pass the mode to syncProductsToDb so it's stored with each product
+    const dbResult = await syncProductsToDb('reloadly', products, currentMode)
     result.synced = dbResult.synced
     result.updated = dbResult.updated
     result.errors.push(...dbResult.errors)
@@ -173,6 +219,10 @@ async function syncFromTango(countryCode: string = 'US'): Promise<SyncResult> {
   }
 
   try {
+    // Get current mode to store with synced products
+    const currentMode = await getProviderMode('tango')
+    console.log(`[Sync] Syncing Tango products in ${currentMode} mode`)
+
     // Get products from Tango
     const products = await tangoProvider.getProducts()
 
@@ -181,7 +231,7 @@ async function syncFromTango(countryCode: string = 'US'): Promise<SyncResult> {
       return result
     }
 
-    const dbResult = await syncProductsToDb('tango', products)
+    const dbResult = await syncProductsToDb('tango', products, currentMode)
     result.synced = dbResult.synced
     result.updated = dbResult.updated
     result.errors.push(...dbResult.errors)
@@ -206,6 +256,10 @@ async function syncFromEzPin(countryCode: string = 'US'): Promise<SyncResult> {
   }
 
   try {
+    // Get current mode to store with synced products
+    const currentMode = await getProviderMode('ezpin')
+    console.log(`[Sync] Syncing EZ Pin products in ${currentMode} mode`)
+
     // Get products from EZ Pin
     const products = await ezPinProvider.getProducts()
 
@@ -214,7 +268,7 @@ async function syncFromEzPin(countryCode: string = 'US'): Promise<SyncResult> {
       return result
     }
 
-    const dbResult = await syncProductsToDb('ezpin', products)
+    const dbResult = await syncProductsToDb('ezpin', products, currentMode)
     result.synced = dbResult.synced
     result.updated = dbResult.updated
     result.errors.push(...dbResult.errors)

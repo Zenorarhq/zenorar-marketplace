@@ -55,7 +55,7 @@ export interface UserGiftCard {
   code: string
   pin?: string
   status: 'delivered' | 'redeemed' | 'expired' | 'refunded'
-  source: 'bulk' | 'reloadly' | 'manual'
+  source: 'bulk' | 'reloadly' | 'tango' | 'ezpin' | 'manual'
   deliveredAt: Date
   redeemedAt?: Date
   expiresAt?: Date
