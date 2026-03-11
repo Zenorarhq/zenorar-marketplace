@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Icon from '@/components/ui/Icon'
+import { localApiFetch } from '@/lib/api/client'
 
 interface CardTransaction {
   id: string
@@ -38,8 +39,7 @@ export default function CardDetailsModal({
     async function fetchCardDetails() {
       try {
         setLoading(true)
-        const response = await fetch(`/api/cards/${cardId}`)
-        const data = await response.json()
+        const data = await localApiFetch<any>(`/cards/${cardId}`)
 
         if (!data.success) {
           throw new Error(data.error || 'Failed to fetch card details')

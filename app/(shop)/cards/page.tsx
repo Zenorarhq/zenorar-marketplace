@@ -6,6 +6,7 @@ import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { useCart } from '@/lib/cart-context'
 import { getBalance } from '@/lib/api/wallet'
 import { localApiFetch } from '@/lib/api/client'
 import AuthDialog from '@/components/dialogs/AuthDialog'
@@ -54,6 +55,7 @@ export default function CardsPage() {
   const router = useRouter()
   const { isAuthenticated, user } = useAuth()
   const { formatPrice } = usePreferences()
+  const { addItem, showAddedToCartPopup } = useCart()
 
   const [activeTab, setActiveTab] = useState<TabType>('virtual')
   const [providers, setProviders] = useState<ProvidersData>({ virtual: [], instant: [], status: undefined })
@@ -67,7 +69,7 @@ export default function CardsPage() {
 
   // Payment state
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [processingPayment, setProcessingPayment] = useState(false)
+  const [processingPayment, setProcessingPayment] = useState<string | null>(null) // Track specific card being processed
   const [paymentError, setPaymentError] = useState<string | null>(null)
 
   // Wallet state
@@ -128,7 +130,9 @@ export default function CardsPage() {
       return
     }
 
-    setProcessingPayment(true)
+    // Create unique ID for tracking this specific purchase
+    const purchaseId = denomination ? `instant-${denomination}` : `virtual-${provider}`
+    setProcessingPayment(purchaseId)
     setPaymentError(null)
 
     try {
@@ -154,8 +158,41 @@ export default function CardsPage() {
     } catch (err: any) {
       setPaymentError(err.message)
     } finally {
-      setProcessingPayment(false)
+      setProcessingPayment(null)
     }
+  }
+
+  // Handle adding instant card to cart
+  const handleAddToCart = (denomination: { value: number; totalPrice: number; brand: string }) => {
+    const brandName = denomination.brand === 'mastercard' ? 'Mastercard' : 'Visa'
+
+    // Create cart item with unique ID to prevent quantity stacking
+    const product = {
+      id: `instant-card-${denomination.value}-${Date.now()}`,
+      name: `${brandName} $${denomination.value} Instant Card`,
+      slug: 'instant-card',
+      description: 'One-time use virtual card, instant delivery',
+      price: denomination.totalPrice,
+      rating: 5,
+      reviewCount: 0,
+      category: 'Instant Cards',
+      icon: 'credit-card',
+      iconColor: 'primary',
+      tags: [brandName, 'Instant Card', 'Virtual Card'],
+      productType: 'instant_card',
+      product_type: 'instant_card',
+      image: undefined,
+      metadata: {
+        productType: 'instant_card',
+        provider: 'reloadly',
+        denomination: denomination.value,
+        brand: denomination.brand,
+        cardType: 'instant'
+      }
+    }
+
+    addItem(product, 'standard', denomination.totalPrice)
+    showAddedToCartPopup(product, denomination.totalPrice)
   }
 
   const currentProviders = activeTab === 'virtual' ? providers.virtual : providers.instant
@@ -308,7 +345,7 @@ export default function CardsPage() {
                 provider={provider}
                 formatPrice={formatPrice}
                 onSelect={() => handleCreateCard(provider.provider)}
-                processing={processingPayment}
+                processing={processingPayment === `virtual-${provider.provider}`}
               />
             ))
           ) : (
@@ -318,8 +355,9 @@ export default function CardsPage() {
                 key={`${denom.brand}-${denom.value}`}
                 denomination={denom}
                 formatPrice={formatPrice}
-                onSelect={() => handleCreateCard('reloadly', denom.value)}
-                processing={processingPayment}
+                onBuyNow={() => handleCreateCard('reloadly', denom.value)}
+                onAddToCart={() => handleAddToCart(denom)}
+                processing={processingPayment === `instant-${denom.value}`}
               />
             ))
           )}
@@ -459,12 +497,14 @@ function VirtualCardOption({
 function InstantCardOption({
   denomination,
   formatPrice,
-  onSelect,
+  onBuyNow,
+  onAddToCart,
   processing
 }: {
   denomination: { value: number; totalPrice: number; brand: string }
   formatPrice: (price: number) => string
-  onSelect: () => void
+  onBuyNow: () => void
+  onAddToCart: () => void
   processing: boolean
 }) {
   const brandName = denomination.brand === 'mastercard' ? 'Mastercard' : 'Visa'
@@ -498,24 +538,34 @@ function InstantCardOption({
         </span>
       </div>
 
-      {/* Action Button */}
-      <button
-        onClick={onSelect}
-        disabled={processing}
-        className="w-full py-2.5 lg:py-3 bg-primary text-black rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
-      >
-        {processing ? (
-          <>
-            <Icon name="loading" size={18} className="animate-spin" />
-            Processing...
-          </>
-        ) : (
-          <>
-            <Icon name="zap" size={18} />
-            Buy Now
-          </>
-        )}
-      </button>
+      {/* Action Buttons */}
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={onBuyNow}
+          disabled={processing}
+          className="w-full py-2.5 lg:py-3 bg-primary text-black rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
+        >
+          {processing ? (
+            <>
+              <Icon name="loading" size={18} className="animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Icon name="zap" size={18} />
+              Buy Now
+            </>
+          )}
+        </button>
+        <button
+          onClick={onAddToCart}
+          disabled={processing}
+          className="w-full py-2.5 lg:py-3 bg-surface-dark border border-border-dark text-white rounded-lg font-medium hover:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
+        >
+          <Icon name="cart" size={18} />
+          Add to Cart
+        </button>
+      </div>
     </div>
   )
 }

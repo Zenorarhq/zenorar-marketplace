@@ -223,6 +223,7 @@ export async function GET(request: Request) {
         category: category,
         icon: icon,
         orderId: row.order_id,
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
         purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
@@ -243,6 +244,7 @@ export async function GET(request: Request) {
         description: `${row.name} - ${row.phoneNumber}`,
         category: 'virtual-numbers',
         icon: 'phone',
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
         purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
@@ -270,6 +272,7 @@ export async function GET(request: Request) {
           : `${row.name} - Provisioning...`,
         category: 'virtual-numbers',
         icon: 'phone',
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
         purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
@@ -296,6 +299,7 @@ export async function GET(request: Request) {
         category: 'gift-cards',
         icon: 'gift',
         imageUrl: row.image_url,
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
         purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
@@ -328,6 +332,7 @@ export async function GET(request: Request) {
           : `${row.data_amount_display} - ${row.validity_days} days`,
         category: 'esims',
         icon: 'sim-card',
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
         purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
@@ -363,6 +368,7 @@ export async function GET(request: Request) {
         description: `${typeDisplay} - ${row.card_last_four ? `****${row.card_last_four}` : 'Card'}`,
         category: 'cards',
         icon: 'credit-card',
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
         purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
@@ -389,8 +395,8 @@ export async function GET(request: Request) {
     libraryItems.sort((a, b) => {
       const itemA = a as any
       const itemB = b as any
-      const dateA = new Date(itemA.purchaseDate || itemA.createdAt || 0).getTime()
-      const dateB = new Date(itemB.purchaseDate || itemB.createdAt || 0).getTime()
+      const dateA = itemA.purchaseDateRaw || 0
+      const dateB = itemB.purchaseDateRaw || 0
       return dateB - dateA
     })
 

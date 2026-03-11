@@ -45,6 +45,18 @@ export default function LibraryPage() {
     const tab = params.get('tab') as LibraryFilter
     if (tab) setActiveFilter(tab)
   }, [])
+
+  // Update URL when filter changes (persist tab on refresh)
+  const handleFilterChange = (filter: LibraryFilter) => {
+    setActiveFilter(filter)
+    const url = new URL(window.location.href)
+    if (filter === 'all') {
+      url.searchParams.delete('tab')
+    } else {
+      url.searchParams.set('tab', filter)
+    }
+    window.history.replaceState({}, '', url.toString())
+  }
   const [searchQuery, setSearchQuery] = useState('')
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -363,7 +375,7 @@ export default function LibraryPage() {
                 <button
                   key={filter.key}
                   ref={isActive ? activeFilterRef : null}
-                  onClick={() => setActiveFilter(filter.key)}
+                  onClick={() => handleFilterChange(filter.key)}
                   className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
                     isActive
                       ? 'bg-primary text-black font-bold'
