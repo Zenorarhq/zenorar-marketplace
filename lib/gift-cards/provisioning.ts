@@ -98,6 +98,8 @@ export async function provisionGiftCard(
 
     // Try API provider if bulk failed and provider is configured
     if (giftCard.provider === 'reloadly' && giftCard.providerProductId) {
+      console.log('[Provisioning] Attempting API purchase via Reloadly:', { giftCardId, denomination, providerProductId: giftCard.providerProductId })
+
       const apiResult = await reloadlyProvider.purchaseCard(
         giftCard.providerProductId,
         denomination
@@ -120,6 +122,8 @@ export async function provisionGiftCard(
           providerOrderId: apiResult.orderId
         })
 
+        console.log('[Provisioning] API purchase successful:', { userGiftCardId: userGiftCard.id })
+
         return {
           success: true,
           userGiftCardId: userGiftCard.id,
@@ -129,7 +133,10 @@ export async function provisionGiftCard(
         }
       }
 
-      return { success: false, error: apiResult.error || 'Gift card provider is temporarily unavailable. Please try again later or contact support.' }
+      // Return the actual error from the provider for better debugging
+      const errorMsg = apiResult.error || 'Gift card purchase failed'
+      console.error('[Provisioning] API purchase failed:', errorMsg)
+      return { success: false, error: errorMsg }
     }
 
     return { success: false, error: 'This gift card is currently out of stock. Please try a different card or denomination.' }

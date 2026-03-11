@@ -40,6 +40,7 @@ export default function AdminSettingsPage() {
   // Track initial settings values to detect unsaved changes
   const [settingsLoaded, setSettingsLoaded] = useState(false)
   const [settingsSaveCount, setSettingsSaveCount] = useState(0) // Triggers re-render after save
+  const [loadedGroups, setLoadedGroups] = useState<Set<string>>(new Set())
   const initialSettingsRef = useRef<{
     general?: any
     security?: any
@@ -137,6 +138,7 @@ export default function AdminSettingsPage() {
         ...prev,
         name: user.name,
       }))
+      setLoadedGroups(prev => new Set(prev).add('profile'))
     }
   }, [user])
 
@@ -528,6 +530,7 @@ export default function AdminSettingsPage() {
           promoBannerCode: d.promoBannerCode ?? prev.promoBannerCode,
         }))
       }
+      setLoadedGroups(prev => new Set(prev).add('general'))
     })
   }, [])
 
@@ -545,6 +548,7 @@ export default function AdminSettingsPage() {
           ipWhitelist: d.ipWhitelist ?? prev.ipWhitelist,
         }))
       }
+      setLoadedGroups(prev => new Set(prev).add('security'))
     })
   }, [])
 
@@ -563,6 +567,7 @@ export default function AdminSettingsPage() {
           slackWebhook: d.slackWebhook ?? prev.slackWebhook,
         }))
       }
+      setLoadedGroups(prev => new Set(prev).add('notification'))
     })
     // Load sent notifications
     fetchSentNotifications()
@@ -635,6 +640,7 @@ export default function AdminSettingsPage() {
           bankInstructions: d.bankInstructions ?? prev.bankInstructions,
         }))
       }
+      setLoadedGroups(prev => new Set(prev).add('payment'))
     })
     // Load API settings (Exchange Rates, eSIM, Virtual Numbers)
     settingsApi.getSettingsByGroup('api').then((res) => {
@@ -742,6 +748,7 @@ export default function AdminSettingsPage() {
           fivesimApiKey: d.fivesimApiKey ?? prev.fivesimApiKey,
         }))
       }
+      setLoadedGroups(prev => new Set(prev).add('api'))
     })
     // Load cron settings
     settingsApi.getSettingsByGroup('cron').then((res) => {
@@ -764,6 +771,7 @@ export default function AdminSettingsPage() {
           minFirstPurchase: d.minFirstPurchase ?? prev.minFirstPurchase,
         }))
       }
+      setLoadedGroups(prev => new Set(prev).add('referral'))
     })
     // Load marketing settings
     settingsApi.getSettingsByGroup('marketing').then((res) => {
@@ -778,6 +786,7 @@ export default function AdminSettingsPage() {
           customBodyCode: d.customBodyCode ?? prev.customBodyCode,
         }))
       }
+      setLoadedGroups(prev => new Set(prev).add('marketing'))
     })
   }, [])
 
@@ -794,7 +803,10 @@ export default function AdminSettingsPage() {
           return updated
         })
       }
-    }).catch(() => {})
+      setLoadedGroups(prev => new Set(prev).add('seo'))
+    }).catch(() => {
+      setLoadedGroups(prev => new Set(prev).add('seo'))
+    })
   }, [])
 
   // Load R2 settings on mount
@@ -845,15 +857,20 @@ export default function AdminSettingsPage() {
     setSettingsSaveCount(c => c + 1) // Force re-render to update hasUnsavedChanges
   }, [generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys])
 
-  // Capture initial state after a short delay to ensure all API calls complete
+  // Capture initial state when all settings groups have loaded from API
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!settingsLoaded) {
+    // Required groups that must be loaded before capturing initial state
+    const requiredGroups = ['general', 'security', 'notification', 'payment', 'api', 'referral', 'marketing', 'seo', 'profile']
+    const allLoaded = requiredGroups.every(g => loadedGroups.has(g))
+
+    if (allLoaded && !settingsLoaded) {
+      // Add a small delay to ensure state updates have propagated
+      const timer = setTimeout(() => {
         captureInitialSettings()
-      }
-    }, 1500) // Wait for API calls to complete
-    return () => clearTimeout(timer)
-  }, [captureInitialSettings, settingsLoaded])
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [loadedGroups, captureInitialSettings, settingsLoaded])
 
   // Compute whether there are unsaved changes
   const hasUnsavedChanges = useMemo(() => {

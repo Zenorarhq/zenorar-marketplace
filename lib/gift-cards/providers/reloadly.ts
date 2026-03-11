@@ -268,17 +268,38 @@ class ReloadlyProvider implements GiftCardProvider {
     denomination: number,
     recipientEmail?: string
   ): Promise<ProviderPurchaseResult> {
+    console.log('[Reloadly] Starting purchase:', { productId, denomination, recipientEmail: recipientEmail ? 'provided' : 'none' })
+
     const credentials = await this.getCredentials()
     if (!credentials) {
+      console.error('[Reloadly] Purchase failed: No credentials configured')
       return { success: false, error: 'Reloadly not configured' }
     }
 
+    console.log('[Reloadly] Using mode:', credentials.isSandbox ? 'sandbox' : 'production')
+
     const token = await this.getAccessToken()
     if (!token) {
+      console.error('[Reloadly] Purchase failed: Could not get access token')
       return { success: false, error: 'Failed to authenticate with Reloadly' }
     }
 
+    console.log('[Reloadly] Got access token, making purchase request...')
+
     try {
+      const requestBody = {
+        productId: parseInt(productId),
+        countryCode: 'US',
+        quantity: 1,
+        unitPrice: denomination,
+        customIdentifier: `GC_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        senderName: 'Zenorar',
+        recipientEmail: recipientEmail,
+        recipientPhoneDetails: null
+      }
+
+      console.log('[Reloadly] Request body:', { ...requestBody, recipientEmail: requestBody.recipientEmail ? 'redacted' : null })
+
       const response = await fetch(
         `${this.getBaseUrl(credentials.isSandbox)}/orders`,
         {
@@ -288,27 +309,22 @@ class ReloadlyProvider implements GiftCardProvider {
             'Accept': 'application/com.reloadly.giftcards-v1+json',
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            productId: parseInt(productId),
-            countryCode: 'US',
-            quantity: 1,
-            unitPrice: denomination,
-            customIdentifier: `GC_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-            senderName: 'Zenorar',
-            recipientEmail: recipientEmail,
-            recipientPhoneDetails: null
-          })
+          body: JSON.stringify(requestBody)
         }
       )
 
       const data = await response.json()
 
       if (!response.ok) {
+        const errorMsg = data.message || data.errorMessage || 'Purchase failed'
+        console.error('[Reloadly] Purchase API error:', { status: response.status, error: errorMsg, details: data })
         return {
           success: false,
-          error: data.message || data.errorMessage || 'Purchase failed'
+          error: errorMsg
         }
       }
+
+      console.log('[Reloadly] Purchase successful:', { transactionId: data.transactionId, hasCards: !!data.cards })
 
       // Get the redemption code from the response
       const card = data.cards?.[0] || data
@@ -321,7 +337,7 @@ class ReloadlyProvider implements GiftCardProvider {
         expiresAt: card.expiryDate ? new Date(card.expiryDate) : undefined
       }
     } catch (error: any) {
-      console.error('Reloadly purchaseCard error:', error)
+      console.error('[Reloadly] purchaseCard error:', error)
       return {
         success: false,
         error: error.message || 'Purchase request failed'

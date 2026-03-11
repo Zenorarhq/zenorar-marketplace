@@ -367,7 +367,7 @@ export default function AdminGiftCardsPage() {
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               <Icon name="refresh-cw" size={18} className={syncMutation.isPending ? 'animate-spin' : ''} />
-              Sync Reloadly
+              Sync Providers
             </button>
             <button
               onClick={() => { resetForm(); setEditingCard(null); setShowAddModal(true) }}
@@ -379,20 +379,32 @@ export default function AdminGiftCardsPage() {
           </div>
         </div>
 
-        {/* Reloadly Status */}
+        {/* Provider Status */}
         {reloadlyStatus && (
-          <div className={`mb-4 p-3 rounded-lg border ${
-            reloadlyStatus.success
-              ? 'bg-green-900/20 border-green-500/20 text-green-400'
-              : 'bg-yellow-900/20 border-yellow-500/20 text-yellow-400'
-          }`}>
-            <div className="flex items-center gap-2 text-sm">
-              <Icon name={reloadlyStatus.success ? 'check-circle' : 'alert'} size={16} />
-              {reloadlyStatus.success
-                ? `Reloadly connected (${reloadlyStatus.mode} mode)`
-                : `Reloadly: ${reloadlyStatus.error || 'Not configured'}`
-              }
-            </div>
+          <div className="mb-4 space-y-2">
+            {reloadlyStatus.connections && Object.entries(reloadlyStatus.connections).map(([provider, status]: [string, any]) => (
+              <div key={provider} className={`p-3 rounded-lg border ${
+                status.success
+                  ? 'bg-green-900/20 border-green-500/20 text-green-400'
+                  : 'bg-yellow-900/20 border-yellow-500/20 text-yellow-400'
+              }`}>
+                <div className="flex items-center gap-2 text-sm">
+                  <Icon name={status.success ? 'check-circle' : 'alert'} size={16} />
+                  {status.success
+                    ? `${provider.charAt(0).toUpperCase() + provider.slice(1)} connected (${status.mode || 'live'} mode)`
+                    : `${provider.charAt(0).toUpperCase() + provider.slice(1)}: ${status.error || 'Not configured'}`
+                  }
+                </div>
+              </div>
+            ))}
+            {(!reloadlyStatus.connections || Object.keys(reloadlyStatus.connections).length === 0) && (
+              <div className="p-3 rounded-lg border bg-yellow-900/20 border-yellow-500/20 text-yellow-400">
+                <div className="flex items-center gap-2 text-sm">
+                  <Icon name="alert" size={16} />
+                  No gift card providers configured
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -876,6 +888,8 @@ export default function AdminGiftCardsPage() {
                     >
                       <option value="">None (Bulk only)</option>
                       <option value="reloadly">Reloadly</option>
+                      <option value="tango">Tango Card</option>
+                      <option value="ezpin">EZ Pin</option>
                     </select>
                   </div>
                 </div>
