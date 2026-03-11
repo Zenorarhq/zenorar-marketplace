@@ -36,6 +36,7 @@ next-env.d.ts
 /Zenorar/
 
 # Claude
+clause.md
 .claude/
 CLAUDE.local.md
 
