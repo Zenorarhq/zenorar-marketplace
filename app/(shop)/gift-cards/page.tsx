@@ -420,8 +420,12 @@ export default function GiftCardsPage() {
         isOpen={showLoginModal}
         onClose={() => {
           setShowLoginModal(false)
-          setPendingWalletCheckout(false)
-          setPendingCard(null)
+          // Only clear pending state if user hasn't authenticated (manual dismiss)
+          // Don't clear unconditionally since AuthDialog calls onClose() after onSuccess()
+          if (!isAuthenticated) {
+            setPendingWalletCheckout(false)
+            setPendingCard(null)
+          }
         }}
         onSuccess={() => {
           setShowLoginModal(false)
