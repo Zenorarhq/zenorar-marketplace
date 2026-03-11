@@ -7,7 +7,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { getBalance } from '@/lib/api/wallet'
-import { apiFetch } from '@/lib/api/client'
+import { localApiFetch } from '@/lib/api/client'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
 
@@ -122,7 +122,7 @@ export default function CardsPage() {
     setPaymentError(null)
 
     try {
-      const data = await apiFetch<any>('/cards', {
+      const data = await localApiFetch<any>('/cards', {
         method: 'POST',
         body: JSON.stringify({
           provider,
