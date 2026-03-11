@@ -7,6 +7,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { getBalance } from '@/lib/api/wallet'
+import { apiFetch } from '@/lib/api/client'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
 
@@ -121,9 +122,8 @@ export default function CardsPage() {
     setPaymentError(null)
 
     try {
-      const response = await fetch('/api/cards', {
+      const data = await apiFetch<any>('/cards', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider,
           cardType: denomination ? 'instant' : 'virtual',
@@ -131,8 +131,6 @@ export default function CardsPage() {
           cardBrand: selectedBrand
         })
       })
-
-      const data = await response.json()
 
       if (!data.success) {
         if (data.error?.includes('Insufficient balance')) {
@@ -430,7 +428,7 @@ function VirtualCardOption({
       >
         {processing ? (
           <>
-            <Icon name="loader" size={18} className="animate-spin" />
+            <Icon name="loading" size={18} className="animate-spin" />
             Creating...
           </>
         ) : (
@@ -495,7 +493,7 @@ function InstantCardOption({
       >
         {processing ? (
           <>
-            <Icon name="loader" size={18} className="animate-spin" />
+            <Icon name="loading" size={18} className="animate-spin" />
             Processing...
           </>
         ) : (
