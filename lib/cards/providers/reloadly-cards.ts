@@ -134,57 +134,78 @@ class ReloadlyCardsProvider implements CardProviderInterface {
   async getInstantCardOptions(countryCode: string = 'US'): Promise<InstantCardOption[]> {
     const credentials = await this.getCredentials()
     if (!credentials) {
+      console.log('[Reloadly Cards] No credentials available')
       return []
     }
 
     const token = await this.getAccessToken()
     if (!token) {
+      console.log('[Reloadly Cards] Failed to get access token')
       return []
     }
 
     try {
-      const response = await fetch(
-        `${this.getBaseUrl(credentials.isSandbox)}/countries/${countryCode}/products?size=200`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/com.reloadly.giftcards-v1+json'
+      // Try multiple country codes to find prepaid cards
+      const countryCodes = [countryCode, 'US', 'GB', 'CA', 'AU']
+      const uniqueCodes = [...new Set(countryCodes)]
+
+      for (const code of uniqueCodes) {
+        const response = await fetch(
+          `${this.getBaseUrl(credentials.isSandbox)}/countries/${code}/products?size=200`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/com.reloadly.giftcards-v1+json'
+            }
+          }
+        )
+
+        if (!response.ok) {
+          console.log(`[Reloadly Cards] Failed to fetch products for ${code}:`, response.status)
+          continue
+        }
+
+        const data = await response.json()
+        const products = data.content || data || []
+
+        // Filter for Visa and Mastercard prepaid/virtual cards
+        // Be more flexible with the filter - just look for visa/mastercard
+        const cardProducts = products.filter((p: any) => {
+          const name = (p.productName || p.brandName || '').toLowerCase()
+          const isCard = name.includes('visa') || name.includes('mastercard')
+          return isCard
+        })
+
+        console.log(`[Reloadly Cards] Found ${cardProducts.length} card products in ${code}`)
+
+        if (cardProducts.length > 0) {
+          const options: InstantCardOption[] = []
+
+          for (const product of cardProducts) {
+            const brand = this.extractBrand(product.productName || product.brandName)
+            const denominations = product.fixedRecipientDenominations || []
+
+            for (const denom of denominations) {
+              options.push({
+                productId: String(product.productId),
+                brand,
+                denomination: denom,
+                totalPrice: denom, // Markup applied at checkout
+                currency: product.recipientCurrencyCode || 'USD'
+              })
+            }
+          }
+
+          if (options.length > 0) {
+            console.log(`[Reloadly Cards] Returning ${options.length} instant card options`)
+            return options
           }
         }
-      )
-
-      if (!response.ok) {
-        return []
       }
 
-      const data = await response.json()
-      const products = data.content || data || []
-
-      // Filter for Visa and Mastercard prepaid cards only
-      const cardProducts = products.filter((p: any) => {
-        const name = (p.productName || p.brandName || '').toLowerCase()
-        return (name.includes('visa') || name.includes('mastercard')) &&
-               (name.includes('prepaid') || name.includes('gift') || name.includes('virtual'))
-      })
-
-      const options: InstantCardOption[] = []
-
-      for (const product of cardProducts) {
-        const brand = this.extractBrand(product.productName || product.brandName)
-        const denominations = product.fixedRecipientDenominations || []
-
-        for (const denom of denominations) {
-          options.push({
-            productId: String(product.productId),
-            brand,
-            denomination: denom,
-            totalPrice: denom, // Markup applied at checkout
-            currency: product.recipientCurrencyCode || 'USD'
-          })
-        }
-      }
-
-      return options
+      // If no card products found, log some available products for debugging
+      console.log('[Reloadly Cards] No Visa/Mastercard products found in any region')
+      return []
     } catch (error) {
       console.error('Reloadly getInstantCardOptions error:', error)
       return []

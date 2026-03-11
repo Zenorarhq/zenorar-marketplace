@@ -130,11 +130,13 @@ export async function GET(request: NextRequest) {
             ...providerStatus,
             reloadly: {
               enabled: reloadlyEnabled,
-              configured: reloadlyConfigured
+              configured: reloadlyConfigured,
+              hasProducts: instantCardOptions.length > 0
             }
           },
           anyVirtualEnabled: providerStatus.sudo.enabled || providerStatus.lithic.enabled,
-          anyInstantEnabled: reloadlyEnabled,
+          // Only mark as enabled if we actually have instant card products
+          anyInstantEnabled: reloadlyEnabled && instantCardOptions.length > 0,
           anyConfigured: providerStatus.sudo.configured || providerStatus.lithic.configured || reloadlyConfigured
         }
       }
