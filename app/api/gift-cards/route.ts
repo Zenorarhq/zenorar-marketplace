@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
          GROUP BY gift_card_id
        ) sales ON gc.id = sales.gift_card_id
        ${whereClause}
-       ORDER BY gc.is_featured DESC, COALESCE(sales.purchase_count, 0) DESC, gc.brand ASC
+       ORDER BY gc.is_featured DESC, gc.sort_priority ASC NULLS LAST, COALESCE(sales.purchase_count, 0) DESC, gc.discount_percent DESC, gc.brand ASC
        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
       [...params, limit, offset]
     )

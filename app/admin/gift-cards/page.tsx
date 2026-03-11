@@ -20,6 +20,7 @@ interface GiftCard {
   isFeatured: boolean
   provider: string | null
   providerProductId: string | null
+  sortPriority: number | null
   inventory: {
     available: number
     sold: number
@@ -70,7 +71,8 @@ export default function AdminGiftCardsPage() {
     isActive: true,
     isFeatured: false,
     provider: '',
-    providerProductId: ''
+    providerProductId: '',
+    sortPriority: '' as string | number
   })
 
   // Fetch gift cards
@@ -246,7 +248,8 @@ export default function AdminGiftCardsPage() {
       isActive: true,
       isFeatured: false,
       provider: '',
-      providerProductId: ''
+      providerProductId: '',
+      sortPriority: ''
     })
     setFormError('')
   }
@@ -264,7 +267,8 @@ export default function AdminGiftCardsPage() {
       isActive: card.isActive,
       isFeatured: card.isFeatured,
       provider: card.provider || '',
-      providerProductId: card.providerProductId || ''
+      providerProductId: card.providerProductId || '',
+      sortPriority: card.sortPriority ?? ''
     })
     setShowAddModal(true)
   }
@@ -293,7 +297,8 @@ export default function AdminGiftCardsPage() {
       isActive: formData.isActive,
       isFeatured: formData.isFeatured,
       provider: formData.provider || undefined,
-      providerProductId: formData.providerProductId || undefined
+      providerProductId: formData.providerProductId || undefined,
+      sortPriority: formData.sortPriority === '' ? null : Number(formData.sortPriority)
     })
   }
 
@@ -876,7 +881,7 @@ export default function AdminGiftCardsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Discount %</label>
                     <input
@@ -886,6 +891,17 @@ export default function AdminGiftCardsPage() {
                       className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
                       min="0"
                       max="100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Sort Priority</label>
+                    <input
+                      type="number"
+                      value={formData.sortPriority}
+                      onChange={(e) => setFormData({ ...formData, sortPriority: e.target.value })}
+                      className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
+                      min="1"
+                      placeholder="1 = top"
                     />
                   </div>
                   <div>

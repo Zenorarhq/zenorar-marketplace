@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
       maxCustomAmount: row.max_custom_amount ? parseFloat(row.max_custom_amount) : null,
       provider: row.provider,
       providerProductId: row.provider_product_id,
+      sortPriority: row.sort_priority,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       inventory: {
@@ -163,8 +164,8 @@ export async function POST(request: NextRequest) {
     const result = await query(
       `INSERT INTO gift_cards
          (brand, slug, category, description, image_url, denominations, discount_percent,
-          is_active, is_featured, min_custom_amount, max_custom_amount, provider, provider_product_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          is_active, is_featured, min_custom_amount, max_custom_amount, provider, provider_product_id, sort_priority)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
       [
         body.brand,
@@ -179,7 +180,8 @@ export async function POST(request: NextRequest) {
         body.minCustomAmount || null,
         body.maxCustomAmount || null,
         body.provider || null,
-        body.providerProductId || null
+        body.providerProductId || null,
+        body.sortPriority || null
       ]
     )
 
