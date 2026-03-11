@@ -2,8 +2,9 @@ import { Product, Category, NavItem } from './types'
 
 export const navCategories: NavItem[] = [
   { label: 'Scripts', href: '/scripts' },
-  { label: 'eSIMs', href: '/esim' },
   { label: 'Virtual Numbers', href: '/virtual-numbers' },
+  { label: 'eSIMs', href: '/esim' },
+  { label: 'Cards', href: '/cards' },
   { label: 'Gift Cards', href: '/gift-cards' },
 ]
 

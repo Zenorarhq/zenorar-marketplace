@@ -24,7 +24,7 @@ const tabs: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'payments', label: 'Payments', icon: 'credit-card' },
   { id: 'referral', label: 'Referral Program', icon: 'gift' },
   { id: 'api', label: 'API Keys', icon: 'key' },
-  { id: 'markup', label: 'Markup', icon: 'tag' },
+  { id: 'markup', label: 'Price Markup', icon: 'tag' },
   { id: 'email', label: 'Email Service', icon: 'mail' },
   { id: 'marketing', label: 'Marketing', icon: 'campaign' },
   { id: 'seo', label: 'SEO', icon: 'search' },
@@ -308,6 +308,7 @@ export default function AdminSettingsPage() {
     voiceEsimProviders: false,
     virtualNumbers: false,
     giftCardProviders: false,
+    virtualCards: false,
     otpProviders: false,
     cloudflareR2: false,
     apiKeys: false,
@@ -443,6 +444,28 @@ export default function AdminSettingsPage() {
     ezpinSandboxApiSecret: '',
     ezpinProductionApiKey: '',
     ezpinProductionApiSecret: '',
+  })
+
+  // Virtual Cards Settings State
+  const [virtualCardsSettings, setVirtualCardsSettings] = useState({
+    // Sudo Africa
+    sudoCardsEnabled: false,
+    sudoMode: 'sandbox' as 'sandbox' | 'production',
+    sudoSandboxApiKey: '',
+    sudoProductionApiKey: '',
+    // Lithic
+    lithicCardsEnabled: false,
+    lithicMode: 'sandbox' as 'sandbox' | 'production',
+    lithicSandboxApiKey: '',
+    lithicProductionApiKey: '',
+    // Reloadly Instant Cards (uses same credentials as gift cards)
+    reloadlyCardsEnabled: false,
+    // Pricing
+    sudoCreationFee: 3.00,
+    sudoTopUpFeePercent: 2.0,
+    lithicCreationFee: 5.00,
+    lithicTopUpFeePercent: 2.5,
+    reloadlyInstantMarkupPercent: 5.0,
   })
 
   // OTP Providers Settings State
@@ -738,6 +761,27 @@ export default function AdminSettingsPage() {
           ezpinSandboxApiSecret: d.ezpinSandboxApiSecret ?? prev.ezpinSandboxApiSecret,
           ezpinProductionApiKey: d.ezpinProductionApiKey ?? prev.ezpinProductionApiKey,
           ezpinProductionApiSecret: d.ezpinProductionApiSecret ?? prev.ezpinProductionApiSecret,
+        }))
+        // Virtual Cards Providers (stored in 'api' group)
+        setVirtualCardsSettings((prev) => ({
+          // Sudo Africa
+          sudoCardsEnabled: d.sudoCardsEnabled ?? prev.sudoCardsEnabled,
+          sudoMode: d.sudoMode ?? prev.sudoMode,
+          sudoSandboxApiKey: d.sudoSandboxApiKey ?? prev.sudoSandboxApiKey,
+          sudoProductionApiKey: d.sudoProductionApiKey ?? prev.sudoProductionApiKey,
+          // Lithic
+          lithicCardsEnabled: d.lithicCardsEnabled ?? prev.lithicCardsEnabled,
+          lithicMode: d.lithicMode ?? prev.lithicMode,
+          lithicSandboxApiKey: d.lithicSandboxApiKey ?? prev.lithicSandboxApiKey,
+          lithicProductionApiKey: d.lithicProductionApiKey ?? prev.lithicProductionApiKey,
+          // Reloadly Instant Cards
+          reloadlyCardsEnabled: d.reloadlyCardsEnabled ?? prev.reloadlyCardsEnabled,
+          // Pricing (from markup group)
+          sudoCreationFee: d.sudoCreationFee ?? prev.sudoCreationFee,
+          sudoTopUpFeePercent: d.sudoTopUpFeePercent ?? prev.sudoTopUpFeePercent,
+          lithicCreationFee: d.lithicCreationFee ?? prev.lithicCreationFee,
+          lithicTopUpFeePercent: d.lithicTopUpFeePercent ?? prev.lithicTopUpFeePercent,
+          reloadlyInstantMarkupPercent: d.reloadlyInstantMarkupPercent ?? prev.reloadlyInstantMarkupPercent,
         }))
         // OTP Providers (stored in 'api' group)
         setOtpSettings((prev) => ({
@@ -1537,6 +1581,22 @@ export default function AdminSettingsPage() {
       { key: 'ezpinSandboxApiSecret', value: giftCardSettings.ezpinSandboxApiSecret, group: 'api', isPublic: false },
       { key: 'ezpinProductionApiKey', value: giftCardSettings.ezpinProductionApiKey, group: 'api', isPublic: false },
       { key: 'ezpinProductionApiSecret', value: giftCardSettings.ezpinProductionApiSecret, group: 'api', isPublic: false },
+      // Virtual Cards Providers
+      { key: 'sudoCardsEnabled', value: virtualCardsSettings.sudoCardsEnabled, group: 'api', isPublic: true },
+      { key: 'sudoMode', value: virtualCardsSettings.sudoMode, group: 'api', isPublic: false },
+      { key: 'sudoSandboxApiKey', value: virtualCardsSettings.sudoSandboxApiKey, group: 'api', isPublic: false },
+      { key: 'sudoProductionApiKey', value: virtualCardsSettings.sudoProductionApiKey, group: 'api', isPublic: false },
+      { key: 'lithicCardsEnabled', value: virtualCardsSettings.lithicCardsEnabled, group: 'api', isPublic: true },
+      { key: 'lithicMode', value: virtualCardsSettings.lithicMode, group: 'api', isPublic: false },
+      { key: 'lithicSandboxApiKey', value: virtualCardsSettings.lithicSandboxApiKey, group: 'api', isPublic: false },
+      { key: 'lithicProductionApiKey', value: virtualCardsSettings.lithicProductionApiKey, group: 'api', isPublic: false },
+      { key: 'reloadlyCardsEnabled', value: virtualCardsSettings.reloadlyCardsEnabled, group: 'api', isPublic: true },
+      // Virtual Cards Pricing (markup group)
+      { key: 'sudoCreationFee', value: virtualCardsSettings.sudoCreationFee, group: 'markup', isPublic: true },
+      { key: 'sudoTopUpFeePercent', value: virtualCardsSettings.sudoTopUpFeePercent, group: 'markup', isPublic: true },
+      { key: 'lithicCreationFee', value: virtualCardsSettings.lithicCreationFee, group: 'markup', isPublic: true },
+      { key: 'lithicTopUpFeePercent', value: virtualCardsSettings.lithicTopUpFeePercent, group: 'markup', isPublic: true },
+      { key: 'reloadlyInstantMarkupPercent', value: virtualCardsSettings.reloadlyInstantMarkupPercent, group: 'markup', isPublic: true },
       // OTP Providers (stored in 'api' group for consistency)
       { key: 'otpDefaultProvider', value: otpSettings.otpDefaultProvider, group: 'api', isPublic: false },
       { key: 'smspoolEnabled', value: otpSettings.smspoolEnabled, group: 'api', isPublic: true },
@@ -5075,6 +5135,153 @@ export default function AdminSettingsPage() {
                     )}
                   </div>
 
+                  {/* Virtual Cards Providers */}
+                  <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                    <button
+                      onClick={() => toggleSection('virtualCards')}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                          <Icon name="credit-card" size={20} className="text-cyan-400" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-white font-semibold text-lg">Virtual Cards Providers</h3>
+                          <p className="text-slate-500 text-sm">Configure providers for virtual and instant card issuance</p>
+                        </div>
+                      </div>
+                      <Icon
+                        name={expandedSections.virtualCards ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        className="text-slate-400"
+                      />
+                    </button>
+
+                    {expandedSections.virtualCards && (
+                      <>
+                        {/* Sudo Africa */}
+                        <div className={`mt-6 p-4 rounded-xl border ${virtualCardsSettings.sudoCardsEnabled ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-[#2a2a2a] bg-[#1a1a1a]'}`}>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-white font-medium">Sudo Africa</span>
+                              <span className="text-xs text-slate-500">Virtual Cards</span>
+                            </div>
+                            <button
+                              onClick={() => setVirtualCardsSettings({ ...virtualCardsSettings, sudoCardsEnabled: !virtualCardsSettings.sudoCardsEnabled })}
+                              className={`relative w-12 h-6 rounded-full transition-colors ${virtualCardsSettings.sudoCardsEnabled ? 'bg-cyan-500' : 'bg-[#2a2a2a]'}`}
+                            >
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualCardsSettings.sudoCardsEnabled ? 'left-7' : 'left-1'}`} />
+                            </button>
+                          </div>
+
+                          {virtualCardsSettings.sudoCardsEnabled && (
+                            <div className="space-y-4">
+                              <div>
+                                <label className="text-sm font-medium text-slate-300 mb-2 block">Mode</label>
+                                <select
+                                  value={virtualCardsSettings.sudoMode}
+                                  onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, sudoMode: e.target.value as 'sandbox' | 'production' })}
+                                  className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
+                                >
+                                  <option value="sandbox">Sandbox (Testing)</option>
+                                  <option value="production">Production (Live)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-slate-300 mb-2 block">
+                                  {virtualCardsSettings.sudoMode === 'sandbox' ? 'Sandbox' : 'Production'} API Key
+                                </label>
+                                <input
+                                  type="password"
+                                  value={virtualCardsSettings.sudoMode === 'sandbox' ? virtualCardsSettings.sudoSandboxApiKey : virtualCardsSettings.sudoProductionApiKey}
+                                  onChange={(e) => setVirtualCardsSettings({
+                                    ...virtualCardsSettings,
+                                    [virtualCardsSettings.sudoMode === 'sandbox' ? 'sudoSandboxApiKey' : 'sudoProductionApiKey']: e.target.value
+                                  })}
+                                  placeholder="Enter API key..."
+                                  className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50"
+                                />
+                              </div>
+                              <p className="text-xs text-slate-600">Get your credentials at <a href="https://sudo.africa" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">sudo.africa</a></p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Lithic */}
+                        <div className={`mt-4 p-4 rounded-xl border ${virtualCardsSettings.lithicCardsEnabled ? 'border-amber-500/30 bg-amber-500/5' : 'border-[#2a2a2a] bg-[#1a1a1a]'}`}>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-white font-medium">Lithic</span>
+                              <span className="text-xs text-amber-400">Premium Cards (3D Secure)</span>
+                            </div>
+                            <button
+                              onClick={() => setVirtualCardsSettings({ ...virtualCardsSettings, lithicCardsEnabled: !virtualCardsSettings.lithicCardsEnabled })}
+                              className={`relative w-12 h-6 rounded-full transition-colors ${virtualCardsSettings.lithicCardsEnabled ? 'bg-amber-500' : 'bg-[#2a2a2a]'}`}
+                            >
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualCardsSettings.lithicCardsEnabled ? 'left-7' : 'left-1'}`} />
+                            </button>
+                          </div>
+
+                          {virtualCardsSettings.lithicCardsEnabled && (
+                            <div className="space-y-4">
+                              <div>
+                                <label className="text-sm font-medium text-slate-300 mb-2 block">Mode</label>
+                                <select
+                                  value={virtualCardsSettings.lithicMode}
+                                  onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, lithicMode: e.target.value as 'sandbox' | 'production' })}
+                                  className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-amber-500/50"
+                                >
+                                  <option value="sandbox">Sandbox (Testing)</option>
+                                  <option value="production">Production (Live)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-slate-300 mb-2 block">
+                                  {virtualCardsSettings.lithicMode === 'sandbox' ? 'Sandbox' : 'Production'} API Key
+                                </label>
+                                <input
+                                  type="password"
+                                  value={virtualCardsSettings.lithicMode === 'sandbox' ? virtualCardsSettings.lithicSandboxApiKey : virtualCardsSettings.lithicProductionApiKey}
+                                  onChange={(e) => setVirtualCardsSettings({
+                                    ...virtualCardsSettings,
+                                    [virtualCardsSettings.lithicMode === 'sandbox' ? 'lithicSandboxApiKey' : 'lithicProductionApiKey']: e.target.value
+                                  })}
+                                  placeholder="Enter API key..."
+                                  className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50"
+                                />
+                              </div>
+                              <p className="text-xs text-slate-600">Get your credentials at <a href="https://lithic.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">lithic.com</a></p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Reloadly Instant Cards */}
+                        <div className={`mt-4 p-4 rounded-xl border ${virtualCardsSettings.reloadlyCardsEnabled ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-[#2a2a2a] bg-[#1a1a1a]'}`}>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-white font-medium">Reloadly</span>
+                              <span className="text-xs text-emerald-400">Instant Cards</span>
+                            </div>
+                            <button
+                              onClick={() => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsEnabled: !virtualCardsSettings.reloadlyCardsEnabled })}
+                              className={`relative w-12 h-6 rounded-full transition-colors ${virtualCardsSettings.reloadlyCardsEnabled ? 'bg-emerald-500' : 'bg-[#2a2a2a]'}`}
+                            >
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${virtualCardsSettings.reloadlyCardsEnabled ? 'left-7' : 'left-1'}`} />
+                            </button>
+                          </div>
+
+                          {virtualCardsSettings.reloadlyCardsEnabled && (
+                            <div className="p-3 bg-emerald-500/10 rounded-lg">
+                              <p className="text-sm text-emerald-300">
+                                Uses the same Reloadly credentials configured in Gift Card Providers above.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
                   {/* OTP Verification Providers */}
                   <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
                     <button
@@ -5609,6 +5816,98 @@ export default function AdminSettingsPage() {
                   <div>
                     <p className="text-white font-semibold text-lg">eSIM Markup <span className="text-xs text-slate-500 font-normal ml-2">Coming Soon</span></p>
                     <p className="text-slate-500 text-sm">Markup for eSIM data plans</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Virtual Cards Markup */}
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center">
+                    <Icon name="credit-card" size={24} className="text-cyan-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-lg">Virtual Cards Markup</p>
+                    <p className="text-slate-500 text-sm">Pricing for virtual and instant card issuance</p>
+                  </div>
+                </div>
+
+                {/* Sudo Africa Pricing */}
+                <div className="mb-6 p-4 bg-[#1a1a1a] rounded-xl">
+                  <h4 className="text-white font-medium mb-4">Sudo Africa (Virtual Cards)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Creation Fee ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={virtualCardsSettings.sudoCreationFee}
+                        onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, sudoCreationFee: Number(e.target.value) })}
+                        className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Top-up Fee (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={virtualCardsSettings.sudoTopUpFeePercent}
+                        onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, sudoTopUpFeePercent: Number(e.target.value) })}
+                        className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lithic Pricing */}
+                <div className="mb-6 p-4 bg-[#1a1a1a] rounded-xl">
+                  <h4 className="text-white font-medium mb-4">Lithic (Premium Cards)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Creation Fee ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={virtualCardsSettings.lithicCreationFee}
+                        onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, lithicCreationFee: Number(e.target.value) })}
+                        className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Top-up Fee (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={virtualCardsSettings.lithicTopUpFeePercent}
+                        onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, lithicTopUpFeePercent: Number(e.target.value) })}
+                        className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reloadly Instant Cards Pricing */}
+                <div className="p-4 bg-[#1a1a1a] rounded-xl">
+                  <h4 className="text-white font-medium mb-4">Reloadly (Instant Cards)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Markup (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={virtualCardsSettings.reloadlyInstantMarkupPercent}
+                        onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyInstantMarkupPercent: Number(e.target.value) })}
+                        className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Preview</label>
+                      <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-3">
+                        <p className="text-slate-400 text-sm">
+                          $50 card = <span className="text-emerald-400 font-medium">${(50 * (1 + virtualCardsSettings.reloadlyInstantMarkupPercent / 100)).toFixed(2)}</span>
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -17,6 +17,7 @@ interface ProfileLayoutProps {
 const navItems = [
   { href: '/profile/orders', label: 'My Orders', shortLabel: 'Orders', icon: 'shopping-bag' },
   { href: '/profile/library', label: 'My Library', shortLabel: 'Library', icon: 'library' },
+  { href: '/profile/cards', label: 'My Cards', shortLabel: 'Cards', icon: 'credit-card' },
   { href: '/profile/wishlist', label: 'My Wishlist', shortLabel: 'Wishlist', icon: 'heart' },
   { href: '/profile/wallet', label: 'Wallet & Credits', shortLabel: 'Wallet', icon: 'wallet' },
   { href: '/profile/referrals', label: 'Referral & Rewards', shortLabel: 'Referrals', icon: 'gift' },

@@ -31,9 +31,22 @@ interface CardProvider {
   denominations?: { value: number; totalPrice: number; brand: string }[]
 }
 
+interface ProviderStatus {
+  hasProviderConfig: boolean
+  providers: {
+    sudo: { enabled: boolean; configured: boolean }
+    lithic: { enabled: boolean; configured: boolean }
+    reloadly: { enabled: boolean; configured: boolean }
+  }
+  anyVirtualEnabled: boolean
+  anyInstantEnabled: boolean
+  anyConfigured: boolean
+}
+
 interface ProvidersData {
   virtual: CardProvider[]
   instant: CardProvider[]
+  status?: ProviderStatus
 }
 
 export default function CardsPage() {
@@ -42,7 +55,7 @@ export default function CardsPage() {
   const { formatPrice } = usePreferences()
 
   const [activeTab, setActiveTab] = useState<TabType>('virtual')
-  const [providers, setProviders] = useState<ProvidersData>({ virtual: [], instant: [] })
+  const [providers, setProviders] = useState<ProvidersData>({ virtual: [], instant: [], status: undefined })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -240,15 +253,10 @@ export default function CardsPage() {
 
         {/* No Providers */}
         {!loading && currentProviders.length === 0 && (
-          <div className="text-center py-20">
-            <Icon name="credit-card" size={48} className="text-slate-600 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white mb-2">
-              No {activeTab} cards available
-            </h3>
-            <p className="text-slate-400">
-              Check back later for available card options
-            </p>
-          </div>
+          <NoProvidersMessage
+            activeTab={activeTab}
+            status={providers.status}
+          />
         )}
 
         {/* Card Providers Grid */}
@@ -468,6 +476,99 @@ function InstantCardOption({
           </>
         )}
       </button>
+    </div>
+  )
+}
+
+// No Providers Message Component
+function NoProvidersMessage({
+  activeTab,
+  status
+}: {
+  activeTab: TabType
+  status?: ProviderStatus
+}) {
+  // Determine what message to show based on status
+  const isVirtualTab = activeTab === 'virtual'
+
+  const anyEnabled = isVirtualTab
+    ? status?.anyVirtualEnabled
+    : status?.anyInstantEnabled
+
+  const anyRelevantConfigured = isVirtualTab
+    ? (status?.providers.sudo?.configured || status?.providers.lithic?.configured)
+    : status?.providers.reloadly?.configured
+
+  // Case 1: Providers exist but none are enabled
+  if (status && !anyEnabled) {
+    return (
+      <div className="text-center py-20 bg-[#0f0f0f] rounded-xl border border-[#1f1f1f]">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-500/10 flex items-center justify-center">
+          <Icon name="toggle-left" size={32} className="text-slate-500" />
+        </div>
+        <h3 className="text-xl font-medium text-white mb-2">
+          {isVirtualTab ? 'Virtual Cards' : 'Instant Cards'} Not Available
+        </h3>
+        <p className="text-slate-400 max-w-md mx-auto">
+          {isVirtualTab
+            ? 'Virtual card providers are currently disabled.'
+            : 'Instant card provider is currently disabled.'}
+        </p>
+        <p className="text-slate-500 text-sm mt-2">
+          Check back later or contact support for more information.
+        </p>
+      </div>
+    )
+  }
+
+  // Case 2: Providers are enabled but not configured (no API keys)
+  if (status && anyEnabled && !anyRelevantConfigured) {
+    return (
+      <div className="text-center py-20 bg-[#0f0f0f] rounded-xl border border-[#1f1f1f]">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/10 flex items-center justify-center">
+          <Icon name="settings" size={32} className="text-amber-500" />
+        </div>
+        <h3 className="text-xl font-medium text-white mb-2">
+          Coming Soon
+        </h3>
+        <p className="text-slate-400 max-w-md mx-auto">
+          {isVirtualTab
+            ? 'Virtual cards are being set up. Please check back soon.'
+            : 'Instant cards are being set up. Please check back soon.'}
+        </p>
+      </div>
+    )
+  }
+
+  // Case 3: No database config (migration not run)
+  if (status && !status.hasProviderConfig) {
+    return (
+      <div className="text-center py-20 bg-[#0f0f0f] rounded-xl border border-[#1f1f1f]">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-500/10 flex items-center justify-center">
+          <Icon name="database" size={32} className="text-slate-500" />
+        </div>
+        <h3 className="text-xl font-medium text-white mb-2">
+          Feature Not Available
+        </h3>
+        <p className="text-slate-400 max-w-md mx-auto">
+          Virtual cards feature is not set up yet.
+        </p>
+      </div>
+    )
+  }
+
+  // Default case: No providers available (generic message)
+  return (
+    <div className="text-center py-20 bg-[#0f0f0f] rounded-xl border border-[#1f1f1f]">
+      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-500/10 flex items-center justify-center">
+        <Icon name="credit-card" size={32} className="text-slate-500" />
+      </div>
+      <h3 className="text-xl font-medium text-white mb-2">
+        No {activeTab === 'virtual' ? 'Virtual' : 'Instant'} Cards Available
+      </h3>
+      <p className="text-slate-400 max-w-md mx-auto">
+        Check back later for available card options.
+      </p>
     </div>
   )
 }
