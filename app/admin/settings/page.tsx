@@ -5379,109 +5379,95 @@ export default function AdminSettingsPage() {
                           {virtualCardsSettings.reloadlyCardsEnabled && (
                             <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
                               {/* Mode Toggle */}
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Mode</label>
-                                <div className="flex gap-2">
+                              <div className="flex items-center gap-3">
+                                <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
                                   <button
                                     type="button"
                                     onClick={() => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsMode: 'sandbox' })}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                      virtualCardsSettings.reloadlyCardsMode === 'sandbox'
-                                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                                        : 'bg-[#141414] text-slate-400 border border-[#2a2a2a] hover:text-slate-300'
-                                    }`}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${virtualCardsSettings.reloadlyCardsMode === 'sandbox' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
                                   >
                                     Sandbox
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsMode: 'production' })}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                      virtualCardsSettings.reloadlyCardsMode === 'production'
-                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50'
-                                        : 'bg-[#141414] text-slate-400 border border-[#2a2a2a] hover:text-slate-300'
-                                    }`}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${virtualCardsSettings.reloadlyCardsMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-500 hover:text-slate-300'}`}
                                   >
                                     Production
                                   </button>
                                 </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${virtualCardsSettings.reloadlyCardsMode === 'sandbox' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                                  {virtualCardsSettings.reloadlyCardsMode === 'sandbox' ? 'SANDBOX' : 'PRODUCTION'}
+                                </span>
                               </div>
 
-                              {/* Sandbox Credentials */}
-                              <div className={`space-y-3 p-4 rounded-lg border ${virtualCardsSettings.reloadlyCardsMode === 'sandbox' ? 'bg-amber-500/5 border-amber-500/20' : 'bg-[#141414] border-[#2a2a2a]'}`}>
-                                <p className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                                  Sandbox Credentials
-                                </p>
-                                <div className="space-y-2">
-                                  <label className="text-sm text-slate-400">Client ID</label>
-                                  <input
-                                    type="text"
-                                    value={virtualCardsSettings.reloadlyCardsSandboxClientId}
-                                    onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsSandboxClientId: e.target.value })}
-                                    placeholder="Sandbox Client ID"
-                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="text-sm text-slate-400">Client Secret</label>
-                                  <div className="relative">
+                              {/* Credentials based on mode */}
+                              {virtualCardsSettings.reloadlyCardsMode === 'sandbox' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Sandbox Client ID</label>
                                     <input
-                                      type={showServiceSecrets.reloadlyCardsSandboxSecret ? 'text' : 'password'}
-                                      value={virtualCardsSettings.reloadlyCardsSandboxClientSecret}
-                                      onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsSandboxClientSecret: e.target.value })}
-                                      placeholder="Sandbox Client Secret"
-                                      className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                      type="text"
+                                      value={virtualCardsSettings.reloadlyCardsSandboxClientId}
+                                      onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsSandboxClientId: e.target.value })}
+                                      placeholder="Your sandbox Client ID"
+                                      className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
                                     />
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowServiceSecrets(prev => ({ ...prev, reloadlyCardsSandboxSecret: !prev.reloadlyCardsSandboxSecret }))}
-                                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                    >
-                                      <Icon name={showServiceSecrets.reloadlyCardsSandboxSecret ? 'eye-off' : 'eye'} size={16} />
-                                    </button>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Sandbox Client Secret</label>
+                                    <div className="relative">
+                                      <input
+                                        type={showServiceSecrets.reloadlyCardsSandboxSecret ? 'text' : 'password'}
+                                        value={virtualCardsSettings.reloadlyCardsSandboxClientSecret}
+                                        onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsSandboxClientSecret: e.target.value })}
+                                        placeholder="Your sandbox Client Secret"
+                                        className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowServiceSecrets(prev => ({ ...prev, reloadlyCardsSandboxSecret: !prev.reloadlyCardsSandboxSecret }))}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                      >
+                                        <Icon name={showServiceSecrets.reloadlyCardsSandboxSecret ? 'eye-off' : 'eye'} size={16} />
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-
-                              {/* Production Credentials */}
-                              <div className={`space-y-3 p-4 rounded-lg border ${virtualCardsSettings.reloadlyCardsMode === 'production' ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-[#141414] border-[#2a2a2a]'}`}>
-                                <p className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                                  Production Credentials
-                                </p>
-                                <div className="space-y-2">
-                                  <label className="text-sm text-slate-400">Client ID</label>
-                                  <input
-                                    type="text"
-                                    value={virtualCardsSettings.reloadlyCardsProductionClientId}
-                                    onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsProductionClientId: e.target.value })}
-                                    placeholder="Production Client ID"
-                                    className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="text-sm text-slate-400">Client Secret</label>
-                                  <div className="relative">
+                              ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Production Client ID</label>
                                     <input
-                                      type={showServiceSecrets.reloadlyCardsProductionSecret ? 'text' : 'password'}
-                                      value={virtualCardsSettings.reloadlyCardsProductionClientSecret}
-                                      onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsProductionClientSecret: e.target.value })}
-                                      placeholder="Production Client Secret"
-                                      className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                      type="text"
+                                      value={virtualCardsSettings.reloadlyCardsProductionClientId}
+                                      onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsProductionClientId: e.target.value })}
+                                      placeholder="Your production Client ID"
+                                      className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
                                     />
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowServiceSecrets(prev => ({ ...prev, reloadlyCardsProductionSecret: !prev.reloadlyCardsProductionSecret }))}
-                                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                    >
-                                      <Icon name={showServiceSecrets.reloadlyCardsProductionSecret ? 'eye-off' : 'eye'} size={16} />
-                                    </button>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Production Client Secret</label>
+                                    <div className="relative">
+                                      <input
+                                        type={showServiceSecrets.reloadlyCardsProductionSecret ? 'text' : 'password'}
+                                        value={virtualCardsSettings.reloadlyCardsProductionClientSecret}
+                                        onChange={(e) => setVirtualCardsSettings({ ...virtualCardsSettings, reloadlyCardsProductionClientSecret: e.target.value })}
+                                        placeholder="Your production Client Secret"
+                                        className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowServiceSecrets(prev => ({ ...prev, reloadlyCardsProductionSecret: !prev.reloadlyCardsProductionSecret }))}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                      >
+                                        <Icon name={showServiceSecrets.reloadlyCardsProductionSecret ? 'eye-off' : 'eye'} size={16} />
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-
-                              <p className="text-xs text-slate-600">Get your API credentials at <a href="https://www.reloadly.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">reloadly.com</a></p>
+                              )}
+                              <p className="text-xs text-slate-600">Get your credentials at <a href="https://www.reloadly.com/developers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">reloadly.com/developers</a></p>
                             </div>
                           )}
                         </div>
@@ -5839,7 +5825,6 @@ export default function AdminSettingsPage() {
                 </>
             </div>
           )}
-        </div>
 
           {/* Referral Program Settings */}
           {activeTab === 'referral' && (
@@ -6596,6 +6581,7 @@ export default function AdminSettingsPage() {
               )}
             </div>
           )}
+        </div>
         </div>
 
       </div>
