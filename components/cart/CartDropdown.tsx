@@ -8,6 +8,7 @@ import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { CardVisualMini } from '@/components/cards/CardVisual'
 
 interface CartDropdownProps {
   isOpen: boolean
@@ -188,12 +189,26 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
 
       {/* Items List */}
       <div className="max-h-[300px] overflow-y-auto space-y-3 mb-4 pr-1">
-        {items.map((item) => (
+        {items.map((item) => {
+          const isInstantCard = item.product.metadata?.productType === 'instant_card' ||
+            (item.product as any).productType === 'instant_card' ||
+            (item.product as any).product_type === 'instant_card'
+          const cardMetadata = item.product.metadata || {}
+
+          return (
           <div
             key={`${item.product.id}-${item.license}`}
             className="flex gap-3 p-3 bg-surface-dark rounded-xl"
           >
-            <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
+            <div className="flex-shrink-0">
+              {isInstantCard ? (
+                <CardVisualMini
+                  brand={cardMetadata.brand === 'mastercard' ? 'mastercard' : 'visa'}
+                  type="instant"
+                  denomination={cardMetadata.denomination}
+                />
+              ) : (
+              <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden">
               {(() => {
                 const imageUrl = item.product.image
                   || item.product.images?.[0]?.url
@@ -234,6 +249,8 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
                   </div>
                 )
               })()}
+              </div>
+              )}
             </div>
             <div className="flex-grow min-w-0">
               <h3 className="text-white font-bold text-sm truncate">
@@ -263,7 +280,7 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
               <Icon name="close" size={16} />
             </button>
           </div>
-        ))}
+        )})}
       </div>
 
       {/* Total */}

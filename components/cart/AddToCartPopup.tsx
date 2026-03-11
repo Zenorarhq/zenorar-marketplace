@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 import { Product, CartItem } from '@/lib/types'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { CardVisualMini } from '@/components/cards/CardVisual'
 
 interface AddToCartPopupProps {
   isOpen: boolean
@@ -32,21 +33,38 @@ function CartItemRow({
   // Support multiple image sources: standard image, images array, imageUrl, metadata imageUrl
   const itemImageUrl = item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl
 
+  // Check if this is an instant card
+  const isInstantCard = (item.product as any).metadata?.productType === 'instant_card' ||
+    (item.product as any).productType === 'instant_card' ||
+    (item.product as any).product_type === 'instant_card'
+
+  const cardMetadata = (item.product as any).metadata || {}
+
   return (
     <div
       className={`flex gap-3 p-3 rounded-xl ${isJustAdded ? 'bg-primary/10 border border-primary/20' : 'bg-surface-dark'}`}
     >
-      <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden flex-shrink-0">
-        {itemImageUrl && !imageError ? (
-          <img
-            src={itemImageUrl}
-            alt={item.product.name}
-            className="w-full h-full object-cover"
-            onError={() => setImageError(true)}
+      <div className="flex-shrink-0">
+        {isInstantCard ? (
+          <CardVisualMini
+            brand={cardMetadata.brand === 'mastercard' ? 'mastercard' : 'visa'}
+            type="instant"
+            denomination={cardMetadata.denomination}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Icon name={item.product.icon || ((item.product as any).metadata?.productType === 'gift_card' ? 'gift' : 'box')} size={20} className="text-slate-600" />
+          <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden">
+            {itemImageUrl && !imageError ? (
+              <img
+                src={itemImageUrl}
+                alt={item.product.name}
+                className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Icon name={item.product.icon || ((item.product as any).metadata?.productType === 'gift_card' ? 'gift' : 'box')} size={20} className="text-slate-600" />
+              </div>
+            )}
           </div>
         )}
       </div>
