@@ -218,11 +218,9 @@ import {
   CircleIcon as CircleIconBase,
   AddCircleIcon,
   MinusSignCircleIcon,
-  ArrowDownCircleIcon,
-  ArrowUpCircleIcon,
   Tick02Icon,
-  Snowflake01Icon,
-  RecycleIcon,
+  SnowIcon,
+  Recycle03Icon,
 } from 'hugeicons-react'
 
 // Map of icon names to HugeIcon components
@@ -503,12 +501,12 @@ const iconMap = {
   circle: CircleIconBase,
   'plus-circle': AddCircleIcon,
   'minus-circle': MinusSignCircleIcon,
-  'arrow-down-circle': ArrowDownCircleIcon,
-  'arrow-up-circle': ArrowUpCircleIcon,
+  'arrow-down-circle': ArrowDown01Icon,
+  'arrow-up-circle': ArrowUp01Icon,
   'check-02': Tick02Icon,
-  snowflake: Snowflake01Icon,
-  frozen: Snowflake01Icon,
-  recycle: RecycleIcon,
+  snowflake: SnowIcon,
+  frozen: SnowIcon,
+  recycle: Recycle03Icon,
 
   // Theme
   sun: Sun01Icon,
