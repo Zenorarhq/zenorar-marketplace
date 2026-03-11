@@ -10,6 +10,7 @@ import { libraryApi } from '@/lib/api/library'
 import EsimDetailModal from '@/components/library/EsimDetailModal'
 import GiftCardDetailModal from '@/components/library/GiftCardDetailModal'
 import CardDetailsModal from '@/components/cards/CardDetailsModal'
+import { CardVisualCompact } from '@/components/cards/CardVisual'
 import { apiFetch } from '@/lib/api/client'
 
 interface License {
@@ -431,6 +432,19 @@ export default function LibraryPage() {
                 <div className="p-4 sm:p-6">
                   {/* Top: icon/image + info */}
                   <div className="flex gap-4 mb-4">
+                    {item.category === 'cards' ? (
+                      <div className="flex-shrink-0">
+                        <CardVisualCompact
+                          brand={item.cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
+                          type={item.cardType === 'instant' ? 'instant' : 'virtual'}
+                          isPremium={item.provider === 'lithic'}
+                          denomination={item.denomination}
+                          balance={item.balance}
+                          lastFour={item.cardLastFour}
+                          status={item.status as any}
+                        />
+                      </div>
+                    ) : (
                     <div className="h-14 w-14 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {item.category === 'gift-cards' && item.imageUrl ? (
                         <Image
@@ -445,6 +459,7 @@ export default function LibraryPage() {
                         <Icon name={item.icon} size={28} className="text-primary" />
                       )}
                     </div>
+                    )}
                     <div className="flex-grow min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <h3 className="text-white font-bold text-base sm:text-lg truncate">{item.name}</h3>

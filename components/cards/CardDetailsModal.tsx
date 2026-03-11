@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Icon from '@/components/ui/Icon'
 import { localApiFetch } from '@/lib/api/client'
+import CardVisual from '@/components/cards/CardVisual'
 
 interface CardTransaction {
   id: string
@@ -128,13 +129,26 @@ export default function CardDetailsModal({
             </div>
           ) : card ? (
             <div className="space-y-6">
-              {/* Card Summary */}
+              {/* Card Visual */}
+              <div className="flex justify-center">
+                <CardVisual
+                  brand={card.cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
+                  type={card.cardType === 'instant' ? 'instant' : 'virtual'}
+                  isPremium={card.isPremium}
+                  denomination={card.denomination}
+                  balance={card.balance}
+                  lastFour={card.cardLastFour}
+                  expiry={card.cardExpiry}
+                  status={card.status}
+                  size="lg"
+                  showDetails={true}
+                />
+              </div>
+
+              {/* Card Details */}
               <div className="bg-[#1a1a1a] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-slate-400 text-sm">Card</p>
-                    <p className="text-white font-medium">{displayName}</p>
-                  </div>
+                  <h3 className="text-white font-medium">{displayName}</h3>
                   <div className={`px-3 py-1 rounded-full text-sm ${
                     card.status === 'active'
                       ? 'bg-green-500/20 text-green-400'
@@ -146,23 +160,13 @@ export default function CardDetailsModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-slate-400 text-sm">Card Number</p>
-                    <p className="text-white font-mono">
-                      **** **** **** {card.cardLastFour || '****'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Expires</p>
-                    <p className="text-white">{card.cardExpiry || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Type</p>
+                    <p className="text-slate-400">Type</p>
                     <p className="text-white capitalize">{card.cardType} Card</p>
                   </div>
                   <div>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-slate-400">
                       {isVirtual ? 'Balance' : 'Value'}
                     </p>
                     <p className="text-white font-semibold">

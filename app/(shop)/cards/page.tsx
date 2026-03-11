@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useAuth } from '@/contexts/AuthContext'
@@ -11,6 +11,7 @@ import { getBalance } from '@/lib/api/wallet'
 import { localApiFetch } from '@/lib/api/client'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
+import { CardVisualPreview } from '@/components/cards/CardVisual'
 
 type TabType = 'virtual' | 'instant'
 
@@ -53,11 +54,14 @@ interface ProvidersData {
 
 export default function CardsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { isAuthenticated, user } = useAuth()
   const { formatPrice } = usePreferences()
   const { addItem, showAddedToCartPopup } = useCart()
 
-  const [activeTab, setActiveTab] = useState<TabType>('virtual')
+  // Initialize tab from URL or default to 'virtual'
+  const initialTab = (searchParams.get('tab') as TabType) || 'virtual'
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab)
   const [providers, setProviders] = useState<ProvidersData>({ virtual: [], instant: [], status: undefined })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -86,6 +90,18 @@ export default function CardsPage() {
       return () => clearTimeout(timer)
     }
   }, [paymentError])
+
+  // Handle tab change with URL update
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    const url = new URL(window.location.href)
+    if (tab === 'virtual') {
+      url.searchParams.delete('tab')
+    } else {
+      url.searchParams.set('tab', tab)
+    }
+    window.history.replaceState({}, '', url.toString())
+  }
 
   // Fetch providers
   useEffect(() => {
@@ -123,44 +139,118 @@ export default function CardsPage() {
     }
   }, [isAuthenticated])
 
-  // Handle card creation
-  const handleCreateCard = async (provider: string, denomination?: number) => {
-    if (!isAuthenticated) {
-      setShowLoginModal(true)
-      return
-    }
+  // Pending checkout state for auth flow
+  const [pendingCheckout, setPendingCheckout] = useState<{
+    provider: string
+    denomination?: number
+    totalCost: number
+  } | null>(null)
 
-    // Create unique ID for tracking this specific purchase
+  // Process wallet payment
+  const processWalletPayment = async (provider: string, denomination: number | undefined, totalCost: number) => {
     const purchaseId = denomination ? `instant-${denomination}` : `virtual-${provider}`
     setProcessingPayment(purchaseId)
     setPaymentError(null)
 
     try {
-      const data = await localApiFetch<any>('/cards', {
+      const data = await localApiFetch<any>('/cards/purchase', {
         method: 'POST',
         body: JSON.stringify({
           provider,
           cardType: denomination ? 'instant' : 'virtual',
           denomination,
-          cardBrand: selectedBrand
+          cardBrand: selectedBrand,
+          paymentMethod: 'wallet'
         })
       })
 
       if (!data.success) {
-        if (data.error?.includes('Insufficient balance')) {
-          setShowDepositModal(true)
-        }
         throw new Error(data.error || 'Failed to create card')
       }
 
-      // Redirect to card library
-      router.push('/profile/cards')
+      // Refresh wallet balance
+      const balanceResponse = await getBalance()
+      setWalletBalance(balanceResponse.data?.balance ?? null)
+
+      // Redirect to library with cards tab
+      router.push('/profile/library?tab=cards&purchased=true')
     } catch (err: any) {
       setPaymentError(err.message)
     } finally {
       setProcessingPayment(null)
+      setPendingCheckout(null)
     }
   }
+
+  // Handle pay with wallet click
+  const handlePayWithWallet = async (provider: string, denomination: number | undefined, totalCost: number) => {
+    // Clear any previous error
+    setPaymentError(null)
+
+    // If not authenticated, show auth dialog
+    if (!isAuthenticated) {
+      setPendingCheckout({ provider, denomination, totalCost })
+      setShowLoginModal(true)
+      return
+    }
+
+    // Check wallet balance
+    let currentBalance = walletBalance
+    if (currentBalance === null) {
+      setLoadingBalance(true)
+      try {
+        const result = await getBalance()
+        if (result.success && result.data) {
+          currentBalance = result.data.balance || 0
+          setWalletBalance(currentBalance)
+        } else {
+          setPaymentError('Failed to fetch wallet balance')
+          setLoadingBalance(false)
+          return
+        }
+      } catch {
+        setPaymentError('Failed to fetch wallet balance')
+        setLoadingBalance(false)
+        return
+      }
+      setLoadingBalance(false)
+    }
+
+    // If insufficient balance, show deposit modal
+    if (currentBalance === null || currentBalance < totalCost) {
+      setPendingCheckout({ provider, denomination, totalCost })
+      setShowDepositModal(true)
+      return
+    }
+
+    // Process payment
+    await processWalletPayment(provider, denomination, totalCost)
+  }
+
+  // Auto-continue after login
+  useEffect(() => {
+    if (isAuthenticated && pendingCheckout) {
+      // Fetch balance and continue checkout
+      getBalance()
+        .then(result => {
+          if (result.success && result.data) {
+            const balance = result.data.balance || 0
+            setWalletBalance(balance)
+
+            if (balance >= pendingCheckout.totalCost) {
+              processWalletPayment(
+                pendingCheckout.provider,
+                pendingCheckout.denomination,
+                pendingCheckout.totalCost
+              )
+            } else {
+              setShowDepositModal(true)
+            }
+          }
+        })
+        .catch(console.error)
+    }
+  }, [isAuthenticated, pendingCheckout])
 
   // Handle adding instant card to cart
   const handleAddToCart = (denomination: { value: number; totalPrice: number; brand: string }) => {
@@ -274,7 +364,7 @@ export default function CardsPage() {
       <div className="mb-8">
         <div className="flex gap-2 p-1 bg-surface-dark rounded-xl border border-border-dark w-fit">
           <button
-            onClick={() => setActiveTab('virtual')}
+            onClick={() => handleTabChange('virtual')}
             className={`px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
               activeTab === 'virtual'
                 ? 'bg-primary text-black'
@@ -288,7 +378,7 @@ export default function CardsPage() {
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('instant')}
+            onClick={() => handleTabChange('instant')}
             className={`px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
               activeTab === 'instant'
                 ? 'bg-primary text-black'
@@ -344,8 +434,10 @@ export default function CardsPage() {
                 key={provider.provider}
                 provider={provider}
                 formatPrice={formatPrice}
-                onSelect={() => handleCreateCard(provider.provider)}
+                onPayWithWallet={() => handlePayWithWallet(provider.provider, undefined, provider.creationFee)}
                 processing={processingPayment === `virtual-${provider.provider}`}
+                loadingBalance={loadingBalance}
+                isAuthenticated={isAuthenticated}
               />
             ))
           ) : (
@@ -355,9 +447,11 @@ export default function CardsPage() {
                 key={`${denom.brand}-${denom.value}`}
                 denomination={denom}
                 formatPrice={formatPrice}
-                onBuyNow={() => handleCreateCard('reloadly', denom.value)}
+                onPayWithWallet={() => handlePayWithWallet('reloadly', denom.value, denom.totalPrice)}
                 onAddToCart={() => handleAddToCart(denom)}
                 processing={processingPayment === `instant-${denom.value}`}
+                loadingBalance={loadingBalance}
+                isAuthenticated={isAuthenticated}
               />
             ))
           )}
@@ -384,7 +478,14 @@ export default function CardsPage() {
       {showLoginModal && (
         <AuthDialog
           isOpen={showLoginModal}
-          onClose={() => setShowLoginModal(false)}
+          onClose={() => {
+            setShowLoginModal(false)
+            setPendingCheckout(null)
+          }}
+          onSuccess={() => {
+            setShowLoginModal(false)
+            // Balance check and auto-continue will be handled by useEffect
+          }}
           defaultTab="login"
         />
       )}
@@ -393,9 +494,23 @@ export default function CardsPage() {
       {showDepositModal && (
         <DepositModal
           isOpen={showDepositModal}
-          onClose={() => {
+          onClose={async () => {
             setShowDepositModal(false)
-            getBalance().then(response => setWalletBalance(response.data?.balance ?? null))
+            // Refresh balance after deposit
+            const result = await getBalance()
+            const newBalance = result.data?.balance ?? null
+            setWalletBalance(newBalance)
+
+            // Auto-complete purchase if now have enough balance
+            if (pendingCheckout && newBalance !== null && newBalance >= pendingCheckout.totalCost) {
+              processWalletPayment(
+                pendingCheckout.provider,
+                pendingCheckout.denomination,
+                pendingCheckout.totalCost
+              )
+            } else {
+              setPendingCheckout(null)
+            }
           }}
         />
       )}
@@ -407,40 +522,30 @@ export default function CardsPage() {
 function VirtualCardOption({
   provider,
   formatPrice,
-  onSelect,
-  processing
+  onPayWithWallet,
+  processing,
+  loadingBalance,
+  isAuthenticated
 }: {
   provider: CardProvider
   formatPrice: (price: number) => string
-  onSelect: () => void
+  onPayWithWallet: () => void
   processing: boolean
+  loadingBalance: boolean
+  isAuthenticated: boolean
 }) {
   const isPremium = provider.isPremium
 
   return (
     <div className="bg-surface-dark rounded-xl border border-border-dark p-4 lg:p-6 hover:border-primary/30 transition-colors">
-      {/* Card Preview */}
-      <div className={`relative h-36 lg:h-40 rounded-xl mb-4 overflow-hidden ${
-        isPremium
-          ? 'bg-gradient-to-br from-amber-900/50 via-yellow-800/30 to-amber-900/50'
-          : 'bg-gradient-to-br from-blue-900/50 via-indigo-800/30 to-blue-900/50'
-      }`}>
-        <div className="absolute inset-0 p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-white/80 text-sm font-medium">
-              {isPremium ? 'Premium Visa' : 'Visa'}
-            </span>
-            {isPremium && (
-              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded-full">
-                3D Secure
-              </span>
-            )}
-          </div>
-          <div>
-            <p className="text-white/60 text-xs mb-1">Virtual Card</p>
-            <p className="text-white font-mono text-base lg:text-lg">**** **** **** ****</p>
-          </div>
-        </div>
+      {/* Card Visual */}
+      <div className="flex justify-center mb-4">
+        <CardVisualPreview
+          brand="visa"
+          type="virtual"
+          isPremium={isPremium}
+          className="w-full max-w-[240px]"
+        />
       </div>
 
       {/* Details */}
@@ -473,19 +578,29 @@ function VirtualCardOption({
 
       {/* Action Button */}
       <button
-        onClick={onSelect}
-        disabled={processing}
+        onClick={onPayWithWallet}
+        disabled={processing || loadingBalance}
         className="w-full py-2.5 lg:py-3 bg-primary text-black rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
       >
         {processing ? (
           <>
-            <Icon name="loading" size={18} className="animate-spin" />
-            Creating...
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+            <span>Processing...</span>
+          </>
+        ) : loadingBalance ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+            <span>Checking Balance...</span>
+          </>
+        ) : isAuthenticated ? (
+          <>
+            <Icon name="wallet" size={16} />
+            <span>Pay {formatPrice(provider.creationFee)} with Wallet</span>
           </>
         ) : (
           <>
-            <Icon name="plus" size={18} />
-            Create Card
+            <Icon name="wallet" size={16} />
+            <span>Pay with Wallet</span>
           </>
         )}
       </button>
@@ -497,29 +612,33 @@ function VirtualCardOption({
 function InstantCardOption({
   denomination,
   formatPrice,
-  onBuyNow,
+  onPayWithWallet,
   onAddToCart,
-  processing
+  processing,
+  loadingBalance,
+  isAuthenticated
 }: {
   denomination: { value: number; totalPrice: number; brand: string }
   formatPrice: (price: number) => string
-  onBuyNow: () => void
+  onPayWithWallet: () => void
   onAddToCart: () => void
   processing: boolean
+  loadingBalance: boolean
+  isAuthenticated: boolean
 }) {
   const brandName = denomination.brand === 'mastercard' ? 'Mastercard' : 'Visa'
+  const brand = denomination.brand === 'mastercard' ? 'mastercard' : 'visa'
 
   return (
     <div className="bg-surface-dark rounded-xl border border-border-dark p-4 lg:p-6 hover:border-primary/30 transition-colors">
-      {/* Card Preview */}
-      <div className="relative h-28 lg:h-32 rounded-xl mb-4 overflow-hidden bg-gradient-to-br from-emerald-900/50 via-teal-800/30 to-emerald-900/50">
-        <div className="absolute inset-0 p-4 flex flex-col justify-between">
-          <span className="text-white/80 text-sm font-medium">{brandName}</span>
-          <div>
-            <p className="text-white/60 text-xs mb-1">Instant Card</p>
-            <p className="text-white font-bold text-xl lg:text-2xl">${denomination.value}</p>
-          </div>
-        </div>
+      {/* Card Visual */}
+      <div className="flex justify-center mb-4">
+        <CardVisualPreview
+          brand={brand as 'visa' | 'mastercard'}
+          type="instant"
+          denomination={denomination.value}
+          className="w-full max-w-[220px]"
+        />
       </div>
 
       {/* Details */}
@@ -541,19 +660,29 @@ function InstantCardOption({
       {/* Action Buttons */}
       <div className="flex flex-col gap-2">
         <button
-          onClick={onBuyNow}
-          disabled={processing}
+          onClick={onPayWithWallet}
+          disabled={processing || loadingBalance}
           className="w-full py-2.5 lg:py-3 bg-primary text-black rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
         >
           {processing ? (
             <>
-              <Icon name="loading" size={18} className="animate-spin" />
-              Processing...
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+              <span>Processing...</span>
+            </>
+          ) : loadingBalance ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+              <span>Checking Balance...</span>
+            </>
+          ) : isAuthenticated ? (
+            <>
+              <Icon name="wallet" size={16} />
+              <span>Pay {formatPrice(denomination.totalPrice)} with Wallet</span>
             </>
           ) : (
             <>
-              <Icon name="zap" size={18} />
-              Buy Now
+              <Icon name="wallet" size={16} />
+              <span>Pay with Wallet</span>
             </>
           )}
         </button>
@@ -562,7 +691,7 @@ function InstantCardOption({
           disabled={processing}
           className="w-full py-2.5 lg:py-3 bg-surface-dark border border-border-dark text-white rounded-lg font-medium hover:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
         >
-          <Icon name="cart" size={18} />
+          <Icon name="cart" size={16} />
           Add to Cart
         </button>
       </div>
