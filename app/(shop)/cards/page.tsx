@@ -144,10 +144,11 @@ export default function CardsPage() {
     provider: string
     denomination?: number
     totalCost: number
+    cardBrand?: 'visa' | 'mastercard'
   } | null>(null)
 
   // Process wallet payment
-  const processWalletPayment = async (provider: string, denomination: number | undefined, totalCost: number) => {
+  const processWalletPayment = async (provider: string, denomination: number | undefined, totalCost: number, cardBrand?: 'visa' | 'mastercard') => {
     const purchaseId = denomination ? `instant-${denomination}` : `virtual-${provider}`
     setProcessingPayment(purchaseId)
     setPaymentError(null)
@@ -159,7 +160,7 @@ export default function CardsPage() {
           provider,
           cardType: denomination ? 'instant' : 'virtual',
           denomination,
-          cardBrand: selectedBrand,
+          cardBrand: cardBrand || selectedBrand,
           paymentMethod: 'wallet'
         })
       })
@@ -183,13 +184,13 @@ export default function CardsPage() {
   }
 
   // Handle pay with wallet click
-  const handlePayWithWallet = async (provider: string, denomination: number | undefined, totalCost: number) => {
+  const handlePayWithWallet = async (provider: string, denomination: number | undefined, totalCost: number, cardBrand?: 'visa' | 'mastercard') => {
     // Clear any previous error
     setPaymentError(null)
 
     // If not authenticated, show auth dialog
     if (!isAuthenticated) {
-      setPendingCheckout({ provider, denomination, totalCost })
+      setPendingCheckout({ provider, denomination, totalCost, cardBrand })
       setShowLoginModal(true)
       return
     }
@@ -224,7 +225,7 @@ export default function CardsPage() {
     }
 
     // Process payment
-    await processWalletPayment(provider, denomination, totalCost)
+    await processWalletPayment(provider, denomination, totalCost, cardBrand)
   }
 
   // Auto-continue after login
@@ -241,7 +242,8 @@ export default function CardsPage() {
               processWalletPayment(
                 pendingCheckout.provider,
                 pendingCheckout.denomination,
-                pendingCheckout.totalCost
+                pendingCheckout.totalCost,
+                pendingCheckout.cardBrand
               )
             } else {
               setShowDepositModal(true)
@@ -447,7 +449,7 @@ export default function CardsPage() {
                 key={`${denom.brand}-${denom.value}`}
                 denomination={denom}
                 formatPrice={formatPrice}
-                onPayWithWallet={() => handlePayWithWallet('reloadly', denom.value, denom.totalPrice)}
+                onPayWithWallet={() => handlePayWithWallet('reloadly', denom.value, denom.totalPrice, denom.brand as 'visa' | 'mastercard')}
                 onAddToCart={() => handleAddToCart(denom)}
                 processing={processingPayment === `instant-${denom.value}`}
                 loadingBalance={loadingBalance}
@@ -506,7 +508,8 @@ export default function CardsPage() {
               processWalletPayment(
                 pendingCheckout.provider,
                 pendingCheckout.denomination,
-                pendingCheckout.totalCost
+                pendingCheckout.totalCost,
+                pendingCheckout.cardBrand
               )
             } else {
               setPendingCheckout(null)

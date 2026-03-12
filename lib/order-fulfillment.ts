@@ -15,6 +15,14 @@ import {
   sendVirtualNumberDeliveryEmail,
   sendGiftCardDeliveryEmail
 } from './email-service'
+import {
+  getProviderPricing,
+  createCardRecord,
+  recordTransaction,
+  calculateInstantCardPrice
+} from './cards/service'
+import { getProvider } from './cards/providers'
+import type { CardProvider, CardType, CardBrand } from './cards/types'
 
 const LICENSE_KEY_PREFIX = 'ZNRSCR'
 
@@ -235,14 +243,8 @@ async function processOrderItem(
 
       case 'instant_card':
       case 'virtual_card':
-        // Cards are already provisioned during purchase via /api/cards/purchase
-        // No additional fulfillment needed - just mark as success
-        return {
-          itemId: item.item_id,
-          productType: productType,
-          status: 'success' as const,
-          provisionedId: item.item_id
-        }
+        // Provision card for cart checkout (instant checkout handles this via /api/cards/purchase)
+        return await processCardItem(orderId, userId, item, productType as CardType)
 
       default:
         // Generic digital product - just grant access
@@ -387,6 +389,147 @@ async function processEsimItem(
     return {
       itemId: item.item_id,
       productType: 'esim',
+      status: 'failed',
+      error: error.message
+    }
+  }
+}
+
+/**
+ * Process virtual card order item - provision card via provider
+ */
+async function processCardItem(
+  orderId: string,
+  userId: string,
+  item: {
+    item_id: string
+    product_id: string
+    name: string
+    price?: number
+    metadata?: any
+  },
+  cardType: CardType
+): Promise<FulfillmentResult['details'][0]> {
+  try {
+    // Idempotency: check if card already exists for this order
+    const existingResult = await query(
+      `SELECT id FROM user_cards WHERE metadata->>'orderId' = $1`,
+      [orderId]
+    )
+
+    if (existingResult.rows.length > 0) {
+      return {
+        itemId: item.item_id,
+        productType: cardType,
+        status: 'success',
+        provisionedId: existingResult.rows[0].id
+      }
+    }
+
+    // Get metadata from order item
+    const orderItemResult = await query(
+      `SELECT metadata, price FROM order_items WHERE id = $1`,
+      [item.item_id]
+    )
+
+    const metadata = orderItemResult.rows[0]?.metadata || item.metadata || {}
+    const price = orderItemResult.rows[0]?.price || item.price || 0
+
+    // Determine card details from metadata
+    const providerName: CardProvider = metadata.provider || 'reloadly'
+    const cardBrand: CardBrand = metadata.cardBrand || 'visa'
+    const denomination = cardType === 'instant' ? (metadata.denomination || price) : undefined
+    const isPremium = metadata.isPremium || providerName === 'lithic'
+
+    // Get provider pricing
+    const pricing = await getProviderPricing(providerName)
+    if (!pricing || !pricing.isEnabled) {
+      throw new Error('Card provider is not available')
+    }
+
+    // Get provider implementation
+    const provider = getProvider(providerName)
+    if (!provider) {
+      throw new Error(`Provider ${providerName} not found`)
+    }
+
+    // Create the card with the provider
+    const result = await provider.createCard({
+      userId,
+      currency: 'USD',
+      denomination,
+      cardBrand
+    })
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create card')
+    }
+
+    // Calculate expiry date (3 years for virtual, 1 year for instant)
+    const expiresAt = new Date()
+    expiresAt.setFullYear(expiresAt.getFullYear() + (cardType === 'instant' ? 1 : 3))
+
+    // Save card to database
+    const card = await createCardRecord(
+      userId,
+      providerName,
+      result.cardId || null,
+      cardType,
+      cardBrand,
+      result.lastFour || '',
+      result.cardNumber || null,
+      result.cvv || null,
+      result.expiry || '',
+      result.balance || 0,
+      cardType === 'instant' ? denomination ?? null : null,
+      isPremium,
+      expiresAt,
+      { nickname: metadata.nickname, orderId }
+    )
+
+    // Record the creation transaction
+    const totalCost = cardType === 'instant'
+      ? calculateInstantCardPrice(denomination!, pricing.instantMarkupPercent)
+      : pricing.creationFee
+
+    await recordTransaction(
+      card.id,
+      userId,
+      providerName,
+      'creation',
+      totalCost,
+      cardType === 'virtual' ? pricing.creationFee : 0,
+      result.cardId,
+      undefined,
+      undefined,
+      `Created ${cardType} card via checkout`
+    )
+
+    // Send card delivery notification
+    const brandDisplay = cardBrand === 'mastercard' ? 'Mastercard' : 'Visa'
+    const valueDisplay = denomination ? `$${denomination}` : 'Virtual Card'
+
+    await query(
+      `INSERT INTO notifications (id, "userId", type, title, message, metadata)
+       VALUES (gen_random_uuid()::text, $1, 'ORDER_CONFIRMED'::"NotificationType",
+               'Card Delivered',
+               $2,
+               $3::jsonb)`,
+      [userId, `Your ${brandDisplay} ${valueDisplay} is ready!`, JSON.stringify({ orderId, cardId: card.id })]
+    ).catch(err => console.error('Failed to send card notification:', err))
+
+    return {
+      itemId: item.item_id,
+      productType: cardType,
+      status: 'success',
+      provisionedId: card.id
+    }
+  } catch (error: any) {
+    console.error(`Card provisioning failed for item ${item.item_id}:`, error)
+
+    return {
+      itemId: item.item_id,
+      productType: cardType,
       status: 'failed',
       error: error.message
     }

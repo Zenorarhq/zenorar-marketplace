@@ -2,6 +2,7 @@
 
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
+import { CardVisualMini } from '@/components/cards/CardVisual'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
@@ -30,23 +31,36 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
   const total = filteredTotal ?? cartTotal
 
   // Map items for display
-  const displayItems = (sourceItems || []).map((item) => ({
-    id: item.product.id,
-    name: item.product.metadata?.productType === 'virtual_number'
-      ? item.product.metadata?.friendlyName || item.product.name
-      : item.product.name,
-    icon: item.product.icon || 'code',
-    image: item.product.image || item.product.images?.[0]?.url,
-    license: item.product.metadata?.productType === 'virtual_number'
-      ? 'Standard License'
-      : (item.license === 'extended' ? 'Extended License' : 'Standard License'),
-    price: item.price,
-    quantity: item.quantity,
-    isVirtualNumber: item.product.metadata?.productType === 'virtual_number',
-    countryIsoCode: item.product.metadata?.countryIsoCode,
-    isGiftCard: (item.product as any).productType === 'gift_card' || item.product.metadata?.productType === 'gift_card',
-    giftCardImage: (item.product as any).imageUrl || item.product.metadata?.imageUrl,
-  }))
+  const displayItems = (sourceItems || []).map((item) => {
+    const productType = item.product.metadata?.productType || (item.product as any).productType
+    const isInstantCard = productType === 'instant_card'
+    const isVirtualCard = productType === 'virtual_card'
+    const isCard = isInstantCard || isVirtualCard
+
+    return {
+      id: item.product.id,
+      name: productType === 'virtual_number'
+        ? item.product.metadata?.friendlyName || item.product.name
+        : item.product.name,
+      icon: item.product.icon || 'code',
+      image: item.product.image || item.product.images?.[0]?.url,
+      license: productType === 'virtual_number' || isCard
+        ? 'Standard License'
+        : (item.license === 'extended' ? 'Extended License' : 'Standard License'),
+      price: item.price,
+      quantity: item.quantity,
+      isVirtualNumber: productType === 'virtual_number',
+      countryIsoCode: item.product.metadata?.countryIsoCode,
+      isGiftCard: productType === 'gift_card',
+      giftCardImage: (item.product as any).imageUrl || item.product.metadata?.imageUrl,
+      isInstantCard,
+      isVirtualCard,
+      isCard,
+      cardBrand: item.product.metadata?.cardBrand || 'visa',
+      cardDenomination: item.product.metadata?.denomination,
+      isPremium: item.product.metadata?.isPremium,
+    }
+  })
 
   const shipping = 0 // Free shipping
   const tax = 0
@@ -75,8 +89,15 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
         ) : (
           displayItems.map((item) => (
             <div key={item.id} className="flex gap-4">
-              <div className="w-16 h-16 rounded-xl bg-background-dark border border-border-dark overflow-hidden shrink-0 flex items-center justify-center">
-                {item.isVirtualNumber && item.countryIsoCode ? (
+              <div className={`${item.isCard ? '' : 'w-16 h-16 rounded-xl bg-background-dark border border-border-dark overflow-hidden'} shrink-0 flex items-center justify-center`}>
+                {item.isCard ? (
+                  <CardVisualMini
+                    brand={item.cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
+                    type={item.isInstantCard ? 'instant' : 'virtual'}
+                    isPremium={item.isPremium}
+                    denomination={item.cardDenomination}
+                  />
+                ) : item.isVirtualNumber && item.countryIsoCode ? (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                     <FlagIcon countryCode={item.countryIsoCode} className="w-10 h-10 rounded" />
                   </div>

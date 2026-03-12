@@ -325,15 +325,36 @@ export async function POST(req: NextRequest) {
       [orderId]
     )
 
-    // Send success notification
-    await query(
-      `INSERT INTO notifications (id, "userId", type, title, message, metadata)
-       VALUES (gen_random_uuid()::text, $1, 'ORDER_CONFIRMED'::"NotificationType",
-               'Order Confirmed',
-               $2,
-               $3::jsonb)`,
-      [userId, `Your order #${finalOrderNumber} has been confirmed. Your virtual number is ready!`, JSON.stringify({ orderId, orderNumber: finalOrderNumber })]
-    ).catch(err => console.error('Failed to send notification:', err))
+    // Determine notification message based on product types in order
+    const hasVirtualNumbers = items.some((item: any) => item.productType === 'virtual_number')
+    const hasGiftCards = items.some((item: any) => item.productType === 'gift_card')
+    const hasCards = items.some((item: any) => item.productType === 'instant_card' || item.productType === 'virtual_card')
+
+    // Cards send their own notification via fulfillment, so skip for card-only orders
+    const isCardOnlyOrder = hasCards && !hasVirtualNumbers && !hasGiftCards
+
+    if (!isCardOnlyOrder) {
+      let notificationTitle = 'Order Confirmed'
+      let notificationMessage = `Your order #${finalOrderNumber} has been confirmed.`
+
+      if (hasVirtualNumbers && !hasGiftCards) {
+        notificationMessage = `Your order #${finalOrderNumber} has been confirmed. Your virtual number is ready!`
+      } else if (hasGiftCards && !hasVirtualNumbers) {
+        notificationTitle = 'Gift Card Delivered'
+        notificationMessage = `Your gift card from order #${finalOrderNumber} is ready!`
+      } else if (hasVirtualNumbers && hasGiftCards) {
+        notificationMessage = `Your order #${finalOrderNumber} has been confirmed. Your products are ready!`
+      }
+
+      await query(
+        `INSERT INTO notifications (id, "userId", type, title, message, metadata)
+         VALUES (gen_random_uuid()::text, $1, 'ORDER_CONFIRMED'::"NotificationType",
+                 $2,
+                 $3,
+                 $4::jsonb)`,
+        [userId, notificationTitle, notificationMessage, JSON.stringify({ orderId, orderNumber: finalOrderNumber })]
+      ).catch(err => console.error('Failed to send notification:', err))
+    }
 
     return NextResponse.json({
       success: true,

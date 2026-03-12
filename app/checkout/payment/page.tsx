@@ -677,7 +677,11 @@ export default function PaymentPage() {
         (item.product as any).productType === 'gift_card' ||
         item.product.metadata?.productType === 'gift_card'
       )
-      const hasDigitalProducts = hasVirtualNumbers || hasGiftCards
+      const hasCards = items.some((item: any) => {
+        const productType = item.product.metadata?.productType || (item.product as any).productType
+        return productType === 'instant_card' || productType === 'virtual_card'
+      })
+      const hasDigitalProducts = hasVirtualNumbers || hasGiftCards || hasCards
 
       if (hasDigitalProducts) {
         // Use local instant checkout API for digital products (handles provisioning)
