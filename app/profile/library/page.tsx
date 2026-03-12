@@ -66,6 +66,7 @@ export default function LibraryPage() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [revealedCards, setRevealedCards] = useState<Map<string, { cardNumber: string; cvv: string; expiry: string }>>(new Map())
   const [revealingCardId, setRevealingCardId] = useState<string | null>(null)
+  const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set())
   const menuRef = useRef<HTMLDivElement>(null)
   const [apiKeyModal, setApiKeyModal] = useState<{ key: string; productName: string } | null>(null)
   const [copied, setCopied] = useState(false)
@@ -235,8 +236,20 @@ export default function LibraryPage() {
     }
   }
 
-  // Handle card flip - fetch card details when flipped
+  // Handle card flip - toggle flip state and fetch card details if needed
   const handleCardFlip = async (cardId: string, isFlipped: boolean) => {
+    // Update flipped state
+    setFlippedCards(prev => {
+      const next = new Set(prev)
+      if (isFlipped) {
+        next.add(cardId)
+      } else {
+        next.delete(cardId)
+      }
+      return next
+    })
+
+    // Only fetch data if flipping to back and data not cached
     if (!isFlipped || revealedCards.has(cardId) || revealingCardId === cardId) return
 
     try {
@@ -472,13 +485,10 @@ export default function LibraryPage() {
                           cvv={revealedCards.get(item.id)?.cvv}
                           status={item.status as any}
                           size="sm"
+                          isFlipped={flippedCards.has(item.id)}
+                          isLoading={revealingCardId === item.id}
                           onFlip={(isFlipped) => handleCardFlip(item.id, isFlipped)}
                         />
-                        {revealingCardId === item.id && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
-                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
-                          </div>
-                        )}
                       </div>
                     ) : (
                     <div className="h-14 w-14 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -653,10 +663,10 @@ export default function LibraryPage() {
                         {item.category === 'cards' && (
                           <button
                             onClick={() => setSelectedCardId(item.id)}
-                            className="flex items-center gap-2 px-4 py-2 bg-surface-dark border border-border-dark text-slate-300 rounded-lg hover:text-white hover:bg-[#262626] transition-all"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
                           >
-                            <Icon name="receipt" size={16} />
-                            Transactions
+                            <Icon name="credit-card" size={16} />
+                            View Details
                           </button>
                         )}
                         {item.category === 'gift-cards' && (

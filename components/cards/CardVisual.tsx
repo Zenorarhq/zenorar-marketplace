@@ -17,6 +17,8 @@ interface CardVisualProps {
   size?: 'xs' | 'sm' | 'md' | 'lg'
   showDetails?: boolean
   flippable?: boolean
+  isFlipped?: boolean // External control for flip state
+  isLoading?: boolean // Show redacted state while loading
   className?: string
   onFlip?: (isFlipped: boolean) => void
 }
@@ -36,15 +38,22 @@ export default function CardVisual({
   size = 'md',
   showDetails = true,
   flippable = false,
+  isFlipped: controlledIsFlipped,
+  isLoading = false,
   className = '',
   onFlip
 }: CardVisualProps) {
-  const [isFlipped, setIsFlipped] = useState(false)
+  const [internalIsFlipped, setInternalIsFlipped] = useState(false)
+
+  // Use controlled state if provided, otherwise use internal state
+  const isFlipped = controlledIsFlipped !== undefined ? controlledIsFlipped : internalIsFlipped
 
   const handleFlip = () => {
     if (flippable) {
       const newState = !isFlipped
-      setIsFlipped(newState)
+      if (controlledIsFlipped === undefined) {
+        setInternalIsFlipped(newState)
+      }
       onFlip?.(newState)
     }
   }
@@ -423,10 +432,14 @@ export default function CardVisual({
       <div className={`relative z-10 h-full ${config.padding} flex flex-col justify-between pt-[30%]`}>
         {/* CVV section */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-8 bg-white/90 rounded flex items-center justify-end pr-3">
-            <span className={`font-mono text-slate-800 ${config.cardNumber} tracking-wider`}>
-              {cvv || '•••'}
-            </span>
+          <div className="flex-1 h-8 bg-white/90 rounded flex items-center justify-end pr-3 relative overflow-hidden">
+            {(isLoading || !cvv) ? (
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-300 via-slate-400 to-slate-300 animate-pulse" />
+            ) : (
+              <span className={`font-mono text-slate-800 ${config.cardNumber} tracking-wider`}>
+                {cvv}
+              </span>
+            )}
           </div>
           <span className={`text-white/60 ${config.label} uppercase`}>CVV</span>
         </div>
@@ -436,9 +449,15 @@ export default function CardVisual({
           <span className={`text-white/40 ${config.label} uppercase tracking-wider block mb-1`}>
             Card Number
           </span>
-          <p className={`text-white/90 font-mono tracking-[0.12em] ${config.cardNumber}`}>
-            {cardNumber ? formatCardNumber(cardNumber) : '•••• •••• •••• ••••'}
-          </p>
+          <div className="relative">
+            {(isLoading || !cardNumber) ? (
+              <div className="h-5 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
+            ) : (
+              <p className={`text-white/90 font-mono tracking-[0.12em] ${config.cardNumber}`}>
+                {formatCardNumber(cardNumber)}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Expiry */}
@@ -447,9 +466,13 @@ export default function CardVisual({
             <span className={`text-white/40 ${config.label} uppercase tracking-wider block`}>
               Expires
             </span>
-            <span className={`text-white/80 ${config.expiry} font-medium`}>
-              {expiry || '••/••'}
-            </span>
+            {(isLoading || !expiry) ? (
+              <div className="h-4 w-12 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse mt-0.5" />
+            ) : (
+              <span className={`text-white/80 ${config.expiry} font-medium`}>
+                {expiry}
+              </span>
+            )}
           </div>
 
           {/* Brand logo */}
@@ -597,8 +620,10 @@ export function CardVisualFlippable({
   status,
   size = 'lg',
   className = '',
+  isFlipped,
+  isLoading,
   onFlip
-}: Omit<CardVisualProps, 'showDetails' | 'flippable'> & { onFlip?: (isFlipped: boolean) => void }) {
+}: Omit<CardVisualProps, 'showDetails' | 'flippable'>) {
   return (
     <CardVisual
       brand={brand}
@@ -615,6 +640,8 @@ export function CardVisualFlippable({
       size={size}
       showDetails={true}
       flippable={true}
+      isFlipped={isFlipped}
+      isLoading={isLoading}
       className={className}
       onFlip={onFlip}
     />

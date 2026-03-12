@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Icon from '@/components/ui/Icon'
 import { localApiFetch } from '@/lib/api/client'
-import CardVisual from '@/components/cards/CardVisual'
+import { CardVisualFlippable } from '@/components/cards/CardVisual'
 
 interface CardTransaction {
   id: string
@@ -42,6 +42,7 @@ export default function CardDetailsModal({
   const [revealedDetails, setRevealedDetails] = useState<RevealedDetails | null>(null)
   const [revealing, setRevealing] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [isCardFlipped, setIsCardFlipped] = useState(false)
 
   useEffect(() => {
     if (!isOpen || !cardId) return
@@ -66,15 +67,26 @@ export default function CardDetailsModal({
     }
 
     fetchCardDetails()
-    // Reset revealed details when modal opens
+    // Reset states when modal opens
     setRevealedDetails(null)
+    setIsCardFlipped(false)
   }, [isOpen, cardId])
 
-  const handleReveal = async () => {
-    if (revealing || revealedDetails) return
+  // Synced reveal/hide toggle
+  const handleToggleReveal = async () => {
+    if (revealedDetails) {
+      // Hide - just flip back, keep data cached
+      setIsCardFlipped(false)
+      return
+    }
+
+    // Reveal - fetch if needed and flip
+    if (revealing) return
 
     try {
       setRevealing(true)
+      setIsCardFlipped(true) // Flip immediately
+
       const data = await localApiFetch<any>(`/cards/${cardId}/reveal`, {
         method: 'POST'
       })
@@ -90,8 +102,20 @@ export default function CardDetailsModal({
       })
     } catch (err: any) {
       setError(err.message)
+      setIsCardFlipped(false) // Flip back on error
     } finally {
       setRevealing(false)
+    }
+  }
+
+  // Handle card tap - synced with button
+  const handleCardFlip = (flipped: boolean) => {
+    if (flipped && !revealedDetails) {
+      // Trying to flip to back without data - fetch it
+      handleToggleReveal()
+    } else {
+      // Toggle flip state (data is cached)
+      setIsCardFlipped(flipped)
     }
   }
 
@@ -110,6 +134,7 @@ export default function CardDetailsModal({
   const isVirtual = card?.cardType === 'virtual'
   const brandName = card?.cardBrand === 'mastercard' ? 'Mastercard' : 'Visa'
   const displayName = card?.isPremium ? `Premium ${brandName}` : brandName
+  const isRevealed = !!revealedDetails && isCardFlipped
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -175,67 +200,33 @@ export default function CardDetailsModal({
             </div>
           ) : card ? (
             <div className="space-y-6">
-              {/* Card Visual */}
+              {/* Card Visual - Flippable */}
               <div className="flex justify-center">
-                <CardVisual
+                <CardVisualFlippable
                   brand={card.cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
                   type={card.cardType === 'instant' ? 'instant' : 'virtual'}
                   isPremium={card.isPremium}
                   denomination={card.denomination}
                   balance={card.balance}
                   lastFour={card.cardLastFour}
-                  expiry={card.cardExpiry}
+                  expiry={revealedDetails?.expiry || card.cardExpiry}
+                  cardNumber={revealedDetails?.cardNumber}
+                  cvv={revealedDetails?.cvv}
                   status={card.status}
                   size="lg"
-                  showDetails={true}
+                  isFlipped={isCardFlipped}
+                  isLoading={revealing}
+                  onFlip={handleCardFlip}
                 />
               </div>
 
-              {/* Card Details */}
-              <div className="bg-[#1a1a1a] rounded-xl p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-medium">{displayName}</h3>
-                  <div className={`px-3 py-1 rounded-full text-sm ${
-                    card.status === 'active'
-                      ? 'bg-green-500/20 text-green-400'
-                      : card.status === 'frozen'
-                      ? 'bg-blue-500/20 text-blue-400'
-                      : 'bg-slate-500/20 text-slate-400'
-                  }`}>
-                    {card.status.charAt(0).toUpperCase() + card.status.slice(1)}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-400">Type</p>
-                    <p className="text-white capitalize">{card.cardType} Card</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400">
-                      {isVirtual ? 'Balance' : 'Value'}
-                    </p>
-                    <p className="text-white font-semibold">
-                      {formatPrice(isVirtual ? card.balance : (card.denomination || 0))}
-                    </p>
-                  </div>
-                </div>
-
-                {card.isPremium && (
-                  <div className="mt-4 flex items-center gap-2 text-amber-400">
-                    <Icon name="shield" size={16} />
-                    <span className="text-sm">3D Secure Enabled</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Card Number & CVV Section */}
+              {/* Card Credentials Section - MOVED ABOVE card info */}
               <div className="bg-[#1a1a1a] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-white font-medium">Card Credentials</h3>
-                  {card.status === 'active' && !revealedDetails && (
+                  {card.status === 'active' && (
                     <button
-                      onClick={handleReveal}
+                      onClick={handleToggleReveal}
                       disabled={revealing}
                       className="flex items-center gap-2 px-3 py-1.5 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors text-sm font-medium disabled:opacity-50"
                     >
@@ -243,6 +234,11 @@ export default function CardDetailsModal({
                         <>
                           <Icon name="loader" size={14} className="animate-spin" />
                           Revealing...
+                        </>
+                      ) : isRevealed ? (
+                        <>
+                          <Icon name="visibility-off" size={14} />
+                          Hide Details
                         </>
                       ) : (
                         <>
@@ -254,7 +250,7 @@ export default function CardDetailsModal({
                   )}
                 </div>
 
-                {revealedDetails ? (
+                {isRevealed && revealedDetails ? (
                   <div className="space-y-3">
                     {/* Card Number */}
                     <div className="flex items-center justify-between p-3 bg-[#252525] rounded-lg">
@@ -321,10 +317,48 @@ export default function CardDetailsModal({
                 ) : (
                   <div className="text-center py-4 text-slate-400 text-sm">
                     {card.status === 'active' ? (
-                      <p>Click "Reveal Details" to view your card credentials</p>
+                      <p>Tap the card or click "Reveal Details" to view credentials</p>
                     ) : (
                       <p>Card credentials are not available for {card.status} cards</p>
                     )}
+                  </div>
+                )}
+              </div>
+
+              {/* Card Info - MOVED BELOW credentials */}
+              <div className="bg-[#1a1a1a] rounded-xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white font-medium">{displayName}</h3>
+                  <div className={`px-3 py-1 rounded-full text-sm ${
+                    card.status === 'active'
+                      ? 'bg-green-500/20 text-green-400'
+                      : card.status === 'frozen'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-slate-500/20 text-slate-400'
+                  }`}>
+                    {card.status.charAt(0).toUpperCase() + card.status.slice(1)}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-400">Type</p>
+                    <p className="text-white capitalize">{card.cardType} Card</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">
+                      {isVirtual ? 'Balance' : 'Value'}
+                    </p>
+                    <p className="text-white font-semibold">
+                      {formatPrice(isVirtual ? card.balance : (card.denomination || 0))}
+                    </p>
+                  </div>
+                </div>
+
+                {card.isPremium && (
+                  <div className="mt-4 flex items-center gap-2 text-amber-400">
+                    <Icon name="shield" size={16} />
+                    <span className="text-sm">3D Secure Enabled</span>
                   </div>
                 )}
               </div>
@@ -383,7 +417,7 @@ export default function CardDetailsModal({
                 )}
               </div>
 
-              {/* Card Info */}
+              {/* Card Info Footer */}
               <div className="text-xs text-slate-500">
                 <p>Created: {new Date(card.createdAt).toLocaleDateString('en-US', {
                   year: 'numeric',
