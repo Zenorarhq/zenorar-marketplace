@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 interface CardVisualProps {
   brand: 'visa' | 'mastercard'
   type: 'virtual' | 'instant'
@@ -8,11 +10,15 @@ interface CardVisualProps {
   balance?: number
   lastFour?: string
   expiry?: string
+  cardNumber?: string
+  cvv?: string
   cardholderName?: string
   status?: 'active' | 'frozen' | 'used' | 'expired' | 'pending'
   size?: 'xs' | 'sm' | 'md' | 'lg'
   showDetails?: boolean
+  flippable?: boolean
   className?: string
+  onFlip?: (isFlipped: boolean) => void
 }
 
 export default function CardVisual({
@@ -23,18 +29,32 @@ export default function CardVisual({
   balance,
   lastFour,
   expiry,
+  cardNumber,
+  cvv,
   cardholderName,
   status = 'active',
   size = 'md',
   showDetails = true,
-  className = ''
+  flippable = false,
+  className = '',
+  onFlip
 }: CardVisualProps) {
+  const [isFlipped, setIsFlipped] = useState(false)
+
+  const handleFlip = () => {
+    if (flippable) {
+      const newState = !isFlipped
+      setIsFlipped(newState)
+      onFlip?.(newState)
+    }
+  }
+
   // Size configurations
   const sizeConfig = {
     xs: {
       container: 'w-[120px] h-[76px]',
       padding: 'p-2',
-      chip: 'w-4 h-3',
+      chip: 'w-5 h-4',
       brandText: 'text-[6px]',
       cardNumber: 'text-[7px]',
       value: 'text-[10px]',
@@ -42,12 +62,14 @@ export default function CardVisual({
       expiry: 'text-[6px]',
       badge: 'text-[5px] px-1 py-0.5',
       logoSize: 'text-[8px]',
-      mcCircle: 'w-3 h-3'
+      mcCircle: 'w-3 h-3',
+      meshSize: 60,
+      contactless: 'w-3 h-3'
     },
     sm: {
       container: 'w-[180px] h-[114px]',
       padding: 'p-3',
-      chip: 'w-5 h-4',
+      chip: 'w-7 h-5',
       brandText: 'text-[8px]',
       cardNumber: 'text-[9px]',
       value: 'text-xs',
@@ -55,179 +77,221 @@ export default function CardVisual({
       expiry: 'text-[8px]',
       badge: 'text-[6px] px-1.5 py-0.5',
       logoSize: 'text-xs',
-      mcCircle: 'w-4 h-4'
+      mcCircle: 'w-4 h-4',
+      meshSize: 80,
+      contactless: 'w-4 h-4'
     },
     md: {
-      container: 'w-[260px] h-[164px]',
+      container: 'w-[280px] h-[176px]',
       padding: 'p-4',
-      chip: 'w-7 h-5',
+      chip: 'w-10 h-7',
       brandText: 'text-[10px]',
-      cardNumber: 'text-xs',
-      value: 'text-base',
+      cardNumber: 'text-sm',
+      value: 'text-lg',
       label: 'text-[8px]',
       expiry: 'text-[10px]',
       badge: 'text-[8px] px-2 py-0.5',
       logoSize: 'text-sm',
-      mcCircle: 'w-5 h-5'
+      mcCircle: 'w-5 h-5',
+      meshSize: 100,
+      contactless: 'w-5 h-5'
     },
     lg: {
-      container: 'w-[320px] h-[202px]',
+      container: 'w-[340px] h-[214px]',
       padding: 'p-5',
-      chip: 'w-9 h-6',
+      chip: 'w-12 h-8',
       brandText: 'text-xs',
-      cardNumber: 'text-sm',
-      value: 'text-lg',
+      cardNumber: 'text-base',
+      value: 'text-xl',
       label: 'text-[10px]',
       expiry: 'text-xs',
       badge: 'text-[10px] px-2.5 py-1',
       logoSize: 'text-base',
-      mcCircle: 'w-6 h-6'
+      mcCircle: 'w-6 h-6',
+      meshSize: 120,
+      contactless: 'w-6 h-6'
     }
   }
 
   const config = sizeConfig[size]
 
-  // Get card style based on brand and type
+  // Get card style based on type
   const getCardStyle = () => {
     if (type === 'instant') {
-      // Instant cards - Vibrant teal/cyan with glass effect
+      // Instant cards - Dark gradient with purple/pink/blue mesh
+      if (brand === 'mastercard') {
+        return {
+          bg: 'bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f0f23]',
+          accent: 'from-rose-500 via-fuchsia-500 to-purple-600',
+          glow: 'shadow-[0_8px_32px_rgba(236,72,153,0.25)]',
+          meshColors: ['#ec4899', '#d946ef', '#a855f7', '#8b5cf6']
+        }
+      }
       return {
-        bg: 'bg-gradient-to-br from-emerald-500 via-teal-400 to-cyan-500',
-        pattern: 'instant',
-        glow: 'shadow-[0_0_40px_rgba(20,184,166,0.4)]'
+        bg: 'bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#0c0a1d]',
+        accent: 'from-violet-500 via-purple-500 to-fuchsia-500',
+        glow: 'shadow-[0_8px_32px_rgba(139,92,246,0.25)]',
+        meshColors: ['#8b5cf6', '#a78bfa', '#c4b5fd', '#7c3aed']
+      }
+    }
+
+    // Virtual cards - Dark minimal with wireframe mesh
+    if (isPremium) {
+      // Premium - Dark with gold/amber accents
+      return {
+        bg: 'bg-gradient-to-br from-[#0a0a0a] via-[#171717] to-[#0a0a0a]',
+        accent: 'from-amber-400 via-yellow-500 to-amber-600',
+        glow: 'shadow-[0_8px_32px_rgba(251,191,36,0.15)]',
+        meshColors: ['#fbbf24', '#f59e0b', '#d97706', '#b45309']
       }
     }
 
     if (brand === 'mastercard') {
-      // Mastercard - Bold orange/red with interlocking circles
-      if (isPremium) {
-        return {
-          bg: 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900',
-          pattern: 'mastercard-premium',
-          glow: 'shadow-[0_0_40px_rgba(251,146,60,0.3)]'
-        }
-      }
       return {
-        bg: 'bg-gradient-to-br from-orange-500 via-red-500 to-rose-600',
-        pattern: 'mastercard',
-        glow: 'shadow-[0_0_40px_rgba(249,115,22,0.4)]'
+        bg: 'bg-gradient-to-br from-[#0f0f0f] via-[#1a1a1a] to-[#0a0a0a]',
+        accent: 'from-orange-500 via-red-500 to-rose-500',
+        glow: 'shadow-[0_8px_32px_rgba(249,115,22,0.15)]',
+        meshColors: ['#f97316', '#ef4444', '#ec4899', '#f43f5e']
       }
     }
 
-    // Visa
-    if (isPremium) {
-      // Premium Visa - Dark with gold accents
-      return {
-        bg: 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900',
-        pattern: 'visa-premium',
-        glow: 'shadow-[0_0_40px_rgba(139,92,246,0.3)]'
-      }
-    }
-    // Standard Visa - Deep blue with modern feel
+    // Visa - Deep blue/navy with cyan mesh
     return {
-      bg: 'bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700',
-      pattern: 'visa',
-      glow: 'shadow-[0_0_40px_rgba(99,102,241,0.4)]'
+      bg: 'bg-gradient-to-br from-[#0c1929] via-[#0f2847] to-[#0a1628]',
+      accent: 'from-cyan-400 via-blue-500 to-indigo-600',
+      glow: 'shadow-[0_8px_32px_rgba(6,182,212,0.2)]',
+      meshColors: ['#06b6d4', '#3b82f6', '#6366f1', '#22d3ee']
     }
   }
 
   const cardStyle = getCardStyle()
 
-  // Render pattern overlays
-  const renderPattern = () => {
-    switch (cardStyle.pattern) {
-      case 'instant':
-        return (
-          <>
-            {/* Floating orbs */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/20 blur-xl" />
-            <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-cyan-300/30 blur-xl" />
-            <div className="absolute top-1/2 right-1/4 w-16 h-16 rounded-full bg-emerald-300/20 blur-lg" />
-            {/* Wave pattern */}
-            <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 400 250" preserveAspectRatio="none">
-              <path d="M0,100 Q100,150 200,100 T400,100 L400,250 L0,250 Z" fill="white" />
-              <path d="M0,150 Q100,200 200,150 T400,150 L400,250 L0,250 Z" fill="white" opacity="0.5" />
-            </svg>
-          </>
-        )
+  // Render wireframe mesh pattern
+  const renderMeshPattern = () => {
+    const meshSize = config.meshSize
+    const colors = cardStyle.meshColors
 
-      case 'mastercard':
-        return (
-          <>
-            {/* Iconic overlapping circles */}
-            <div className="absolute top-1/2 left-[20%] -translate-y-1/2 w-24 h-24 rounded-full bg-red-400/40 blur-sm" />
-            <div className="absolute top-1/2 left-[32%] -translate-y-1/2 w-24 h-24 rounded-full bg-yellow-400/40 blur-sm" />
-            {/* Texture lines */}
-            <div className="absolute inset-0 opacity-5">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="absolute h-px bg-white" style={{ top: `${(i + 1) * 12}%`, left: 0, right: 0 }} />
-              ))}
-            </div>
-          </>
-        )
+    return (
+      <svg
+        className="absolute inset-0 w-full h-full opacity-40"
+        viewBox={`0 0 ${meshSize * 4} ${meshSize * 2.5}`}
+        preserveAspectRatio="xMidYMid slice"
+      >
+        <defs>
+          <linearGradient id={`meshGrad-${type}-${brand}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={colors[0]} stopOpacity="0.6" />
+            <stop offset="33%" stopColor={colors[1]} stopOpacity="0.4" />
+            <stop offset="66%" stopColor={colors[2]} stopOpacity="0.5" />
+            <stop offset="100%" stopColor={colors[3]} stopOpacity="0.3" />
+          </linearGradient>
+        </defs>
 
-      case 'mastercard-premium':
-        return (
-          <>
-            {/* Gold accent circles */}
-            <div className="absolute top-1/2 left-[18%] -translate-y-1/2 w-20 h-20 rounded-full border-2 border-amber-500/50" />
-            <div className="absolute top-1/2 left-[30%] -translate-y-1/2 w-20 h-20 rounded-full border-2 border-orange-500/50" />
-            <div className="absolute top-1/2 left-[24%] -translate-y-1/2 w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 opacity-60" />
-            {/* Metallic sheen */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/10 to-transparent" />
-            {/* Corner accent */}
-            <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-amber-500/20 to-transparent rounded-full blur-xl" />
-          </>
-        )
+        {/* Geometric wireframe shapes */}
+        <g stroke={`url(#meshGrad-${type}-${brand})`} fill="none" strokeWidth="0.5">
+          {/* Large polygon - top right */}
+          <polygon
+            points={`${meshSize * 2.5},${meshSize * 0.2} ${meshSize * 3.8},${meshSize * 0.8} ${meshSize * 3.5},${meshSize * 1.8} ${meshSize * 2.2},${meshSize * 1.5} ${meshSize * 2},${meshSize * 0.6}`}
+            className="animate-pulse"
+            style={{ animationDuration: '4s' }}
+          />
 
-      case 'visa-premium':
-        return (
-          <>
-            {/* Purple/gold gradient accent */}
-            <div className="absolute -top-8 -right-8 w-40 h-40 bg-gradient-to-br from-violet-500/30 to-amber-500/20 rounded-full blur-2xl" />
-            <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-gradient-to-br from-purple-500/20 to-transparent rounded-full blur-xl" />
-            {/* Metallic line */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
-            {/* Grid pattern */}
-            <div className="absolute inset-0 opacity-[0.03]" style={{
-              backgroundImage: 'linear-gradient(90deg, white 1px, transparent 1px), linear-gradient(white 1px, transparent 1px)',
-              backgroundSize: '20px 20px'
-            }} />
-          </>
-        )
+          {/* Medium polygon - center */}
+          <polygon
+            points={`${meshSize * 1.2},${meshSize * 0.8} ${meshSize * 2.2},${meshSize * 0.4} ${meshSize * 2.5},${meshSize * 1.2} ${meshSize * 1.8},${meshSize * 1.8} ${meshSize * 0.8},${meshSize * 1.4}`}
+          />
 
-      case 'visa':
-      default:
-        return (
-          <>
-            {/* Flowing gradient orbs */}
-            <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
-            <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-indigo-400/20 blur-xl" />
-            <div className="absolute top-1/3 right-1/3 w-20 h-20 rounded-full bg-violet-400/10 blur-lg" />
-            {/* Diagonal lines */}
-            <svg className="absolute inset-0 w-full h-full opacity-5" viewBox="0 0 100 100" preserveAspectRatio="none">
-              {[...Array(5)].map((_, i) => (
-                <line key={i} x1={i * 25} y1="0" x2={i * 25 + 50} y2="100" stroke="white" strokeWidth="0.5" />
-              ))}
-            </svg>
-          </>
-        )
-    }
+          {/* Small polygon - bottom left */}
+          <polygon
+            points={`${meshSize * 0.3},${meshSize * 1.5} ${meshSize * 1.2},${meshSize * 1.2} ${meshSize * 1.5},${meshSize * 2} ${meshSize * 0.8},${meshSize * 2.3} ${meshSize * 0.1},${meshSize * 2}`}
+          />
+
+          {/* Connection lines */}
+          <line x1={meshSize * 1.2} y1={meshSize * 0.8} x2={meshSize * 2.5} y2={meshSize * 0.2} />
+          <line x1={meshSize * 2.2} y1={meshSize * 0.4} x2={meshSize * 3.8} y2={meshSize * 0.8} />
+          <line x1={meshSize * 1.8} y1={meshSize * 1.8} x2={meshSize * 2.2} y2={meshSize * 1.5} />
+          <line x1={meshSize * 0.8} y1={meshSize * 1.4} x2={meshSize * 2} y2={meshSize * 0.6} />
+
+          {/* Accent dots at vertices */}
+          <circle cx={meshSize * 2.5} cy={meshSize * 0.2} r="2" fill={colors[0]} />
+          <circle cx={meshSize * 3.8} cy={meshSize * 0.8} r="1.5" fill={colors[1]} />
+          <circle cx={meshSize * 1.2} cy={meshSize * 0.8} r="2" fill={colors[2]} />
+          <circle cx={meshSize * 0.8} cy={meshSize * 1.4} r="1.5" fill={colors[3]} />
+          <circle cx={meshSize * 1.8} cy={meshSize * 1.8} r="2" fill={colors[0]} />
+        </g>
+
+        {/* Additional decorative lines for instant cards */}
+        {type === 'instant' && (
+          <g stroke={colors[0]} strokeWidth="0.3" opacity="0.3">
+            {[...Array(6)].map((_, i) => (
+              <line
+                key={i}
+                x1={meshSize * (0.5 + i * 0.6)}
+                y1="0"
+                x2={meshSize * (0.8 + i * 0.6)}
+                y2={meshSize * 2.5}
+              />
+            ))}
+          </g>
+        )}
+      </svg>
+    )
   }
+
+  // Render EMV chip with semi-transparent effect for instant cards
+  const renderChip = () => {
+    const isTransparent = type === 'instant'
+
+    return (
+      <div
+        className={`${config.chip} rounded-md relative overflow-hidden ${
+          isTransparent
+            ? 'bg-white/10 backdrop-blur-sm border border-white/20'
+            : 'bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400'
+        }`}
+      >
+        {/* Chip contacts */}
+        <div className="absolute inset-[15%] grid grid-cols-2 grid-rows-2 gap-[2px]">
+          <div className={`rounded-sm ${isTransparent ? 'bg-white/30' : 'bg-amber-600/40'}`} />
+          <div className={`rounded-sm ${isTransparent ? 'bg-white/20' : 'bg-amber-600/30'}`} />
+          <div className={`rounded-sm ${isTransparent ? 'bg-white/20' : 'bg-amber-600/30'}`} />
+          <div className={`rounded-sm ${isTransparent ? 'bg-white/30' : 'bg-amber-600/40'}`} />
+        </div>
+        {/* Chip highlight */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${
+          isTransparent ? 'from-white/20 to-transparent' : 'from-white/50 to-transparent'
+        }`} />
+      </div>
+    )
+  }
+
+  // Render contactless icon
+  const renderContactless = () => (
+    <svg
+      className={`${config.contactless} text-white/60`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M8.5 14.5c1.5-1.5 4-1.5 5.5 0" strokeLinecap="round" />
+      <path d="M6.5 12.5c2.5-2.5 6.5-2.5 9 0" strokeLinecap="round" />
+      <path d="M4.5 10.5c3.5-3.5 9.5-3.5 13 0" strokeLinecap="round" />
+    </svg>
+  )
 
   // Get status badge
   const getStatusBadge = () => {
     if (!status || status === 'active') return null
 
     const statusStyles = {
-      frozen: 'bg-blue-500/30 text-blue-200 border-blue-400/30',
-      used: 'bg-slate-500/30 text-slate-300 border-slate-400/30',
-      expired: 'bg-red-500/30 text-red-200 border-red-400/30',
-      pending: 'bg-amber-500/30 text-amber-200 border-amber-400/30'
+      frozen: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
+      used: 'bg-slate-500/20 text-slate-400 border-slate-400/30',
+      expired: 'bg-red-500/20 text-red-300 border-red-400/30',
+      pending: 'bg-amber-500/20 text-amber-300 border-amber-400/30'
     }
 
     return (
-      <span className={`${statusStyles[status]} ${config.badge} rounded-full font-semibold border backdrop-blur-sm`}>
+      <span className={`${statusStyles[status]} ${config.badge} rounded font-semibold border backdrop-blur-sm`}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     )
@@ -240,78 +304,73 @@ export default function CardVisual({
       ? `$${balance.toFixed(2)}`
       : null
 
-  return (
+  // Format card number for display
+  const formatCardNumber = (num?: string) => {
+    if (!num) return size === 'xs' ? `••${lastFour || '••••'}` : `•••• •••• •••• ${lastFour || '••••'}`
+    return num.replace(/(.{4})/g, '$1 ').trim()
+  }
+
+  // Front of card
+  const CardFront = () => (
     <div
-      className={`${config.container} ${cardStyle.bg} rounded-2xl relative overflow-hidden ${cardStyle.glow} ${className}`}
+      className={`${config.container} ${cardStyle.bg} rounded-xl relative overflow-hidden ${cardStyle.glow} backface-hidden`}
       style={{ aspectRatio: '1.586' }}
     >
-      {/* Pattern overlay */}
-      {renderPattern()}
+      {/* Mesh pattern overlay */}
+      {renderMeshPattern()}
 
-      {/* Glass reflection effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-60" />
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/20" />
 
-      {/* Holographic shimmer */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.3) 45%, rgba(255,255,255,0.1) 50%, transparent 55%)',
-        }}
-      />
+      {/* Premium gold edge for premium cards */}
+      {isPremium && type === 'virtual' && (
+        <div className="absolute inset-0 rounded-xl border border-amber-500/30" />
+      )}
 
       {/* Card content */}
       <div className={`relative z-10 h-full ${config.padding} flex flex-col justify-between`}>
         {/* Top row */}
         <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-1">
-            {/* Card type */}
-            <span className={`text-white/80 ${config.brandText} uppercase tracking-widest font-bold`}>
-              {type === 'instant' ? 'Instant' : isPremium ? 'Premium' : 'Virtual'}
+          <div className="flex items-center gap-2">
+            {/* Chip */}
+            {showDetails && renderChip()}
+            {/* Contactless */}
+            {showDetails && size !== 'xs' && renderContactless()}
+          </div>
+
+          <div className="flex flex-col items-end gap-1">
+            {/* Card type label */}
+            <span className={`text-white/70 ${config.brandText} uppercase tracking-[0.15em] font-medium`}>
+              {type === 'instant' ? 'Instant Card' : isPremium ? 'Premium' : 'Virtual Card'}
             </span>
             {getStatusBadge()}
           </div>
-
-          {/* EMV Chip */}
-          {showDetails && (
-            <div className={`${config.chip} rounded bg-gradient-to-br from-amber-200 via-yellow-300 to-amber-400 relative overflow-hidden`}>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-[70%] h-[80%] grid grid-cols-2 gap-px">
-                  <div className="bg-amber-600/40 rounded-sm" />
-                  <div className="bg-amber-600/30 rounded-sm" />
-                  <div className="bg-amber-600/30 rounded-sm" />
-                  <div className="bg-amber-600/40 rounded-sm" />
-                </div>
-              </div>
-              {/* Chip shine */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent" />
-            </div>
-          )}
         </div>
 
-        {/* Middle - Card number */}
+        {/* Card number */}
         {showDetails && (
           <div className="flex-1 flex items-center">
-            <p className={`text-white font-mono tracking-[0.2em] ${config.cardNumber} drop-shadow-sm`}>
-              {size === 'xs' ? `••${lastFour || '••••'}` : `•••• •••• •••• ${lastFour || '••••'}`}
+            <p className={`text-white/90 font-mono tracking-[0.15em] ${config.cardNumber}`}>
+              {formatCardNumber()}
             </p>
           </div>
         )}
 
         {/* Bottom row */}
         <div className="flex items-end justify-between">
-          <div className="flex flex-col">
-            {showDetails && expiry && size !== 'xs' && (
-              <div className="flex flex-col">
-                <span className={`text-white/50 ${config.label} uppercase tracking-wider`}>
-                  Expires
+          <div className="flex flex-col gap-0.5">
+            {showDetails && size !== 'xs' && (
+              <>
+                <span className={`text-white/40 ${config.label} uppercase tracking-wider`}>
+                  {cardholderName ? 'Card Holder' : 'Valid Thru'}
                 </span>
-                <span className={`text-white ${config.expiry} font-medium`}>
-                  {expiry}
+                <span className={`text-white/80 ${config.expiry} font-medium`}>
+                  {cardholderName || expiry || '••/••'}
                 </span>
-              </div>
+              </>
             )}
             {displayValue && (
-              <span className={`text-white font-bold ${config.value} drop-shadow-md mt-0.5`}>
+              <span className={`text-white font-bold ${config.value} mt-1`}>
                 {displayValue}
               </span>
             )}
@@ -320,30 +379,136 @@ export default function CardVisual({
           {/* Brand logo */}
           <div className="flex items-center">
             {brand === 'mastercard' ? (
-              <div className="flex items-center -space-x-2">
-                <div className={`${config.mcCircle} rounded-full bg-red-500 shadow-lg`} />
-                <div className={`${config.mcCircle} rounded-full bg-amber-400 shadow-lg`} />
+              <div className="flex items-center -space-x-1.5">
+                <div className={`${config.mcCircle} rounded-full bg-[#eb001b] opacity-90`} />
+                <div className={`${config.mcCircle} rounded-full bg-[#f79e1b] opacity-90`} />
               </div>
             ) : (
-              <span className={`font-bold italic text-white ${config.logoSize} drop-shadow-md tracking-wide`}>
+              <span className={`font-bold italic text-white/90 ${config.logoSize} tracking-wider`}>
                 VISA
               </span>
             )}
           </div>
         </div>
-
-        {/* Premium badge */}
-        {isPremium && type !== 'instant' && size !== 'xs' && (
-          <div className="absolute top-3 right-12">
-            <span className={`bg-gradient-to-r from-amber-400/20 to-amber-600/20 text-amber-300 ${config.badge} rounded-full font-semibold border border-amber-400/30 backdrop-blur-sm`}>
-              3D Secure
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Edge highlight */}
-      <div className="absolute inset-0 rounded-2xl border border-white/20 pointer-events-none" />
+      {/* Subtle inner border */}
+      <div className="absolute inset-0 rounded-xl border border-white/10 pointer-events-none" />
+
+      {/* Tap to flip indicator */}
+      {flippable && size !== 'xs' && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-white/30 text-[8px] uppercase tracking-wider">
+          Tap to reveal
+        </div>
+      )}
+    </div>
+  )
+
+  // Back of card
+  const CardBack = () => (
+    <div
+      className={`${config.container} ${cardStyle.bg} rounded-xl relative overflow-hidden ${cardStyle.glow} backface-hidden rotate-y-180`}
+      style={{ aspectRatio: '1.586' }}
+    >
+      {/* Mesh pattern overlay */}
+      {renderMeshPattern()}
+
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/20" />
+
+      {/* Magnetic stripe */}
+      <div className="absolute top-[15%] left-0 right-0 h-[12%] bg-black/80" />
+
+      {/* Card content */}
+      <div className={`relative z-10 h-full ${config.padding} flex flex-col justify-between pt-[30%]`}>
+        {/* CVV section */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-8 bg-white/90 rounded flex items-center justify-end pr-3">
+            <span className={`font-mono text-slate-800 ${config.cardNumber} tracking-wider`}>
+              {cvv || '•••'}
+            </span>
+          </div>
+          <span className={`text-white/60 ${config.label} uppercase`}>CVV</span>
+        </div>
+
+        {/* Card number (full) */}
+        <div className="mt-auto">
+          <span className={`text-white/40 ${config.label} uppercase tracking-wider block mb-1`}>
+            Card Number
+          </span>
+          <p className={`text-white/90 font-mono tracking-[0.12em] ${config.cardNumber}`}>
+            {cardNumber ? formatCardNumber(cardNumber) : '•••• •••• •••• ••••'}
+          </p>
+        </div>
+
+        {/* Expiry */}
+        <div className="flex items-end justify-between mt-2">
+          <div>
+            <span className={`text-white/40 ${config.label} uppercase tracking-wider block`}>
+              Expires
+            </span>
+            <span className={`text-white/80 ${config.expiry} font-medium`}>
+              {expiry || '••/••'}
+            </span>
+          </div>
+
+          {/* Brand logo */}
+          <div className="flex items-center">
+            {brand === 'mastercard' ? (
+              <div className="flex items-center -space-x-1.5">
+                <div className={`${config.mcCircle} rounded-full bg-[#eb001b] opacity-90`} />
+                <div className={`${config.mcCircle} rounded-full bg-[#f79e1b] opacity-90`} />
+              </div>
+            ) : (
+              <span className={`font-bold italic text-white/90 ${config.logoSize} tracking-wider`}>
+                VISA
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Subtle inner border */}
+      <div className="absolute inset-0 rounded-xl border border-white/10 pointer-events-none" />
+    </div>
+  )
+
+  if (flippable) {
+    return (
+      <div
+        className={`perspective-1000 ${className}`}
+        onClick={handleFlip}
+        style={{ cursor: 'pointer' }}
+      >
+        <div
+          className={`relative transition-transform duration-500 transform-style-3d ${
+            isFlipped ? 'rotate-y-180' : ''
+          }`}
+          style={{
+            transformStyle: 'preserve-3d',
+            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          }}
+        >
+          <div style={{ backfaceVisibility: 'hidden' }}>
+            <CardFront />
+          </div>
+          <div
+            className="absolute inset-0"
+            style={{
+              backfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)'
+            }}
+          >
+            <CardBack />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={className}>
+      <CardFront />
     </div>
   )
 }
@@ -358,7 +523,7 @@ export function CardVisualCompact({
   lastFour,
   status,
   className = ''
-}: Omit<CardVisualProps, 'size' | 'showDetails' | 'expiry' | 'cardholderName'>) {
+}: Omit<CardVisualProps, 'size' | 'showDetails' | 'expiry' | 'cardholderName' | 'flippable'>) {
   return (
     <CardVisual
       brand={brand}
@@ -413,6 +578,45 @@ export function CardVisualPreview({
       showDetails={true}
       size="md"
       className={className}
+    />
+  )
+}
+
+// Flippable version for library with full details
+export function CardVisualFlippable({
+  brand,
+  type,
+  isPremium = false,
+  denomination,
+  balance,
+  lastFour,
+  expiry,
+  cardNumber,
+  cvv,
+  cardholderName,
+  status,
+  size = 'lg',
+  className = '',
+  onFlip
+}: Omit<CardVisualProps, 'showDetails' | 'flippable'> & { onFlip?: (isFlipped: boolean) => void }) {
+  return (
+    <CardVisual
+      brand={brand}
+      type={type}
+      isPremium={isPremium}
+      denomination={denomination}
+      balance={balance}
+      lastFour={lastFour}
+      expiry={expiry}
+      cardNumber={cardNumber}
+      cvv={cvv}
+      cardholderName={cardholderName}
+      status={status}
+      size={size}
+      showDetails={true}
+      flippable={true}
+      className={className}
+      onFlip={onFlip}
     />
   )
 }

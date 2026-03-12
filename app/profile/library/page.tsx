@@ -10,8 +10,8 @@ import { libraryApi } from '@/lib/api/library'
 import EsimDetailModal from '@/components/library/EsimDetailModal'
 import GiftCardDetailModal from '@/components/library/GiftCardDetailModal'
 import CardDetailsModal from '@/components/cards/CardDetailsModal'
-import { CardVisualCompact } from '@/components/cards/CardVisual'
-import { apiFetch } from '@/lib/api/client'
+import { CardVisualFlippable } from '@/components/cards/CardVisual'
+import { apiFetch, localApiFetch } from '@/lib/api/client'
 
 interface License {
   id: string
@@ -64,6 +64,8 @@ export default function LibraryPage() {
   const [selectedEsimId, setSelectedEsimId] = useState<string | null>(null)
   const [selectedGiftCardId, setSelectedGiftCardId] = useState<string | null>(null)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [revealedCards, setRevealedCards] = useState<Map<string, { cardNumber: string; cvv: string; expiry: string }>>(new Map())
+  const [revealingCardId, setRevealingCardId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [apiKeyModal, setApiKeyModal] = useState<{ key: string; productName: string } | null>(null)
   const [copied, setCopied] = useState(false)
@@ -230,6 +232,30 @@ export default function LibraryPage() {
       setDomainInput('')
     } else {
       setDomainError((res as any).message || res.error || 'Failed to activate domain')
+    }
+  }
+
+  // Handle card flip - fetch card details when flipped
+  const handleCardFlip = async (cardId: string, isFlipped: boolean) => {
+    if (!isFlipped || revealedCards.has(cardId) || revealingCardId === cardId) return
+
+    try {
+      setRevealingCardId(cardId)
+      const data = await localApiFetch<any>(`/cards/${cardId}/reveal`, {
+        method: 'POST'
+      })
+
+      if (data.success && data.data) {
+        setRevealedCards(prev => new Map(prev).set(cardId, {
+          cardNumber: data.data.cardNumber || '',
+          cvv: data.data.cvv || '',
+          expiry: data.data.expiry || ''
+        }))
+      }
+    } catch (err) {
+      console.error('Failed to reveal card:', err)
+    } finally {
+      setRevealingCardId(null)
     }
   }
 
@@ -433,16 +459,26 @@ export default function LibraryPage() {
                   {/* Top: icon/image + info */}
                   <div className="flex gap-4 mb-4">
                     {item.category === 'cards' ? (
-                      <div className="flex-shrink-0">
-                        <CardVisualCompact
+                      <div className="flex-shrink-0 relative">
+                        <CardVisualFlippable
                           brand={item.cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
                           type={item.cardType === 'instant' ? 'instant' : 'virtual'}
                           isPremium={item.provider === 'lithic'}
                           denomination={item.denomination}
                           balance={item.balance}
                           lastFour={item.cardLastFour}
+                          expiry={revealedCards.get(item.id)?.expiry || item.cardExpiry}
+                          cardNumber={revealedCards.get(item.id)?.cardNumber}
+                          cvv={revealedCards.get(item.id)?.cvv}
                           status={item.status as any}
+                          size="sm"
+                          onFlip={(isFlipped) => handleCardFlip(item.id, isFlipped)}
                         />
+                        {revealingCardId === item.id && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
+                            <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
+                          </div>
+                        )}
                       </div>
                     ) : (
                     <div className="h-14 w-14 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -617,10 +653,10 @@ export default function LibraryPage() {
                         {item.category === 'cards' && (
                           <button
                             onClick={() => setSelectedCardId(item.id)}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+                            className="flex items-center gap-2 px-4 py-2 bg-surface-dark border border-border-dark text-slate-300 rounded-lg hover:text-white hover:bg-[#262626] transition-all"
                           >
-                            <Icon name="credit-card" size={16} />
-                            View Details
+                            <Icon name="receipt" size={16} />
+                            Transactions
                           </button>
                         )}
                         {item.category === 'gift-cards' && (

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
+import { CardVisualMini } from '@/components/cards/CardVisual'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { libraryApi } from '@/lib/api/library'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -397,30 +398,53 @@ export default function OrdersPage() {
                         index > 0 ? 'border-t border-dashed border-border-dark pt-4 sm:pt-6' : ''
                       }`}
                     >
-                      <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        {(() => {
-                          const imageUrl = item.product?.images?.[0]?.url
-                            || (item.product as any)?.image
-                            || (item.product as any)?.imageUrl
-                            || (item as any).metadata?.imageUrl
-                          const isGiftCard = (item as any).product_type === 'gift_card'
-                            || (item as any).metadata?.productType === 'gift_card'
-                          return imageUrl ? (
-                            <img
-                              src={imageUrl}
-                              alt={item.name}
-                              className="h-full w-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none'
-                                e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                              }}
-                            />
-                          ) : null
-                        })()}
-                        <div className={`${item.product?.images?.[0]?.url || (item.product as any)?.image || (item.product as any)?.imageUrl || (item as any).metadata?.imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
-                          <Icon name={(item as any).product_type === 'gift_card' || (item as any).metadata?.productType === 'gift_card' ? 'gift' : 'box'} size={36} className="text-slate-500" />
-                        </div>
-                      </div>
+                      {(() => {
+                        const productType = (item as any).product_type || (item as any).metadata?.productType
+                        const isInstantCard = productType === 'instant_card'
+                        const isVirtualCard = productType === 'virtual_card'
+                        const isCard = isInstantCard || isVirtualCard
+                        const cardBrand = (item as any).metadata?.cardBrand || 'visa'
+                        const cardDenomination = (item as any).metadata?.denomination
+                        const isPremium = (item as any).metadata?.isPremium
+
+                        if (isCard) {
+                          return (
+                            <div className="flex-shrink-0">
+                              <CardVisualMini
+                                brand={cardBrand === 'mastercard' ? 'mastercard' : 'visa'}
+                                type={isInstantCard ? 'instant' : 'virtual'}
+                                isPremium={isPremium}
+                                denomination={cardDenomination}
+                              />
+                            </div>
+                          )
+                        }
+
+                        const imageUrl = item.product?.images?.[0]?.url
+                          || (item.product as any)?.image
+                          || (item.product as any)?.imageUrl
+                          || (item as any).metadata?.imageUrl
+                        const isGiftCard = productType === 'gift_card'
+
+                        return (
+                          <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={item.name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none'
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                                }}
+                              />
+                            ) : null}
+                            <div className={`${imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
+                              <Icon name={isGiftCard ? 'gift' : 'box'} size={36} className="text-slate-500" />
+                            </div>
+                          </div>
+                        )
+                      })()}
                       <div>
                         <h3 className="text-white font-bold text-base sm:text-lg leading-tight mb-1">
                           {item.name}
