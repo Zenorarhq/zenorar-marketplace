@@ -495,7 +495,7 @@ export default function CardVisual({
         </div>
 
         {/* Expiry */}
-        <div className="flex items-end justify-between">
+        <div className="flex items-start justify-between">
           <div>
             <span className={`text-white/40 ${config.label} uppercase tracking-wider block ${config.labelLeading}`}>
               Expires
@@ -503,9 +503,9 @@ export default function CardVisual({
             {(isLoading || !expiry) ? (
               <div className={`h-3 w-10 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse ${config.expiryValueGap}`} />
             ) : (
-              <span className={`text-white/80 ${config.expiry} font-medium ${config.valueLeading} ${config.expiryValueGap}`}>
+              <p className={`text-white/80 ${config.expiry} font-medium ${config.valueLeading} ${config.expiryValueGap}`}>
                 {expiry}
-              </span>
+              </p>
             )}
           </div>
 
