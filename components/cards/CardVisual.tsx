@@ -81,7 +81,8 @@ export default function CardVisual({
       backTopOffset: '30%',
       labelLeading: 'leading-none',
       valueLeading: 'leading-none',
-      labelValueGap: 'mt-0.5'
+      labelValueGap: 'mt-0.5',
+      expiryValueGap: ''
     },
     sm: {
       container: 'w-[180px] h-[114px]',
@@ -98,13 +99,14 @@ export default function CardVisual({
       meshSize: 80,
       contactless: 'w-4 h-4',
       cvvStripeHeight: 'h-4',
-      cvvStripeRounding: 'rounded-[3px]',
+      cvvStripeRounding: 'rounded-[4px]',
       backContentGap: 'gap-1.5',
       backPadding: 'p-1.5',
       backTopOffset: '26%',
       labelLeading: 'leading-none',
       valueLeading: 'leading-none',
-      labelValueGap: 'mt-0.5'
+      labelValueGap: 'mt-0.5',
+      expiryValueGap: ''
     },
     md: {
       container: 'w-[280px] h-[176px]',
@@ -127,7 +129,8 @@ export default function CardVisual({
       backTopOffset: '28%',
       labelLeading: '',
       valueLeading: '',
-      labelValueGap: ''
+      labelValueGap: '',
+      expiryValueGap: ''
     },
     lg: {
       container: 'w-[340px] h-[214px]',
@@ -150,7 +153,8 @@ export default function CardVisual({
       backTopOffset: '28%',
       labelLeading: '',
       valueLeading: '',
-      labelValueGap: ''
+      labelValueGap: '',
+      expiryValueGap: ''
     }
   }
 
@@ -497,9 +501,9 @@ export default function CardVisual({
               Expires
             </span>
             {(isLoading || !expiry) ? (
-              <div className={`h-3 w-10 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse ${config.labelValueGap}`} />
+              <div className={`h-3 w-10 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse ${config.expiryValueGap}`} />
             ) : (
-              <span className={`text-white/80 ${config.expiry} font-medium ${config.valueLeading} ${config.labelValueGap}`}>
+              <span className={`text-white/80 ${config.expiry} font-medium ${config.valueLeading} ${config.expiryValueGap}`}>
                 {expiry}
               </span>
             )}
