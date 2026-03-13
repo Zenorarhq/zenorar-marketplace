@@ -75,7 +75,7 @@ export default function CardVisual({
       meshSize: 60,
       contactless: 'w-3 h-3',
       cvvStripeHeight: 'h-3',
-      backContentGap: 'gap-0.5',
+      backContentGap: 'gap-1',
       backPadding: 'p-1',
       backTopOffset: '32%'
     },
@@ -94,7 +94,7 @@ export default function CardVisual({
       meshSize: 80,
       contactless: 'w-4 h-4',
       cvvStripeHeight: 'h-4',
-      backContentGap: 'gap-0.5',
+      backContentGap: 'gap-1.5',
       backPadding: 'p-1.5',
       backTopOffset: '30%'
     },
@@ -113,7 +113,7 @@ export default function CardVisual({
       meshSize: 100,
       contactless: 'w-5 h-5',
       cvvStripeHeight: 'h-6',
-      backContentGap: 'gap-2',
+      backContentGap: 'gap-3',
       backPadding: 'p-3',
       backTopOffset: '28%'
     },
@@ -132,7 +132,7 @@ export default function CardVisual({
       meshSize: 120,
       contactless: 'w-6 h-6',
       cvvStripeHeight: 'h-6',
-      backContentGap: 'gap-2',
+      backContentGap: 'gap-4',
       backPadding: 'p-4',
       backTopOffset: '28%'
     }
@@ -444,8 +444,8 @@ export default function CardVisual({
       {/* Magnetic stripe */}
       <div className="absolute top-[15%] left-0 right-0 h-[12%] bg-black/80" />
 
-      {/* Card content - use flex column with justify-between to fit content */}
-      <div className={`absolute left-0 right-0 bottom-0 z-10 ${config.backPadding} flex flex-col justify-between`} style={{ top: config.backTopOffset }}>
+      {/* Card content */}
+      <div className={`absolute left-0 right-0 z-10 ${config.backPadding} flex flex-col ${config.backContentGap}`} style={{ top: config.backTopOffset }}>
         {/* CVV section */}
         <div className="flex items-center gap-1.5">
           <div className={`flex-1 ${config.cvvStripeHeight} bg-white/90 rounded flex items-center justify-end pr-2 relative overflow-hidden`}>
