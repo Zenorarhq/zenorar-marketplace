@@ -466,30 +466,28 @@ export default function CardVisual({
 
         {/* Card number (full) */}
         <div>
-          <span className={`text-white/40 ${config.label} uppercase tracking-wider block`}>
+          <span className={`text-white/40 ${config.label} uppercase tracking-wider block leading-none`}>
             Card Number
           </span>
-          <div className="relative">
-            {(isLoading || !cardNumber) ? (
-              <div className="h-3 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
-            ) : (
-              <p className={`text-white/90 font-mono tracking-[0.12em] ${config.cardNumber}`}>
-                {formatCardNumber(cardNumber)}
-              </p>
-            )}
-          </div>
+          {(isLoading || !cardNumber) ? (
+            <div className="h-3 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
+          ) : (
+            <p className={`text-white/90 font-mono tracking-[0.12em] ${config.cardNumber} leading-none`}>
+              {formatCardNumber(cardNumber)}
+            </p>
+          )}
         </div>
 
         {/* Expiry */}
         <div className="flex items-end justify-between">
           <div>
-            <span className={`text-white/40 ${config.label} uppercase tracking-wider block`}>
+            <span className={`text-white/40 ${config.label} uppercase tracking-wider block leading-none`}>
               Expires
             </span>
             {(isLoading || !expiry) ? (
               <div className="h-3 w-10 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
             ) : (
-              <span className={`text-white/80 ${config.expiry} font-medium`}>
+              <span className={`text-white/80 ${config.expiry} font-medium leading-none`}>
                 {expiry}
               </span>
             )}
