@@ -12,6 +12,7 @@ import { localApiFetch } from '@/lib/api/client'
 import { getBalance } from '@/lib/api/wallet'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
+import WalletDisplay from '@/components/ui/WalletDisplay'
 
 interface GiftCard {
   id: string
@@ -450,28 +451,24 @@ export default function GiftCardsPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-4 lg:p-12 mb-8 lg:mb-12">
-        <div className="max-w-2xl">
-          <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-4">
-            Digital Gift Cards
-          </h1>
-          <p className="text-slate-400 text-sm lg:text-lg mb-6 lg:mb-8">
-            Instant delivery. Save up to 10% on popular brands. Perfect for gifting or personal use.
-          </p>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Icon name="search" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search gift cards..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-            />
+      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-6 lg:p-12 mb-8 lg:mb-12">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-2">
+              Digital Gift Cards
+            </h1>
+            <p className="text-slate-500 text-sm lg:text-base max-w-2xl">
+              Instant delivery. Save up to 10% on popular brands. Perfect for gifting or personal use.
+            </p>
           </div>
-        </div>
+
+          {/* Wallet Balance - Desktop */}
+          <WalletDisplay variant="desktop" />
+        </header>
       </div>
+
+      {/* Wallet Balance - Mobile */}
+      <WalletDisplay variant="mobile" />
 
       {/* Loading State */}
       {loading && (

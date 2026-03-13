@@ -39,7 +39,8 @@ async function seed() {
       { name: 'Scripts', slug: 'scripts', description: 'Automation scripts, bots, and developer tools', image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400', order: 1 },
       { name: 'eSIM', slug: 'esim', description: 'Global eSIM data plans for travel and connectivity', image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400', order: 2 },
       { name: 'Gift Cards', slug: 'gift-cards', description: 'Digital gift cards for gaming, shopping, and entertainment', image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400', order: 3 },
-      { name: 'Virtual Numbers', slug: 'virtual-numbers', description: 'Virtual phone numbers for SMS verification and privacy', image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400', order: 4 }
+      { name: 'Virtual Numbers', slug: 'virtual-numbers', description: 'Virtual phone numbers for SMS verification and privacy', image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400', order: 4 },
+      { name: 'Cards', slug: 'cards', description: 'Virtual and instant cards for online payments', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400', order: 5 }
     ]
 
     const categoryIds: Record<string, string> = {}

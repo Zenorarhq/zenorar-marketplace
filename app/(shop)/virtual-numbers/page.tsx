@@ -14,6 +14,7 @@ import * as otpNumbersApi from '@/lib/api/otp-numbers'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
 import ServiceLogo from '@/components/ui/ServiceLogo'
+import WalletDisplay from '@/components/ui/WalletDisplay'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
 type NumberType = 'all' | 'local' | 'toll-free' | 'mobile'
@@ -769,62 +770,69 @@ export default function VirtualNumbersPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-4 lg:p-12 mb-8 lg:mb-12">
-        <div className="max-w-2xl">
-          <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-4">
-            Virtual Phone Numbers
-          </h1>
-          <p className="text-slate-400 text-sm lg:text-lg mb-6 lg:mb-8">
-            {activeTab === 'monthly'
-              ? `Get virtual phone numbers from ${countries.length}+ countries. Perfect for business, privacy, and verification.`
-              : 'Get instant one-time phone numbers for SMS verification. Pay only for what you use.'}
-          </p>
-
-          {/* Tab Switcher */}
-          <div className="flex gap-2 bg-surface-dark p-1.5 rounded-xl w-fit">
-            <button
-              onClick={() => handleTabChange('monthly')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-lg font-bold text-sm transition-all ${
-                activeTab === 'monthly'
-                  ? 'bg-primary text-black'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Icon name="phone" size={18} />
-              Monthly Numbers
-            </button>
-            <button
-              onClick={() => handleTabChange('otp')}
-              className={`flex items-center gap-2 px-5 py-3 rounded-lg font-bold text-sm transition-all ${
-                activeTab === 'otp'
-                  ? 'bg-primary text-black'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Icon name="message" size={18} />
-              One-Time OTP
-            </button>
+      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-6 lg:p-12 mb-8 lg:mb-12">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-2">
+              Virtual Phone Numbers
+            </h1>
+            <p className="text-slate-500 text-sm lg:text-base max-w-2xl">
+              {activeTab === 'monthly'
+                ? `Get virtual phone numbers from ${countries.length}+ countries. Perfect for business, privacy, and verification.`
+                : 'Get instant one-time phone numbers for SMS verification. Pay only for what you use.'}
+            </p>
           </div>
+
+          {/* Wallet Balance - Desktop */}
+          <WalletDisplay variant="desktop" />
+        </header>
+      </div>
+
+      {/* Wallet Balance - Mobile */}
+      <WalletDisplay variant="mobile" />
+
+      {/* Tab Switcher - Below Hero */}
+      <div className="mb-8">
+        <div className="flex gap-2 p-1 bg-surface-dark rounded-xl border border-border-dark w-fit">
+          <button
+            onClick={() => handleTabChange('monthly')}
+            className={`px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'monthly'
+                ? 'bg-primary text-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Icon name="phone" size={18} />
+              <span className="hidden sm:inline">Monthly Numbers</span>
+              <span className="sm:hidden">Monthly</span>
+            </span>
+          </button>
+          <button
+            onClick={() => handleTabChange('otp')}
+            className={`px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'otp'
+                ? 'bg-primary text-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Icon name="message" size={18} />
+              <span className="hidden sm:inline">One-Time OTP</span>
+              <span className="sm:hidden">OTP</span>
+            </span>
+          </button>
         </div>
+        <p className="mt-3 text-sm text-slate-500">
+          {activeTab === 'monthly'
+            ? 'Rent phone numbers with SMS & voice for recurring use'
+            : 'One-time numbers for SMS verification'}
+        </p>
       </div>
 
       {/* ===== MONTHLY NUMBERS TAB ===== */}
       {activeTab === 'monthly' && (
         <>
-          {/* Search Bar */}
-          <div className="mb-8">
-            <div className="relative max-w-md">
-              <Icon name="search" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Search by phone number or city..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-              />
-            </div>
-          </div>
-
           {/* Country Filter */}
           <div className="mb-10">
             <h2 className="text-xl font-bold text-white mb-4">Select Country</h2>

@@ -15,6 +15,9 @@ import { formatPrice } from '@/lib/currency'
 
 type SortOption = 'popular' | 'newest' | 'price-low' | 'price-high'
 
+// Only show verified categories in search sidebar
+const VERIFIED_CATEGORY_SLUGS = ['gift-cards', 'cards', 'esim', 'virtual-numbers', 'scripts']
+
 interface Category {
   id: string
   name: string
@@ -42,12 +45,16 @@ function SearchContent() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalResults, setTotalResults] = useState(0)
 
-  // Fetch categories
+  // Fetch categories (filtered to verified only)
   useEffect(() => {
     const fetchCategories = async () => {
       const result = await categoriesApi.list()
       if (result.success && result.data) {
-        setCategories(result.data)
+        // Filter to only show verified categories
+        const verifiedCategories = result.data.filter(
+          c => VERIFIED_CATEGORY_SLUGS.includes(c.slug)
+        )
+        setCategories(verifiedCategories)
       }
     }
     fetchCategories()

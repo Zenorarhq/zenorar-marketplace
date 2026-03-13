@@ -3,6 +3,9 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db-helpers'
 
+// Only show verified categories in search results
+const VERIFIED_CATEGORY_SLUGS = ['gift-cards', 'cards', 'esim', 'virtual-numbers', 'scripts']
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -28,12 +31,12 @@ export async function GET(request: NextRequest) {
       LIMIT $2
     `
 
-    // Matching categories
+    // Matching categories (only verified categories)
     const categoriesSql = `
       SELECT c.id, c.name, c.slug,
         (SELECT COUNT(*) FROM products p WHERE p."categoryId" = c.id AND p.status = 'ACTIVE') as "productCount"
       FROM categories c
-      WHERE c.name ILIKE $1
+      WHERE c.name ILIKE $1 AND c.slug = ANY($3)
       ORDER BY c.name ASC
       LIMIT $2
     `
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     const [productsResult, categoriesResult, suggestionsResult] = await Promise.all([
       executeQuery(productsSql, [pattern, limit]),
-      executeQuery(categoriesSql, [pattern, limit]),
+      executeQuery(categoriesSql, [pattern, limit, VERIFIED_CATEGORY_SLUGS]),
       executeQuery(suggestionsSql, [pattern, limit]),
     ])
 

@@ -6,6 +6,7 @@ import FlagIcon from '@/components/ui/FlagIcon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useRouter } from 'next/navigation'
+import WalletDisplay from '@/components/ui/WalletDisplay'
 import * as esimApi from '@/lib/api/esim'
 import type { EsimRegion, EsimPlan } from '@/lib/api/esim'
 import type { Product } from '@/lib/types'
@@ -112,33 +113,24 @@ export default function EsimPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-4 lg:p-12 mb-8 lg:mb-12">
-        <div className="max-w-2xl">
-          <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-4">
-            Travel eSIM Plans
-          </h1>
-          <p className="text-slate-400 text-sm lg:text-lg mb-6 lg:mb-8">
-            Stay connected anywhere in the world with instant eSIM activation. No physical SIM
-            card needed.
-          </p>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Icon
-              name="search"
-              size={20}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-            />
-            <input
-              type="text"
-              placeholder="Search by country or region..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-            />
+      <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-6 lg:p-12 mb-8 lg:mb-12">
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-2">
+              Travel eSIM Plans
+            </h1>
+            <p className="text-slate-500 text-sm lg:text-base max-w-2xl">
+              Stay connected anywhere in the world with instant eSIM activation. No physical SIM card needed.
+            </p>
           </div>
-        </div>
+
+          {/* Wallet Balance - Desktop */}
+          <WalletDisplay variant="desktop" />
+        </header>
       </div>
+
+      {/* Wallet Balance - Mobile */}
+      <WalletDisplay variant="mobile" />
 
       {/* Region Filter */}
       <div className="mb-10">
