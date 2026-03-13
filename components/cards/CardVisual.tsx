@@ -416,7 +416,7 @@ export default function CardVisual({
   // Back of card
   const CardBack = () => (
     <div
-      className={`${config.container} ${cardStyle.bg} rounded-xl relative overflow-hidden ${cardStyle.glow} backface-hidden rotate-y-180`}
+      className={`${config.container} ${cardStyle.bg} rounded-xl relative overflow-hidden ${cardStyle.glow} backface-hidden`}
       style={{ aspectRatio: '1.586' }}
     >
       {/* Mesh pattern overlay */}
