@@ -75,9 +75,10 @@ export default function CardVisual({
       meshSize: 60,
       contactless: 'w-3 h-3',
       cvvStripeHeight: 'h-3',
-      backContentGap: 'gap-1',
+      cvvStripeRounding: 'rounded-sm',
+      backContentGap: 'gap-0.5',
       backPadding: 'p-1',
-      backTopOffset: '32%'
+      backTopOffset: '30%'
     },
     sm: {
       container: 'w-[180px] h-[114px]',
@@ -94,9 +95,10 @@ export default function CardVisual({
       meshSize: 80,
       contactless: 'w-4 h-4',
       cvvStripeHeight: 'h-4',
-      backContentGap: 'gap-1.5',
+      cvvStripeRounding: 'rounded-sm',
+      backContentGap: 'gap-1',
       backPadding: 'p-1.5',
-      backTopOffset: '30%'
+      backTopOffset: '28%'
     },
     md: {
       container: 'w-[280px] h-[176px]',
@@ -113,7 +115,8 @@ export default function CardVisual({
       meshSize: 100,
       contactless: 'w-5 h-5',
       cvvStripeHeight: 'h-6',
-      backContentGap: 'gap-3',
+      cvvStripeRounding: 'rounded',
+      backContentGap: 'gap-2',
       backPadding: 'p-3',
       backTopOffset: '28%'
     },
@@ -132,7 +135,8 @@ export default function CardVisual({
       meshSize: 120,
       contactless: 'w-6 h-6',
       cvvStripeHeight: 'h-6',
-      backContentGap: 'gap-4',
+      cvvStripeRounding: 'rounded',
+      backContentGap: 'gap-2',
       backPadding: 'p-4',
       backTopOffset: '28%'
     }
@@ -445,10 +449,10 @@ export default function CardVisual({
       <div className="absolute top-[15%] left-0 right-0 h-[12%] bg-black/80" />
 
       {/* Card content */}
-      <div className={`absolute left-0 right-0 z-10 ${config.backPadding} flex flex-col ${config.backContentGap}`} style={{ top: config.backTopOffset }}>
+      <div className={`absolute left-0 right-0 bottom-0 z-10 ${config.backPadding} flex flex-col ${config.backContentGap}`} style={{ top: config.backTopOffset }}>
         {/* CVV section */}
         <div className="flex items-center gap-1.5">
-          <div className={`flex-1 ${config.cvvStripeHeight} bg-white/90 rounded flex items-center justify-end pr-2 relative overflow-hidden`}>
+          <div className={`flex-1 ${config.cvvStripeHeight} bg-white/90 ${config.cvvStripeRounding} flex items-center justify-end pr-2 relative overflow-hidden`}>
             {(isLoading || !cvv) ? (
               <div className="absolute inset-0 bg-gradient-to-r from-slate-300 via-slate-400 to-slate-300 animate-pulse" />
             ) : (
