@@ -416,7 +416,7 @@ export default function CardVisual({
   // Back of card
   const CardBack = () => (
     <div
-      className={`${config.container} ${cardStyle.bg} rounded-xl relative overflow-hidden ${cardStyle.glow} backface-hidden`}
+      className={`${config.container} ${cardStyle.bg} rounded-xl relative overflow-hidden ${cardStyle.glow}`}
       style={{ aspectRatio: '1.586' }}
     >
       {/* Mesh pattern overlay */}
@@ -499,16 +499,15 @@ export default function CardVisual({
   if (flippable) {
     return (
       <div
-        className={`perspective-1000 ${className}`}
+        className={className}
         onClick={handleFlip}
-        style={{ cursor: 'pointer' }}
+        style={{ perspective: '1000px', cursor: 'pointer' }}
       >
         <div
-          className={`relative transition-transform duration-500 transform-style-3d ${
-            isFlipped ? 'rotate-y-180' : ''
-          }`}
+          className="relative"
           style={{
             transformStyle: 'preserve-3d',
+            transition: 'transform 0.5s',
             transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
           }}
         >
@@ -516,8 +515,12 @@ export default function CardVisual({
             <CardFront />
           </div>
           <div
-            className="absolute inset-0"
             style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               backfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)'
             }}
