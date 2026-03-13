@@ -429,9 +429,9 @@ export default function CardVisual({
       <div className="absolute top-[15%] left-0 right-0 h-[12%] bg-black/80" />
 
       {/* Card content */}
-      <div className={`relative z-10 h-full ${config.padding} flex flex-col pt-[28%]`}>
+      <div className={`absolute left-0 right-0 bottom-0 z-10 ${config.padding}`} style={{ top: '28%' }}>
         {/* CVV section */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-2">
           <div className="flex-1 h-6 bg-white/90 rounded flex items-center justify-end pr-3 relative overflow-hidden">
             {(isLoading || !cvv) ? (
               <div className="absolute inset-0 bg-gradient-to-r from-slate-300 via-slate-400 to-slate-300 animate-pulse" />
@@ -445,7 +445,7 @@ export default function CardVisual({
         </div>
 
         {/* Card number (full) */}
-        <div className="mt-2">
+        <div className="mb-2">
           <span className={`text-white/40 ${config.label} uppercase tracking-wider block mb-0.5`}>
             Card Number
           </span>
@@ -461,7 +461,7 @@ export default function CardVisual({
         </div>
 
         {/* Expiry */}
-        <div className="flex items-end justify-between mt-auto">
+        <div className="flex items-end justify-between">
           <div>
             <span className={`text-white/40 ${config.label} uppercase tracking-wider block`}>
               Expires
