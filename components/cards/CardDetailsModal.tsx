@@ -75,8 +75,8 @@ export default function CardDetailsModal({
   // Synced reveal/hide toggle
   const handleToggleReveal = async () => {
     if (revealedDetails) {
-      // Hide - just flip back, keep data cached
-      setIsCardFlipped(false)
+      // Data is cached - toggle flip state to show/hide
+      setIsCardFlipped(!isCardFlipped)
       return
     }
 
@@ -191,7 +191,7 @@ export default function CardDetailsModal({
         <div className="p-4 max-h-[70vh] overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Icon name="loader" size={32} className="text-primary animate-spin" />
+              <Icon name="loading" size={32} className="text-primary animate-spin" />
             </div>
           ) : error ? (
             <div className="text-center py-12">
@@ -232,7 +232,7 @@ export default function CardDetailsModal({
                     >
                       {revealing ? (
                         <>
-                          <Icon name="loader" size={14} className="animate-spin" />
+                          <Icon name="loading" size={14} className="animate-spin" />
                           Revealing...
                         </>
                       ) : isRevealed ? (
