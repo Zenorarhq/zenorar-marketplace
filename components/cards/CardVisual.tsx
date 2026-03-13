@@ -429,10 +429,10 @@ export default function CardVisual({
       <div className="absolute top-[15%] left-0 right-0 h-[12%] bg-black/80" />
 
       {/* Card content */}
-      <div className={`relative z-10 h-full ${config.padding} flex flex-col justify-between pt-[30%]`}>
+      <div className={`relative z-10 h-full ${config.padding} flex flex-col pt-[28%]`}>
         {/* CVV section */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-8 bg-white/90 rounded flex items-center justify-end pr-3 relative overflow-hidden">
+          <div className="flex-1 h-6 bg-white/90 rounded flex items-center justify-end pr-3 relative overflow-hidden">
             {(isLoading || !cvv) ? (
               <div className="absolute inset-0 bg-gradient-to-r from-slate-300 via-slate-400 to-slate-300 animate-pulse" />
             ) : (
@@ -445,13 +445,13 @@ export default function CardVisual({
         </div>
 
         {/* Card number (full) */}
-        <div className="mt-auto">
-          <span className={`text-white/40 ${config.label} uppercase tracking-wider block mb-1`}>
+        <div className="mt-2">
+          <span className={`text-white/40 ${config.label} uppercase tracking-wider block mb-0.5`}>
             Card Number
           </span>
           <div className="relative">
             {(isLoading || !cardNumber) ? (
-              <div className="h-5 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
+              <div className="h-4 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
             ) : (
               <p className={`text-white/90 font-mono tracking-[0.12em] ${config.cardNumber}`}>
                 {formatCardNumber(cardNumber)}
@@ -461,7 +461,7 @@ export default function CardVisual({
         </div>
 
         {/* Expiry */}
-        <div className="flex items-end justify-between mt-2">
+        <div className="flex items-end justify-between mt-auto">
           <div>
             <span className={`text-white/40 ${config.label} uppercase tracking-wider block`}>
               Expires

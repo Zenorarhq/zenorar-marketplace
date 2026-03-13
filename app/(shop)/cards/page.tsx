@@ -428,7 +428,7 @@ export default function CardsPage() {
 
       {/* Card Providers Grid */}
       {!loading && currentProviders.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="flex flex-wrap justify-center gap-4 lg:gap-6">
           {activeTab === 'virtual' ? (
             // Virtual Cards - Show provider cards
             currentProviders.map((provider) => (
@@ -540,7 +540,7 @@ function VirtualCardOption({
   const isPremium = provider.isPremium
 
   return (
-    <div className="bg-surface-dark rounded-xl border border-border-dark p-4 lg:p-6 hover:border-primary/30 transition-colors">
+    <div className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-1rem)] max-w-[400px] bg-surface-dark rounded-xl border border-border-dark p-4 lg:p-6 hover:border-primary/30 transition-colors">
       {/* Card Visual */}
       <div className="flex justify-center mb-4">
         <CardVisualPreview
@@ -633,7 +633,7 @@ function InstantCardOption({
   const brand = denomination.brand === 'mastercard' ? 'mastercard' : 'visa'
 
   return (
-    <div className="bg-surface-dark rounded-xl border border-border-dark p-4 lg:p-6 hover:border-primary/30 transition-colors">
+    <div className="w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-1rem)] max-w-[400px] bg-surface-dark rounded-xl border border-border-dark p-4 lg:p-6 hover:border-primary/30 transition-colors">
       {/* Card Visual */}
       <div className="flex justify-center mb-4">
         <CardVisualPreview
