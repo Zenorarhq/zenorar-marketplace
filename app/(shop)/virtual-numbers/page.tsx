@@ -268,13 +268,6 @@ export default function VirtualNumbersPage() {
 
   // ===== MONTHLY NUMBERS EFFECTS =====
 
-  // Auto-select first country when countries load
-  useEffect(() => {
-    if (countries.length > 0 && !selectedCountry) {
-      setSelectedCountry(countries[0])
-    }
-  }, [countries, selectedCountry])
-
   // Auto-select featured plan when plans load
   useEffect(() => {
     if (plans.length > 0 && !selectedPlan) {
