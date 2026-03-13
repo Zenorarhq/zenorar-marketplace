@@ -73,7 +73,11 @@ export default function CardVisual({
       logoSize: 'text-[8px]',
       mcCircle: 'w-3 h-3',
       meshSize: 60,
-      contactless: 'w-3 h-3'
+      contactless: 'w-3 h-3',
+      cvvStripeHeight: 'h-3',
+      backContentGap: 'gap-0.5',
+      backPadding: 'p-1',
+      backTopOffset: '32%'
     },
     sm: {
       container: 'w-[180px] h-[114px]',
@@ -88,7 +92,11 @@ export default function CardVisual({
       logoSize: 'text-xs',
       mcCircle: 'w-4 h-4',
       meshSize: 80,
-      contactless: 'w-4 h-4'
+      contactless: 'w-4 h-4',
+      cvvStripeHeight: 'h-4',
+      backContentGap: 'gap-0.5',
+      backPadding: 'p-1.5',
+      backTopOffset: '30%'
     },
     md: {
       container: 'w-[280px] h-[176px]',
@@ -103,7 +111,11 @@ export default function CardVisual({
       logoSize: 'text-sm',
       mcCircle: 'w-5 h-5',
       meshSize: 100,
-      contactless: 'w-5 h-5'
+      contactless: 'w-5 h-5',
+      cvvStripeHeight: 'h-6',
+      backContentGap: 'gap-2',
+      backPadding: 'p-3',
+      backTopOffset: '28%'
     },
     lg: {
       container: 'w-[340px] h-[214px]',
@@ -118,7 +130,11 @@ export default function CardVisual({
       logoSize: 'text-base',
       mcCircle: 'w-6 h-6',
       meshSize: 120,
-      contactless: 'w-6 h-6'
+      contactless: 'w-6 h-6',
+      cvvStripeHeight: 'h-6',
+      backContentGap: 'gap-2',
+      backPadding: 'p-4',
+      backTopOffset: '28%'
     }
   }
 
@@ -428,11 +444,11 @@ export default function CardVisual({
       {/* Magnetic stripe */}
       <div className="absolute top-[15%] left-0 right-0 h-[12%] bg-black/80" />
 
-      {/* Card content */}
-      <div className={`absolute left-0 right-0 bottom-0 z-10 ${config.padding}`} style={{ top: '28%' }}>
+      {/* Card content - use flex column with justify-between to fit content */}
+      <div className={`absolute left-0 right-0 bottom-0 z-10 ${config.backPadding} flex flex-col justify-between`} style={{ top: config.backTopOffset }}>
         {/* CVV section */}
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex-1 h-6 bg-white/90 rounded flex items-center justify-end pr-3 relative overflow-hidden">
+        <div className="flex items-center gap-1.5">
+          <div className={`flex-1 ${config.cvvStripeHeight} bg-white/90 rounded flex items-center justify-end pr-2 relative overflow-hidden`}>
             {(isLoading || !cvv) ? (
               <div className="absolute inset-0 bg-gradient-to-r from-slate-300 via-slate-400 to-slate-300 animate-pulse" />
             ) : (
@@ -445,13 +461,13 @@ export default function CardVisual({
         </div>
 
         {/* Card number (full) */}
-        <div className="mb-2">
-          <span className={`text-white/40 ${config.label} uppercase tracking-wider block mb-0.5`}>
+        <div>
+          <span className={`text-white/40 ${config.label} uppercase tracking-wider block`}>
             Card Number
           </span>
           <div className="relative">
             {(isLoading || !cardNumber) ? (
-              <div className="h-4 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
+              <div className="h-3 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
             ) : (
               <p className={`text-white/90 font-mono tracking-[0.12em] ${config.cardNumber}`}>
                 {formatCardNumber(cardNumber)}
@@ -467,7 +483,7 @@ export default function CardVisual({
               Expires
             </span>
             {(isLoading || !expiry) ? (
-              <div className="h-4 w-12 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse mt-0.5" />
+              <div className="h-3 w-10 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
             ) : (
               <span className={`text-white/80 ${config.expiry} font-medium`}>
                 {expiry}
