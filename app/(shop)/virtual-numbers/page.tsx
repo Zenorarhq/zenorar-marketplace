@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
@@ -179,8 +180,36 @@ export default function VirtualNumbersPage() {
   }, [router, searchParams])
 
   // ===== MONTHLY NUMBERS STATE =====
-  const [countries, setCountries] = useState<Country[]>([])
-  const [plans, setPlans] = useState<Plan[]>([])
+  // Fetch countries with React Query caching
+  const { data: countries = [], isLoading: loadingCountries } = useQuery({
+    queryKey: ['virtual-numbers-countries'],
+    queryFn: async () => {
+      const result = await virtualNumbersApi.getCountries()
+      if (result.success && result.data) {
+        return result.data
+      }
+      return []
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+
+  // Fetch plans with React Query caching
+  const { data: plansData, isLoading: loadingPlans } = useQuery({
+    queryKey: ['virtual-numbers-plans'],
+    queryFn: async () => {
+      const result = await virtualNumbersApi.getPlans()
+      if (result.success && result.data) {
+        return result.data
+      }
+      return []
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+
+  const plans = plansData ?? []
+
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([])
   const [allTypesNumbers, setAllTypesNumbers] = useState<AvailableNumber[]>([]) // Master list from "All Types" fetch
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null)
@@ -192,8 +221,6 @@ export default function VirtualNumbersPage() {
   const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null)
 
   // Monthly loading states
-  const [loadingCountries, setLoadingCountries] = useState(true)
-  const [loadingPlans, setLoadingPlans] = useState(true)
   const [loadingNumbers, setLoadingNumbers] = useState(false)
 
   // ===== OTP STATE =====
@@ -241,42 +268,20 @@ export default function VirtualNumbersPage() {
 
   // ===== MONTHLY NUMBERS EFFECTS =====
 
-  // Fetch countries on mount and auto-select first one
+  // Auto-select first country when countries load
   useEffect(() => {
-    async function fetchCountries() {
-      try {
-        const result = await virtualNumbersApi.getCountries()
-        if (result.success && result.data && result.data.length > 0) {
-          setCountries(result.data)
-          setSelectedCountry(result.data[0])
-        }
-      } catch (error) {
-        console.error('Error fetching countries:', error)
-      } finally {
-        setLoadingCountries(false)
-      }
+    if (countries.length > 0 && !selectedCountry) {
+      setSelectedCountry(countries[0])
     }
-    fetchCountries()
-  }, [])
+  }, [countries, selectedCountry])
 
-  // Fetch plans on mount
+  // Auto-select featured plan when plans load
   useEffect(() => {
-    async function fetchPlans() {
-      try {
-        const result = await virtualNumbersApi.getPlans()
-        if (result.success && result.data) {
-          setPlans(result.data)
-          const featured = result.data.find(p => p.isFeatured)
-          if (featured) setSelectedPlan(featured)
-        }
-      } catch (error) {
-        console.error('Error fetching plans:', error)
-      } finally {
-        setLoadingPlans(false)
-      }
+    if (plans.length > 0 && !selectedPlan) {
+      const featured = plans.find(p => p.isFeatured)
+      if (featured) setSelectedPlan(featured)
     }
-    fetchPlans()
-  }, [])
+  }, [plans, selectedPlan])
 
   // Fetch available numbers when country or type changes
   useEffect(() => {
@@ -840,17 +845,32 @@ export default function VirtualNumbersPage() {
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
+            ) : selectedCountry ? (
+              /* Selected Country - Show only this country with X button */
+              <div className="bg-primary/10 border border-primary rounded-2xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <FlagIcon countryCode={selectedCountry.isoCode} className="w-10 h-10 rounded" />
+                  <div>
+                    <h3 className="font-bold text-white">{selectedCountry.name}</h3>
+                    <p className="text-sm text-slate-400">{selectedCountry.dialCode}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedCountry(null)}
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                  aria-label="Clear selection"
+                >
+                  <Icon name="x" size={20} className="text-white" />
+                </button>
+              </div>
             ) : (
+              /* No Selection - Show all countries */
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
                 {countries.map((country) => (
                     <button
                       key={country.id}
-                      onClick={() => setSelectedCountry(selectedCountry?.id === country.id ? null : country)}
-                      className={`p-4 rounded-2xl border transition-all text-center ${
-                        selectedCountry?.id === country.id
-                          ? 'bg-primary/10 border-primary'
-                          : 'bg-charcoal border-border-dark hover:border-primary/50'
-                      }`}
+                      onClick={() => setSelectedCountry(country)}
+                      className="p-4 rounded-2xl border transition-all text-center bg-charcoal border-border-dark hover:border-primary/50"
                     >
                       <div className="flex justify-center mb-2">
                         <FlagIcon countryCode={country.isoCode} className="w-8 h-8 rounded" />

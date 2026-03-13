@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
@@ -66,13 +67,46 @@ export default function GiftCardsPage() {
   // Get currency symbol based on preferences
   const currencySymbol = preferences?.currency?.symbol || '$'
 
-  const [giftCards, setGiftCards] = useState<GiftCard[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Fetch gift cards from API with React Query caching
+  const { data: giftCardsData, isLoading: loading, isError, error } = useQuery({
+    queryKey: ['gift-cards', selectedCategory, searchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (selectedCategory) params.set('category', selectedCategory)
+      if (searchQuery) params.set('search', searchQuery)
+
+      const response = await fetch(`/api/gift-cards?${params.toString()}`)
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch gift cards')
+      }
+
+      return { giftCards: data.giftCards as GiftCard[], categories: data.categories as Category[] }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
+    gcTime: 10 * 60 * 1000, // 10 minutes - cache garbage collection
+  })
+
+  const giftCards = giftCardsData?.giftCards ?? []
+  const categories = giftCardsData?.categories ?? []
+
+  // Fetch markup settings with React Query caching
+  const { data: markupPercent = 10 } = useQuery({
+    queryKey: ['gift-card-markup'],
+    queryFn: async () => {
+      const res = await localApiFetch<any>('/settings/public?keys=giftCardMarkupPercent')
+      if (res.success && res.data?.giftCardMarkupPercent) {
+        return Number(res.data.giftCardMarkupPercent) || 10
+      }
+      return 10
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes - markup settings rarely change
+    gcTime: 30 * 60 * 1000, // 30 minutes
+  })
 
   // Refs for auto-scroll
   const categoryScrollRef = useRef<HTMLDivElement>(null)
@@ -83,7 +117,6 @@ export default function GiftCardsPage() {
   const [customAmountInputs, setCustomAmountInputs] = useState<Record<string, string>>({})
   // Store original local currency amounts for display (avoids round-trip precision loss)
   const [confirmedLocalAmounts, setConfirmedLocalAmounts] = useState<Record<string, number>>({})
-  const [markupPercent, setMarkupPercent] = useState(10) // Default 10%
 
   // Payment state - card-specific to prevent error bleeding
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -128,49 +161,6 @@ export default function GiftCardsPage() {
     }
     return 'Variable'
   }
-
-  // Fetch gift cards from API
-  useEffect(() => {
-    async function fetchGiftCards() {
-      try {
-        setLoading(true)
-        const params = new URLSearchParams()
-        if (selectedCategory) params.set('category', selectedCategory)
-        if (searchQuery) params.set('search', searchQuery)
-
-        const response = await fetch(`/api/gift-cards?${params.toString()}`)
-        const data = await response.json()
-
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch gift cards')
-        }
-
-        setGiftCards(data.giftCards)
-        setCategories(data.categories)
-        setError(null)
-      } catch (err: any) {
-        console.error('Error fetching gift cards:', err)
-        setError(err.message || 'Failed to load gift cards')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchGiftCards()
-  }, [selectedCategory, searchQuery])
-
-  // Fetch markup settings
-  useEffect(() => {
-    localApiFetch<any>('/settings/public?keys=giftCardMarkupPercent')
-      .then((res) => {
-        if (res.success && res.data?.giftCardMarkupPercent) {
-          setMarkupPercent(Number(res.data.giftCardMarkupPercent) || 10)
-        }
-      })
-      .catch(() => {
-        // Use default markup
-      })
-  }, [])
 
   // Fetch wallet balance
   const fetchWalletBalance = async () => {
@@ -478,16 +468,16 @@ export default function GiftCardsPage() {
       )}
 
       {/* Error State */}
-      {error && !loading && (
+      {isError && !loading && (
         <div className="text-center py-20">
           <Icon name="alert-circle" size={48} className="text-red-500 mx-auto mb-4" />
           <h3 className="text-white font-bold mb-2">Failed to load gift cards</h3>
-          <p className="text-slate-500">{error}</p>
+          <p className="text-slate-500">{error instanceof Error ? error.message : 'An error occurred'}</p>
         </div>
       )}
 
       {/* Content */}
-      {!loading && !error && (
+      {!loading && !isError && (
         <>
           {/* Popular Cards */}
           {!selectedCategory && !searchQuery && popularCards.length > 0 && (

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
@@ -14,39 +15,40 @@ import type { Product } from '@/lib/types'
 export default function EsimPage() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [regions, setRegions] = useState<EsimRegion[]>([])
-  const [plans, setPlans] = useState<EsimPlan[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
 
   const { addItem, showAddedToCartPopup } = useCart()
   const router = useRouter()
 
-  // Fetch regions on mount
-  useEffect(() => {
-    async function fetchRegions() {
+  // Fetch regions with React Query caching
+  const { data: regions = [] } = useQuery({
+    queryKey: ['esim-regions'],
+    queryFn: async () => {
       const result = await esimApi.getRegions()
       if (result.success && result.data) {
-        setRegions(result.data)
+        return result.data
       }
-    }
-    fetchRegions()
-  }, [])
+      return []
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
 
-  // Fetch plans when region changes
-  useEffect(() => {
-    async function fetchPlans() {
-      setIsLoading(true)
+  // Fetch plans with React Query caching (re-fetches when region changes)
+  const { data: plans = [], isLoading } = useQuery({
+    queryKey: ['esim-plans', selectedRegion],
+    queryFn: async () => {
       const result = await esimApi.getPlans({
         regionSlug: selectedRegion || undefined,
       })
       if (result.success && result.data) {
-        setPlans(result.data)
+        return result.data
       }
-      setIsLoading(false)
-    }
-    fetchPlans()
-  }, [selectedRegion])
+      return []
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
 
   // Filter plans by search
   const filteredPlans = plans.filter((plan) => {
@@ -135,38 +137,59 @@ export default function EsimPage() {
       {/* Region Filter */}
       <div className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Browse by Region</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {regions.map((region) => (
-            <button
-              key={region.id}
-              onClick={() =>
-                setSelectedRegion(selectedRegion === region.slug ? null : region.slug)
-              }
-              className={`p-4 rounded-2xl border transition-all text-left ${
-                selectedRegion === region.slug
-                  ? 'bg-primary/10 border-primary'
-                  : 'bg-charcoal border-border-dark hover:border-primary/50'
-              }`}
-            >
-              <div className="flex justify-center mb-2">
-                {region.slug.length === 2 ? (
-                  <FlagIcon countryCode={region.slug.toUpperCase()} className="w-8 h-8 rounded" />
-                ) : (
-                  <Icon name="globe" size={32} className="text-primary" />
-                )}
-              </div>
-              <h3 className="font-bold text-white text-sm mb-1">{region.name}</h3>
-              <p className="text-xs text-slate-500">
-                {getRegionPlanCount(region.slug) || region.countryCount} plans
-              </p>
-              {getRegionStartingPrice(region.slug) > 0 && (
-                <p className="text-xs text-primary font-bold mt-1">
-                  From ${getRegionStartingPrice(region.slug).toFixed(2)}
-                </p>
+        {selectedRegion ? (
+          /* Selected Region - Show only this region with X button */
+          <div className="bg-primary/10 border border-primary rounded-2xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {selectedRegion.length === 2 ? (
+                <FlagIcon countryCode={selectedRegion.toUpperCase()} className="w-10 h-10 rounded" />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Icon name="globe" size={24} className="text-primary" />
+                </div>
               )}
+              <div>
+                <h3 className="font-bold text-white">{regions.find(r => r.slug === selectedRegion)?.name}</h3>
+                <p className="text-sm text-slate-400">{filteredPlans.length} plans available</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedRegion(null)}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              aria-label="Clear selection"
+            >
+              <Icon name="x" size={20} className="text-white" />
             </button>
-          ))}
-        </div>
+          </div>
+        ) : (
+          /* No Selection - Show all regions */
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {regions.map((region) => (
+              <button
+                key={region.id}
+                onClick={() => setSelectedRegion(region.slug)}
+                className="p-4 rounded-2xl border transition-all text-left bg-charcoal border-border-dark hover:border-primary/50"
+              >
+                <div className="flex justify-center mb-2">
+                  {region.slug.length === 2 ? (
+                    <FlagIcon countryCode={region.slug.toUpperCase()} className="w-8 h-8 rounded" />
+                  ) : (
+                    <Icon name="globe" size={32} className="text-primary" />
+                  )}
+                </div>
+                <h3 className="font-bold text-white text-sm mb-1">{region.name}</h3>
+                <p className="text-xs text-slate-500">
+                  {getRegionPlanCount(region.slug) || region.countryCount} plans
+                </p>
+                {getRegionStartingPrice(region.slug) > 0 && (
+                  <p className="text-xs text-primary font-bold mt-1">
+                    From ${getRegionStartingPrice(region.slug).toFixed(2)}
+                  </p>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Plans Grid */}

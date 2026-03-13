@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -13,26 +14,24 @@ interface WalletDisplayProps {
 }
 
 export default function WalletDisplay({ variant = 'desktop', onBalanceChange }: WalletDisplayProps) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const { formatPrice } = usePreferences()
-  const [walletBalance, setWalletBalance] = useState<number | null>(null)
-  const [loadingBalance, setLoadingBalance] = useState(false)
   const [showDepositModal, setShowDepositModal] = useState(false)
+  const queryClient = useQueryClient()
 
-  // Fetch wallet balance when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      setLoadingBalance(true)
-      getBalance()
-        .then(response => {
-          const balance = response.data?.balance ?? null
-          setWalletBalance(balance)
-          onBalanceChange?.(balance)
-        })
-        .catch(console.error)
-        .finally(() => setLoadingBalance(false))
-    }
-  }, [isAuthenticated, onBalanceChange])
+  // Fetch wallet balance with React Query caching
+  const { data: walletBalance, isLoading: loadingBalance } = useQuery({
+    queryKey: ['wallet-balance', user?.id],
+    queryFn: async () => {
+      const response = await getBalance()
+      const balance = response.data?.balance ?? 0
+      onBalanceChange?.(balance)
+      return balance
+    },
+    enabled: isAuthenticated && !!user?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+  })
 
   // Don't render if not authenticated
   if (!isAuthenticated) return null
@@ -65,13 +64,10 @@ export default function WalletDisplay({ variant = 'desktop', onBalanceChange }: 
         {showDepositModal && (
           <DepositModal
             isOpen={showDepositModal}
-            onClose={async () => {
+            onClose={() => {
               setShowDepositModal(false)
-              // Refresh balance after deposit
-              const result = await getBalance()
-              const newBalance = result.data?.balance ?? null
-              setWalletBalance(newBalance)
-              onBalanceChange?.(newBalance)
+              // Invalidate and refetch wallet balance after deposit
+              queryClient.invalidateQueries({ queryKey: ['wallet-balance'] })
             }}
           />
         )}
@@ -105,13 +101,10 @@ export default function WalletDisplay({ variant = 'desktop', onBalanceChange }: 
       {showDepositModal && (
         <DepositModal
           isOpen={showDepositModal}
-          onClose={async () => {
+          onClose={() => {
             setShowDepositModal(false)
-            // Refresh balance after deposit
-            const result = await getBalance()
-            const newBalance = result.data?.balance ?? null
-            setWalletBalance(newBalance)
-            onBalanceChange?.(newBalance)
+            // Invalidate and refetch wallet balance after deposit
+            queryClient.invalidateQueries({ queryKey: ['wallet-balance'] })
           }}
         />
       )}
