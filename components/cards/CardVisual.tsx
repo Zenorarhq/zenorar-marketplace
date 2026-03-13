@@ -98,7 +98,7 @@ export default function CardVisual({
       cvvStripeRounding: 'rounded-sm',
       backContentGap: 'gap-1',
       backPadding: 'p-1.5',
-      backTopOffset: '28%'
+      backTopOffset: '26%'
     },
     md: {
       container: 'w-[280px] h-[176px]',
