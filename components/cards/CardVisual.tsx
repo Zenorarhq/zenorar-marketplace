@@ -78,7 +78,10 @@ export default function CardVisual({
       cvvStripeRounding: 'rounded-sm',
       backContentGap: 'gap-0.5',
       backPadding: 'p-1',
-      backTopOffset: '30%'
+      backTopOffset: '30%',
+      labelLeading: 'leading-none',
+      valueLeading: 'leading-none',
+      labelValueGap: 'mt-0.5'
     },
     sm: {
       container: 'w-[180px] h-[114px]',
@@ -95,10 +98,13 @@ export default function CardVisual({
       meshSize: 80,
       contactless: 'w-4 h-4',
       cvvStripeHeight: 'h-4',
-      cvvStripeRounding: 'rounded-sm',
-      backContentGap: 'gap-1',
+      cvvStripeRounding: 'rounded-[3px]',
+      backContentGap: 'gap-1.5',
       backPadding: 'p-1.5',
-      backTopOffset: '26%'
+      backTopOffset: '26%',
+      labelLeading: 'leading-none',
+      valueLeading: 'leading-none',
+      labelValueGap: 'mt-0.5'
     },
     md: {
       container: 'w-[280px] h-[176px]',
@@ -118,7 +124,10 @@ export default function CardVisual({
       cvvStripeRounding: 'rounded',
       backContentGap: 'gap-2',
       backPadding: 'p-3',
-      backTopOffset: '28%'
+      backTopOffset: '28%',
+      labelLeading: '',
+      valueLeading: '',
+      labelValueGap: ''
     },
     lg: {
       container: 'w-[340px] h-[214px]',
@@ -138,7 +147,10 @@ export default function CardVisual({
       cvvStripeRounding: 'rounded',
       backContentGap: 'gap-2',
       backPadding: 'p-4',
-      backTopOffset: '28%'
+      backTopOffset: '28%',
+      labelLeading: '',
+      valueLeading: '',
+      labelValueGap: ''
     }
   }
 
@@ -466,13 +478,13 @@ export default function CardVisual({
 
         {/* Card number (full) */}
         <div>
-          <span className={`text-white/40 ${config.label} uppercase tracking-wider block leading-none`}>
+          <span className={`text-white/40 ${config.label} uppercase tracking-wider block ${config.labelLeading}`}>
             Card Number
           </span>
           {(isLoading || !cardNumber) ? (
-            <div className="h-3 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
+            <div className={`h-3 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse ${config.labelValueGap}`} />
           ) : (
-            <p className={`text-white/90 font-mono tracking-[0.12em] ${config.cardNumber} leading-none`}>
+            <p className={`text-white/90 font-mono tracking-[0.12em] ${config.cardNumber} ${config.valueLeading} ${config.labelValueGap}`}>
               {formatCardNumber(cardNumber)}
             </p>
           )}
@@ -481,13 +493,13 @@ export default function CardVisual({
         {/* Expiry */}
         <div className="flex items-end justify-between">
           <div>
-            <span className={`text-white/40 ${config.label} uppercase tracking-wider block leading-none`}>
+            <span className={`text-white/40 ${config.label} uppercase tracking-wider block ${config.labelLeading}`}>
               Expires
             </span>
             {(isLoading || !expiry) ? (
-              <div className="h-3 w-10 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse" />
+              <div className={`h-3 w-10 bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 rounded animate-pulse ${config.labelValueGap}`} />
             ) : (
-              <span className={`text-white/80 ${config.expiry} font-medium leading-none`}>
+              <span className={`text-white/80 ${config.expiry} font-medium ${config.valueLeading} ${config.labelValueGap}`}>
                 {expiry}
               </span>
             )}
