@@ -277,16 +277,14 @@ export default function VirtualNumbersPage() {
   }, [plans, selectedPlan])
 
   // Fetch available numbers when country or type changes
+  // Default to US numbers when no country is selected
   useEffect(() => {
-    if (!selectedCountry) {
-      setAvailableNumbers([])
-      setAllTypesNumbers([])
-      prevCountryIdRef.current = null
-      return
-    }
+    // Determine which country code to use - default to US if no selection
+    const countryCode = selectedCountry?.isoCode || 'US'
+    const countryId = selectedCountry?.id || 'default-us'
 
-    const countryChanged = prevCountryIdRef.current !== selectedCountry.id
-    prevCountryIdRef.current = selectedCountry.id
+    const countryChanged = prevCountryIdRef.current !== countryId
+    prevCountryIdRef.current = countryId
 
     // Reset to 'all' when country changes to ensure we fetch all types first
     if (countryChanged) {
@@ -304,7 +302,7 @@ export default function VirtualNumbersPage() {
         if (numberType === 'all') {
           // Fetch ALL types to get master list and counts
           const result = await virtualNumbersApi.searchAvailableNumbers({
-            countryCode: selectedCountry!.isoCode,
+            countryCode: countryCode,
             type: undefined // Fetch all types
           })
           if (result.success && result.data) {
@@ -322,7 +320,7 @@ export default function VirtualNumbersPage() {
           }
           // Fallback: fetch from API if no master list
           const result = await virtualNumbersApi.searchAvailableNumbers({
-            countryCode: selectedCountry!.isoCode,
+            countryCode: countryCode,
             type: numberType as any
           })
           if (result.success && result.data) {
@@ -889,17 +887,11 @@ export default function VirtualNumbersPage() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Available Numbers</h2>
               <span className="text-slate-500 text-sm">
-                {selectedCountry ? `${filteredNumbers.length} numbers in ${selectedCountry.name}` : 'Select a country to view numbers'}
+                {filteredNumbers.length} numbers in {selectedCountry?.name || 'United States'}
               </span>
             </div>
 
-            {!selectedCountry ? (
-              <div className="bg-charcoal border border-border-dark rounded-2xl p-12 text-center">
-                <Icon name="call" size={48} className="text-slate-600 mx-auto mb-4" />
-                <h3 className="text-white font-bold mb-2">Select a Country</h3>
-                <p className="text-slate-500">Choose a country above to see available phone numbers</p>
-              </div>
-            ) : loadingNumbers ? (
+            {loadingNumbers ? (
               <div className="flex items-center justify-center py-16">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
               </div>
