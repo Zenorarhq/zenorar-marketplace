@@ -180,6 +180,11 @@ async function getEnabledProviders(): Promise<string[]> {
     const settings = await getSiteSettingsByGroup('api')
     const enabled: string[] = []
 
+    // Check Zendit (default provider)
+    if (settings.zenditEnabled === true || settings.zenditEnabled === 'true') {
+      enabled.push('zendit')
+    }
+
     // Check Airalo
     if (settings.airaloEnabled === true || settings.airaloEnabled === 'true') {
       enabled.push('airalo')
@@ -190,23 +195,18 @@ async function getEnabledProviders(): Promise<string[]> {
       enabled.push('esimgo')
     }
 
-    // Check Mobimatter
-    if (settings.mobimatterEnabled === true || settings.mobimatterEnabled === 'true') {
-      enabled.push('mobimatter')
-    }
-
     return enabled
   } catch {
     // Default to checking env vars
     const enabled: string[] = []
+    if (process.env.ZENDIT_API_KEY || process.env.ZENDIT_SANDBOX_API_KEY) {
+      enabled.push('zendit')
+    }
     if (process.env.AIRALO_CLIENT_ID && process.env.AIRALO_CLIENT_SECRET) {
       enabled.push('airalo')
     }
     if (process.env.ESIMGO_API_KEY) {
       enabled.push('esimgo')
-    }
-    if (process.env.MOBIMATTER_API_KEY && process.env.MOBIMATTER_MERCHANT_ID) {
-      enabled.push('mobimatter')
     }
     return enabled
   }

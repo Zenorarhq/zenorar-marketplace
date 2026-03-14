@@ -2,15 +2,15 @@
 // Manages multiple providers with fallback logic
 
 import { EsimProviderInterface, EsimOrderResult } from './types'
+import { zenditProvider } from './providers/zendit'
 import { airaloProvider } from './providers/airalo'
 import { esimGoProvider } from './providers/esimgo'
-import { mobimatterProvider } from './providers/mobimatter'
 
 // Provider registry - ordered by priority (lower = higher priority)
 const providers: { provider: EsimProviderInterface; priority: number }[] = [
-  { provider: airaloProvider, priority: 1 },
-  { provider: esimGoProvider, priority: 2 },
-  { provider: mobimatterProvider, priority: 3 },
+  { provider: zenditProvider, priority: 1 },
+  { provider: airaloProvider, priority: 2 },
+  { provider: esimGoProvider, priority: 3 },
 ]
 
 export class EsimProviderFactory {
@@ -40,8 +40,8 @@ export class EsimProviderFactory {
    * Get the default/primary provider
    */
   static getDefaultProvider(): EsimProviderInterface {
-    const defaultSlug = process.env.DEFAULT_ESIM_PROVIDER || 'airalo'
-    return this.getProvider(defaultSlug) || airaloProvider
+    const defaultSlug = process.env.DEFAULT_ESIM_PROVIDER || 'zendit'
+    return this.getProvider(defaultSlug) || zenditProvider
   }
 
   /**
@@ -138,4 +138,4 @@ export class EsimProviderFactory {
   }
 }
 
-export { airaloProvider, esimGoProvider, mobimatterProvider }
+export { zenditProvider, airaloProvider, esimGoProvider }

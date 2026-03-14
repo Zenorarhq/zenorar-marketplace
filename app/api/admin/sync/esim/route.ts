@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       enabledProviders: providers,
-      availableProviders: ['airalo', 'esimgo', 'mobimatter']
+      availableProviders: ['zendit', 'airalo', 'esimgo']
     })
   } catch (error: any) {
     return NextResponse.json(
