@@ -3905,7 +3905,7 @@ export default function AdminSettingsPage() {
                         onChange={(e) => setEsimSettings({ ...esimSettings, esimDefaultProvider: e.target.value as 'zendit' | 'esimgo' | 'airalo' })}
                         className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[160px] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat"
                       >
-                        <option value="zendit">Zendit (Recommended)</option>
+                        <option value="zendit">Zendit</option>
                         <option value="esimgo">eSIM Go</option>
                         <option value="airalo">Airalo</option>
                       </select>
@@ -3934,69 +3934,61 @@ export default function AdminSettingsPage() {
                       {esimSettings.zenditEnabled && (
                         <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
                           {/* Mode Toggle */}
-                          <div className="flex items-center justify-between p-3 bg-[#141414] rounded-lg">
-                            <span className="text-sm text-slate-300">Mode</span>
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
+                            <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
                               <button
                                 type="button"
                                 onClick={() => setEsimSettings({ ...esimSettings, zenditMode: 'sandbox' })}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${esimSettings.zenditMode === 'sandbox' ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:text-white'}`}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${esimSettings.zenditMode === 'sandbox' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
                               >
                                 Sandbox
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setEsimSettings({ ...esimSettings, zenditMode: 'production' })}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${esimSettings.zenditMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-400 hover:text-white'}`}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${esimSettings.zenditMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-500 hover:text-slate-300'}`}
                               >
                                 Production
                               </button>
                             </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${esimSettings.zenditMode === 'sandbox' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                              {esimSettings.zenditMode === 'sandbox' ? 'SANDBOX' : 'PRODUCTION'}
+                            </span>
                           </div>
-                          {/* Sandbox API Key */}
-                          {esimSettings.zenditMode === 'sandbox' && (
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-300">Sandbox API Key</label>
-                              <div className="relative">
-                                <input
-                                  type={showServiceSecrets.zenditSandboxApiKey ? 'text' : 'password'}
-                                  value={esimSettings.zenditSandboxApiKey}
-                                  onChange={(e) => setEsimSettings({ ...esimSettings, zenditSandboxApiKey: e.target.value })}
-                                  placeholder="Your Zendit sandbox API key"
-                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, zenditSandboxApiKey: !prev.zenditSandboxApiKey }))}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                >
-                                  <Icon name={showServiceSecrets.zenditSandboxApiKey ? 'eye-off' : 'eye'} size={16} />
-                                </button>
-                              </div>
+
+                          {/* API Key based on mode */}
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">
+                              {esimSettings.zenditMode === 'sandbox' ? 'Sandbox' : 'Production'} API Key
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={esimSettings.zenditMode === 'sandbox'
+                                  ? (showServiceSecrets.zenditSandboxApiKey ? 'text' : 'password')
+                                  : (showServiceSecrets.zenditProductionApiKey ? 'text' : 'password')}
+                                value={esimSettings.zenditMode === 'sandbox'
+                                  ? esimSettings.zenditSandboxApiKey
+                                  : esimSettings.zenditProductionApiKey}
+                                onChange={(e) => setEsimSettings({
+                                  ...esimSettings,
+                                  [esimSettings.zenditMode === 'sandbox' ? 'zenditSandboxApiKey' : 'zenditProductionApiKey']: e.target.value
+                                })}
+                                placeholder={`Your Zendit ${esimSettings.zenditMode} API key`}
+                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowServiceSecrets(prev => ({
+                                  ...prev,
+                                  [esimSettings.zenditMode === 'sandbox' ? 'zenditSandboxApiKey' : 'zenditProductionApiKey']:
+                                    esimSettings.zenditMode === 'sandbox' ? !prev.zenditSandboxApiKey : !prev.zenditProductionApiKey
+                                }))}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                              >
+                                <Icon name={(esimSettings.zenditMode === 'sandbox' ? showServiceSecrets.zenditSandboxApiKey : showServiceSecrets.zenditProductionApiKey) ? 'eye-off' : 'eye'} size={16} />
+                              </button>
                             </div>
-                          )}
-                          {/* Production API Key */}
-                          {esimSettings.zenditMode === 'production' && (
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-300">Production API Key</label>
-                              <div className="relative">
-                                <input
-                                  type={showServiceSecrets.zenditProductionApiKey ? 'text' : 'password'}
-                                  value={esimSettings.zenditProductionApiKey}
-                                  onChange={(e) => setEsimSettings({ ...esimSettings, zenditProductionApiKey: e.target.value })}
-                                  placeholder="Your Zendit production API key"
-                                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setShowServiceSecrets(prev => ({ ...prev, zenditProductionApiKey: !prev.zenditProductionApiKey }))}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                >
-                                  <Icon name={showServiceSecrets.zenditProductionApiKey ? 'eye-off' : 'eye'} size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                          </div>
                           <p className="text-xs text-slate-600">Register at <a href="https://console.zendit.io" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">console.zendit.io</a> to get your API keys</p>
                         </div>
                       )}
