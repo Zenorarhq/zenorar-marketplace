@@ -1710,6 +1710,39 @@ export default function AdminSettingsPage() {
           console.error('Gift card sync error:', err)
         })
       }
+
+      // Auto-sync eSIM providers if any are enabled with credentials
+      const shouldSyncEsim = (
+        (esimSettings.zenditEnabled && (esimSettings.zenditSandboxApiKey || esimSettings.zenditProductionApiKey)) ||
+        (esimSettings.airaloEnabled && (esimSettings.airaloSandboxClientId || esimSettings.airaloProductionClientId)) ||
+        (esimSettings.esimGoEnabled && esimSettings.esimGoApiKey)
+      )
+
+      if (shouldSyncEsim) {
+        // Trigger background sync for all enabled eSIM providers
+        localApiFetch<any>(
+          '/admin/sync/esim',
+          { method: 'POST', body: JSON.stringify({}) }
+        ).then((response) => {
+          const syncResult = response as { success: boolean; totalSynced?: number; totalUpdated?: number; results?: any[]; error?: string }
+          if (syncResult.success) {
+            const total = (syncResult.totalSynced || 0) + (syncResult.totalUpdated || 0)
+            if (total > 0) {
+              setMessage({ type: 'success', text: `Settings saved! Synced ${total} eSIM plans from providers.` })
+            } else {
+              // Show provider errors if no plans synced
+              const errors = syncResult.results?.flatMap((r: any) => r.errors || []).slice(0, 2)
+              if (errors?.length) {
+                setMessage({ type: 'error', text: `eSIM sync issue: ${errors.join('; ')}` })
+              }
+            }
+          } else {
+            console.error('eSIM sync failed:', syncResult)
+          }
+        }).catch((err) => {
+          console.error('eSIM sync error:', err)
+        })
+      }
     } else {
       setMessage({ type: 'error', text: result.error || 'Failed to save settings' })
     }

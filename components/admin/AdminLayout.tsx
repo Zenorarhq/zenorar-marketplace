@@ -34,8 +34,9 @@ interface AdminLayoutProps {
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard', permission: 'view_analytics' },
   { href: '/admin/products', label: 'Products', icon: 'box', permission: 'view_products' },
-  { href: '/admin/categories', label: 'Categories', icon: 'grid-view', permission: 'manage_categories' },
   { href: '/admin/gift-cards', label: 'Gift Cards', icon: 'gift', permission: 'view_products' },
+  { href: '/admin/esim', label: 'eSIMs', icon: 'sim-card', permission: 'view_products' },
+  { href: '/admin/categories', label: 'Categories', icon: 'grid-view', permission: 'manage_categories' },
   { href: '/admin/purchases', label: 'Purchases', icon: 'shopping-cart', permission: 'view_orders' },
   { href: '/admin/analytics', label: 'Analytics', icon: 'analytics', permission: 'view_analytics' },
   { href: '/admin/discounts', label: 'Discounts', icon: 'tag', permission: 'view_products' },
@@ -281,11 +282,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex overflow-x-hidden">
-      {/* Slow pulse animation for notification dots */}
+      {/* Slow pulse animation for notification dots + hide scrollbar on mobile */}
       <style jsx global>{`
         @keyframes navPulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.3; }
+        }
+        @media (max-width: 1023px) {
+          .admin-sidebar-nav::-webkit-scrollbar {
+            display: none;
+          }
+          .admin-sidebar-nav {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
         }
       `}</style>
       {/* Left Sidebar */}
@@ -341,7 +351,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </Link>
         </div>
         {/* Navigation */}
-        <nav className="flex-1 py-4 px-2 overflow-y-auto overflow-x-hidden">
+        <nav className="admin-sidebar-nav flex-1 py-4 px-2 overflow-y-auto overflow-x-hidden">
           {visibleNavItems.map((item) => {
             const isActive = pathname === item.href
             return (
