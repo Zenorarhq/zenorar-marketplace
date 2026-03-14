@@ -119,39 +119,73 @@ export class ZenditProvider implements EsimProviderInterface {
 
     // Paginate through all offers
     while (true) {
-      const data = await this.request<{ data: any[] }>(
+      const response = await this.request<any>(
         'GET',
-        `/esim/offers?_limit=${limit}&_offset=${offset}`
+        `/esim/offers?limit=${limit}&offset=${offset}`
       )
 
-      if (!data.data || data.data.length === 0) {
+      // Handle both { list: [...] } and direct array response
+      const offers = response.list || response.data || (Array.isArray(response) ? response : [])
+
+      if (!offers || offers.length === 0) {
         break
       }
 
-      const plans = data.data.map((offer) => ({
-        providerPlanId: offer.offerId || offer.id,
-        name: offer.name || offer.title || `${offer.brand} - ${offer.dataGb}GB`,
-        description: offer.description || `${offer.dataGb}GB data for ${offer.durationDays} days`,
-        countries: offer.countries || (offer.country ? [offer.country] : []),
-        dataAmountGb: parseFloat(offer.dataGb) || parseFloat(offer.data) || 0,
-        dataAmountDisplay: offer.dataDisplay || `${offer.dataGb || offer.data}GB`,
-        validityDays: parseInt(offer.durationDays) || parseInt(offer.validity) || 30,
-        isUnlimited: offer.unlimited || offer.isUnlimited || false,
-        price: parseFloat(offer.price) || parseFloat(offer.retailPrice) || 0,
-        currency: offer.currency || 'USD',
-        networkType: offer.networkType || '4g/lte',
-        supportsTopup: offer.topupSupported || offer.supportsTopup || false,
-      }))
+      console.log(`[Zendit] Fetched ${offers.length} offers at offset ${offset}`)
+
+      const plans = offers.map((offer: any) => {
+        // Handle data amount - Zendit uses dataGB (capital B)
+        const dataGb = parseFloat(offer.dataGB) || parseFloat(offer.dataGb) || 0
+        const isUnlimited = offer.dataUnlimited || offer.unlimited || false
+
+        // Handle price - Zendit cost object has amount and divisor
+        let price = 0
+        if (offer.cost && typeof offer.cost === 'object') {
+          price = (offer.cost.amount || 0) / (offer.cost.divisor || 100)
+        } else if (offer.price && typeof offer.price === 'object') {
+          price = (offer.price.amount || 0) / (offer.price.divisor || 100)
+        } else {
+          price = parseFloat(offer.price) || parseFloat(offer.cost) || 0
+        }
+
+        // Build countries from regions or country
+        let countries: string[] = []
+        if (offer.regions && Array.isArray(offer.regions)) {
+          countries = offer.regions
+        } else if (offer.country) {
+          countries = [offer.country]
+        }
+
+        // Build name
+        const dataDisplay = isUnlimited ? 'Unlimited' : `${dataGb}GB`
+        const name = offer.name || offer.brandName || `${offer.brand || 'eSIM'} - ${dataDisplay}`
+
+        return {
+          providerPlanId: offer.offerId || offer.id,
+          name,
+          description: offer.description || `${dataDisplay} data for ${offer.durationDays || 30} days`,
+          countries,
+          dataAmountGb: dataGb,
+          dataAmountDisplay: dataDisplay,
+          validityDays: parseInt(offer.durationDays) || 30,
+          isUnlimited,
+          price,
+          currency: offer.cost?.currency || offer.currency || 'USD',
+          networkType: offer.dataSpeeds?.join('/') || '4g/lte',
+          supportsTopup: offer.topupSupported || false,
+        }
+      })
 
       allPlans.push(...plans)
 
-      if (data.data.length < limit) {
+      if (offers.length < limit) {
         break
       }
 
       offset += limit
     }
 
+    console.log(`[Zendit] Total plans fetched: ${allPlans.length}`)
     return allPlans
   }
 
