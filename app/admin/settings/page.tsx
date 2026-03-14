@@ -359,7 +359,7 @@ export default function AdminSettingsPage() {
 
   // Data eSIM Provider Settings State (travel data only)
   const [esimSettings, setEsimSettings] = useState({
-    esimDefaultProvider: 'esimgo' as 'esimgo' | 'airalo' | 'mobimatter' | 'esimsm',
+    esimDefaultProvider: 'esimgo' as 'esimgo' | 'airalo' | 'mobimatter',
     // eSIM Go
     esimGoEnabled: false,
     esimGoApiKey: '',
@@ -374,10 +374,6 @@ export default function AdminSettingsPage() {
     mobimatterEnabled: false,
     mobimatterMerchantId: '',
     mobimatterApiKey: '',
-    // eSIM.sm
-    esimSmEnabled: false,
-    esimSmMode: 'sandbox' as 'sandbox' | 'production',
-    esimSmApiKey: '',
   })
 
   // Voice eSIM Provider Settings State (with phone number, calls, SMS)
@@ -706,9 +702,6 @@ export default function AdminSettingsPage() {
           mobimatterEnabled: d.mobimatterEnabled ?? prev.mobimatterEnabled,
           mobimatterMerchantId: d.mobimatterMerchantId ?? prev.mobimatterMerchantId,
           mobimatterApiKey: d.mobimatterApiKey ?? prev.mobimatterApiKey,
-          esimSmEnabled: d.esimSmEnabled ?? prev.esimSmEnabled,
-          esimSmMode: d.esimSmMode ?? prev.esimSmMode,
-          esimSmApiKey: d.esimSmApiKey ?? prev.esimSmApiKey,
         }))
         // Voice eSIM Provider settings
         setVoiceEsimSettings((prev) => ({
@@ -1574,10 +1567,6 @@ export default function AdminSettingsPage() {
       { key: 'mobimatterEnabled', value: esimSettings.mobimatterEnabled, group: 'api', isPublic: true },
       { key: 'mobimatterMerchantId', value: esimSettings.mobimatterMerchantId, group: 'api', isPublic: false },
       { key: 'mobimatterApiKey', value: esimSettings.mobimatterApiKey, group: 'api', isPublic: false },
-      // eSIM.sm
-      { key: 'esimSmEnabled', value: esimSettings.esimSmEnabled, group: 'api', isPublic: true },
-      { key: 'esimSmMode', value: esimSettings.esimSmMode, group: 'api', isPublic: false },
-      { key: 'esimSmApiKey', value: esimSettings.esimSmApiKey, group: 'api', isPublic: false },
       // Voice eSIM Providers (with phone number, calls, SMS)
       { key: 'voiceEsimDefaultProvider', value: voiceEsimSettings.voiceEsimDefaultProvider, group: 'api', isPublic: false },
       { key: 'telnyxEnabled', value: voiceEsimSettings.telnyxEnabled, group: 'api', isPublic: true },
@@ -3908,13 +3897,12 @@ export default function AdminSettingsPage() {
                       <label className="text-sm font-medium text-slate-300 mb-2 block">Default Provider</label>
                       <select
                         value={esimSettings.esimDefaultProvider}
-                        onChange={(e) => setEsimSettings({ ...esimSettings, esimDefaultProvider: e.target.value as 'esimgo' | 'airalo' | 'mobimatter' | 'esimsm' })}
+                        onChange={(e) => setEsimSettings({ ...esimSettings, esimDefaultProvider: e.target.value as 'esimgo' | 'airalo' | 'mobimatter' })}
                         className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-4 pr-10 py-3 text-white focus:outline-none focus:border-primary/50 min-w-[160px] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat"
                       >
                         <option value="esimgo">eSIM Go</option>
                         <option value="airalo">Airalo</option>
                         <option value="mobimatter">MobiMatter</option>
-                        <option value="esimsm">eSIM.sm</option>
                       </select>
                     </div>
 
@@ -4108,76 +4096,6 @@ export default function AdminSettingsPage() {
                         </div>
                       )}
                         </div>
-
-                    {/* eSIM.sm */}
-                    <div className="p-5 bg-[#1a1a1a] rounded-xl border border-[#2a2a2a] mt-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                            <Icon name="globe" size={20} className="text-cyan-400" />
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">eSIM.sm</p>
-                            <p className="text-slate-500 text-sm">Reseller API with top-ups, refunds, and webhooks</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setEsimSettings({ ...esimSettings, esimSmEnabled: !esimSettings.esimSmEnabled })}
-                          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${esimSettings.esimSmEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'}`}
-                        >
-                          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${esimSettings.esimSmEnabled ? 'left-7' : 'left-1'}`} />
-                        </button>
-                      </div>
-                      {esimSettings.esimSmEnabled && (
-                        <div className="pt-4 border-t border-[#2a2a2a] space-y-4">
-                          {/* Mode Toggle */}
-                          <div className="flex items-center gap-3">
-                            <div className="flex bg-[#141414] rounded-lg border border-[#2a2a2a] p-1">
-                              <button
-                                type="button"
-                                onClick={() => setEsimSettings({ ...esimSettings, esimSmMode: 'sandbox' })}
-                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${esimSettings.esimSmMode === 'sandbox' ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
-                              >
-                                Sandbox
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEsimSettings({ ...esimSettings, esimSmMode: 'production' })}
-                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${esimSettings.esimSmMode === 'production' ? 'bg-green-500/20 text-green-400' : 'text-slate-500 hover:text-slate-300'}`}
-                              >
-                                Production
-                              </button>
-                            </div>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${esimSettings.esimSmMode === 'sandbox' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
-                              {esimSettings.esimSmMode === 'sandbox' ? 'SANDBOX' : 'PRODUCTION'}
-                            </span>
-                          </div>
-
-                          {/* API Key */}
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-300">API Key (Bearer Token)</label>
-                            <div className="relative">
-                              <input
-                                type={showServiceSecrets.esimSmApiKey ? 'text' : 'password'}
-                                value={esimSettings.esimSmApiKey}
-                                onChange={(e) => setEsimSettings({ ...esimSettings, esimSmApiKey: e.target.value })}
-                                placeholder="Your eSIM.sm API key"
-                                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 pr-12"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowServiceSecrets(prev => ({ ...prev, esimSmApiKey: !prev.esimSmApiKey }))}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                              >
-                                <Icon name={showServiceSecrets.esimSmApiKey ? 'eye-off' : 'eye'} size={16} />
-                              </button>
-                            </div>
-                            <p className="text-xs text-slate-600">Generate your API key at <a href="https://esim.sm/reseller/index" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">esim.sm/reseller</a> dashboard</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
                       </>
                     )}
                   </div>

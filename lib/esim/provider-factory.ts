@@ -5,14 +5,12 @@ import { EsimProviderInterface, EsimOrderResult } from './types'
 import { airaloProvider } from './providers/airalo'
 import { esimGoProvider } from './providers/esimgo'
 import { mobimatterProvider } from './providers/mobimatter'
-import { esimSmProvider } from './providers/esimsm'
 
 // Provider registry - ordered by priority (lower = higher priority)
 const providers: { provider: EsimProviderInterface; priority: number }[] = [
   { provider: airaloProvider, priority: 1 },
   { provider: esimGoProvider, priority: 2 },
   { provider: mobimatterProvider, priority: 3 },
-  { provider: esimSmProvider, priority: 4 },
 ]
 
 export class EsimProviderFactory {
@@ -140,4 +138,4 @@ export class EsimProviderFactory {
   }
 }
 
-export { airaloProvider, esimGoProvider, mobimatterProvider, esimSmProvider }
+export { airaloProvider, esimGoProvider, mobimatterProvider }
