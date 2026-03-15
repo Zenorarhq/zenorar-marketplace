@@ -75,6 +75,13 @@ export interface UserEsim {
 // API Functions
 
 /**
+ * Get all countries that have active eSIM plans
+ */
+export async function getPlanCountries(): Promise<{ success: boolean; data?: Array<{ isoCode: string; name: string | null }>; error?: string }> {
+  return localApiFetch('/esim/plan-countries')
+}
+
+/**
  * Get all eSIM regions
  */
 export async function getRegions(): Promise<{ success: boolean; data?: EsimRegion[]; error?: string }> {
