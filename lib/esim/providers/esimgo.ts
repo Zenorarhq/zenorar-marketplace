@@ -17,6 +17,8 @@ interface EsimGoCredentials {
 // Cache credentials
 let credentialsCache: { credentials: EsimGoCredentials | null; timestamp: number } | null = null
 const CACHE_TTL = 60 * 1000 // 1 minute
+const REQUEST_TIMEOUT = 30000 // 30 seconds per request
+const HEALTH_CHECK_TIMEOUT = 10000 // 10 seconds for health checks
 
 export class EsimGoProvider implements EsimProviderInterface {
   readonly name = 'eSIM Go'
@@ -69,33 +71,48 @@ export class EsimGoProvider implements EsimProviderInterface {
   }
 
   /**
-   * Make authenticated API request
+   * Make authenticated API request with timeout
    */
   private async request<T>(
     method: string,
     endpoint: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
+    timeout: number = REQUEST_TIMEOUT
   ): Promise<T> {
     const credentials = await this.getCredentials()
     if (!credentials) {
       throw new Error('eSIM Go not configured')
     }
 
-    const response = await fetch(`${credentials.baseUrl}${endpoint}`, {
-      method,
-      headers: {
-        'X-Api-Key': credentials.apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    })
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      throw new Error(error.message || `eSIM Go API error: ${response.status}`)
+    try {
+      const response = await fetch(`${credentials.baseUrl}${endpoint}`, {
+        method,
+        headers: {
+          'X-Api-Key': credentials.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.message || `eSIM Go API error: ${response.status}`)
+      }
+
+      return response.json()
+    } catch (error: any) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error(`eSIM Go API timeout after ${timeout / 1000}s - try again later`)
+      }
+      throw error
     }
-
-    return response.json()
   }
 
   /**
@@ -224,7 +241,7 @@ export class EsimGoProvider implements EsimProviderInterface {
       if (!credentials) {
         return false
       }
-      await this.request('GET', '/catalogue')
+      await this.request('GET', '/catalogue', undefined, HEALTH_CHECK_TIMEOUT)
       return true
     } catch {
       return false

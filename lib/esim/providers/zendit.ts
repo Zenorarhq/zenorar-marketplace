@@ -18,6 +18,8 @@ interface ZenditCredentials {
 // Cache credentials
 let credentialsCache: { credentials: ZenditCredentials | null; timestamp: number } | null = null
 const CACHE_TTL = 60 * 1000 // 1 minute
+const REQUEST_TIMEOUT = 30000 // 30 seconds per request
+const HEALTH_CHECK_TIMEOUT = 10000 // 10 seconds for health checks
 
 export class ZenditProvider implements EsimProviderInterface {
   readonly name = 'Zendit'
@@ -80,33 +82,49 @@ export class ZenditProvider implements EsimProviderInterface {
   }
 
   /**
-   * Make authenticated API request
+   * Make authenticated API request with timeout
    */
   private async request<T>(
     method: string,
     endpoint: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
+    timeout: number = REQUEST_TIMEOUT
   ): Promise<T> {
     const credentials = await this.getCredentials()
     if (!credentials) {
       throw new Error('Zendit not configured')
     }
 
-    const response = await fetch(`${credentials.baseUrl}${endpoint}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${credentials.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    })
+    // Create AbortController for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      throw new Error(error.message || error.error || `Zendit API error: ${response.status}`)
+    try {
+      const response = await fetch(`${credentials.baseUrl}${endpoint}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${credentials.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.message || error.error || `Zendit API error: ${response.status}`)
+      }
+
+      return response.json()
+    } catch (error: any) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error(`Zendit API timeout after ${timeout / 1000}s - try again later`)
+      }
+      throw error
     }
-
-    return response.json()
   }
 
   /**
@@ -350,8 +368,8 @@ export class ZenditProvider implements EsimProviderInterface {
       if (!credentials) {
         return false
       }
-      // Try to fetch a single offer as a health check
-      await this.request('GET', '/esim/offers?_limit=1&_offset=0')
+      // Try to fetch a single offer as a health check with shorter timeout
+      await this.request('GET', '/esim/offers?_limit=1&_offset=0', undefined, HEALTH_CHECK_TIMEOUT)
       return true
     } catch {
       return false

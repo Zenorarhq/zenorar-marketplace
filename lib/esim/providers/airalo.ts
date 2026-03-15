@@ -20,6 +20,8 @@ interface AiraloCredentials {
 let credentialsCache: { credentials: AiraloCredentials | null; timestamp: number } | null = null
 let tokenCache: { token: string; expiry: Date } | null = null
 const CACHE_TTL = 60 * 1000 // 1 minute
+const REQUEST_TIMEOUT = 30000 // 30 seconds per request
+const HEALTH_CHECK_TIMEOUT = 10000 // 10 seconds for health checks
 
 export class AiraloProvider implements EsimProviderInterface {
   readonly name = 'Airalo'
@@ -88,9 +90,9 @@ export class AiraloProvider implements EsimProviderInterface {
   }
 
   /**
-   * Get OAuth access token
+   * Get OAuth access token with timeout
    */
-  private async getAccessToken(): Promise<string> {
+  private async getAccessToken(timeout: number = HEALTH_CHECK_TIMEOUT): Promise<string> {
     // Return cached token if still valid
     if (tokenCache && tokenCache.expiry > new Date()) {
       return tokenCache.token
@@ -101,40 +103,55 @@ export class AiraloProvider implements EsimProviderInterface {
       throw new Error('Airalo not configured')
     }
 
-    const response = await fetch(`${credentials.baseUrl}/oauth/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        client_id: credentials.clientId,
-        client_secret: credentials.clientSecret,
-        grant_type: 'client_credentials',
-      }),
-    })
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    if (!response.ok) {
-      throw new Error(`Airalo auth failed: ${response.status}`)
+    try {
+      const response = await fetch(`${credentials.baseUrl}/oauth/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: credentials.clientId,
+          client_secret: credentials.clientSecret,
+          grant_type: 'client_credentials',
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new Error(`Airalo auth failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const token: string = data.access_token
+      // Set expiry 60 seconds before actual expiry for safety
+      tokenCache = {
+        token,
+        expiry: new Date(Date.now() + (data.expires_in - 60) * 1000)
+      }
+
+      return token
+    } catch (error: any) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error(`Airalo auth timeout after ${timeout / 1000}s`)
+      }
+      throw error
     }
-
-    const data = await response.json()
-    const token: string = data.access_token
-    // Set expiry 60 seconds before actual expiry for safety
-    tokenCache = {
-      token,
-      expiry: new Date(Date.now() + (data.expires_in - 60) * 1000)
-    }
-
-    return token
   }
 
   /**
-   * Make authenticated API request
+   * Make authenticated API request with timeout
    */
   private async request<T>(
     method: string,
     endpoint: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
+    timeout: number = REQUEST_TIMEOUT
   ): Promise<T> {
     const credentials = await this.getCredentials()
     if (!credentials) {
@@ -143,21 +160,35 @@ export class AiraloProvider implements EsimProviderInterface {
 
     const token = await this.getAccessToken()
 
-    const response = await fetch(`${credentials.baseUrl}${endpoint}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    })
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      throw new Error(error.message || `Airalo API error: ${response.status}`)
+    try {
+      const response = await fetch(`${credentials.baseUrl}${endpoint}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.message || `Airalo API error: ${response.status}`)
+      }
+
+      return response.json()
+    } catch (error: any) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error(`Airalo API timeout after ${timeout / 1000}s - try again later`)
+      }
+      throw error
     }
-
-    return response.json()
   }
 
   /**
