@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/admin/sync/esim - Get enabled eSIM providers
+// GET /api/admin/sync/esim - Get enabled eSIM providers with connection details
 export async function GET(request: NextRequest) {
   try {
     const user = await authenticateRequest(request)
@@ -80,10 +80,45 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const providers = await esimSyncService.getEnabledProviders()
+    // Get detailed provider status from settings
+    const { getSiteSettingsByGroup } = await import('@/lib/db-helpers')
+    const settings = await getSiteSettingsByGroup('api')
+
+    // Build connections object with details for each enabled provider
+    const connections: Record<string, { enabled: boolean; mode: string; hasCredentials: boolean }> = {}
+
+    // Zendit
+    const zenditEnabled = settings.zenditEnabled === true || settings.zenditEnabled === 'true'
+    if (zenditEnabled) {
+      const mode = settings.zenditMode || 'sandbox'
+      const hasCredentials = mode === 'sandbox'
+        ? !!(settings.zenditSandboxApiKey || process.env.ZENDIT_SANDBOX_API_KEY)
+        : !!(settings.zenditProductionApiKey || process.env.ZENDIT_API_KEY)
+      connections['zendit'] = { enabled: true, mode, hasCredentials }
+    }
+
+    // Airalo
+    const airaloEnabled = settings.airaloEnabled === true || settings.airaloEnabled === 'true'
+    if (airaloEnabled) {
+      const mode = settings.airaloMode || 'sandbox'
+      const hasCredentials = mode === 'sandbox'
+        ? !!(settings.airaloSandboxClientId && settings.airaloSandboxClientSecret)
+        : !!(settings.airaloProductionClientId && settings.airaloProductionClientSecret)
+      connections['airalo'] = { enabled: true, mode, hasCredentials }
+    }
+
+    // eSIM Go
+    const esimGoEnabled = settings.esimGoEnabled === true || settings.esimGoEnabled === 'true'
+    if (esimGoEnabled) {
+      const hasCredentials = !!(settings.esimGoApiKey || process.env.ESIMGO_API_KEY)
+      connections['esimgo'] = { enabled: true, mode: 'production', hasCredentials }
+    }
+
+    const enabledProviders = Object.keys(connections)
 
     return NextResponse.json({
-      enabledProviders: providers,
+      connections,
+      enabledProviders,
       availableProviders: ['zendit', 'airalo', 'esimgo']
     })
   } catch (error: any) {

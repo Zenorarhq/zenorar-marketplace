@@ -117,11 +117,11 @@ export class ZenditProvider implements EsimProviderInterface {
     let offset = 0
     const limit = 100
 
-    // Paginate through all offers
+    // Paginate through all offers (Zendit uses _limit and _offset with underscores)
     while (true) {
       const response = await this.request<any>(
         'GET',
-        `/esim/offers?limit=${limit}&offset=${offset}`
+        `/esim/offers?_limit=${limit}&_offset=${offset}`
       )
 
       // Handle both { list: [...] } and direct array response
