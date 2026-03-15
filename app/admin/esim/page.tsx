@@ -190,7 +190,7 @@ function AdminEsimPageContent() {
       if (!data.success) return { overall: { available: 0, reserved: 0, sold: 0, total: 0 }, byPlan: [], lowStock: [] }
       return data.data
     },
-    enabled: activeTab === 'providers' || activeTab === 'inventory'
+    enabled: activeTab === 'overview' || activeTab === 'providers' || activeTab === 'inventory'
   })
 
   // Fetch inventory items
@@ -438,6 +438,46 @@ function AdminEsimPageContent() {
 
         {/* Overview Tab - Plans Table */}
         {activeTab === 'overview' && (
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="sim-card" size={16} />
+                  Total Plans
+                </div>
+                <p className="text-2xl font-bold text-white">{formatNumber(totalPlans)}</p>
+              </div>
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="check-circle" size={16} />
+                  Active Plans
+                </div>
+                <p className="text-2xl font-bold text-green-400">{formatNumber(activePlans)}</p>
+              </div>
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="package" size={16} />
+                  Available Inventory
+                </div>
+                <p className="text-2xl font-bold text-blue-400">{formatNumber(totalAvailable)}</p>
+              </div>
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="clock" size={16} />
+                  Reserved
+                </div>
+                <p className="text-2xl font-bold text-yellow-400">{formatNumber(totalReserved)}</p>
+              </div>
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="shopping-cart" size={16} />
+                  Sold
+                </div>
+                <p className="text-2xl font-bold text-purple-400">{formatNumber(totalSold)}</p>
+              </div>
+            </div>
+
           <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -496,90 +536,59 @@ function AdminEsimPageContent() {
 
             {/* Pagination */}
             {totalPlans > pageSize && (
-              <div className="p-4 border-t border-border-dark flex items-center justify-between">
-                <p className="text-sm text-slate-400">
-                  Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalPlans)} of {formatNumber(totalPlans)} plans
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="p-2 rounded-lg bg-surface-dark text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Icon name="chevrons-left" size={16} />
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-2 rounded-lg bg-surface-dark text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Icon name="chevron-left" size={16} />
-                  </button>
-                  <span className="px-3 py-1 text-sm text-white">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-2 rounded-lg bg-surface-dark text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Icon name="chevron-right" size={16} />
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="p-2 rounded-lg bg-surface-dark text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Icon name="chevrons-right" size={16} />
-                  </button>
+              <div className="border-t border-[#1f1f1f] px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-slate-400 text-sm">
+                    Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalPlans)} of {formatNumber(totalPlans)}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum: number
+                        if (totalPages <= 5) pageNum = i + 1
+                        else if (currentPage <= 3) pageNum = i + 1
+                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                        else pageNum = currentPage - 2 + i
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-8 h-8 rounded-lg text-sm transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-primary text-black font-semibold'
+                                : 'bg-[#1a1a1a] hover:bg-white/10 text-slate-400'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
           </div>
+          </>
         )}
 
         {/* Plans by Providers Tab */}
         {activeTab === 'providers' && (
           <>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
-                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
-                  <Icon name="sim-card" size={16} />
-                  Total Plans
-                </div>
-                <p className="text-2xl font-bold text-white">{formatNumber(totalPlans)}</p>
-              </div>
-              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
-                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
-                  <Icon name="check-circle" size={16} />
-                  Active Plans
-                </div>
-                <p className="text-2xl font-bold text-green-400">{formatNumber(activePlans)}</p>
-              </div>
-              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
-                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
-                  <Icon name="package" size={16} />
-                  Available Inventory
-                </div>
-                <p className="text-2xl font-bold text-blue-400">{formatNumber(totalAvailable)}</p>
-              </div>
-              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
-                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
-                  <Icon name="clock" size={16} />
-                  Reserved
-                </div>
-                <p className="text-2xl font-bold text-yellow-400">{formatNumber(totalReserved)}</p>
-              </div>
-              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
-                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
-                  <Icon name="shopping-cart" size={16} />
-                  Sold
-                </div>
-                <p className="text-2xl font-bold text-purple-400">{formatNumber(totalSold)}</p>
-              </div>
-            </div>
-
             {/* Low Stock Alert */}
             {inventoryStats?.lowStock && inventoryStats.lowStock.length > 0 && (
               <div className="bg-red-900/20 border border-red-500/20 rounded-xl p-4 mb-6">

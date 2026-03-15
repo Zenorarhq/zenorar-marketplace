@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const regionSlug = searchParams.get('region')
     const countryCode = searchParams.get('country')
     const featured = searchParams.get('featured')
+    const includeInactive = searchParams.get('includeInactive') === 'true'
 
     let sql = `
       SELECT
@@ -33,28 +34,44 @@ export async function GET(request: Request) {
         p.supports_topup,
         p.retail_price,
         p.currency,
-        p.is_featured
+        p.is_featured,
+        p.is_active,
+        p.provider_id,
+        pr.name as provider_name,
+        pr.slug as provider_slug
       FROM esim_plans p
       LEFT JOIN esim_regions r ON p.region_id = r.id
-      WHERE p.is_active = true AND p.stock_available = true
+      LEFT JOIN esim_providers pr ON p.provider_id = pr.id
     `
+
+    const conditions: string[] = []
     const params: any[] = []
     let paramIndex = 1
 
+    // Only filter active plans if not including inactive
+    if (!includeInactive) {
+      conditions.push('p.is_active = true')
+      conditions.push('p.stock_available = true')
+    }
+
     if (regionSlug) {
-      sql += ` AND r.slug = $${paramIndex}`
+      conditions.push(`r.slug = $${paramIndex}`)
       params.push(regionSlug)
       paramIndex++
     }
 
     if (countryCode) {
-      sql += ` AND $${paramIndex} = ANY(p.countries)`
+      conditions.push(`$${paramIndex} = ANY(p.countries)`)
       params.push(countryCode.toUpperCase())
       paramIndex++
     }
 
     if (featured === 'true') {
-      sql += ` AND p.is_featured = true`
+      conditions.push('p.is_featured = true')
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ${conditions.join(' AND ')}`
     }
 
     sql += ` ORDER BY p.is_featured DESC, p.retail_price ASC`
@@ -84,6 +101,17 @@ export async function GET(request: Request) {
       retailPrice: parseFloat(row.retail_price) || 0,
       currency: row.currency,
       isFeatured: row.is_featured,
+      isActive: row.is_active,
+      provider: row.provider_id ? {
+        id: row.provider_id,
+        name: row.provider_name,
+        slug: row.provider_slug,
+      } : null,
+      region: row.region_id ? {
+        id: row.region_id,
+        name: row.region_name,
+        slug: row.region_slug,
+      } : null,
     }))
 
     return NextResponse.json({ success: true, data: plans })

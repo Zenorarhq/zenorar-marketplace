@@ -109,6 +109,7 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
                  countries = $9,
                  network_type = $10,
                  supports_topup = $11,
+                 is_active = true,
                  stock_available = true,
                  updated_at = NOW()
              WHERE id = $12`,
