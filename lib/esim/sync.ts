@@ -70,22 +70,37 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-|-$/g, '')
 
-        // Find or create region
+        // Find region via esim_countries lookup
         let regionId: string | null = null
+        let countryName: string | null = null
         if (plan.countries && plan.countries.length > 0) {
-          // Try to match region based on countries
-          const regionSlug = plan.countries.length > 5 ? 'global' :
-            plan.countries.length === 1 ? plan.countries[0].toLowerCase() : 'regional'
-
-          const regionResult = await query(
-            `SELECT id FROM esim_regions WHERE slug = $1`,
-            [regionSlug]
-          )
-
-          if (regionResult.rows.length > 0) {
-            regionId = regionResult.rows[0].id
+          if (plan.countries.length > 5) {
+            // Multi-country → global region
+            const globalResult = await query(
+              `SELECT id FROM esim_regions WHERE slug = 'global'`
+            )
+            if (globalResult.rows.length > 0) {
+              regionId = globalResult.rows[0].id
+            }
+          } else {
+            // Look up first country to find its region
+            const countryResult = await query(
+              `SELECT ec.name, ec.region_id FROM esim_countries ec WHERE ec.iso_code = $1`,
+              [plan.countries[0].toUpperCase()]
+            )
+            if (countryResult.rows.length > 0) {
+              regionId = countryResult.rows[0].region_id
+              countryName = countryResult.rows[0].name
+            }
           }
         }
+
+        // Build descriptive plan name
+        const planName = (plan.name && plan.name !== 'eSIM' && plan.name !== plan.dataAmountDisplay)
+          ? plan.name
+          : countryName
+            ? `${countryName} ${plan.dataAmountDisplay} - ${plan.validityDays} Days`
+            : `eSIM ${plan.dataAmountDisplay} - ${plan.validityDays} Days`
 
         // Check if plan exists
         const existing = await query(
@@ -109,12 +124,13 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
                  countries = $9,
                  network_type = $10,
                  supports_topup = $11,
+                 region_id = $12,
                  is_active = true,
                  stock_available = true,
                  updated_at = NOW()
-             WHERE id = $12`,
+             WHERE id = $13`,
             [
-              plan.name,
+              planName,
               plan.description || '',
               plan.dataAmountGb,
               plan.dataAmountDisplay,
@@ -125,6 +141,7 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
               plan.countries || [],
               plan.networkType || '4g',
               plan.supportsTopup || false,
+              regionId,
               existing.rows[0].id
             ]
           )
@@ -139,7 +156,7 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
                 provider_id, provider_plan_id, is_active, stock_available)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, true, true)`,
             [
-              plan.name,
+              planName,
               slug,
               plan.description || '',
               regionId,
