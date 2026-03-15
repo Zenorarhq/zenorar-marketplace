@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams, useRouter } from 'next/navigation'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { formatNumber } from '@/lib/formatNumber'
@@ -39,10 +40,32 @@ interface InventoryStats {
   expired: number
 }
 
-export default function AdminGiftCardsPage() {
+type TabType = 'overview' | 'products' | 'inventory' | 'import'
+
+function AdminGiftCardsPageContent() {
   const queryClient = useQueryClient()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'inventory' | 'import'>('overview')
+
+  // Get tab from URL or default to overview
+  const tabParam = searchParams.get('tab') as TabType | null
+  const [activeTab, setActiveTab] = useState<TabType>(tabParam || 'overview')
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.push(`/admin/gift-cards?${params.toString()}`, { scroll: false })
+  }
+
+  // Sync tab from URL on mount
+  useEffect(() => {
+    if (tabParam && ['overview', 'products', 'inventory', 'import'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam])
   const [selectedGiftCard, setSelectedGiftCard] = useState<string>('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingCard, setEditingCard] = useState<GiftCard | null>(null)
@@ -425,14 +448,14 @@ export default function AdminGiftCardsPage() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           {[
-            { id: 'overview', label: 'Overview', icon: 'chart' },
-            { id: 'products', label: 'Products', icon: 'box' },
-            { id: 'inventory', label: 'Inventory', icon: 'list' },
-            { id: 'import', label: 'Import', icon: 'upload' },
+            { id: 'overview' as TabType, label: 'Overview', icon: 'chart' },
+            { id: 'products' as TabType, label: 'Products', icon: 'box' },
+            { id: 'inventory' as TabType, label: 'Inventory', icon: 'list' },
+            { id: 'import' as TabType, label: 'Import', icon: 'upload' },
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-primary text-black'
@@ -980,5 +1003,23 @@ export default function AdminGiftCardsPage() {
         )}
       </div>
     </AdminLayout>
+  )
+}
+
+export default function AdminGiftCardsPage() {
+  return (
+    <Suspense fallback={
+      <AdminLayout>
+        <div className="p-6">
+          <div className="animate-pulse">
+            <div className="h-8 w-48 bg-slate-800 rounded mb-4" />
+            <div className="h-4 w-96 bg-slate-800 rounded mb-8" />
+            <div className="h-64 bg-slate-800 rounded-xl" />
+          </div>
+        </div>
+      </AdminLayout>
+    }>
+      <AdminGiftCardsPageContent />
+    </Suspense>
   )
 }

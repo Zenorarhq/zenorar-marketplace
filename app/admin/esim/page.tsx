@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
@@ -85,18 +86,52 @@ interface ProviderConnection {
   hasCredentials: boolean
 }
 
-export default function AdminEsimPage() {
+type TabType = 'overview' | 'providers' | 'inventory'
+
+function AdminEsimPageContent() {
   const queryClient = useQueryClient()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const tz = useTimezone()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'inventory' | 'import'>('overview')
+
+  // Get tab from URL or default to overview
+  const tabParam = searchParams.get('tab') as TabType | null
+  const [activeTab, setActiveTab] = useState<TabType>(tabParam || 'overview')
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 50
+
+  // Filters
   const [selectedPlan, setSelectedPlan] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
+
+  // Import modal
+  const [showImportModal, setShowImportModal] = useState(false)
   const [importPlanId, setImportPlanId] = useState('')
   const [importData, setImportData] = useState('')
   const [importError, setImportError] = useState('')
+
+  // Sync results modal
   const [lastSyncResults, setLastSyncResults] = useState<SyncResult[] | null>(null)
   const [showSyncDetails, setShowSyncDetails] = useState(false)
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    setCurrentPage(1)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.push(`/admin/esim?${params.toString()}`, { scroll: false })
+  }
+
+  // Sync tab from URL on mount
+  useEffect(() => {
+    if (tabParam && ['overview', 'providers', 'inventory'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam])
 
   // Refresh provider status when window gains focus
   useEffect(() => {
@@ -107,7 +142,7 @@ export default function AdminEsimPage() {
     return () => window.removeEventListener('focus', handleFocus)
   }, [queryClient])
 
-  // Fetch provider status with connection details
+  // Fetch provider status
   const { data: providerStatus } = useQuery({
     queryKey: ['esim-provider-status'],
     queryFn: async () => {
@@ -155,7 +190,7 @@ export default function AdminEsimPage() {
       if (!data.success) return { overall: { available: 0, reserved: 0, sold: 0, total: 0 }, byPlan: [], lowStock: [] }
       return data.data
     },
-    enabled: activeTab === 'overview' || activeTab === 'inventory'
+    enabled: activeTab === 'providers' || activeTab === 'inventory'
   })
 
   // Fetch inventory items
@@ -202,7 +237,14 @@ export default function AdminEsimPage() {
       queryClient.invalidateQueries({ queryKey: ['esim-provider-status'] })
     },
     onError: (error: any) => {
-      alert(`Sync failed: ${error.message}`)
+      setLastSyncResults([{
+        provider: 'all',
+        success: false,
+        synced: 0,
+        updated: 0,
+        errors: [error.message]
+      }])
+      setShowSyncDetails(true)
     }
   })
 
@@ -225,6 +267,7 @@ export default function AdminEsimPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['esim-inventory'] })
       queryClient.invalidateQueries({ queryKey: ['esim-inventory-stats'] })
+      setShowImportModal(false)
       setImportData('')
       setImportPlanId('')
       alert(`Import complete: ${data.imported} imported, ${data.duplicates} duplicates skipped`)
@@ -297,8 +340,12 @@ export default function AdminEsimPage() {
   const connections = providerStatus?.connections as Record<string, ProviderConnection> || {}
   const enabledProviders = Object.entries(connections).filter(([_, c]) => c.enabled)
 
-  // Stats
+  // Pagination
   const totalPlans = plans.length
+  const totalPages = Math.ceil(totalPlans / pageSize)
+  const paginatedPlans = plans.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  // Stats
   const activePlans = plans.filter(p => p.isActive).length
   const totalAvailable = inventoryStats?.overall?.available || 0
   const totalSold = inventoryStats?.overall?.sold || 0
@@ -330,7 +377,7 @@ export default function AdminEsimPage() {
               Sync Providers
             </button>
             <button
-              onClick={() => setActiveTab('import')}
+              onClick={() => setShowImportModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
             >
               <Icon name="upload" size={18} />
@@ -370,14 +417,13 @@ export default function AdminEsimPage() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           {[
-            { id: 'overview', label: 'Overview', icon: 'chart' },
-            { id: 'plans', label: 'Plans', icon: 'sim-card' },
-            { id: 'inventory', label: 'Inventory', icon: 'list' },
-            { id: 'import', label: 'Import', icon: 'upload' },
+            { id: 'overview' as TabType, label: 'Overview', icon: 'sim-card' },
+            { id: 'providers' as TabType, label: 'Plans by Providers', icon: 'chart' },
+            { id: 'inventory' as TabType, label: 'Inventory', icon: 'list' },
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-primary text-black'
@@ -390,8 +436,110 @@ export default function AdminEsimPage() {
           ))}
         </div>
 
-        {/* Overview Tab */}
+        {/* Overview Tab - Plans Table */}
         {activeTab === 'overview' && (
+          <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border-dark text-left">
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Plan</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Region</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Data</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Validity</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Price</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Provider</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingPlans ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
+                    </tr>
+                  ) : plans.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                        No eSIM plans found. Click "Sync Providers" to fetch plans.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedPlans.map(plan => (
+                      <tr key={plan.id} className="border-b border-border-dark hover:bg-white/5">
+                        <td className="px-4 py-3 text-white font-medium">{plan.name}</td>
+                        <td className="px-4 py-3 text-slate-400">{plan.region?.name || '-'}</td>
+                        <td className="px-4 py-3 text-slate-400">{plan.dataAmountDisplay}</td>
+                        <td className="px-4 py-3 text-slate-400">{plan.validityDays} days</td>
+                        <td className="px-4 py-3 text-slate-400">${plan.retailPrice?.toFixed(2)}</td>
+                        <td className="px-4 py-3">
+                          {plan.provider ? (
+                            <span className="px-2 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400 border border-blue-500/20">
+                              {plan.provider.name}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {plan.isActive ? (
+                            <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 border border-green-500/20">Active</span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 border border-red-500/20">Inactive</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPlans > pageSize && (
+              <div className="p-4 border-t border-border-dark flex items-center justify-between">
+                <p className="text-sm text-slate-400">
+                  Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalPlans)} of {formatNumber(totalPlans)} plans
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-lg bg-surface-dark text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Icon name="chevrons-left" size={16} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-lg bg-surface-dark text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Icon name="chevron-left" size={16} />
+                  </button>
+                  <span className="px-3 py-1 text-sm text-white">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg bg-surface-dark text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Icon name="chevron-right" size={16} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg bg-surface-dark text-slate-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Icon name="chevrons-right" size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Plans by Providers Tab */}
+        {activeTab === 'providers' && (
           <>
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -440,7 +588,7 @@ export default function AdminEsimPage() {
                   Low Stock Alerts
                 </h3>
                 <div className="space-y-2">
-                  {inventoryStats.lowStock.map(item => (
+                  {inventoryStats.lowStock.slice(0, 10).map(item => (
                     <div key={item.planId} className="flex items-center justify-between text-sm">
                       <span className="text-white">{item.planName} ({item.regionName})</span>
                       <span className="text-red-400 font-medium">{item.available} remaining</span>
@@ -450,7 +598,7 @@ export default function AdminEsimPage() {
               </div>
             )}
 
-            {/* Plans by Provider */}
+            {/* Plans by Provider Table */}
             <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
               <div className="p-4 border-b border-border-dark">
                 <h3 className="text-white font-bold">Plans by Provider</h3>
@@ -493,71 +641,6 @@ export default function AdminEsimPage() {
               </div>
             </div>
           </>
-        )}
-
-        {/* Plans Tab */}
-        {activeTab === 'plans' && (
-          <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border-dark text-left">
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Plan</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Region</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Data</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Validity</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Price</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Provider</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadingPlans ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
-                    </tr>
-                  ) : plans.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                        No eSIM plans found. Click "Sync Providers" to fetch plans.
-                      </td>
-                    </tr>
-                  ) : (
-                    plans.slice(0, 100).map(plan => (
-                      <tr key={plan.id} className="border-b border-border-dark hover:bg-white/5">
-                        <td className="px-4 py-3 text-white font-medium">{plan.name}</td>
-                        <td className="px-4 py-3 text-slate-400">{plan.region?.name || '-'}</td>
-                        <td className="px-4 py-3 text-slate-400">{plan.dataAmountDisplay}</td>
-                        <td className="px-4 py-3 text-slate-400">{plan.validityDays} days</td>
-                        <td className="px-4 py-3 text-slate-400">${plan.retailPrice?.toFixed(2)}</td>
-                        <td className="px-4 py-3">
-                          {plan.provider ? (
-                            <span className="px-2 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400 border border-blue-500/20">
-                              {plan.provider.name}
-                            </span>
-                          ) : (
-                            <span className="text-slate-500">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {plan.isActive ? (
-                            <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 border border-green-500/20">Active</span>
-                          ) : (
-                            <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 border border-red-500/20">Inactive</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {plans.length > 100 && (
-              <div className="p-4 border-t border-border-dark">
-                <p className="text-sm text-slate-400">Showing 100 of {plans.length} plans</p>
-              </div>
-            )}
-          </div>
         )}
 
         {/* Inventory Tab */}
@@ -610,7 +693,7 @@ export default function AdminEsimPage() {
                     ) : !inventoryData?.items?.length ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                          No inventory items found. Use the Import tab to add bulk eSIMs.
+                          No inventory items found. Click "Import eSIMs" to add bulk eSIMs.
                         </td>
                       </tr>
                     ) : (
@@ -644,13 +727,21 @@ export default function AdminEsimPage() {
           </>
         )}
 
-        {/* Import Tab */}
-        {activeTab === 'import' && (
-          <div className="max-w-2xl">
-            <div className="bg-[#121212] border border-border-dark rounded-xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4">Import Bulk eSIMs</h3>
-
-              <div className="space-y-4">
+        {/* Import Modal */}
+        {showImportModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowImportModal(false)} />
+            <div className="relative bg-[#121212] border border-border-dark rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-border-dark">
+                <h2 className="text-xl font-bold text-white">Import Bulk eSIMs</h2>
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <Icon name="x" size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Select Plan</label>
                   <select
@@ -708,13 +799,20 @@ export default function AdminEsimPage() {
                     {importError}
                   </div>
                 )}
-
+              </div>
+              <div className="p-6 border-t border-border-dark flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-[#262626] transition-colors"
+                >
+                  Cancel
+                </button>
                 <button
                   onClick={handleImport}
                   disabled={importMutation.isPending || !importPlanId || !importData.trim()}
-                  className="w-full px-4 py-3 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
+                  className="px-6 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
                 >
-                  {importMutation.isPending ? 'Importing...' : 'Import eSIMs'}
+                  {importMutation.isPending ? 'Importing...' : 'Import'}
                 </button>
               </div>
             </div>
@@ -791,5 +889,23 @@ export default function AdminEsimPage() {
         )}
       </div>
     </AdminLayout>
+  )
+}
+
+export default function AdminEsimPage() {
+  return (
+    <Suspense fallback={
+      <AdminLayout>
+        <div className="p-6">
+          <div className="animate-pulse">
+            <div className="h-8 w-48 bg-slate-800 rounded mb-4" />
+            <div className="h-4 w-96 bg-slate-800 rounded mb-8" />
+            <div className="h-64 bg-slate-800 rounded-xl" />
+          </div>
+        </div>
+      </AdminLayout>
+    }>
+      <AdminEsimPageContent />
+    </Suspense>
   )
 }
