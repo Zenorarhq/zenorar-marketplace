@@ -9,17 +9,18 @@ import FlagIcon from '@/components/ui/FlagIcon'
 import { CardVisualMini } from '@/components/cards/CardVisual'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { libraryApi } from '@/lib/api/library'
+import { localApiFetch } from '@/lib/api/client'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
-type FilterStatus = 'all' | 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+type FilterStatus = 'all' | 'PENDING' | 'PROCESSING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
 
 const ITEMS_PER_PAGE = 10
 
 const filterButtons: { key: FilterStatus; label: string }[] = [
   { key: 'all', label: 'All Orders' },
   { key: 'PROCESSING', label: 'Processing' },
+  { key: 'CONFIRMED', label: 'Confirmed' },
   { key: 'SHIPPED', label: 'Shipped' },
-  { key: 'DELIVERED', label: 'Delivered' },
   { key: 'CANCELLED', label: 'Cancelled' },
 ]
 
@@ -101,6 +102,7 @@ export default function OrdersPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [downloadToast, setDownloadToast] = useState<{ message: string; variant: 'info' | 'success' | 'error' } | null>(null)
+  const [itemEnrichment, setItemEnrichment] = useState<Record<string, Record<string, { product_type: string; metadata: any }>>>({})
 
   const showToast = (message: string, variant: 'info' | 'success' | 'error', autoDismiss = 0) => {
     setDownloadToast({ message, variant })
@@ -117,9 +119,24 @@ export default function OrdersPage() {
     setError(null)
     ordersApi
       .getMyOrders({ limit: 100 })
-      .then((result) => {
+      .then(async (result) => {
         if (result.success && Array.isArray(result.data)) {
           setOrders(result.data)
+          // Enrich order items with product_type and metadata from Next.js DB
+          const orderIds = result.data.map(o => o.id)
+          if (orderIds.length > 0) {
+            try {
+              const enrichResult = await localApiFetch<Record<string, Record<string, { product_type: string; metadata: any }>>>('/orders/enrich', {
+                method: 'POST',
+                body: JSON.stringify({ orderIds }),
+              })
+              if (enrichResult.success && enrichResult.data) {
+                setItemEnrichment(enrichResult.data)
+              }
+            } catch {
+              // Non-critical — items just won't have flags
+            }
+          }
         } else {
           setError(result.error || 'Failed to load orders')
         }
@@ -400,13 +417,15 @@ export default function OrdersPage() {
                       }`}
                     >
                       {(() => {
-                        const productType = (item as any).product_type || (item as any).metadata?.productType
+                        const enriched = itemEnrichment[order.id]?.[item.id]
+                        const productType = enriched?.product_type || (item as any).product_type || (item as any).metadata?.productType
+                        const mergedMeta = { ...(item as any).metadata, ...enriched?.metadata }
                         const isInstantCard = productType === 'instant_card'
                         const isVirtualCard = productType === 'virtual_card'
                         const isCard = isInstantCard || isVirtualCard
-                        const cardBrand = (item as any).metadata?.cardBrand || 'visa'
-                        const cardDenomination = (item as any).metadata?.denomination
-                        const isPremium = (item as any).metadata?.isPremium
+                        const cardBrand = mergedMeta?.cardBrand || 'visa'
+                        const cardDenomination = mergedMeta?.denomination
+                        const isPremium = mergedMeta?.isPremium
 
                         if (isCard) {
                           return (
@@ -424,11 +443,11 @@ export default function OrdersPage() {
                         const imageUrl = item.product?.images?.[0]?.url
                           || (item.product as any)?.image
                           || (item.product as any)?.imageUrl
-                          || (item as any).metadata?.imageUrl
+                          || mergedMeta?.imageUrl
                         const isGiftCard = productType === 'gift_card'
                         const isEsim = productType === 'esim'
                         const isVirtualNumber = productType === 'virtual_number'
-                        const countryIsoCode = (item as any).metadata?.countryIsoCode
+                        const countryIsoCode = mergedMeta?.countryIsoCode
 
                         if ((isEsim || isVirtualNumber) && countryIsoCode) {
                           return (
@@ -517,7 +536,10 @@ export default function OrdersPage() {
                       )}
                       {/* Download script files for PAID digital orders */}
                       {order.paymentStatus === 'PAID' &&
-                        order.items.some(i => i.license && !['esim', 'gift_card'].includes((i as any).product_type || (i as any).metadata?.productType || '')) && (
+                        order.items.some(i => {
+                          const eType = itemEnrichment[order.id]?.[i.id]?.product_type || (i as any).product_type || (i as any).metadata?.productType || ''
+                          return i.license && !['esim', 'gift_card'].includes(eType)
+                        }) && (
                         <button
                           onClick={() => handleDownload(order.items.find(i => i.license)!.productId, order.id)}
                           disabled={downloadingId === order.id}

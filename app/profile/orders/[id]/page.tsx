@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { ordersApi, Order } from '@/lib/api/orders'
+import { localApiFetch } from '@/lib/api/client'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { CardVisualMini } from '@/components/cards/CardVisual'
 import FlagIcon from '@/components/ui/FlagIcon'
@@ -49,6 +50,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [itemEnrichment, setItemEnrichment] = useState<Record<string, { product_type: string; metadata: any }>>({})
 
   useEffect(() => {
     const id = params.id as string
@@ -57,9 +59,21 @@ export default function OrderDetailPage() {
     setIsLoading(true)
     ordersApi
       .getById(id)
-      .then((result) => {
+      .then(async (result) => {
         if (result.success && result.data) {
           setOrder(result.data)
+          // Enrich order items with product_type and metadata from Next.js DB
+          try {
+            const enrichResult = await localApiFetch<Record<string, Record<string, { product_type: string; metadata: any }>>>('/orders/enrich', {
+              method: 'POST',
+              body: JSON.stringify({ orderIds: [id] }),
+            })
+            if (enrichResult.success && enrichResult.data?.[id]) {
+              setItemEnrichment(enrichResult.data[id])
+            }
+          } catch {
+            // Non-critical
+          }
         } else {
           setError(result.error || 'Order not found')
         }
@@ -165,11 +179,12 @@ export default function OrderDetailPage() {
                 >
                   <div className="flex-shrink-0">
                     {(() => {
-                      const productType = (item as any).product_type || (item as any).metadata?.productType
+                      const enriched = itemEnrichment[item.id]
+                      const productType = enriched?.product_type || (item as any).product_type || (item as any).metadata?.productType
+                      const metadata = { ...(item as any).metadata, ...enriched?.metadata }
                       const isInstantCard = productType === 'instant_card'
                       const isVirtualCard = productType === 'virtual_card'
                       const isGiftCard = productType === 'gift_card'
-                      const metadata = (item as any).metadata || {}
                       const cardBrand = metadata.cardBrand || 'visa'
                       const denomination = metadata.denomination
 

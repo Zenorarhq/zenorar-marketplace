@@ -47,6 +47,9 @@ export interface LibraryItem {
   smsUsed?: number
   smsIncluded?: number
   errorMessage?: string
+  // eSIM specific fields
+  countries?: string[]
+  regionName?: string
   // Gift card specific fields
   denomination?: number
   brand?: string

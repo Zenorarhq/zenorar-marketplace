@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import { libraryApi } from '@/lib/api/library'
 import EsimDetailModal from '@/components/library/EsimDetailModal'
 import GiftCardDetailModal from '@/components/library/GiftCardDetailModal'
@@ -492,7 +493,9 @@ export default function LibraryPage() {
                       </div>
                     ) : (
                     <div className="h-14 w-14 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {item.category === 'gift-cards' && item.imageUrl ? (
+                      {item.category === 'esims' && item.countries?.[0] ? (
+                        <FlagIcon countryCode={item.countries[0]} className="w-8 h-8 rounded" />
+                      ) : item.category === 'gift-cards' && item.imageUrl ? (
                         <Image
                           src={item.imageUrl}
                           alt={item.name}
