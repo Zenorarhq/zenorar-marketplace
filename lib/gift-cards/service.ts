@@ -209,9 +209,17 @@ async function testAllConnections(): Promise<Record<ProviderName, { success: boo
           // For providers without testConnection, try getting products
           const provider = providerMap[providerName]
           const products = await provider.getProducts()
+          // Read actual mode from settings
+          const settings = await getSiteSettingsByGroup('api')
+          let mode = 'live'
+          if (providerName === 'tango') {
+            mode = (settings.tangoMode === 'sandbox' || settings.tangoSandbox === true || settings.tangoSandbox === 'true') ? 'sandbox' : 'live'
+          } else if (providerName === 'zendit') {
+            mode = settings.zenditMode === 'sandbox' ? 'sandbox' : 'live'
+          }
           results[providerName] = {
             success: products.length > 0,
-            mode: 'live',
+            mode,
             error: products.length === 0 ? 'No products returned' : undefined
           }
         }
