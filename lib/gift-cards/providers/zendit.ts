@@ -133,11 +133,12 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       let offset = 0
       const limit = 100
       let totalOffers = 0
+      const countryFilter = countryCode ? `&country=${countryCode}` : ''
 
       while (true) {
         const response = await this.request<any>(
           'GET',
-          `/vouchers/offers?_limit=${limit}&_offset=${offset}`
+          `/vouchers/offers?_limit=${limit}&_offset=${offset}${countryFilter}`
         )
 
         const offers = response.list || response.data || (Array.isArray(response) ? response : [])
@@ -173,8 +174,12 @@ class ZenditGiftCardProvider implements GiftCardProvider {
           const country = offer.country || countryCode || 'US'
           const currency = sendObj?.currency || offer.price?.currency || 'USD'
 
-          // Aggregate key: brand + country
-          const key = `${brand}__${country}`
+          // Aggregate key: normalized brand name (country already filtered in API request)
+          // Strip .com, punctuation, and spaces so "Amazon", "Amazon.com", "Amazon US" merge
+          const key = brand.toLowerCase()
+            .replace(/\.com|\.co\.\w+|\.net|\.org/g, '')
+            .replace(/\s*(us|usa|uk|eu|ca|de|fr|au|global)\s*$/i, '')
+            .replace(/[^a-z0-9]/g, '')
 
           if (brandMap.has(key)) {
             const existing = brandMap.get(key)!
