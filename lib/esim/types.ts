@@ -17,6 +17,7 @@ export interface AvailableEsimPlan {
   validityDays: number
   isUnlimited: boolean
   price: number
+  costPrice?: number
   currency: string
   networkType: string
   supportsTopup: boolean

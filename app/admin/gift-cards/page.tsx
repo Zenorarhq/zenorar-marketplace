@@ -72,6 +72,8 @@ function AdminGiftCardsPageContent() {
   const [importData, setImportData] = useState('')
   const [importError, setImportError] = useState('')
   const [formError, setFormError] = useState('')
+  const [showSyncDetails, setShowSyncDetails] = useState(false)
+  const [lastSyncResult, setLastSyncResult] = useState<{ success: boolean; synced: number; updated: number; error?: string } | null>(null)
 
   // Refresh provider status when window gains focus (e.g., after changing settings)
   useEffect(() => {
@@ -252,10 +254,12 @@ function AdminGiftCardsPageContent() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-gift-cards'] })
       queryClient.invalidateQueries({ queryKey: ['reloadly-status'] })
-      alert(`Sync complete: ${data.totalSynced} new products, ${data.totalUpdated} updated`)
+      setLastSyncResult({ success: true, synced: data.totalSynced, updated: data.totalUpdated })
+      setShowSyncDetails(true)
     },
     onError: (error: any) => {
-      alert(`Sync failed: ${error.message}`)
+      setLastSyncResult({ success: false, synced: 0, updated: 0, error: error.message })
+      setShowSyncDetails(true)
     }
   })
 
@@ -996,6 +1000,63 @@ function AdminGiftCardsPageContent() {
                   className="px-6 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
                 >
                   {saveMutation.isPending ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Sync Results Modal */}
+        {showSyncDetails && lastSyncResult && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowSyncDetails(false)} />
+            <div className="relative bg-[#121212] border border-border-dark rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-border-dark">
+                <h2 className="text-xl font-bold text-white">Sync Results</h2>
+                <button
+                  onClick={() => setShowSyncDetails(false)}
+                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <Icon name="x" size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
+                <div className={`p-4 rounded-xl border ${
+                  lastSyncResult.success
+                    ? 'bg-green-900/20 border-green-500/20'
+                    : 'bg-red-900/20 border-red-500/20'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white font-bold">Reloadly</span>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      lastSyncResult.success
+                        ? 'bg-green-900/30 text-green-400'
+                        : 'bg-red-900/30 text-red-400'
+                    }`}>
+                      {lastSyncResult.success ? 'Success' : 'Failed'}
+                    </span>
+                  </div>
+                  {lastSyncResult.success ? (
+                    <div className="flex gap-4 text-sm">
+                      <span className="text-slate-400">
+                        <span className="text-green-400 font-medium">{lastSyncResult.synced}</span> new products
+                      </span>
+                      <span className="text-slate-400">
+                        <span className="text-blue-400 font-medium">{lastSyncResult.updated}</span> updated
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-red-400">
+                      {lastSyncResult.error || 'Unknown error'}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-6 border-t border-border-dark">
+                <button
+                  onClick={() => setShowSyncDetails(false)}
+                  className="w-full px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+                >
+                  Close
                 </button>
               </div>
             </div>

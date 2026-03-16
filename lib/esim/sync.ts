@@ -184,7 +184,7 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
               [
                 planName, plan.description || '', plan.dataAmountGb,
                 plan.dataAmountDisplay, plan.validityDays, plan.isUnlimited,
-                plan.price * 0.7, plan.price, dbCountries,
+                plan.costPrice || plan.price * 0.7, plan.price, dbCountries,
                 plan.networkType || '4g', plan.supportsTopup || false, regionId,
                 existingId
               ]
@@ -202,7 +202,7 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
                 planName, slug, plan.description || '', regionId, coverageType, dbCountries,
                 plan.dataAmountGb, plan.dataAmountDisplay, plan.validityDays, plan.isUnlimited,
                 plan.networkType || '4g', plan.supportsTopup || false,
-                plan.price * 0.7, plan.price, plan.currency || 'USD',
+                plan.costPrice || plan.price * 0.7, plan.price, plan.currency || 'USD',
                 providerId, plan.providerPlanId
               ]
             )

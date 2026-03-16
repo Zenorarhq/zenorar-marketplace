@@ -177,28 +177,24 @@ export class ZenditProvider implements EsimProviderInterface {
         const dataGb = parseFloat(offer.dataGB) || parseFloat(offer.dataGb) || parseFloat(offer.data) || 0
         const isUnlimited = offer.dataUnlimited || offer.unlimited || false
 
-        // Handle price - try multiple field patterns
+        // Handle price - Zendit uses { fixed, currencyDivisor } format
         let price = 0
-        // Pattern 1: Object with amount/divisor (Zendit v1 format)
-        const priceObj = offer.price || offer.priceRetail || offer.retailPrice || offer.cost
-        if (priceObj && typeof priceObj === 'object' && 'amount' in priceObj) {
-          price = (priceObj.amount || 0) / (priceObj.divisor || 100)
+        let costPrice = 0
+        const priceObj = offer.price
+        const costObj = offer.cost
+        if (priceObj && typeof priceObj === 'object' && 'fixed' in priceObj) {
+          price = (priceObj.fixed || 0) / (priceObj.currencyDivisor || 100)
         }
-        // Pattern 2: Zendit send/receive pattern
-        if (price === 0 && offer.send && typeof offer.send === 'object') {
-          price = (offer.send.amount || 0) / (offer.send.divisor || 100)
-        }
-        // Pattern 3: Direct numeric value
-        if (price === 0) {
-          price = parseFloat(offer.price) || parseFloat(offer.cost) || parseFloat(offer.retailPrice) || 0
+        if (costObj && typeof costObj === 'object' && 'fixed' in costObj) {
+          costPrice = (costObj.fixed || 0) / (costObj.currencyDivisor || 100)
         }
 
-        // Build countries from regions or country
+        // Build countries - prefer ISO code from offer.country, fall back to regions
         let countries: string[] = []
-        if (offer.regions && Array.isArray(offer.regions)) {
-          countries = offer.regions
-        } else if (offer.country) {
+        if (offer.country) {
           countries = [offer.country]
+        } else if (offer.regions && Array.isArray(offer.regions)) {
+          countries = offer.regions
         }
 
         // Build name - try multiple fields
@@ -221,7 +217,8 @@ export class ZenditProvider implements EsimProviderInterface {
           validityDays: parseInt(offer.durationDays) || 30,
           isUnlimited,
           price,
-          currency: priceObj?.currency || offer.send?.currency || offer.currency || 'USD',
+          costPrice,
+          currency: priceObj?.currency || offer.currency || 'USD',
           networkType: offer.dataSpeeds?.join('/') || '4g/lte',
           supportsTopup: offer.topupSupported || false,
         }
