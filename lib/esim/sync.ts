@@ -172,6 +172,11 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
           const coverageType = isoCodes.length === 1 ? 'single' : isoCodes.length > 10 ? 'global' : 'regional'
           const existingId = existingPlanIds.get(plan.providerPlanId)
 
+          // Debug: log price being written for first 3 plans
+          if (result.synced + result.updated < 3) {
+            console.log(`[Sync] DB write for "${planName}": retail_price=${plan.price}, cost_price=${plan.costPrice || plan.price * 0.7}, existingId=${existingId || 'NEW'}`)
+          }
+
           if (existingId) {
             await query(
               `UPDATE esim_plans
