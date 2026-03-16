@@ -124,7 +124,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       while (true) {
         const response = await this.request<any>(
           'GET',
-          `/voucher/offers?_limit=${limit}&_offset=${offset}`
+          `/vouchers/offers?_limit=${limit}&_offset=${offset}`
         )
 
         const offers = response.list || response.data || (Array.isArray(response) ? response : [])
@@ -227,7 +227,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
     try {
       const data = await this.request<any>(
         'GET',
-        `/voucher/offers/${productId}`,
+        `/vouchers/offers/${productId}`,
         undefined,
         HEALTH_CHECK_TIMEOUT
       )
@@ -264,7 +264,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
 
       const purchaseResponse = await this.request<any>(
         'POST',
-        '/voucher/purchases',
+        '/vouchers/purchases',
         purchaseBody
       )
 
@@ -275,7 +275,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       for (let attempt = 0; attempt < 5; attempt++) {
         purchase = await this.request<any>(
           'GET',
-          `/voucher/purchases/${transactionId}`
+          `/vouchers/purchases/${transactionId}`
         )
 
         // Check if confirmation is ready with code
