@@ -156,19 +156,41 @@ export class ZenditProvider implements EsimProviderInterface {
         console.log('[Zendit] Sample raw offers:', JSON.stringify(offers.slice(0, 3), null, 2))
       }
 
+      // Log first batch's raw field names for debugging price/name issues
+      if (offset === 0 && offers.length > 0) {
+        const sample = offers[0]
+        console.log('[Zendit] Offer field names:', Object.keys(sample))
+        console.log('[Zendit] Price-related fields:', JSON.stringify({
+          cost: sample.cost, price: sample.price,
+          priceRetail: sample.priceRetail, retailPrice: sample.retailPrice,
+          send: sample.send, receive: sample.receive,
+          priceType: sample.priceType, productType: sample.productType,
+        }))
+        console.log('[Zendit] Name-related fields:', JSON.stringify({
+          name: sample.name, brand: sample.brand, brandName: sample.brandName,
+          title: sample.title, shortNotes: sample.shortNotes, notes: sample.notes,
+        }))
+      }
+
       const plans = offers.map((offer: any) => {
         // Handle data amount - Zendit uses dataGB (capital B)
-        const dataGb = parseFloat(offer.dataGB) || parseFloat(offer.dataGb) || 0
+        const dataGb = parseFloat(offer.dataGB) || parseFloat(offer.dataGb) || parseFloat(offer.data) || 0
         const isUnlimited = offer.dataUnlimited || offer.unlimited || false
 
-        // Handle price - Zendit cost object has amount and divisor
+        // Handle price - try multiple field patterns
         let price = 0
-        if (offer.cost && typeof offer.cost === 'object') {
-          price = (offer.cost.amount || 0) / (offer.cost.divisor || 100)
-        } else if (offer.price && typeof offer.price === 'object') {
-          price = (offer.price.amount || 0) / (offer.price.divisor || 100)
-        } else {
-          price = parseFloat(offer.price) || parseFloat(offer.cost) || 0
+        // Pattern 1: Object with amount/divisor (Zendit v1 format)
+        const priceObj = offer.price || offer.priceRetail || offer.retailPrice || offer.cost
+        if (priceObj && typeof priceObj === 'object' && 'amount' in priceObj) {
+          price = (priceObj.amount || 0) / (priceObj.divisor || 100)
+        }
+        // Pattern 2: Zendit send/receive pattern
+        if (price === 0 && offer.send && typeof offer.send === 'object') {
+          price = (offer.send.amount || 0) / (offer.send.divisor || 100)
+        }
+        // Pattern 3: Direct numeric value
+        if (price === 0) {
+          price = parseFloat(offer.price) || parseFloat(offer.cost) || parseFloat(offer.retailPrice) || 0
         }
 
         // Build countries from regions or country
@@ -179,21 +201,27 @@ export class ZenditProvider implements EsimProviderInterface {
           countries = [offer.country]
         }
 
-        // Build name
+        // Build name - try multiple fields
         const dataDisplay = isUnlimited ? 'Unlimited' : `${dataGb}GB`
-        const name = offer.name || offer.brandName || `${offer.brand || 'eSIM'} - ${dataDisplay}`
+        const name = offer.brand && offer.brand !== 'eSIM'
+          ? `${offer.brand} ${dataDisplay} - ${offer.durationDays || 30} Days`
+          : offer.name && offer.name !== 'eSIM'
+            ? offer.name
+            : offer.brandName && offer.brandName !== 'eSIM'
+              ? offer.brandName
+              : offer.shortNotes || offer.notes || `eSIM ${dataDisplay}`
 
         return {
           providerPlanId: offer.offerId || offer.id,
           name,
-          description: offer.description || `${dataDisplay} data for ${offer.durationDays || 30} days`,
+          description: offer.description || offer.notes || `${dataDisplay} data for ${offer.durationDays || 30} days`,
           countries,
           dataAmountGb: dataGb,
           dataAmountDisplay: dataDisplay,
           validityDays: parseInt(offer.durationDays) || 30,
           isUnlimited,
           price,
-          currency: offer.cost?.currency || offer.currency || 'USD',
+          currency: priceObj?.currency || offer.send?.currency || offer.currency || 'USD',
           networkType: offer.dataSpeeds?.join('/') || '4g/lte',
           supportsTopup: offer.topupSupported || false,
         }

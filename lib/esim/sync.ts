@@ -32,7 +32,8 @@ const ZENDIT_REGION_MAP: Record<string, string> = {
 }
 
 /**
- * Sync eSIM plans from a specific provider
+ * Sync eSIM plans from a specific provider.
+ * Uses batch operations to avoid timeout with large catalogs (5K+ plans).
  */
 async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
   const result: SyncResult = {
@@ -65,7 +66,6 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
 
     let providerId: string
     if (providerResult.rows.length === 0) {
-      // Create provider record
       const insertResult = await query(
         `INSERT INTO esim_providers (name, slug, is_active, priority)
          VALUES ($1, $2, true, $3)
@@ -77,145 +77,133 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
       providerId = providerResult.rows[0].id
     }
 
+    // --- Pre-load lookup tables into memory (2 queries instead of per-plan) ---
+    const [regionsResult, countriesResult, existingPlansResult] = await Promise.all([
+      query(`SELECT id, slug FROM esim_regions`),
+      query(`SELECT iso_code, name, region_id FROM esim_countries`),
+      query(`SELECT id, provider_plan_id FROM esim_plans WHERE provider_id = $1`, [providerId])
+    ])
+
+    // Build lookup maps
+    const regionsBySlug = new Map<string, string>()
+    for (const r of regionsResult.rows) regionsBySlug.set(r.slug, r.id)
+
+    const countriesByIso = new Map<string, { name: string; regionId: string }>()
+    for (const c of countriesResult.rows) {
+      countriesByIso.set(c.iso_code, { name: c.name, regionId: c.region_id })
+    }
+
+    const existingPlanIds = new Map<string, string>()
+    for (const p of existingPlansResult.rows) {
+      existingPlanIds.set(p.provider_plan_id, p.id)
+    }
+
+    const globalRegionId = regionsBySlug.get('global') || null
+
     // Get plans from provider
     const plans = await provider.getPlans()
+    console.log(`[Sync] ${providerSlug}: ${plans.length} plans fetched, processing in batches...`)
 
-    for (const plan of plans) {
-      try {
-        // Generate slug
-        const slug = `${providerSlug}-${plan.providerPlanId}`
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '')
+    // Log first 3 plans for debugging
+    for (let i = 0; i < Math.min(3, plans.length); i++) {
+      console.log(`[Sync] Sample plan ${i}:`, JSON.stringify({
+        name: plans[i].name,
+        price: plans[i].price,
+        countries: plans[i].countries,
+        dataAmountGb: plans[i].dataAmountGb,
+        dataAmountDisplay: plans[i].dataAmountDisplay,
+      }))
+    }
 
-        // Log first 3 plans' countries for debugging
-        if (result.synced + result.updated < 3) {
-          console.log(`[Sync] Plan "${plan.name}" countries:`, plan.countries)
-        }
+    // --- Process plans in batches using upsert ---
+    const BATCH_SIZE = 50
+    for (let batchStart = 0; batchStart < plans.length; batchStart += BATCH_SIZE) {
+      const batch = plans.slice(batchStart, batchStart + BATCH_SIZE)
 
-        // Separate real ISO codes (2-char) from Zendit region names (longer strings)
-        const isoCodes = (plan.countries || []).filter(c => c.length === 2)
-        const regionNames = (plan.countries || []).filter(c => c.length > 2)
+      for (const plan of batch) {
+        try {
+          const slug = `${providerSlug}-${plan.providerPlanId}`
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '')
 
-        let regionId: string | null = null
-        let countryName: string | null = null
+          // Resolve region using in-memory maps (no DB queries)
+          const isoCodes = (plan.countries || []).filter(c => c.length === 2)
+          const regionNames = (plan.countries || []).filter(c => c.length > 2)
 
-        if (isoCodes.length > 0) {
-          // Has real ISO codes — look up region from first country
-          if (isoCodes.length > 5) {
-            const globalResult = await query(
-              `SELECT id FROM esim_regions WHERE slug = 'global'`
-            )
-            if (globalResult.rows.length > 0) regionId = globalResult.rows[0].id
-          } else {
-            const countryResult = await query(
-              `SELECT ec.name, ec.region_id FROM esim_countries ec WHERE ec.iso_code = $1`,
-              [isoCodes[0].toUpperCase()]
-            )
-            if (countryResult.rows.length > 0) {
-              regionId = countryResult.rows[0].region_id
-              countryName = countryResult.rows[0].name
+          let regionId: string | null = null
+          let countryName: string | null = null
+
+          if (isoCodes.length > 0) {
+            if (isoCodes.length > 5) {
+              regionId = globalRegionId
+            } else {
+              const country = countriesByIso.get(isoCodes[0].toUpperCase())
+              if (country) {
+                regionId = country.regionId
+                countryName = country.name
+              }
+            }
+          } else if (regionNames.length > 0) {
+            const mappedSlug = ZENDIT_REGION_MAP[regionNames[0]]
+            if (mappedSlug) {
+              regionId = regionsBySlug.get(mappedSlug) || null
             }
           }
-        } else if (regionNames.length > 0) {
-          // Only has Zendit region names — map to our region slugs
-          const mappedSlug = ZENDIT_REGION_MAP[regionNames[0]]
-          if (mappedSlug) {
-            const regionResult = await query(
-              `SELECT id FROM esim_regions WHERE slug = $1`,
-              [mappedSlug]
+
+          const dbCountries = isoCodes
+
+          // Build descriptive plan name
+          const planName = (plan.name && plan.name !== 'eSIM' && plan.name !== plan.dataAmountDisplay)
+            ? plan.name
+            : countryName
+              ? `${countryName} ${plan.dataAmountDisplay} - ${plan.validityDays} Days`
+              : `eSIM ${plan.dataAmountDisplay} - ${plan.validityDays} Days`
+
+          const coverageType = isoCodes.length === 1 ? 'single' : isoCodes.length > 10 ? 'global' : 'regional'
+          const existingId = existingPlanIds.get(plan.providerPlanId)
+
+          if (existingId) {
+            await query(
+              `UPDATE esim_plans
+               SET name = $1, description = $2, data_amount_gb = $3,
+                   data_amount_display = $4, validity_days = $5, is_unlimited = $6,
+                   cost_price = $7, retail_price = $8, countries = $9,
+                   network_type = $10, supports_topup = $11, region_id = $12,
+                   is_active = true, stock_available = true, updated_at = NOW()
+               WHERE id = $13`,
+              [
+                planName, plan.description || '', plan.dataAmountGb,
+                plan.dataAmountDisplay, plan.validityDays, plan.isUnlimited,
+                plan.price * 0.7, plan.price, dbCountries,
+                plan.networkType || '4g', plan.supportsTopup || false, regionId,
+                existingId
+              ]
             )
-            if (regionResult.rows.length > 0) regionId = regionResult.rows[0].id
+            result.updated++
+          } else {
+            await query(
+              `INSERT INTO esim_plans
+                 (name, slug, description, region_id, coverage_type, countries,
+                  data_amount_gb, data_amount_display, validity_days, is_unlimited,
+                  network_type, supports_topup, cost_price, retail_price, currency,
+                  provider_id, provider_plan_id, is_active, stock_available)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, true, true)`,
+              [
+                planName, slug, plan.description || '', regionId, coverageType, dbCountries,
+                plan.dataAmountGb, plan.dataAmountDisplay, plan.validityDays, plan.isUnlimited,
+                plan.networkType || '4g', plan.supportsTopup || false,
+                plan.price * 0.7, plan.price, plan.currency || 'USD',
+                providerId, plan.providerPlanId
+              ]
+            )
+            result.synced++
+          }
+        } catch (err: any) {
+          if (result.errors.length < 10) {
+            result.errors.push(`Plan ${plan.name}: ${err.message}`)
           }
         }
-
-        // Only store real ISO codes in the DB countries column
-        const dbCountries = isoCodes
-
-        // Build descriptive plan name
-        const planName = (plan.name && plan.name !== 'eSIM' && plan.name !== plan.dataAmountDisplay)
-          ? plan.name
-          : countryName
-            ? `${countryName} ${plan.dataAmountDisplay} - ${plan.validityDays} Days`
-            : `eSIM ${plan.dataAmountDisplay} - ${plan.validityDays} Days`
-
-        // Check if plan exists
-        const existing = await query(
-          `SELECT id FROM esim_plans
-           WHERE provider_id = $1 AND provider_plan_id = $2`,
-          [providerId, plan.providerPlanId]
-        )
-
-        if (existing.rows.length > 0) {
-          // Update existing
-          await query(
-            `UPDATE esim_plans
-             SET name = $1,
-                 description = $2,
-                 data_amount_gb = $3,
-                 data_amount_display = $4,
-                 validity_days = $5,
-                 is_unlimited = $6,
-                 cost_price = $7,
-                 retail_price = $8,
-                 countries = $9,
-                 network_type = $10,
-                 supports_topup = $11,
-                 region_id = $12,
-                 is_active = true,
-                 stock_available = true,
-                 updated_at = NOW()
-             WHERE id = $13`,
-            [
-              planName,
-              plan.description || '',
-              plan.dataAmountGb,
-              plan.dataAmountDisplay,
-              plan.validityDays,
-              plan.isUnlimited,
-              plan.price * 0.7, // Estimated cost (70% of retail)
-              plan.price,
-              dbCountries,
-              plan.networkType || '4g',
-              plan.supportsTopup || false,
-              regionId,
-              existing.rows[0].id
-            ]
-          )
-          result.updated++
-        } else {
-          // Insert new plan
-          await query(
-            `INSERT INTO esim_plans
-               (name, slug, description, region_id, coverage_type, countries,
-                data_amount_gb, data_amount_display, validity_days, is_unlimited,
-                network_type, supports_topup, cost_price, retail_price, currency,
-                provider_id, provider_plan_id, is_active, stock_available)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, true, true)`,
-            [
-              planName,
-              slug,
-              plan.description || '',
-              regionId,
-              isoCodes.length === 1 ? 'single' : isoCodes.length > 10 ? 'global' : 'regional',
-              dbCountries,
-              plan.dataAmountGb,
-              plan.dataAmountDisplay,
-              plan.validityDays,
-              plan.isUnlimited,
-              plan.networkType || '4g',
-              plan.supportsTopup || false,
-              plan.price * 0.7,
-              plan.price,
-              plan.currency || 'USD',
-              providerId,
-              plan.providerPlanId
-            ]
-          )
-          result.synced++
-        }
-      } catch (err: any) {
-        result.errors.push(`Plan ${plan.name}: ${err.message}`)
       }
     }
 
