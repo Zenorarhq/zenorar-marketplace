@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 
 export async function GET(request: Request) {
   try {
@@ -79,9 +80,13 @@ export async function GET(request: Request) {
 
     const result = await query(sql, params)
 
-    // Debug: log first 3 rows' retail_price from DB
-    for (let i = 0; i < Math.min(3, result.rows.length); i++) {
-      console.log(`[Plans API] Row ${i} retail_price raw="${result.rows[i].retail_price}" parsed=${parseFloat(result.rows[i].retail_price)}`)
+    // Get eSIM markup percentage from settings
+    let markupPercent = 0
+    try {
+      const markupSettings = await getSiteSettingsByGroup('markup')
+      markupPercent = Number(markupSettings.esimMarkupPercent) || 0
+    } catch {
+      // Default to no markup if settings unavailable
     }
 
     const plans = result.rows.map((row) => ({
@@ -104,7 +109,7 @@ export async function GET(request: Request) {
       speedDescription: row.speed_description,
       hotspotAllowed: row.hotspot_allowed,
       supportsTopup: row.supports_topup,
-      retailPrice: parseFloat(row.retail_price) || 0,
+      retailPrice: Math.round(((parseFloat(row.retail_price) || 0) * (1 + markupPercent / 100)) * 100) / 100,
       currency: row.currency,
       isFeatured: row.is_featured,
       isActive: row.is_active,

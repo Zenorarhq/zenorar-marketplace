@@ -312,6 +312,7 @@ export default function AdminSettingsPage() {
     giftCardProviders: false,
     virtualCards: false,
     otpProviders: false,
+    esimMarkup: false,
     giftCardMarkup: false,
     virtualCardsMarkup: false,
     virtualNumberMarkup: false,
@@ -360,6 +361,7 @@ export default function AdminSettingsPage() {
   // Data eSIM Provider Settings State (travel data only)
   const [esimSettings, setEsimSettings] = useState({
     esimDefaultProvider: 'zendit' as 'zendit' | 'esimgo' | 'airalo',
+    esimMarkupPercent: 15, // Default 15% markup on eSIMs
     // Zendit (default)
     zenditEnabled: false,
     zenditMode: 'sandbox' as 'sandbox' | 'production',
@@ -692,6 +694,7 @@ export default function AdminSettingsPage() {
         // Data eSIM Provider settings
         setEsimSettings((prev) => ({
           esimDefaultProvider: d.esimDefaultProvider ?? prev.esimDefaultProvider,
+          esimMarkupPercent: prev.esimMarkupPercent, // Loaded from 'markup' group, not 'api'
           zenditEnabled: d.zenditEnabled ?? prev.zenditEnabled,
           zenditMode: d.zenditMode ?? prev.zenditMode,
           zenditSandboxApiKey: d.zenditSandboxApiKey ?? prev.zenditSandboxApiKey,
@@ -880,6 +883,13 @@ export default function AdminSettingsPage() {
           setGiftCardSettings((prev) => ({
             ...prev,
             giftCardMarkupPercent: d.giftCardMarkupPercent,
+          }))
+        }
+        // eSIM Markup
+        if (d.esimMarkupPercent !== undefined) {
+          setEsimSettings((prev) => ({
+            ...prev,
+            esimMarkupPercent: Number(d.esimMarkupPercent),
           }))
         }
         // Virtual Cards Pricing
@@ -1556,6 +1566,7 @@ export default function AdminSettingsPage() {
       { key: 'structuredDataSocialProfiles', value: seoSettings.structuredDataSocialProfiles, group: 'seo', isPublic: true },
       { key: 'robotsTxtContent', value: seoSettings.robotsTxtContent, group: 'seo', isPublic: true },
       // eSIM Providers
+      { key: 'esimMarkupPercent', value: esimSettings.esimMarkupPercent, group: 'markup', isPublic: true },
       { key: 'esimDefaultProvider', value: esimSettings.esimDefaultProvider, group: 'api', isPublic: false },
       // Zendit
       { key: 'zenditEnabled', value: esimSettings.zenditEnabled, group: 'api', isPublic: true },
@@ -5934,6 +5945,62 @@ export default function AdminSettingsPage() {
           {/* Markup Settings */}
           {activeTab === 'markup' && (
             <div className="space-y-6">
+              {/* eSIM Markup */}
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button
+                  onClick={() => toggleSection('esimMarkup')}
+                  className="w-full flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                      <Icon name="sim-card" size={24} className="text-blue-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">eSIM Markup</p>
+                      <p className="text-slate-500 text-sm">Percentage added on top of provider cost for eSIM plans</p>
+                    </div>
+                  </div>
+                  <Icon
+                    name={expandedSections.esimMarkup ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    className="text-slate-400 flex-shrink-0"
+                  />
+                </button>
+                {expandedSections.esimMarkup && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-[#1f1f1f]">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">eSIM Markup %</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={esimSettings.esimMarkupPercent}
+                        onChange={(e) => setEsimSettings({ ...esimSettings, esimMarkupPercent: Number(e.target.value) })}
+                        className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      />
+                      <span className="text-slate-400">%</span>
+                    </div>
+                    <p className="text-xs text-slate-600">Applied dynamically to all eSIM plans at display time</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Price Preview</label>
+                    <div className="bg-[#1a1a1a] rounded-lg p-4">
+                      <p className="text-slate-500 text-sm mb-2">$10 eSIM plan:</p>
+                      <p className="text-white">
+                        Provider cost: <span className="text-slate-400">$10.00</span>
+                      </p>
+                      <p className="text-white">
+                        + Markup ({esimSettings.esimMarkupPercent}%): <span className="text-primary">+${((10 * esimSettings.esimMarkupPercent) / 100).toFixed(2)}</span>
+                      </p>
+                      <div className="border-t border-[#2a2a2a] my-2"></div>
+                      <p className="text-primary font-bold">
+                        Customer Pays: ${(10 * (1 + esimSettings.esimMarkupPercent / 100)).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                )}
+              </div>
+
               {/* Gift Card Markup */}
               <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
                 <button
