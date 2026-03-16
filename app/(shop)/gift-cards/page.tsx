@@ -85,7 +85,7 @@ export default function GiftCardsPage() {
         throw new Error(data.error || 'Failed to fetch gift cards')
       }
 
-      return { giftCards: data.giftCards as GiftCard[], categories: data.categories as Category[] }
+      return { giftCards: data.giftCards as GiftCard[], categories: data.categories as Category[], total: data.total as number }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
     gcTime: 10 * 60 * 1000, // 10 minutes - cache garbage collection
@@ -93,6 +93,7 @@ export default function GiftCardsPage() {
 
   const giftCards = giftCardsData?.giftCards ?? []
   const categories = giftCardsData?.categories ?? []
+  const totalCards = giftCardsData?.total ?? giftCards.length
 
   // Fetch markup settings with React Query caching
   const { data: markupPercent = 10 } = useQuery({
@@ -562,7 +563,7 @@ export default function GiftCardsPage() {
                   ? `${selectedCategory} Gift Cards`
                   : 'All Gift Cards'}
               </h2>
-              <span className="text-slate-500 text-sm">{giftCards.length} cards available</span>
+              <span className="text-slate-500 text-sm">{totalCards} cards available</span>
             </div>
 
             {giftCards.length === 0 ? (

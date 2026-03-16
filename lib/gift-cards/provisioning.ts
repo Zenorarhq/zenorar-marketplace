@@ -170,11 +170,21 @@ export async function provisionGiftCard(
         return { success: false, error: `Provider ${providerName} is not supported.` }
       }
 
+      // For Zendit, look up the specific offerId for this denomination from provider_data
+      let purchaseProductId = giftCard.providerProductId
+      if (providerName === 'zendit' && giftCard.providerData?.offerIds) {
+        const offerIds = giftCard.providerData.offerIds as Record<string, string>
+        const denominationOfferId = offerIds[denomination.toString()] || offerIds[denomination]
+        if (denominationOfferId) {
+          purchaseProductId = denominationOfferId
+        }
+      }
+
       // Call the provider's purchaseCard method
-      console.log(`[Provisioning] Calling ${providerName}.purchaseCard with productId=${giftCard.providerProductId}, denomination=${denomination}`)
+      console.log(`[Provisioning] Calling ${providerName}.purchaseCard with productId=${purchaseProductId}, denomination=${denomination}`)
 
       const apiResult = await provider.purchaseCard(
-        giftCard.providerProductId,
+        purchaseProductId,
         denomination
       )
 
@@ -243,6 +253,7 @@ async function getGiftCard(giftCardId: string): Promise<{
   provider?: string
   providerProductId?: string
   syncedMode?: 'sandbox' | 'live'
+  providerData?: Record<string, any>
 } | null> {
   try {
     const result = await query(
@@ -270,7 +281,8 @@ async function getGiftCard(giftCardId: string): Promise<{
       imageUrl: row.image_url,
       provider: row.provider,
       providerProductId: row.provider_product_id,
-      syncedMode
+      syncedMode,
+      providerData: row.provider_data || undefined
     }
   } catch (error) {
     console.error('Error getting gift card:', error)

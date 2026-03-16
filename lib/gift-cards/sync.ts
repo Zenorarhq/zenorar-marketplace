@@ -68,10 +68,13 @@ async function syncProductsToDb(
   let updated = 0
   const errors: string[] = []
 
-  // Build provider_data with sync mode
-  const providerData = syncMode ? JSON.stringify({ synced_mode: syncMode, synced_at: new Date().toISOString() }) : null
-
   for (const product of products) {
+    // Build provider_data with sync mode + any provider-specific metadata
+    const providerDataObj: Record<string, unknown> = {
+      ...(syncMode ? { synced_mode: syncMode, synced_at: new Date().toISOString() } : {}),
+      ...(product.providerMeta || {}),
+    }
+    const providerData = Object.keys(providerDataObj).length > 0 ? JSON.stringify(providerDataObj) : null
     try {
       // Generate slug from brand name
       const slug = product.brand
@@ -257,6 +260,11 @@ async function syncFromZendit(countryCode: string = 'US'): Promise<SyncResult> {
     // Get current mode to store with synced products
     const currentMode = await getProviderMode('zendit')
     console.log(`[Sync] Syncing Zendit gift card products in ${currentMode} mode`)
+
+    // Deactivate old Zendit gift cards before re-syncing (aggregation changed)
+    await query(
+      `UPDATE gift_cards SET is_active = false, updated_at = NOW() WHERE provider = 'zendit'`
+    )
 
     // Get products from Zendit voucher API
     const products = await zenditGiftCardProvider.getProducts(countryCode)

@@ -117,9 +117,22 @@ class ZenditGiftCardProvider implements GiftCardProvider {
     }
 
     try {
-      const allProducts: ProviderProduct[] = []
+      // Collect all raw offers first, then aggregate by brand+country
+      const brandMap = new Map<string, {
+        brand: string
+        category: string
+        description?: string
+        imageUrl?: string
+        denominations: number[]
+        country: string
+        currency: string
+        offerIds: Record<number, string> // denomination -> offerId
+        firstOfferId: string
+      }>()
+
       let offset = 0
       const limit = 100
+      let totalOffers = 0
 
       while (true) {
         const response = await this.request<any>(
@@ -130,9 +143,9 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         const offers = response.list || response.data || (Array.isArray(response) ? response : [])
 
         if (!offers || offers.length === 0) break
+        totalOffers += offers.length
 
         if (offset === 0) {
-          // Log unique subTypes across first batch for debugging category mapping
           const uniqueSubTypes = new Set<string>()
           for (const o of offers) {
             if (Array.isArray(o.subTypes)) o.subTypes.forEach((s: string) => uniqueSubTypes.add(s))
@@ -141,43 +154,48 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         }
 
         for (const offer of offers) {
-          // Parse price — Zendit uses { fixed, currencyDivisor } format
-          let price = 0
-          const priceObj = offer.price || offer.send
-          if (priceObj && typeof priceObj === 'object' && 'fixed' in priceObj) {
-            price = (priceObj.fixed || 0) / (priceObj.currencyDivisor || 100)
-          } else if (typeof priceObj === 'number') {
-            price = priceObj
-          }
-
-          // Parse denomination — use send value (what user pays in face value)
+          // Parse denomination from send value
           let denomination = 0
           const sendObj = offer.send
           if (sendObj && typeof sendObj === 'object' && 'fixed' in sendObj) {
             denomination = (sendObj.fixed || 0) / (sendObj.currencyDivisor || 100)
           }
+          if (denomination <= 0) {
+            const priceObj = offer.price || offer.send
+            if (priceObj && typeof priceObj === 'object' && 'fixed' in priceObj) {
+              denomination = (priceObj.fixed || 0) / (priceObj.currencyDivisor || 100)
+            }
+          }
+          if (denomination <= 0) continue
 
-          // Prefer brandName (readable) over brand (slug-like)
           const brand = offer.brandName || offer.brand || offer.name || 'Unknown'
           const offerId = offer.offerId || offer.id
+          const country = offer.country || countryCode || 'US'
+          const currency = sendObj?.currency || offer.price?.currency || 'USD'
 
-          // Use subTypes from API for category mapping, fall back to brand name matching
-          const subTypes = Array.isArray(offer.subTypes) ? offer.subTypes : []
-          const category = this.mapCategory(brand, subTypes)
+          // Aggregate key: brand + country
+          const key = `${brand}__${country}`
 
-          // Generate logo URL from brand name via Clearbit (same as ServiceLogo component)
-          const imageUrl = this.getBrandLogoUrl(brand)
-
-          allProducts.push({
-            productId: offerId,
-            brand,
-            category,
-            description: offer.shortNotes || offer.notes || undefined,
-            imageUrl,
-            denominations: denomination > 0 ? [denomination] : (price > 0 ? [price] : []),
-            country: offer.country || countryCode || 'US',
-            currency: sendObj?.currency || priceObj?.currency || 'USD',
-          })
+          if (brandMap.has(key)) {
+            const existing = brandMap.get(key)!
+            if (!existing.denominations.includes(denomination)) {
+              existing.denominations.push(denomination)
+              existing.offerIds[denomination] = offerId
+            }
+          } else {
+            const subTypes = Array.isArray(offer.subTypes) ? offer.subTypes : []
+            brandMap.set(key, {
+              brand,
+              category: this.mapCategory(brand, subTypes),
+              description: offer.shortNotes || offer.notes || undefined,
+              imageUrl: this.getBrandLogoUrl(brand),
+              denominations: [denomination],
+              country,
+              currency,
+              offerIds: { [denomination]: offerId },
+              firstOfferId: offerId,
+            })
+          }
         }
 
         console.log(`[Zendit Gift Cards] Fetched ${offers.length} offers at offset ${offset}`)
@@ -186,7 +204,24 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         offset += limit
       }
 
-      console.log(`[Zendit Gift Cards] Total products fetched: ${allProducts.length}`)
+      // Convert aggregated brands to ProviderProduct[]
+      const allProducts: ProviderProduct[] = []
+      for (const entry of brandMap.values()) {
+        entry.denominations.sort((a, b) => a - b)
+        allProducts.push({
+          productId: entry.firstOfferId,
+          brand: entry.brand,
+          category: entry.category,
+          description: entry.description,
+          imageUrl: entry.imageUrl,
+          denominations: entry.denominations,
+          country: entry.country,
+          currency: entry.currency,
+          providerMeta: { offerIds: entry.offerIds },
+        })
+      }
+
+      console.log(`[Zendit Gift Cards] ${totalOffers} offers aggregated into ${allProducts.length} brand products`)
       return allProducts
     } catch (error) {
       console.error('Zendit gift cards getProducts error:', error)
