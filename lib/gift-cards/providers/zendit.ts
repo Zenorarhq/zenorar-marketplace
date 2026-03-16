@@ -133,6 +133,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
 
         if (offset === 0) {
           console.log(`[Zendit Gift Cards] Sample offer:`, JSON.stringify(offers[0], null, 2))
+          console.log(`[Zendit Gift Cards] Offer field names:`, Object.keys(offers[0]))
         }
 
         for (const offer of offers) {
@@ -157,12 +158,19 @@ class ZenditGiftCardProvider implements GiftCardProvider {
           const brand = offer.brand || offer.brandName || offer.name || 'Unknown'
           const offerId = offer.offerId || offer.id
 
+          // Use subTypes from API for category mapping, fall back to brand name matching
+          const subTypes = Array.isArray(offer.subTypes) ? offer.subTypes : []
+          const category = this.mapCategory(brand, subTypes)
+
+          // Image: Zendit offers may have image/logo fields or brand-level images
+          const imageUrl = offer.image || offer.imageUrl || offer.logo || offer.brandLogo || undefined
+
           allProducts.push({
             productId: offerId,
             brand,
-            category: this.mapCategory(brand),
-            description: offer.description || offer.notes || offer.shortNotes,
-            imageUrl: offer.image || offer.imageUrl || offer.logo,
+            category,
+            description: offer.shortNotes || offer.notes || offer.description,
+            imageUrl,
             denominations: denomination > 0 ? [denomination] : (price > 0 ? [price] : []),
             minAmount: offer.minValue ? parseFloat(offer.minValue) : undefined,
             maxAmount: offer.maxValue ? parseFloat(offer.maxValue) : undefined,
@@ -185,36 +193,64 @@ class ZenditGiftCardProvider implements GiftCardProvider {
     }
   }
 
-  private mapCategory(brandOrCategory: string): string {
-    const lower = brandOrCategory.toLowerCase()
+  private mapCategory(brand: string, subTypes: string[] = []): string {
+    // First try subTypes from Zendit API (most reliable)
+    const subTypesLower = subTypes.map(s => s.toLowerCase())
+    for (const st of subTypesLower) {
+      if (st.includes('gaming') || st.includes('game')) return 'gaming'
+      if (st.includes('streaming') || st.includes('entertainment') || st.includes('music') || st.includes('video')) return 'streaming'
+      if (st.includes('food') || st.includes('restaurant') || st.includes('dining')) return 'food'
+      if (st.includes('shopping') || st.includes('retail') || st.includes('ecommerce')) return 'shopping'
+      if (st.includes('travel') || st.includes('hotel') || st.includes('airline')) return 'travel'
+      if (st.includes('software') || st.includes('cloud') || st.includes('saas')) return 'software'
+      if (st.includes('mobile') || st.includes('telecom') || st.includes('airtime') || st.includes('topup')) return 'mobile'
+    }
+
+    // Fall back to brand name matching
+    const lower = brand.toLowerCase()
 
     if (lower.includes('game') || lower.includes('xbox') || lower.includes('playstation') ||
-        lower.includes('steam') || lower.includes('nintendo') || lower.includes('roblox')) {
+        lower.includes('steam') || lower.includes('nintendo') || lower.includes('roblox') ||
+        lower.includes('riot') || lower.includes('epic') || lower.includes('pubg') ||
+        lower.includes('fortnite') || lower.includes('blizzard') || lower.includes('razer')) {
       return 'gaming'
     }
     if (lower.includes('netflix') || lower.includes('spotify') || lower.includes('hulu') ||
-        lower.includes('disney') || lower.includes('streaming')) {
+        lower.includes('disney') || lower.includes('streaming') || lower.includes('apple music') ||
+        lower.includes('youtube') || lower.includes('twitch') || lower.includes('crunchyroll')) {
       return 'streaming'
     }
     if (lower.includes('food') || lower.includes('restaurant') || lower.includes('doordash') ||
-        lower.includes('uber eats') || lower.includes('starbucks')) {
+        lower.includes('uber eats') || lower.includes('starbucks') || lower.includes('grubhub') ||
+        lower.includes('pizza') || lower.includes('mcdonald') || lower.includes('burger')) {
       return 'food'
     }
-    if (lower.includes('shop') || lower.includes('amazon') || lower.includes('walmart') ||
-        lower.includes('target') || lower.includes('retail')) {
+    if (lower.includes('amazon') || lower.includes('walmart') || lower.includes('target') ||
+        lower.includes('ebay') || lower.includes('best buy') || lower.includes('ikea') ||
+        lower.includes('costco') || lower.includes('home depot') || lower.includes('nike') ||
+        lower.includes('adidas') || lower.includes('sephora') || lower.includes('nordstrom') ||
+        lower.includes('macy') || lower.includes('gap') || lower.includes('h&m') ||
+        lower.includes('zara') || lower.includes('shop') || lower.includes('store') ||
+        lower.includes('retail') || lower.includes('market')) {
       return 'shopping'
     }
     if (lower.includes('travel') || lower.includes('hotel') || lower.includes('airbnb') ||
-        lower.includes('booking') || lower.includes('airline')) {
+        lower.includes('booking') || lower.includes('airline') || lower.includes('uber') ||
+        lower.includes('lyft') || lower.includes('expedia')) {
       return 'travel'
     }
-    if (lower.includes('software') || lower.includes('microsoft') || lower.includes('adobe') ||
-        lower.includes('google')) {
+    if (lower.includes('microsoft') || lower.includes('adobe') || lower.includes('google') ||
+        lower.includes('apple') || lower.includes('software') || lower.includes('office')) {
       return 'software'
     }
     if (lower.includes('mobile') || lower.includes('phone') || lower.includes('data') ||
-        lower.includes('airtime')) {
+        lower.includes('airtime') || lower.includes('t-mobile') || lower.includes('verizon') ||
+        lower.includes('at&t')) {
       return 'mobile'
+    }
+    if (lower.includes('visa') || lower.includes('mastercard') || lower.includes('amex') ||
+        lower.includes('american express') || lower.includes('prepaid')) {
+      return 'shopping'
     }
 
     return 'other'
