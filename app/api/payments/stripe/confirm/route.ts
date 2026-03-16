@@ -49,14 +49,57 @@ export async function POST(req: NextRequest) {
     )
 
     // Fulfill digital products (eSIMs, scripts, etc.)
+    let fulfillmentResult: any = null
     try {
-      const fulfillmentResult = await fulfillOrder(orderId)
+      fulfillmentResult = await fulfillOrder(orderId)
       if (!fulfillmentResult.success) {
         console.warn('Order fulfillment had issues:', fulfillmentResult)
       }
     } catch (fulfillmentError) {
       // Log but don't fail the payment confirmation
       console.error('Order fulfillment error:', fulfillmentError)
+    }
+
+    // Send notification for digital product delivery
+    try {
+      const orderResult = await executeQuery(
+        `SELECT o."userId", o."orderNumber", oi.product_type
+         FROM orders o
+         JOIN order_items oi ON oi."orderId" = o.id
+         WHERE o.id = $1`,
+        [orderId]
+      )
+
+      if (orderResult.rows.length > 0 && orderResult.rows[0].userId) {
+        const userId = orderResult.rows[0].userId
+        const orderNumber = orderResult.rows[0].orderNumber
+        const productTypes = orderResult.rows.map((r: any) => r.product_type)
+        const hasEsims = productTypes.includes('esim')
+        const hasGiftCards = productTypes.includes('gift_card')
+        const fulfilled = fulfillmentResult?.success
+
+        let title = 'Payment Confirmed'
+        let message = `Your payment for order #${orderNumber} has been confirmed.`
+
+        if (fulfilled && hasEsims && !hasGiftCards) {
+          title = 'eSIM Delivered'
+          message = `Your eSIM from order #${orderNumber} is ready! Check your library for setup instructions.`
+        } else if (fulfilled && hasGiftCards && !hasEsims) {
+          title = 'Gift Card Delivered'
+          message = `Your gift card from order #${orderNumber} is ready!`
+        } else if (fulfilled) {
+          title = 'Order Delivered'
+          message = `Your order #${orderNumber} has been fulfilled. Check your library!`
+        }
+
+        await executeQuery(
+          `INSERT INTO notifications (id, "userId", type, title, message, metadata)
+           VALUES (gen_random_uuid()::text, $1, 'ORDER_CONFIRMED'::"NotificationType", $2, $3, $4::jsonb)`,
+          [userId, title, message, JSON.stringify({ orderId, orderNumber })]
+        )
+      }
+    } catch (notifError) {
+      console.error('Failed to send notification:', notifError)
     }
 
     return NextResponse.json({ success: true })

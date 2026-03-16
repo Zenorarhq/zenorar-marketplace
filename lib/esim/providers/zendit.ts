@@ -257,20 +257,21 @@ export class ZenditProvider implements EsimProviderInterface {
    */
   async orderEsim(providerPlanId: string, orderId: string): Promise<EsimOrderResult> {
     try {
-      const data = await this.request<{ data: any }>(
+      // Step 1: Create purchase — Zendit requires { offerId, transactionId }
+      // transactionId is OUR unique ID for this transaction
+      const txId = `ZN_${orderId}_${Date.now()}`
+
+      const purchaseResponse = await this.request<{ status: string; transactionId: string }>(
         'POST',
         '/esim/purchases',
         {
           offerId: providerPlanId,
-          quantity: 1,
-          reference: orderId,
+          transactionId: txId,
         }
       )
 
-      const transaction = data.data
-      const esim = transaction.esim || transaction
-
-      if (!esim || !transaction.transactionId) {
+      const transactionId = purchaseResponse.transactionId
+      if (!transactionId) {
         return {
           success: false,
           providerOrderId: '',
@@ -279,40 +280,74 @@ export class ZenditProvider implements EsimProviderInterface {
           matchingId: '',
           smdpAddress: '',
           qrCodeData: '',
-          error: 'No eSIM returned from provider',
+          error: 'No transactionId returned from Zendit',
         }
       }
 
-      // Get QR code if not included
-      let qrCodeData = esim.qrCode || esim.qrCodeData || ''
-      if (!qrCodeData && transaction.transactionId) {
-        try {
-          const qrResponse = await this.request<{ data: any }>(
-            'GET',
-            `/esim/transactions/${transaction.transactionId}/qrcode`
-          )
-          qrCodeData = qrResponse.data?.qrCode || qrResponse.data?.qrCodeData || ''
-        } catch {
-          // QR code will be retrieved separately if needed
+      // Step 2: Get full transaction details (includes confirmation with eSIM credentials)
+      // Zendit may take a moment to process, retry a few times
+      let purchase: any = null
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const detail = await this.request<any>(
+          'GET',
+          `/esim/purchases/${transactionId}`
+        )
+        purchase = detail
+
+        // Check if confirmation is ready
+        if (purchase.confirmation?.iccid || purchase.confirmation?.smdpAddress) {
+          break
+        }
+
+        // Wait before retrying (500ms, 1s, 2s, 4s)
+        if (attempt < 4) {
+          await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)))
         }
       }
 
-      // Build QR code data from activation code if not provided
-      if (!qrCodeData && esim.smdpAddress && esim.activationCode) {
-        qrCodeData = `LPA:1$${esim.smdpAddress}$${esim.activationCode}`
+      const confirmation = purchase?.confirmation || {}
+
+      if (!confirmation.iccid && !confirmation.smdpAddress) {
+        return {
+          success: false,
+          providerOrderId: transactionId,
+          providerEsimId: '',
+          iccid: '',
+          matchingId: '',
+          smdpAddress: '',
+          qrCodeData: '',
+          error: 'eSIM confirmation not yet available from Zendit',
+        }
+      }
+
+      // Step 3: Build QR code data from smdpAddress + activationCode
+      let qrCodeData = ''
+      if (confirmation.smdpAddress && confirmation.activationCode) {
+        qrCodeData = `LPA:1$${confirmation.smdpAddress}$${confirmation.activationCode}`
+      }
+
+      // Step 4: Try to get QR code image from Zendit
+      let qrCodeUrl = ''
+      try {
+        // The QR code endpoint returns a file, so we just store the URL
+        const credentials = await this.getCredentials()
+        if (credentials) {
+          qrCodeUrl = `${credentials.baseUrl}/esim/purchases/${transactionId}/qrcode`
+        }
+      } catch {
+        // QR code URL is optional
       }
 
       return {
         success: true,
-        providerOrderId: transaction.transactionId || transaction.id || '',
-        providerEsimId: esim.esimId || esim.id || transaction.transactionId || '',
-        iccid: esim.iccid || '',
-        matchingId: esim.matchingId || esim.activationCode || '',
-        smdpAddress: esim.smdpAddress || esim.smdp || '',
+        providerOrderId: transactionId,
+        providerEsimId: confirmation.externalReferenceId || transactionId,
+        iccid: confirmation.iccid || '',
+        matchingId: confirmation.activationCode || '',
+        smdpAddress: confirmation.smdpAddress || '',
         qrCodeData,
-        qrCodeUrl: esim.qrCodeUrl || esim.qrCodeImage,
-        activationCode: esim.activationCode,
-        expiresAt: esim.expiryDate ? new Date(esim.expiryDate) : undefined,
+        qrCodeUrl,
+        activationCode: confirmation.activationCode,
       }
     } catch (error: any) {
       return {
@@ -333,18 +368,16 @@ export class ZenditProvider implements EsimProviderInterface {
    */
   async getEsimStatus(providerEsimId: string): Promise<EsimUsageStatus> {
     try {
-      const data = await this.request<{ data: any }>(
+      const purchase = await this.request<any>(
         'GET',
-        `/esim/transactions/${providerEsimId}/usage`
+        `/esim/purchases/${providerEsimId}`
       )
 
-      const usage = data.data || {}
-
       return {
-        status: this.mapStatus(usage.status),
-        dataUsedMb: parseFloat(usage.dataUsedMb) || parseFloat(usage.used) || 0,
-        dataRemainingMb: parseFloat(usage.dataRemainingMb) || parseFloat(usage.remaining) || 0,
-        expiresAt: usage.expiryDate ? new Date(usage.expiryDate) : undefined,
+        status: this.mapStatus(purchase.status),
+        dataUsedMb: 0, // Zendit doesn't expose usage data directly
+        dataRemainingMb: (parseFloat(purchase.dataGB) || 0) * 1024,
+        expiresAt: purchase.updatedAt ? new Date(purchase.updatedAt) : undefined,
       }
     } catch {
       return {
@@ -360,24 +393,24 @@ export class ZenditProvider implements EsimProviderInterface {
    */
   async topUp(providerEsimId: string, packageId: string): Promise<TopUpResult> {
     try {
-      // Zendit uses the same purchase endpoint for topups
-      const data = await this.request<{ data: any }>(
+      // Zendit uses same purchase endpoint with iccid for top-ups
+      const txId = `TOPUP_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+      const purchaseResponse = await this.request<{ status: string; transactionId: string }>(
         'POST',
         '/esim/purchases',
         {
           offerId: packageId,
-          esimId: providerEsimId,
-          type: 'topup',
+          transactionId: txId,
+          iccid: providerEsimId,
         }
       )
 
-      const transaction = data.data
-
       return {
         success: true,
-        topupId: transaction.transactionId || transaction.id || '',
-        newDataAmountMb: parseFloat(transaction.dataGb) * 1024 || 0,
-        newExpiresAt: transaction.expiryDate ? new Date(transaction.expiryDate) : undefined,
+        topupId: purchaseResponse.transactionId || txId,
+        newDataAmountMb: 0, // Will be updated from plan data
+        newExpiresAt: undefined,
       }
     } catch (error: any) {
       return {

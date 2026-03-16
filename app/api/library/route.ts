@@ -419,6 +419,7 @@ export async function GET(request: Request) {
     // Transform pending/failed eSIM orders
     const pendingEsimItems = pendingEsimsResult.rows.map((row: any) => {
       const isFailed = row.status === 'failed'
+      const metadata = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata || {})
       return {
         id: row.id,
         name: row.name || 'eSIM',
@@ -436,6 +437,7 @@ export async function GET(request: Request) {
         }),
         status: isFailed ? 'failed' : 'pending',
         errorMessage: row.errorMessage,
+        countries: metadata.countryIsoCode ? [metadata.countryIsoCode] : [],
       }
     })
 
