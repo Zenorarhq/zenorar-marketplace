@@ -165,13 +165,15 @@ class ZenditGiftCardProvider implements GiftCardProvider {
           const subTypes = Array.isArray(offer.subTypes) ? offer.subTypes : []
           const category = this.mapCategory(brand, subTypes)
 
+          // Generate logo URL from brand name via Clearbit (same as ServiceLogo component)
+          const imageUrl = this.getBrandLogoUrl(brand)
+
           allProducts.push({
             productId: offerId,
             brand,
             category,
             description: offer.shortNotes || offer.notes || undefined,
-            // Zendit API does not provide image URLs for voucher offers
-            imageUrl: undefined,
+            imageUrl,
             denominations: denomination > 0 ? [denomination] : (price > 0 ? [price] : []),
             country: offer.country || countryCode || 'US',
             currency: sendObj?.currency || priceObj?.currency || 'USD',
@@ -190,6 +192,87 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       console.error('Zendit gift cards getProducts error:', error)
       return []
     }
+  }
+
+  /**
+   * Generate a logo URL for a brand using Clearbit Logo API
+   * Maps known brand names to their domains for high-quality logos
+   */
+  private getBrandLogoUrl(brand: string): string | undefined {
+    const domain = this.getBrandDomain(brand)
+    if (domain) {
+      return `https://logo.clearbit.com/${domain}`
+    }
+    return undefined
+  }
+
+  private getBrandDomain(brand: string): string | null {
+    const lower = brand.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+    // Direct brand-to-domain mapping for common gift card brands
+    const BRAND_DOMAINS: Record<string, string> = {
+      // Shopping & Retail
+      amazon: 'amazon.com', walmart: 'walmart.com', target: 'target.com',
+      ebay: 'ebay.com', bestbuy: 'bestbuy.com', ikea: 'ikea.com',
+      costco: 'costco.com', homedepot: 'homedepot.com', lowes: 'lowes.com',
+      macys: 'macys.com', nordstrom: 'nordstrom.com', kohls: 'kohls.com',
+      jcpenney: 'jcpenney.com', sephora: 'sephora.com', ulta: 'ulta.com',
+      nike: 'nike.com', adidas: 'adidas.com', underarmour: 'underarmour.com',
+      gap: 'gap.com', oldnavy: 'oldnavy.com', bathandbodyworks: 'bathandbodyworks.com',
+      victoriassecret: 'victoriassecret.com', asos: 'asos.com',
+      footlocker: 'footlocker.com', dickssportinggoods: 'dickssportinggoods.com',
+      rei: 'rei.com', wayfair: 'wayfair.com', overstock: 'overstock.com',
+      // Food & Restaurants
+      starbucks: 'starbucks.com', doordash: 'doordash.com', grubhub: 'grubhub.com',
+      ubereats: 'ubereats.com', dominos: 'dominos.com', pizzahut: 'pizzahut.com',
+      mcdonalds: 'mcdonalds.com', burgerking: 'bk.com', wendys: 'wendys.com',
+      chipotle: 'chipotle.com', subway: 'subway.com', papajohns: 'papajohns.com',
+      dunkin: 'dunkindonuts.com', panera: 'panerabread.com',
+      olivegarden: 'olivegarden.com', redlobster: 'redlobster.com',
+      tacbell: 'tacobell.com', tacobell: 'tacobell.com', chickfila: 'chick-fil-a.com',
+      wholefoods: 'wholefoodsmarket.com', instacart: 'instacart.com',
+      // Gaming
+      steam: 'steampowered.com', xbox: 'xbox.com', playstation: 'playstation.com',
+      nintendo: 'nintendo.com', roblox: 'roblox.com', epicgames: 'epicgames.com',
+      riot: 'riotgames.com', blizzard: 'blizzard.com', ea: 'ea.com',
+      razer: 'razer.com', valorant: 'playvalorant.com',
+      // Streaming & Entertainment
+      netflix: 'netflix.com', spotify: 'spotify.com', hulu: 'hulu.com',
+      disneyplus: 'disneyplus.com', disney: 'disney.com', hbomax: 'hbomax.com',
+      applemusic: 'apple.com', youtube: 'youtube.com', twitch: 'twitch.tv',
+      crunchyroll: 'crunchyroll.com', pandora: 'pandora.com', deezer: 'deezer.com',
+      paramountplus: 'paramountplus.com', peacock: 'peacocktv.com',
+      // Software & Tech
+      apple: 'apple.com', google: 'google.com', microsoft: 'microsoft.com',
+      adobe: 'adobe.com', spotify2: 'spotify.com',
+      // Travel
+      airbnb: 'airbnb.com', uber: 'uber.com', lyft: 'lyft.com',
+      expedia: 'expedia.com', hotels: 'hotels.com', southwest: 'southwest.com',
+      delta: 'delta.com', hilton: 'hilton.com', marriott: 'marriott.com',
+      // Payments & Prepaid
+      visa: 'visa.com', mastercard: 'mastercard.com', amex: 'americanexpress.com',
+      americanexpress: 'americanexpress.com', paypal: 'paypal.com',
+      // Misc popular
+      groupon: 'groupon.com', fandango: 'fandango.com', stubhub: 'stubhub.com',
+      ticketmaster: 'ticketmaster.com', samsclub: 'samsclub.com',
+    }
+
+    // Direct match
+    if (BRAND_DOMAINS[lower]) return BRAND_DOMAINS[lower]
+
+    // Try matching by splitting brand name words
+    const words = brand.toLowerCase().split(/[\s\-&]+/)
+    for (const word of words) {
+      const clean = word.replace(/[^a-z0-9]/g, '')
+      if (clean.length >= 3 && BRAND_DOMAINS[clean]) return BRAND_DOMAINS[clean]
+    }
+
+    // Try guessing domain as brandname.com for well-known patterns
+    if (lower.length >= 3 && lower.length <= 20 && /^[a-z]+$/.test(lower)) {
+      return `${lower}.com`
+    }
+
+    return null
   }
 
   private mapCategory(brand: string, subTypes: string[] = []): string {
