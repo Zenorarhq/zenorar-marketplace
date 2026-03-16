@@ -151,6 +151,11 @@ export class ZenditProvider implements EsimProviderInterface {
 
       console.log(`[Zendit] Fetched ${offers.length} offers at offset ${offset}`)
 
+      // Log first 3 raw offers to understand the API response structure
+      if (offset === 0) {
+        console.log('[Zendit] Sample raw offers:', JSON.stringify(offers.slice(0, 3), null, 2))
+      }
+
       const plans = offers.map((offer: any) => {
         // Handle data amount - Zendit uses dataGB (capital B)
         const dataGb = parseFloat(offer.dataGB) || parseFloat(offer.dataGb) || 0

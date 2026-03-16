@@ -83,6 +83,11 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-|-$/g, '')
 
+        // Log first 3 plans' countries for debugging
+        if (result.synced + result.updated < 3) {
+          console.log(`[Sync] Plan "${plan.name}" countries:`, plan.countries)
+        }
+
         // Separate real ISO codes (2-char) from Zendit region names (longer strings)
         const isoCodes = (plan.countries || []).filter(c => c.length === 2)
         const regionNames = (plan.countries || []).filter(c => c.length > 2)
