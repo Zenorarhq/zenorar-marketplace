@@ -700,6 +700,7 @@ export default function PaymentPage() {
           body: JSON.stringify({
             items: displayItems.map((item: any) => ({
               productId: item.product.id,
+              name: item.product.name,
               quantity: item.quantity,
               price: item.price,
               // Use actual productType, default to 'digital' for regular products (not 'virtual_number')
@@ -2074,7 +2075,7 @@ export default function PaymentPage() {
                         />
                       ) : (
                         <div className="w-12 h-12 bg-surface-dark rounded-lg flex items-center justify-center overflow-hidden">
-                          {item.product.metadata?.productType === 'virtual_number' && item.product.metadata?.countryIsoCode ? (
+                          {(item.product.metadata?.productType === 'virtual_number' || item.product.metadata?.productType === 'esim') && item.product.metadata?.countryIsoCode ? (
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                               <FlagIcon countryCode={item.product.metadata.countryIsoCode} className="w-8 h-8 rounded" />
                             </div>

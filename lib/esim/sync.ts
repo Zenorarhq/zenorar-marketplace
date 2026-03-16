@@ -142,10 +142,18 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
             if (isoCodes.length > 5) {
               regionId = globalRegionId
             } else {
-              const country = countriesByIso.get(isoCodes[0].toUpperCase())
-              if (country) {
-                regionId = country.regionId
-                countryName = country.name
+              // Try each ISO code until we find one in our DB
+              for (const iso of isoCodes) {
+                const country = countriesByIso.get(iso.toUpperCase())
+                if (country) {
+                  regionId = country.regionId
+                  if (isoCodes.length === 1) countryName = country.name
+                  break
+                }
+              }
+              // Fallback: if no ISO code matched, try regional assignment
+              if (!regionId && isoCodes.length > 1) {
+                regionId = globalRegionId
               }
             }
           } else if (regionNames.length > 0) {

@@ -380,8 +380,8 @@ async function processEsimItem(
     console.error(`eSIM provisioning failed for item ${item.item_id}:`, error)
 
     await query(
-      `INSERT INTO esim_provision_log (order_id, order_item_id, user_id, plan_id, status, error_message)
-       VALUES ($1, $2, $3, $4, 'failed', $5)
+      `INSERT INTO esim_provision_log (order_id, order_item_id, user_id, plan_id, status, attempt_type, error_message)
+       VALUES ($1, $2, $3, $4, 'failed', 'api', $5)
        ON CONFLICT DO NOTHING`,
       [orderId, item.item_id, '', item.product_id, error.message]
     ).catch(() => {})

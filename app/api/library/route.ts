@@ -160,6 +160,34 @@ export async function GET(request: Request) {
       [userId]
     )
 
+    // Query pending/failed eSIM orders (orders placed but not yet provisioned)
+    const pendingEsimsResult = await query(
+      `
+      SELECT
+        oi.id,
+        oi.name,
+        oi.metadata,
+        CASE
+          WHEN epl.status = 'failed' THEN 'failed'
+          WHEN o.status = 'CANCELLED' THEN 'failed'
+          ELSE 'pending'
+        END as status,
+        o."createdAt" as purchase_date,
+        epl.error_message as "errorMessage"
+      FROM orders o
+      JOIN order_items oi ON oi."orderId" = o.id
+      LEFT JOIN esim_provision_log epl ON epl.order_id = o.id AND epl.order_item_id = oi.id
+      LEFT JOIN user_esims ue ON ue.order_id = o.id AND ue.order_item_id = oi.id
+      WHERE o."userId" = $1
+        AND oi.product_type = 'esim'
+        AND ue.id IS NULL
+        AND o.status NOT IN ('CANCELLED')
+      ORDER BY o."createdAt" DESC
+      LIMIT 10
+      `,
+      [userId]
+    ).catch(() => ({ rows: [] }))
+
     // Query user's virtual cards (from user_cards table)
     const cardsResult = await query(
       `
@@ -388,8 +416,31 @@ export async function GET(request: Request) {
       }
     })
 
-    // Combine all library items (include pending/failed virtual numbers)
-    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...cardItems]
+    // Transform pending/failed eSIM orders
+    const pendingEsimItems = pendingEsimsResult.rows.map((row: any) => {
+      const isFailed = row.status === 'failed'
+      return {
+        id: row.id,
+        name: row.name || 'eSIM',
+        slug: `esim-pending-${row.id}`,
+        description: isFailed
+          ? `Provisioning Failed: ${row.errorMessage || 'Provider error'}`
+          : 'eSIM - Provisioning...',
+        category: 'esims',
+        icon: 'sim-card',
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
+        purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        status: isFailed ? 'failed' : 'pending',
+        errorMessage: row.errorMessage,
+      }
+    })
+
+    // Combine all library items (include pending/failed virtual numbers and eSIMs)
+    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...pendingEsimItems, ...cardItems]
 
     // Sort all items by purchase date (newest first)
     libraryItems.sort((a, b) => {

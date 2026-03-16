@@ -342,8 +342,8 @@ export class EsimProvisioningService {
   ): Promise<string> {
     const result = await query(
       `
-      INSERT INTO esim_provision_log (plan_id, order_id, order_item_id, user_id, status)
-      VALUES ($1, $2, $3, $4, 'pending')
+      INSERT INTO esim_provision_log (plan_id, order_id, order_item_id, user_id, status, attempt_type)
+      VALUES ($1, $2, $3, $4, 'pending', 'bulk')
       RETURNING id
       `,
       [planId, orderId, orderItemId, userId]

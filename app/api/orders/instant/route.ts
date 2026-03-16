@@ -334,21 +334,25 @@ export async function POST(req: NextRequest) {
     // Determine notification message based on product types in order
     const hasVirtualNumbers = items.some((item: any) => item.productType === 'virtual_number')
     const hasGiftCards = items.some((item: any) => item.productType === 'gift_card')
+    const hasEsims = items.some((item: any) => item.productType === 'esim')
     const hasCards = items.some((item: any) => item.productType === 'instant_card' || item.productType === 'virtual_card')
 
     // Cards send their own notification via fulfillment, so skip for card-only orders
-    const isCardOnlyOrder = hasCards && !hasVirtualNumbers && !hasGiftCards
+    const isCardOnlyOrder = hasCards && !hasVirtualNumbers && !hasGiftCards && !hasEsims
 
     if (!isCardOnlyOrder) {
       let notificationTitle = 'Order Confirmed'
       let notificationMessage = `Your order #${finalOrderNumber} has been confirmed.`
 
-      if (hasVirtualNumbers && !hasGiftCards) {
+      if (hasEsims && !hasVirtualNumbers && !hasGiftCards) {
+        notificationTitle = 'eSIM Delivered'
+        notificationMessage = `Your eSIM from order #${finalOrderNumber} is ready! Check your library for setup instructions.`
+      } else if (hasVirtualNumbers && !hasGiftCards && !hasEsims) {
         notificationMessage = `Your order #${finalOrderNumber} has been confirmed. Your virtual number is ready!`
-      } else if (hasGiftCards && !hasVirtualNumbers) {
+      } else if (hasGiftCards && !hasVirtualNumbers && !hasEsims) {
         notificationTitle = 'Gift Card Delivered'
         notificationMessage = `Your gift card from order #${finalOrderNumber} is ready!`
-      } else if (hasVirtualNumbers && hasGiftCards) {
+      } else {
         notificationMessage = `Your order #${finalOrderNumber} has been confirmed. Your products are ready!`
       }
 
