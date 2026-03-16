@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
@@ -8,6 +8,11 @@ import FlagIcon from '@/components/ui/FlagIcon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePreferences } from '@/contexts/PreferencesContext'
+import { getBalance } from '@/lib/api/wallet'
+import AuthDialog from '@/components/dialogs/AuthDialog'
+import DepositModal from '@/components/wallet/DepositModal'
 import WalletDisplay from '@/components/ui/WalletDisplay'
 import * as esimApi from '@/lib/api/esim'
 import type { EsimRegion, EsimPlan } from '@/lib/api/esim'
@@ -60,8 +65,19 @@ export default function EsimPage() {
   const [countryPage, setCountryPage] = useState(1)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
 
-  const { addItem } = useCart()
+  // Wallet payment state (matching gift cards pattern)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [processingPayment, setProcessingPayment] = useState<string | null>(null)
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [loadingBalance, setLoadingBalance] = useState(false)
+  const [showDepositModal, setShowDepositModal] = useState(false)
+  const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
+  const [pendingPlan, setPendingPlan] = useState<EsimPlan | null>(null)
+
+  const { addItem, showAddedToCartPopup } = useCart()
   const router = useRouter()
+  const { isAuthenticated } = useAuth()
+  const { formatPrice } = usePreferences()
 
   // Fetch countries that have eSIM plans
   const { data: rawCountries = [] } = useQuery({
@@ -144,18 +160,105 @@ export default function EsimPage() {
     badge: plan.isFeatured ? 'Featured' : undefined,
   })
 
-  // Handle buy now
-  const handleBuyNow = async (plan: EsimPlan) => {
-    setAddingToCart(plan.id)
+  // Fetch wallet balance
+  const fetchWalletBalance = async () => {
+    setLoadingBalance(true)
+    try {
+      const result = await getBalance()
+      if (result.success && result.data) {
+        setWalletBalance(result.data.balance || 0)
+        return result.data.balance || 0
+      }
+      return null
+    } catch (error) {
+      console.error('Failed to fetch wallet balance:', error)
+      return null
+    } finally {
+      setLoadingBalance(false)
+    }
+  }
+
+  // Fetch wallet balance when authenticated
+  useEffect(() => {
+    if (isAuthenticated && walletBalance === null) {
+      fetchWalletBalance()
+    }
+  }, [isAuthenticated])
+
+  // Auto-continue purchase after login
+  useEffect(() => {
+    if (pendingWalletCheckout && isAuthenticated && walletBalance !== null && pendingPlan) {
+      setPendingWalletCheckout(false)
+      const plan = pendingPlan
+
+      if (walletBalance >= plan.retailPrice) {
+        processWalletPayment(plan)
+      } else {
+        setShowDepositModal(true)
+      }
+    }
+  }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingPlan])
+
+  // Process wallet payment (add to cart and go to checkout)
+  const processWalletPayment = async (plan: EsimPlan) => {
+    setProcessingPayment(plan.id)
     try {
       const product = planToProduct(plan)
       await addItem(product, 'standard', plan.retailPrice)
+      setPendingPlan(null)
       router.push('/checkout')
     } catch (error) {
-      console.error('Failed to add eSIM to cart:', error)
+      console.error('Failed to process eSIM payment:', error)
     } finally {
-      setAddingToCart(null)
+      setProcessingPayment(null)
     }
+  }
+
+  // Pay with wallet handler (matching gift cards pattern)
+  const handlePayWithWallet = async (plan: EsimPlan) => {
+    // If not authenticated, show auth dialog
+    if (!isAuthenticated) {
+      setPendingPlan(plan)
+      setShowLoginModal(true)
+      return
+    }
+
+    // Check wallet balance - fetch if null
+    let currentBalance = walletBalance
+    if (currentBalance === null) {
+      setLoadingBalance(true)
+      try {
+        const result = await getBalance()
+        if (result.success && result.data) {
+          currentBalance = result.data.balance || 0
+          setWalletBalance(currentBalance)
+        } else {
+          setLoadingBalance(false)
+          return
+        }
+      } catch {
+        setLoadingBalance(false)
+        return
+      }
+      setLoadingBalance(false)
+    }
+
+    // If insufficient balance, show deposit modal
+    if (currentBalance === null || currentBalance < plan.retailPrice) {
+      setPendingPlan(plan)
+      setShowDepositModal(true)
+      return
+    }
+
+    // Process payment
+    await processWalletPayment(plan)
+  }
+
+  // Add to Cart: add and stay on page
+  const handleAddToCart = async (plan: EsimPlan) => {
+    const product = planToProduct(plan)
+    await addItem(product, 'standard', plan.retailPrice)
+    showAddedToCartPopup(product, plan.retailPrice)
   }
 
   // Get selected country name
@@ -201,7 +304,13 @@ export default function EsimPage() {
     return (
       <>
         <div className="flex items-center justify-between mt-6 mb-4">
-          <h2 className="text-xl font-bold text-white">Available Plans</h2>
+          <h2 className="text-xl font-bold text-white">
+            {selectedCountryName
+              ? `${selectedCountryName} Plans`
+              : selectedRegionData
+                ? `${selectedRegionData.name} Plans`
+                : 'Available Plans'}
+          </h2>
           <span className="text-slate-500 text-sm">{plans.length} plans</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -222,7 +331,7 @@ export default function EsimPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="font-bold text-white">{plan.name}</h3>
-                  <p className="text-sm text-slate-500">{plan.regionName}</p>
+                  <p className="text-sm text-slate-500">{selectedCountryName || plan.regionName}</p>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Icon name="sim-card" size={20} className="text-primary" />
@@ -246,7 +355,7 @@ export default function EsimPage() {
                 </div>
                 {plan.networkType && (
                   <div className="flex items-center gap-3">
-                    <Icon name="signal" size={16} className="text-slate-500" />
+                    <Icon name="wifi" size={16} className="text-slate-500" />
                     <span className="text-slate-400 text-sm uppercase">{plan.networkType}</span>
                   </div>
                 )}
@@ -256,20 +365,42 @@ export default function EsimPage() {
                   ${plan.retailPrice.toFixed(2)}
                 </span>
               </div>
-              <button
-                onClick={() => handleBuyNow(plan)}
-                disabled={addingToCart === plan.id}
-                className="w-full bg-primary text-black font-bold py-3 rounded-xl hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {addingToCart === plan.id ? (
-                  <Icon name="loading" size={18} className="animate-spin" />
-                ) : (
-                  <>
-                    <Icon name="cart" size={18} />
-                    Buy Now
-                  </>
-                )}
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={() => handlePayWithWallet(plan)}
+                  disabled={processingPayment === plan.id || loadingBalance}
+                  className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50"
+                >
+                  {processingPayment === plan.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                      <span>Processing...</span>
+                    </>
+                  ) : loadingBalance ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                      <span>Checking Balance...</span>
+                    </>
+                  ) : isAuthenticated ? (
+                    <>
+                      <Icon name="wallet" size={16} />
+                      <span>Pay {formatPrice(plan.retailPrice)} with Wallet</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="wallet" size={16} />
+                      <span>Pay with Wallet</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => handleAddToCart(plan)}
+                  className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
+                >
+                  <Icon name="cart" size={16} />
+                  <span>Add to Cart</span>
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -306,7 +437,7 @@ export default function EsimPage() {
             className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Icon name="chevron-left" size={16} />
-            Previous
+            <span className="hidden md:inline">Previous</span>
           </button>
           <div className="flex items-center gap-1">
             {pages.map((page, idx) =>
@@ -332,7 +463,7 @@ export default function EsimPage() {
             disabled={countryPage === totalCountryPages}
             className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Next
+            <span className="hidden md:inline">Next</span>
             <Icon name="chevron-right" size={16} />
           </button>
         </div>
@@ -342,6 +473,30 @@ export default function EsimPage() {
 
   return (
     <main className="max-w-container mx-auto px-4 lg:px-12 pb-24">
+      {/* Auth Dialog */}
+      <AuthDialog
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSuccess={() => {
+          setShowLoginModal(false)
+          setPendingWalletCheckout(true)
+          fetchWalletBalance()
+        }}
+        defaultTab="login"
+      />
+
+      {/* Deposit Modal */}
+      <DepositModal
+        isOpen={showDepositModal}
+        onClose={async () => {
+          setShowDepositModal(false)
+          const newBalance = await fetchWalletBalance()
+          if (pendingPlan && newBalance !== null && newBalance >= pendingPlan.retailPrice) {
+            processWalletPayment(pendingPlan)
+          }
+        }}
+      />
+
       {/* Breadcrumbs */}
       <div className="py-4">
         <Breadcrumbs

@@ -89,8 +89,12 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
     for (const r of regionsResult.rows) regionsBySlug.set(r.slug, r.id)
 
     const countriesByIso = new Map<string, { name: string; regionId: string }>()
+    const countriesByRegion = new Map<string, string[]>()
     for (const c of countriesResult.rows) {
       countriesByIso.set(c.iso_code, { name: c.name, regionId: c.region_id })
+      const existing = countriesByRegion.get(c.region_id) || []
+      existing.push(c.iso_code)
+      countriesByRegion.set(c.region_id, existing)
     }
 
     const existingPlanIds = new Map<string, string>()
@@ -151,7 +155,12 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
             }
           }
 
-          const dbCountries = isoCodes
+          // Populate countries: use ISO codes if available, otherwise resolve from region
+          const dbCountries = isoCodes.length > 0
+            ? isoCodes
+            : regionId
+              ? (countriesByRegion.get(regionId) || [])
+              : []
 
           // Build descriptive plan name
           const planName = (plan.name && plan.name !== 'eSIM' && plan.name !== plan.dataAmountDisplay)
