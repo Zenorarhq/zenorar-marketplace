@@ -225,6 +225,7 @@ export default function EsimPage() {
             metadata: {
               productType: 'esim',
               esim_plan_id: plan.id,
+              countryIsoCode: plan.countries.length === 1 ? plan.countries[0] : undefined,
             },
           }],
           paymentMethod: 'wallet',
