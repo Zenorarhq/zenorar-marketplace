@@ -5,7 +5,7 @@ import { query } from '@/lib/db'
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import { reloadlyProvider } from './providers/reloadly'
 import { tangoProvider } from './providers/tango'
-import { ezPinProvider } from './providers/ezpin'
+import { zenditGiftCardProvider } from './providers/zendit'
 import type { ProviderProduct, GiftCardProvider } from './types'
 
 /**
@@ -28,10 +28,8 @@ async function getProviderMode(providerName: ProviderName): Promise<'sandbox' | 
                           settings.tangoSandbox === 'true'
         return isSandbox ? 'sandbox' : 'live'
       }
-      case 'ezpin': {
-        const isSandbox = settings.ezpinMode === 'sandbox' ||
-                          settings.ezpinSandbox === true ||
-                          settings.ezpinSandbox === 'true'
+      case 'zendit': {
+        const isSandbox = settings.zenditMode === 'sandbox'
         return isSandbox ? 'sandbox' : 'live'
       }
       default:
@@ -50,12 +48,12 @@ interface SyncResult {
   errors: string[]
 }
 
-type ProviderName = 'reloadly' | 'tango' | 'ezpin'
+type ProviderName = 'reloadly' | 'tango' | 'zendit'
 
 const providerMap: Record<ProviderName, GiftCardProvider> = {
   reloadly: reloadlyProvider,
   tango: tangoProvider,
-  ezpin: ezPinProvider
+  zendit: zenditGiftCardProvider
 }
 
 /**
@@ -244,11 +242,11 @@ async function syncFromTango(countryCode: string = 'US'): Promise<SyncResult> {
 }
 
 /**
- * Sync gift cards from EZ Pin
+ * Sync gift cards from Zendit
  */
-async function syncFromEzPin(countryCode: string = 'US'): Promise<SyncResult> {
+async function syncFromZendit(countryCode: string = 'US'): Promise<SyncResult> {
   const result: SyncResult = {
-    provider: 'ezpin',
+    provider: 'zendit',
     success: false,
     synced: 0,
     updated: 0,
@@ -257,18 +255,18 @@ async function syncFromEzPin(countryCode: string = 'US'): Promise<SyncResult> {
 
   try {
     // Get current mode to store with synced products
-    const currentMode = await getProviderMode('ezpin')
-    console.log(`[Sync] Syncing EZ Pin products in ${currentMode} mode`)
+    const currentMode = await getProviderMode('zendit')
+    console.log(`[Sync] Syncing Zendit gift card products in ${currentMode} mode`)
 
-    // Get products from EZ Pin
-    const products = await ezPinProvider.getProducts()
+    // Get products from Zendit voucher API
+    const products = await zenditGiftCardProvider.getProducts(countryCode)
 
     if (products.length === 0) {
-      result.errors.push('No products returned from EZ Pin (not configured or no products)')
+      result.errors.push('No products returned from Zendit (not configured or no products)')
       return result
     }
 
-    const dbResult = await syncProductsToDb('ezpin', products, currentMode)
+    const dbResult = await syncProductsToDb('zendit', products, currentMode)
     result.synced = dbResult.synced
     result.updated = dbResult.updated
     result.errors.push(...dbResult.errors)
@@ -303,11 +301,9 @@ async function getEnabledProviders(): Promise<ProviderName[]> {
       enabled.push('tango')
     }
 
-    // Check EZ Pin - using new split credential fields or legacy fields
-    if (settings.ezpinEnabled === true || settings.ezpinEnabled === 'true' ||
-        settings.ezpinSandboxApiKey || settings.ezpinProductionApiKey ||
-        settings.ezpinApiKey) {
-      enabled.push('ezpin')
+    // Check Zendit - uses same API credentials as eSIM, separate enable flag for gift cards
+    if (settings.zenditGiftCardsEnabled === true || settings.zenditGiftCardsEnabled === 'true') {
+      enabled.push('zendit')
     }
 
     return enabled
@@ -320,8 +316,8 @@ async function getEnabledProviders(): Promise<ProviderName[]> {
     if (process.env.TANGO_PLATFORM_NAME && process.env.TANGO_PLATFORM_KEY) {
       enabled.push('tango')
     }
-    if (process.env.EZPIN_API_KEY && process.env.EZPIN_API_SECRET) {
-      enabled.push('ezpin')
+    if (process.env.ZENDIT_API_KEY) {
+      enabled.push('zendit')
     }
     return enabled
   }
@@ -351,8 +347,8 @@ export async function syncAllGiftCardProviders(countryCode: string = 'US'): Prom
       case 'tango':
         result = await syncFromTango(countryCode)
         break
-      case 'ezpin':
-        result = await syncFromEzPin(countryCode)
+      case 'zendit':
+        result = await syncFromZendit(countryCode)
         break
       default:
         result = {
@@ -386,8 +382,8 @@ export async function syncGiftCardProvider(providerName: string, countryCode: st
       return syncFromReloadly(countryCode)
     case 'tango':
       return syncFromTango(countryCode)
-    case 'ezpin':
-      return syncFromEzPin(countryCode)
+    case 'zendit':
+      return syncFromZendit(countryCode)
     default:
       return {
         provider: providerName,

@@ -4,15 +4,15 @@
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import { reloadlyProvider } from './providers/reloadly'
 import { tangoProvider } from './providers/tango'
-import { ezPinProvider } from './providers/ezpin'
+import { zenditGiftCardProvider } from './providers/zendit'
 import type { GiftCardProvider, ProviderProduct, ProviderPurchaseResult } from './types'
 
-type ProviderName = 'reloadly' | 'tango' | 'ezpin'
+type ProviderName = 'reloadly' | 'tango' | 'zendit'
 
 const providerMap: Record<ProviderName, GiftCardProvider> = {
   reloadly: reloadlyProvider,
   tango: tangoProvider,
-  ezpin: ezPinProvider
+  zendit: zenditGiftCardProvider
 }
 
 /**
@@ -34,17 +34,17 @@ async function getEnabledProviders(): Promise<ProviderName[]> {
     const tangoEnabled = settings.tangoEnabled === true || settings.tangoEnabled === 'true'
     const tangoHasCreds = settings.tangoSandboxPlatformName || settings.tangoProductionPlatformName || settings.tangoPlatformName
 
-    // Check EZ Pin
-    const ezpinEnabled = settings.ezpinEnabled === true || settings.ezpinEnabled === 'true'
-    const ezpinHasCreds = settings.ezpinSandboxApiKey || settings.ezpinProductionApiKey || settings.ezpinApiKey
+    // Check Zendit
+    const zenditGiftCardsEnabled = settings.zenditGiftCardsEnabled === true || settings.zenditGiftCardsEnabled === 'true'
+    const zenditHasCreds = settings.zenditSandboxApiKey || settings.zenditProductionApiKey
 
     // Add default provider first if enabled
     if (defaultProvider === 'reloadly' && (reloadlyEnabled || reloadlyHasCreds)) {
       enabled.push('reloadly')
     } else if (defaultProvider === 'tango' && (tangoEnabled || tangoHasCreds)) {
       enabled.push('tango')
-    } else if (defaultProvider === 'ezpin' && (ezpinEnabled || ezpinHasCreds)) {
-      enabled.push('ezpin')
+    } else if (defaultProvider === 'zendit' && (zenditGiftCardsEnabled || zenditHasCreds)) {
+      enabled.push('zendit')
     }
 
     // Add other enabled providers
@@ -54,8 +54,8 @@ async function getEnabledProviders(): Promise<ProviderName[]> {
     if (!enabled.includes('tango') && (tangoEnabled || tangoHasCreds)) {
       enabled.push('tango')
     }
-    if (!enabled.includes('ezpin') && (ezpinEnabled || ezpinHasCreds)) {
-      enabled.push('ezpin')
+    if (!enabled.includes('zendit') && (zenditGiftCardsEnabled || zenditHasCreds)) {
+      enabled.push('zendit')
     }
 
     return enabled

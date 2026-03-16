@@ -151,13 +151,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // If no bulk stock and no Reloadly provider configured, fail early
-    const hasReloadlyProvider = await query(
+    // If no bulk stock and no API provider configured, fail early
+    const providerResult = await query(
       `SELECT provider, provider_product_id FROM gift_cards WHERE id = $1`,
       [giftCardId]
     )
-    const providerInfo = hasReloadlyProvider.rows[0]
-    const hasApiProvider = providerInfo?.provider === 'reloadly' && providerInfo?.provider_product_id
+    const providerInfo = providerResult.rows[0]
+    const hasApiProvider = providerInfo?.provider && providerInfo?.provider_product_id
 
     if (!reservedCodeId && !hasApiProvider) {
       return NextResponse.json(

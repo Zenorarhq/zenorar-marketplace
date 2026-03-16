@@ -941,7 +941,7 @@ function AdminGiftCardsPageContent() {
                       <option value="">None (Bulk only)</option>
                       <option value="reloadly">Reloadly</option>
                       <option value="tango">Tango Card</option>
-                      <option value="ezpin">EZ Pin</option>
+                      <option value="zendit">Zendit</option>
                     </select>
                   </div>
                 </div>

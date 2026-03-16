@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       enabledProviders: providers,
-      availableProviders: ['reloadly', 'tango', 'ezpin']
+      availableProviders: ['reloadly', 'tango', 'zendit']
     })
   } catch (error: any) {
     return NextResponse.json(

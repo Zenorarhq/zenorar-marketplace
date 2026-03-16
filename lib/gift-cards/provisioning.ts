@@ -6,7 +6,7 @@ import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 import { sellCode, checkStock as checkBulkStock } from './inventory'
 import { reloadlyProvider } from './providers/reloadly'
 import { tangoProvider } from './providers/tango'
-import { ezPinProvider } from './providers/ezpin'
+import { zenditGiftCardProvider } from './providers/zendit'
 import { encryptCode, decryptCode } from './encryption'
 import type { GiftCardPurchaseResult, GiftCardAvailability, UserGiftCard, ProviderPurchaseResult, GiftCardProvider } from './types'
 
@@ -14,10 +14,10 @@ import type { GiftCardPurchaseResult, GiftCardAvailability, UserGiftCard, Provid
 const providerMap: Record<ProviderName, GiftCardProvider> = {
   reloadly: reloadlyProvider,
   tango: tangoProvider,
-  ezpin: ezPinProvider
+  zendit: zenditGiftCardProvider
 }
 
-type ProviderName = 'reloadly' | 'tango' | 'ezpin'
+type ProviderName = 'reloadly' | 'tango' | 'zendit'
 
 /**
  * Get the current mode for a provider from settings
@@ -39,10 +39,8 @@ async function getCurrentProviderMode(providerName: ProviderName): Promise<'sand
                           settings.tangoSandbox === 'true'
         return isSandbox ? 'sandbox' : 'live'
       }
-      case 'ezpin': {
-        const isSandbox = settings.ezpinMode === 'sandbox' ||
-                          settings.ezpinSandbox === true ||
-                          settings.ezpinSandbox === 'true'
+      case 'zendit': {
+        const isSandbox = settings.zenditMode === 'sandbox'
         return isSandbox ? 'sandbox' : 'live'
       }
       default:
@@ -294,7 +292,7 @@ async function createUserGiftCard(data: {
   denomination: number
   code: string
   pin?: string
-  source: 'bulk' | 'reloadly' | 'tango' | 'ezpin' | 'manual'
+  source: 'bulk' | 'reloadly' | 'tango' | 'zendit' | 'manual'
   expiresAt?: Date
   providerOrderId?: string
 }): Promise<{ id: string }> {
