@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
           itemQuantity,
           itemPrice,
           itemTotal,
-          productType === 'gift_card' ? null : (item.license || 'standard'),
+          (productType === 'gift_card' || productType === 'esim') ? null : (item.license || 'standard'),
           JSON.stringify(metadata),
           productType
         ]

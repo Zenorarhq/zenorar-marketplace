@@ -8,6 +8,7 @@ import Icon from '@/components/ui/Icon'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { CardVisualMini } from '@/components/cards/CardVisual'
+import FlagIcon from '@/components/ui/FlagIcon'
 
 function getStatusBadge(status: string) {
   const styles: Record<string, { bg: string; text: string; dot?: string; icon?: string }> = {
@@ -183,6 +184,18 @@ export default function OrderDetailPage() {
                         )
                       }
 
+                      const isEsim = productType === 'esim'
+                      const isVirtualNumber = productType === 'virtual_number'
+                      const countryIsoCode = metadata.countryIsoCode
+
+                      if ((isEsim || isVirtualNumber) && countryIsoCode) {
+                        return (
+                          <div className="h-16 w-16 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-border-dark flex items-center justify-center overflow-hidden">
+                            <FlagIcon countryCode={countryIsoCode} className="w-10 h-10 rounded" />
+                          </div>
+                        )
+                      }
+
                       const imageUrl = item.product?.images?.[0]?.url
                         || (item.product as any)?.image
                         || (item.product as any)?.imageUrl
@@ -202,7 +215,7 @@ export default function OrderDetailPage() {
                             />
                           ) : null}
                           <div className={`${imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
-                            <Icon name={isGiftCard ? 'gift' : 'box'} size={36} className="text-slate-500" />
+                            <Icon name={isGiftCard ? 'gift' : isEsim ? 'sim-card' : 'box'} size={36} className="text-slate-500" />
                           </div>
                         </div>
                       )

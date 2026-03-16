@@ -517,7 +517,7 @@ export default function OrdersPage() {
                       )}
                       {/* Download script files for PAID digital orders */}
                       {order.paymentStatus === 'PAID' &&
-                        order.items.some(i => i.license) && (
+                        order.items.some(i => i.license && !['esim', 'gift_card'].includes((i as any).product_type || (i as any).metadata?.productType || '')) && (
                         <button
                           onClick={() => handleDownload(order.items.find(i => i.license)!.productId, order.id)}
                           disabled={downloadingId === order.id}

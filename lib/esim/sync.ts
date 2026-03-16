@@ -31,6 +31,41 @@ const ZENDIT_REGION_MAP: Record<string, string> = {
   'Global': 'global',
 }
 
+// Fallback: ISO country code → region slug (for countries not in esim_countries table)
+const ISO_TO_REGION: Record<string, string> = {
+  // Europe
+  ...Object.fromEntries([
+    'AL','AD','AT','BY','BE','BA','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU',
+    'IS','IE','IT','XK','LV','LI','LT','LU','MT','MD','MC','ME','NL','MK','NO','PL','PT',
+    'RO','RU','SM','RS','SK','SI','ES','SE','CH','UA','GB','VA','GE','AM','AZ',
+  ].map(c => [c, 'europe'])),
+  // North America
+  ...Object.fromEntries(['US','CA','MX','BM','GL','PM'].map(c => [c, 'north-america'])),
+  // South America + Caribbean + Central America
+  ...Object.fromEntries([
+    'AR','BO','BR','CL','CO','EC','FK','GF','GY','PY','PE','SR','UY','VE',
+    'BZ','CR','SV','GT','HN','NI','PA','AG','BB','BS','CU','DM','DO','GD','HT','JM',
+    'KN','LC','VC','TT','PR','AW','CW','TC','KY','VG','VI','MQ','GP','GI',
+  ].map(c => [c, 'south-america'])),
+  // Asia Pacific
+  ...Object.fromEntries([
+    'AF','BD','BT','BN','KH','CN','HK','IN','ID','JP','KZ','KG','LA','MO','MY','MV','MN',
+    'MM','NP','KP','KR','PK','PH','SG','LK','TW','TJ','TH','TL','TM','UZ','VN','AU','NZ',
+    'FJ','PG','WS','TO','VU','PF','NC','GU','MP',
+  ].map(c => [c, 'asia-pacific'])),
+  // Middle East
+  ...Object.fromEntries([
+    'AE','BH','IR','IQ','IL','JO','KW','LB','OM','PS','QA','SA','SY','YE','TR',
+  ].map(c => [c, 'middle-east'])),
+  // Africa
+  ...Object.fromEntries([
+    'DZ','AO','BJ','BW','BF','BI','CV','CM','CF','TD','KM','CD','CG','CI','DJ','EG','GQ',
+    'ER','SZ','ET','GA','GM','GH','GN','GW','KE','LS','LR','LY','MG','MW','ML','MR','MU',
+    'MA','MZ','NA','NE','NG','RW','ST','SN','SC','SL','SO','ZA','SS','SD','TZ','TG','TN',
+    'UG','ZM','ZW',
+  ].map(c => [c, 'africa'])),
+}
+
 /**
  * Sync eSIM plans from a specific provider.
  * Uses batch operations to avoid timeout with large catalogs (5K+ plans).
@@ -151,7 +186,14 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
                   break
                 }
               }
-              // Fallback: if no ISO code matched, try regional assignment
+              // Fallback: if no ISO code matched in esim_countries, use ISO_TO_REGION map
+              if (!regionId) {
+                const fallbackSlug = ISO_TO_REGION[isoCodes[0].toUpperCase()]
+                if (fallbackSlug) {
+                  regionId = regionsBySlug.get(fallbackSlug) || null
+                }
+              }
+              // Last resort for multi-country plans: global
               if (!regionId && isoCodes.length > 1) {
                 regionId = globalRegionId
               }
