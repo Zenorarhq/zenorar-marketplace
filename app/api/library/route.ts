@@ -150,10 +150,12 @@ export async function GET(request: Request) {
         ep.validity_days,
         ep.countries,
         er.name as region_name,
-        er.slug as region_slug
+        er.slug as region_slug,
+        ec.name as country_name
       FROM user_esims ue
       JOIN esim_plans ep ON ue.plan_id = ep.id
       LEFT JOIN esim_regions er ON ep.region_id = er.id
+      LEFT JOIN esim_countries ec ON array_length(ep.countries, 1) = 1 AND ec.iso_code = ep.countries[1]
       WHERE ue.user_id = $1
       ORDER BY ue.created_at DESC
       `,
@@ -355,9 +357,11 @@ export async function GET(request: Request) {
         id: row.id,
         name: row.plan_name,
         slug: `esim-${row.id}`,
-        description: row.region_name
-          ? `${row.data_amount_display} - ${row.region_name}`
-          : `${row.data_amount_display} - ${row.validity_days} days`,
+        description: row.country_name
+          ? `${row.data_amount_display} - ${row.country_name}`
+          : row.region_name
+            ? `${row.data_amount_display} - ${row.region_name}`
+            : `${row.data_amount_display} - ${row.validity_days} days`,
         category: 'esims',
         icon: 'sim-card',
         purchaseDateRaw: new Date(row.purchase_date).getTime(),
