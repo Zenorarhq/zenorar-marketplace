@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import { CardVisualMini } from '@/components/cards/CardVisual'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { libraryApi } from '@/lib/api/library'
@@ -425,6 +426,17 @@ export default function OrdersPage() {
                           || (item.product as any)?.imageUrl
                           || (item as any).metadata?.imageUrl
                         const isGiftCard = productType === 'gift_card'
+                        const isEsim = productType === 'esim'
+                        const isVirtualNumber = productType === 'virtual_number'
+                        const countryIsoCode = (item as any).metadata?.countryIsoCode
+
+                        if ((isEsim || isVirtualNumber) && countryIsoCode) {
+                          return (
+                            <div className="h-16 w-16 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              <FlagIcon countryCode={countryIsoCode} className="w-10 h-10 rounded" />
+                            </div>
+                          )
+                        }
 
                         return (
                           <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -440,7 +452,7 @@ export default function OrdersPage() {
                               />
                             ) : null}
                             <div className={`${imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
-                              <Icon name={isGiftCard ? 'gift' : 'box'} size={36} className="text-slate-500" />
+                              <Icon name={isGiftCard ? 'gift' : isEsim ? 'sim-card' : 'box'} size={36} className="text-slate-500" />
                             </div>
                           </div>
                         )

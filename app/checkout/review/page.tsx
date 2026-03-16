@@ -210,7 +210,7 @@ export default function ReviewPage() {
                             />
                           ) : (
                             <div className="w-12 h-12 md:w-16 md:h-16 bg-charcoal rounded-lg overflow-hidden flex items-center justify-center">
-                              {isVirtualNumber && countryIsoCode ? (
+                              {(isVirtualNumber || item.product.metadata?.productType === 'esim') && countryIsoCode ? (
                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                                   <FlagIcon countryCode={countryIsoCode} className="w-8 h-8 md:w-10 md:h-10 rounded" />
                                 </div>

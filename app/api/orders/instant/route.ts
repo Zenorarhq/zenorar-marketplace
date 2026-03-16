@@ -210,6 +210,12 @@ export async function POST(req: NextRequest) {
           brand: item.metadata?.brand,
           imageUrl: item.metadata?.imageUrl,
         }
+      } else if (productType === 'esim') {
+        metadata = {
+          ...metadata,
+          esim_plan_id: item.metadata?.esim_plan_id,
+          countryIsoCode: item.metadata?.countryIsoCode,
+        }
       }
 
       const itemName = productType === 'virtual_number'

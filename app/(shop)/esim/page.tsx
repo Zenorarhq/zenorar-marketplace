@@ -158,6 +158,11 @@ export default function EsimPage() {
     iconColor: '#43D678',
     tags: ['esim', plan.regionSlug || '', ...plan.countries.slice(0, 3)],
     badge: plan.isFeatured ? 'Featured' : undefined,
+    metadata: {
+      productType: 'esim',
+      esim_plan_id: plan.id,
+      countryIsoCode: plan.countries.length === 1 ? plan.countries[0] : undefined,
+    },
   })
 
   // Fetch wallet balance
@@ -199,14 +204,47 @@ export default function EsimPage() {
     }
   }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingPlan])
 
-  // Process wallet payment (add to cart and go to checkout)
+  // Process wallet payment (instant checkout via API, matching gift cards pattern)
   const processWalletPayment = async (plan: EsimPlan) => {
     setProcessingPayment(plan.id)
     try {
-      const product = planToProduct(plan)
-      await addItem(product, 'standard', plan.retailPrice)
-      setPendingPlan(null)
-      router.push('/checkout')
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch('/api/orders/instant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          items: [{
+            productId: plan.id,
+            name: plan.name,
+            quantity: 1,
+            price: plan.retailPrice,
+            productType: 'esim',
+            metadata: {
+              productType: 'esim',
+              esim_plan_id: plan.id,
+            },
+          }],
+          paymentMethod: 'wallet',
+          total: plan.retailPrice,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Refresh wallet balance and redirect to library
+        await fetchWalletBalance()
+        setPendingPlan(null)
+        router.push('/profile/library?tab=esims&purchased=true')
+      } else {
+        if (result.data?.refunded) {
+          console.error('eSIM provisioning failed, wallet refunded:', result.error)
+        }
+        console.error('eSIM instant checkout failed:', result.error)
+      }
     } catch (error) {
       console.error('Failed to process eSIM payment:', error)
     } finally {

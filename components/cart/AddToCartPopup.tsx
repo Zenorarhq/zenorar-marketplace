@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
+import FlagIcon from '@/components/ui/FlagIcon'
 import { Product, CartItem } from '@/lib/types'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { CardVisualMini } from '@/components/cards/CardVisual'
@@ -33,10 +34,12 @@ function CartItemRow({
   // Support multiple image sources: standard image, images array, imageUrl, metadata imageUrl
   const itemImageUrl = item.product.image || item.product.images?.[0]?.url || (item.product as any).imageUrl || (item.product as any).metadata?.imageUrl
 
-  // Check if this is an instant card
-  const isInstantCard = (item.product as any).metadata?.productType === 'instant_card' ||
+  // Check product types
+  const productType = (item.product as any).metadata?.productType
+  const isInstantCard = productType === 'instant_card' ||
     (item.product as any).productType === 'instant_card' ||
     (item.product as any).product_type === 'instant_card'
+  const hasCountryFlag = (productType === 'esim' || productType === 'virtual_number') && (item.product as any).metadata?.countryIsoCode
 
   const cardMetadata = (item.product as any).metadata || {}
 
@@ -51,6 +54,10 @@ function CartItemRow({
             type="instant"
             denomination={cardMetadata.denomination}
           />
+        ) : hasCountryFlag ? (
+          <div className="w-12 h-12 bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg overflow-hidden flex items-center justify-center">
+            <FlagIcon countryCode={cardMetadata.countryIsoCode} className="w-8 h-8 rounded" />
+          </div>
         ) : (
           <div className="w-12 h-12 bg-charcoal rounded-lg overflow-hidden">
             {itemImageUrl && !imageError ? (

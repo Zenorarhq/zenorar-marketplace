@@ -50,6 +50,7 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
       price: item.price,
       quantity: item.quantity,
       isVirtualNumber: productType === 'virtual_number',
+      isEsim: productType === 'esim',
       countryIsoCode: item.product.metadata?.countryIsoCode,
       isGiftCard: productType === 'gift_card',
       giftCardImage: (item.product as any).imageUrl || item.product.metadata?.imageUrl,
@@ -97,7 +98,7 @@ export default function OrderSummary({ onSubmit, isSubmitting = false, discountC
                     isPremium={item.isPremium}
                     denomination={item.cardDenomination}
                   />
-                ) : item.isVirtualNumber && item.countryIsoCode ? (
+                ) : (item.isVirtualNumber || item.isEsim) && item.countryIsoCode ? (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                     <FlagIcon countryCode={item.countryIsoCode} className="w-10 h-10 rounded" />
                   </div>

@@ -681,7 +681,11 @@ export default function PaymentPage() {
         const productType = item.product.metadata?.productType || (item.product as any).productType
         return productType === 'instant_card' || productType === 'virtual_card'
       })
-      const hasDigitalProducts = hasVirtualNumbers || hasGiftCards || hasCards
+      const hasEsims = items.some((item: any) =>
+        item.product.metadata?.productType === 'esim' ||
+        item.product.category === 'esim'
+      )
+      const hasDigitalProducts = hasVirtualNumbers || hasGiftCards || hasCards || hasEsims
 
       if (hasDigitalProducts) {
         // Use local instant checkout API for digital products (handles provisioning)
@@ -802,6 +806,10 @@ export default function PaymentPage() {
             denomination: item.product.metadata?.denomination || item.price,
             brand: item.product.metadata?.brand || item.product.name,
             imageUrl: item.product.imageUrl || item.product.metadata?.imageUrl,
+          }),
+          // eSIM fields
+          ...(productType === 'esim' && {
+            esim_plan_id: item.product.metadata?.esim_plan_id || item.product.id,
           }),
         },
       }

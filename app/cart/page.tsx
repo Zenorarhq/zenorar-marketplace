@@ -251,7 +251,7 @@ export default function CartPage() {
 
                     return (
                       <div className="w-24 h-24 bg-charcoal rounded-xl overflow-hidden">
-                        {isVirtualNumber && cardMetadata.countryIsoCode ? (
+                        {(isVirtualNumber || productType === 'esim') && cardMetadata.countryIsoCode ? (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                             <FlagIcon countryCode={cardMetadata.countryIsoCode} className="w-16 h-16 rounded" />
                           </div>
