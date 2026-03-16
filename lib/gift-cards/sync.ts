@@ -261,9 +261,9 @@ async function syncFromZendit(countryCode: string = 'US'): Promise<SyncResult> {
     const currentMode = await getProviderMode('zendit')
     console.log(`[Sync] Syncing Zendit gift card products in ${currentMode} mode`)
 
-    // Deactivate old Zendit gift cards before re-syncing (aggregation changed)
+    // Delete old Zendit gift cards before re-syncing to prevent inactive clutter
     await query(
-      `UPDATE gift_cards SET is_active = false, updated_at = NOW() WHERE provider = 'zendit'`
+      `DELETE FROM gift_cards WHERE provider = 'zendit'`
     )
 
     // Get products from Zendit voucher API

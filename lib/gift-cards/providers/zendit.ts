@@ -152,6 +152,13 @@ class ZenditGiftCardProvider implements GiftCardProvider {
             if (Array.isArray(o.subTypes)) o.subTypes.forEach((s: string) => uniqueSubTypes.add(s))
           }
           console.log(`[Zendit Gift Cards] Unique subTypes in first batch:`, [...uniqueSubTypes])
+          // Log image-related fields from first offer to identify correct field name
+          const sample = offers[0]
+          console.log(`[Zendit Gift Cards] Sample offer image fields:`, {
+            image: sample?.image, imageUrl: sample?.imageUrl,
+            logo: sample?.logo, logoUrl: sample?.logoUrl,
+            brand: sample?.brandName || sample?.brand,
+          })
         }
 
         for (const offer of offers) {
@@ -181,11 +188,18 @@ class ZenditGiftCardProvider implements GiftCardProvider {
             .replace(/\s*(us|usa|uk|eu|ca|de|fr|au|global)\s*$/i, '')
             .replace(/[^a-z0-9]/g, '')
 
+          // Prefer image URL from Zendit API, fall back to Clearbit logo
+          const apiImage = offer.image || offer.imageUrl || offer.logoUrl || offer.logo || null
+
           if (brandMap.has(key)) {
             const existing = brandMap.get(key)!
             if (!existing.denominations.includes(denomination)) {
               existing.denominations.push(denomination)
               existing.offerIds[denomination] = offerId
+            }
+            // If this offer has an API image and existing entry doesn't, use it
+            if (apiImage && !existing.imageUrl?.startsWith('http')) {
+              existing.imageUrl = apiImage
             }
           } else {
             const subTypes = Array.isArray(offer.subTypes) ? offer.subTypes : []
@@ -193,7 +207,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
               brand,
               category: this.mapCategory(brand, subTypes),
               description: offer.shortNotes || offer.notes || undefined,
-              imageUrl: this.getBrandLogoUrl(brand),
+              imageUrl: apiImage || this.getBrandLogoUrl(brand),
               denominations: [denomination],
               country,
               currency,
@@ -308,7 +322,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
     }
 
     // Try guessing domain as brandname.com for well-known patterns
-    if (lower.length >= 3 && lower.length <= 20 && /^[a-z]+$/.test(lower)) {
+    if (lower.length >= 3 && lower.length <= 20 && /^[a-z0-9]+$/.test(lower)) {
       return `${lower}.com`
     }
 
