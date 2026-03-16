@@ -61,7 +61,8 @@ export async function GET(request: Request) {
     }
 
     if (countryCode) {
-      conditions.push(`$${paramIndex} = ANY(p.countries)`)
+      // Find plans whose region covers this country
+      conditions.push(`p.region_id IN (SELECT ec.region_id FROM esim_countries ec WHERE ec.iso_code = $${paramIndex})`)
       params.push(countryCode.toUpperCase())
       paramIndex++
     }

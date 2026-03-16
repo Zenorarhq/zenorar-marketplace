@@ -17,11 +17,16 @@ interface SyncResult {
 const ZENDIT_REGION_MAP: Record<string, string> = {
   'Africa': 'africa',
   'Asia': 'asia-pacific',
+  'Southeast Asia': 'asia-pacific',
   'Caribbean': 'south-america',
+  'Central America': 'south-america',
+  'Eastern Europe': 'europe',
+  'Western Europe': 'europe',
   'Europe': 'europe',
   'North America': 'north-america',
   'South America': 'south-america',
   'Middle East': 'middle-east',
+  'Middle East and North Africa': 'middle-east',
   'Oceania': 'asia-pacific',
   'Global': 'global',
 }

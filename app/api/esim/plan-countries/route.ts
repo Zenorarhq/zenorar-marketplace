@@ -5,16 +5,20 @@ import { query } from '@/lib/db'
 
 export async function GET() {
   try {
+    // Get countries whose region has active eSIM plans
+    // Zendit only provides region names, not country codes, so we resolve
+    // countries via esim_countries → esim_regions → esim_plans
     const result = await query(`
-      WITH plan_countries AS (
-        SELECT DISTINCT unnest(countries) AS iso_code
-        FROM esim_plans
-        WHERE is_active = true AND stock_available = true
-      )
-      SELECT pc.iso_code, ec.name AS country_name
-      FROM plan_countries pc
-      LEFT JOIN esim_countries ec ON pc.iso_code = ec.iso_code
-      ORDER BY ec.name ASC NULLS LAST
+      SELECT DISTINCT ec.iso_code, ec.name AS country_name
+      FROM esim_countries ec
+      JOIN esim_regions er ON ec.region_id = er.id
+      WHERE ec.is_active = true
+        AND er.id IN (
+          SELECT DISTINCT region_id
+          FROM esim_plans
+          WHERE is_active = true AND stock_available = true AND region_id IS NOT NULL
+        )
+      ORDER BY ec.name ASC
     `)
 
     const countries = result.rows.map((row) => ({
