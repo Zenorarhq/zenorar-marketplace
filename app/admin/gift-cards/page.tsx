@@ -566,8 +566,12 @@ function AdminGiftCardsPageContent() {
                         <tr key={card.id} className="border-b border-border-dark hover:bg-white/5">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              {card.imageUrl && (
+                              {card.imageUrl ? (
                                 <img src={card.imageUrl} alt={card.brand} className="w-8 h-8 rounded object-cover" />
+                              ) : (
+                                <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                  {card.brand.charAt(0)}
+                                </div>
                               )}
                               <span className="text-white font-medium">{card.brand}</span>
                             </div>
@@ -633,8 +637,12 @@ function AdminGiftCardsPageContent() {
                       <tr key={card.id} className="border-b border-border-dark hover:bg-white/5">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            {card.imageUrl && (
+                            {card.imageUrl ? (
                               <img src={card.imageUrl} alt={card.brand} className="w-10 h-10 rounded object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center text-primary font-bold text-base">
+                                {card.brand.charAt(0)}
+                              </div>
                             )}
                             <div>
                               <p className="text-white font-medium">{card.brand}</p>
