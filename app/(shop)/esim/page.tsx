@@ -474,7 +474,7 @@ export default function EsimPage() {
           ) : (
             /* Region cards with images */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {regions.map((region) => (
+              {regions.filter((r) => r.slug !== 'global').map((region) => (
                 <button
                   key={region.id}
                   onClick={() => setSelectedRegion(region.slug)}

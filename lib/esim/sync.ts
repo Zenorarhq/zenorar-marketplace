@@ -13,6 +13,19 @@ interface SyncResult {
   errors: string[]
 }
 
+// Map Zendit region names to our esim_regions slugs
+const ZENDIT_REGION_MAP: Record<string, string> = {
+  'Africa': 'africa',
+  'Asia': 'asia-pacific',
+  'Caribbean': 'south-america',
+  'Europe': 'europe',
+  'North America': 'north-america',
+  'South America': 'south-america',
+  'Middle East': 'middle-east',
+  'Oceania': 'asia-pacific',
+  'Global': 'global',
+}
+
 /**
  * Sync eSIM plans from a specific provider
  */
@@ -70,30 +83,44 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-|-$/g, '')
 
-        // Find region via esim_countries lookup
+        // Separate real ISO codes (2-char) from Zendit region names (longer strings)
+        const isoCodes = (plan.countries || []).filter(c => c.length === 2)
+        const regionNames = (plan.countries || []).filter(c => c.length > 2)
+
         let regionId: string | null = null
         let countryName: string | null = null
-        if (plan.countries && plan.countries.length > 0) {
-          if (plan.countries.length > 5) {
-            // Multi-country → global region
+
+        if (isoCodes.length > 0) {
+          // Has real ISO codes — look up region from first country
+          if (isoCodes.length > 5) {
             const globalResult = await query(
               `SELECT id FROM esim_regions WHERE slug = 'global'`
             )
-            if (globalResult.rows.length > 0) {
-              regionId = globalResult.rows[0].id
-            }
+            if (globalResult.rows.length > 0) regionId = globalResult.rows[0].id
           } else {
-            // Look up first country to find its region
             const countryResult = await query(
               `SELECT ec.name, ec.region_id FROM esim_countries ec WHERE ec.iso_code = $1`,
-              [plan.countries[0].toUpperCase()]
+              [isoCodes[0].toUpperCase()]
             )
             if (countryResult.rows.length > 0) {
               regionId = countryResult.rows[0].region_id
               countryName = countryResult.rows[0].name
             }
           }
+        } else if (regionNames.length > 0) {
+          // Only has Zendit region names — map to our region slugs
+          const mappedSlug = ZENDIT_REGION_MAP[regionNames[0]]
+          if (mappedSlug) {
+            const regionResult = await query(
+              `SELECT id FROM esim_regions WHERE slug = $1`,
+              [mappedSlug]
+            )
+            if (regionResult.rows.length > 0) regionId = regionResult.rows[0].id
+          }
         }
+
+        // Only store real ISO codes in the DB countries column
+        const dbCountries = isoCodes
 
         // Build descriptive plan name
         const planName = (plan.name && plan.name !== 'eSIM' && plan.name !== plan.dataAmountDisplay)
@@ -138,7 +165,7 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
               plan.isUnlimited,
               plan.price * 0.7, // Estimated cost (70% of retail)
               plan.price,
-              plan.countries || [],
+              dbCountries,
               plan.networkType || '4g',
               plan.supportsTopup || false,
               regionId,
@@ -160,8 +187,8 @@ async function syncFromProvider(providerSlug: string): Promise<SyncResult> {
               slug,
               plan.description || '',
               regionId,
-              plan.countries?.length === 1 ? 'single' : plan.countries?.length > 10 ? 'global' : 'regional',
-              plan.countries || [],
+              isoCodes.length === 1 ? 'single' : isoCodes.length > 10 ? 'global' : 'regional',
+              dbCountries,
               plan.dataAmountGb,
               plan.dataAmountDisplay,
               plan.validityDays,
