@@ -6,7 +6,6 @@ import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { analyticsApi, DashboardStats } from '@/lib/api/analytics'
-import { Product } from '@/lib/api/products'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
 
@@ -496,32 +495,36 @@ export default function AdminDashboard() {
 
           <div className="divide-y divide-[#1f1f1f]">
             {topProducts.length > 0 ? (
-              topProducts.map((product) => (
-                <div key={product.id} className="flex items-center gap-4 p-4 hover:bg-white/5">
-                  {product.images[0]?.url ? (
-                    <img
-                      src={product.images[0].url}
-                      alt={product.name}
-                      className="w-10 h-10 rounded-lg object-cover"
-                    />
-                  ) : (
+              topProducts.map((item: any, i: number) => {
+                const typeIcon = item.product_type === 'esim' ? 'globe'
+                  : item.product_type === 'gift_card' ? 'gift'
+                  : item.product_type === 'virtual_number' ? 'phone'
+                  : item.product_type === 'card' ? 'credit-card'
+                  : 'code'
+                const typeLabel = item.product_type === 'esim' ? 'eSIM'
+                  : item.product_type === 'gift_card' ? 'Gift Card'
+                  : item.product_type === 'virtual_number' ? 'Virtual Number'
+                  : item.product_type === 'card' ? 'Card'
+                  : 'Script'
+                return (
+                  <div key={`${item.name}-${i}`} className="flex items-center gap-4 p-4 hover:bg-white/5">
                     <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-primary">
-                      <Icon name="image" size={20} />
+                      <Icon name={typeIcon} size={20} />
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{product.name}</p>
-                    <p className="text-slate-500 text-xs">
-                      {product.isDigital ? 'Digital' : 'Physical'} Product
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                      <p className="text-slate-500 text-xs">
+                        {typeLabel} · {item.sales} sales
+                      </p>
+                    </div>
+                    <p className="text-primary font-semibold">{formatCurrency(item.revenue)}</p>
                   </div>
-                  <p className="text-primary font-semibold">${Number(product.price).toFixed(2)}</p>
-                </div>
-              ))
+                )
+              })
             ) : (
               <div className="p-8 text-center">
                 <Icon name="shopping-cart" size={48} className="text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400 text-sm">No products yet</p>
+                <p className="text-slate-400 text-sm">No sales yet</p>
               </div>
             )}
           </div>

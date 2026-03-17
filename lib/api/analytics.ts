@@ -1,6 +1,5 @@
 import { apiFetch } from './client'
 import { ordersApi } from './orders'
-import { productsApi } from './products'
 import { ticketsApi } from './tickets'
 import { financeApi } from './finance'
 import { usersApi } from './users'
@@ -39,10 +38,10 @@ export const analyticsApi = {
   async getDashboardStats(startDate?: string, endDate?: string): Promise<{ success: boolean; data?: DashboardStats; error?: string }> {
     try {
       // Fetch data from multiple sources in parallel
-      const [ordersResult, financeResult, productsResult, ticketsResult, usersResult] = await Promise.all([
+      const [ordersResult, financeResult, totalProductsResult, ticketsResult, usersResult] = await Promise.all([
         ordersApi.getStats(),
         financeApi.getOverview(startDate, endDate),
-        productsApi.list({ limit: 1 }), // only need pagination.total
+        apiFetch<{ total: number }>('/analytics/total-products'),
         ticketsApi.getStats(),
         usersApi.getStats(),
       ])
@@ -76,7 +75,7 @@ export const analyticsApi = {
         data: {
           totalRevenue: financeResult.data?.totalRevenue || 0,
           totalOrders: ordersResult.data?.totalOrders || 0,
-          totalProducts: productsResult.pagination?.total || productsResult.data?.length || 0,
+          totalProducts: totalProductsResult.data?.total || 0,
           totalCustomers: usersResult.data?.totalCustomers || 0,
           totalTickets: ticketsResult.data?.total || 0,
           openTickets: openTicketsCount,
@@ -102,14 +101,10 @@ export const analyticsApi = {
   },
 
   /**
-   * Get top selling products
+   * Get top selling items across all product types
    */
   async getTopProducts(limit: number = 5) {
-    return productsApi.list({
-      sortBy: 'sales',
-      sortOrder: 'desc',
-      limit
-    })
+    return apiFetch<{ name: string; product_type: string; sales: number; revenue: number; product_id: string | null }[]>(`/analytics/top-selling?limit=${limit}`)
   },
 
   /**

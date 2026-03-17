@@ -1,90 +1,45 @@
-# CMS Component Full Audit Fix
+# Fix Dashboard "Total Products" and "Top Products" to include all product types
 
-## Strategy
+## Root Cause
 
-To minimize diff while maximizing coverage, work in layers:
+The dashboard has two metrics that only query the `products` table (scripts only):
 
-**Layer 1 — Cross-cutting fixes (renderer-level, fewest files)**
-Handle margin universally via SectionRenderer wrapper instead of editing 30 component files.
-Add margin schema to all 30 missing templates in component-templates.ts.
+1. **"Total Products" stat card** — calls `productsApi.list({ limit: 1 })` and reads `pagination.total`, which only counts rows in the `products` table
+2. **"Top Products" section** — calls `productsApi.list({ sortBy: 'sales', limit: 4 })`, which only returns scripts
 
-**Layer 2 — Critical broken features (5 components)**
-Fix features that are declared/exposed but don't actually work.
+Other product types live in separate tables:
+- eSIM plans: `esim_plans` (5,388 records)
+- Gift cards: `gift_cards` (5,660 records)
+- Virtual number plans: `virtual_number_plans` (5 records)
+- Cards: `card_pricing` where `is_enabled = true` (3 records)
 
-**Layer 3 — Per-component improvements (all 34 components)**
-Add missing props, hover effects, accessibility, hardcoded colors -> props, etc.
+Revenue, orders, and recent activity are already correct — the `orders` table tracks ALL purchase types.
 
----
+## Plan
 
-## Layer 1 — Cross-Cutting (2 files)
+### Task 1: Fix "Total Products" count
+- [x] Add backend endpoint `GET /analytics/total-products` — sums counts from products, esim_plans, gift_cards, virtual_number_plans, card_pricing
+- [x] Update dashboard frontend to call new endpoint instead of `productsApi.list({ limit: 1 })`
 
-### 1.1 Universal margin via SectionRenderer — `components/cms/sections/index.tsx`
-- [x] Wrap every rendered component in a div that reads `section.props.margin` and applies margin classes
-
-### 1.2 Add margin schema to all templates — `lib/cms/component-templates.ts`
-- [x] Add `margin: { type: 'string', title: 'Margin', enum: ['none', 'small', 'medium', 'large'] }` to all templates
-
----
-
-## Layer 2 — Critical Broken Features (5 files)
-
-### 2.1 TestimonialsSection — implement carousel layout
-- [x] Add carousel with prev/next buttons, dots, and autoplay when `layout === 'carousel'`
-
-### 2.2 ImageGallerySection — implement lightbox
-- [x] Add modal overlay when image clicked + prev/next navigation + close button + keyboard nav
-
-### 2.3 HeaderSection — implement mobile menu drawer
-- [x] Add off-canvas/slide-in mobile menu when hamburger clicked + body scroll lock
-
-### 2.4 NewsletterSection — wire up form submission
-- [x] POST to `/api/newsletter/subscribe` on submit with loading/error/success states
-
-### 2.5 StatsCounterSection — add animated counting on scroll
-- [x] Use IntersectionObserver to trigger count-up animation with ease-out cubic
-
----
-
-## Layer 3 — Per-Component Improvements (34 files)
-
-### Applied improvements:
-- [x] HeroSection — button hover scale effects
-- [x] FeaturesGridSection — card hover lift+shadow, lazy loading on images
-- [x] CtaBannerSection — button hover scale effects
-- [x] ImageSection — lazy loading
-- [x] ProductShowcaseSection — card hover lift+shadow
-- [x] CategoryGridSection — lazy loading, aria-label on links
-- [x] PricingTableSection — card hover lift+shadow
-- [x] ColumnSection — lazy loading on images
-- [x] VideoEmbedSection — lazy loading on iframe
-- [x] ButtonCtaSection — hover scale effect
-- [x] FaqAccordionSection — aria-expanded for accessibility
-- [x] SocialLinksSection — aria-label, hover scale effect
-- [x] IconBoxSection — hover lift+shadow
-- [x] ImageBoxSection — lazy loading, hover lift+shadow
-- [x] TabsSection — role="tablist", role="tab", aria-selected, role="tabpanel"
-- [x] ProgressBarSection — IntersectionObserver scroll-triggered animation
-- [x] StarRatingSection — role="img" + aria-label for accessibility
-
-### Skipped (intentionally — already solid or constraints apply):
-- TextBlockSection, HeadingSection, IconSection, IconListSection (already solid)
-- SpacerSection, DividerSection (simple utilities)
-- SectionContainer (complex container, already comprehensive)
-- CustomHtmlSection (security constraints intentional)
-- MapSection (already has lazy loading)
-- CountdownSection, AlertSection (already well-implemented)
+### Task 2: Fix "Top Products" section
+- [x] Add backend endpoint `GET /analytics/top-selling?limit=N` — queries order_items grouped by name/product_type
+- [x] Update dashboard frontend to render product type icons and sales/revenue instead of product images/prices
 
 ---
 
 ## Review
 
 ### What changed:
-- **2 cross-cutting files**: SectionRenderer margin wrapper + margin schema in all templates
-- **5 critical features fixed**: carousel, lightbox, mobile menu, newsletter API, animated counting
-- **17 components improved**: hover effects, lazy loading, accessibility attributes
-- **Build passes**: `npx next build` clean with zero errors
 
-### Files touched:
-- `components/cms/sections/index.tsx` (margin wrapper)
-- `lib/cms/component-templates.ts` (margin schema)
-- 22 component .tsx files in `components/cms/sections/`
+**Backend (zenorar-api) — 3 files:**
+- `src/services/analytics.service.ts` — added `getTotalProductCount()` and `getTopSellingItems()` methods
+- `src/controllers/analytics.controller.ts` — added `getTotalProductCount` and `getTopSellingItems` handlers
+- `src/routes/analytics.routes.ts` — added `GET /total-products` and `GET /top-selling` routes
+
+**Frontend (zenorar-marketplace) — 2 files:**
+- `lib/api/analytics.ts` — replaced `productsApi.list()` with `/analytics/total-products` endpoint; replaced `getTopProducts` with `/analytics/top-selling` endpoint
+- `app/admin/page.tsx` — updated Top Products rendering to show product type icon, type label, sales count, and revenue
+
+### Build status:
+- Backend: TypeScript compiles clean
+- Frontend: `next build` passes clean
