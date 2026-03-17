@@ -273,6 +273,7 @@ export async function POST(request: NextRequest) {
 
       await recordTransaction(card.id, user.id, 'test' as CardProvider, 'creation', totalCost, 0, mockResult.cardId, undefined, undefined, `Test ${cardType} card - Order #${finalOrderNumber}`)
       await query(`UPDATE orders SET status = 'CONFIRMED', "updatedAt" = NOW() WHERE id = $1`, [orderId])
+      await query(`UPDATE order_items SET metadata = COALESCE(metadata, '{}'::jsonb) || '{"test_mode":"true"}'::jsonb WHERE "orderId" = $1`, [orderId])
 
       return NextResponse.json({
         success: true,
