@@ -278,6 +278,7 @@ const iconMap = {
   'share-08': Share01Icon,
   copy: Copy01Icon,
   link: Link01Icon,
+  'link-01': Link01Icon,
   'external-link': LinkSquare02Icon,
   'link-external-01': LinkSquare02Icon,
   undo: UndoIcon,
@@ -349,6 +350,12 @@ const iconMap = {
   'thumbs-up': ThumbsUpIcon,
   'thumbs-down': ThumbsDownIcon,
 
+  // Lists & Quotes
+  'unordered-list': ListIcon,
+  'ordered-list': ListNumberIcon,
+  'quote-down': LeftToRightBlockQuoteIcon,
+  'block-quote': LeftToRightBlockQuoteIcon,
+
   // Filtering & Sorting
   filter: FilterHorizontalIcon,
   'filter-list': FilterHorizontalIcon,
@@ -402,6 +409,7 @@ const iconMap = {
 
   // Media
   image: Image01Icon,
+  'image-01': Image01Icon,
   video: Video01Icon,
   music: MusicNote01Icon,
   mic: Mic01Icon,
@@ -513,6 +521,11 @@ const iconMap = {
   'light-mode': Sun01Icon,
   moon: Moon01Icon,
   'dark-mode': Moon01Icon,
+
+  // Text Alignment
+  'text-align-left': TextAlignLeftIcon,
+  'text-align-center': TextAlignCenterIcon,
+  'text-align-right': TextAlignRightIcon,
 
   // Layout
   'view-column': GridTableIcon,
