@@ -204,6 +204,14 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               margin-right: auto !important;
             }
 
+            /* Full-width images should never float */
+            .blog-content img[data-size="full"] {
+              float: none !important;
+              display: block !important;
+              margin-left: auto !important;
+              margin-right: auto !important;
+            }
+
             /* Clearfix after floated content */
             .blog-content::after {
               content: "";
@@ -219,7 +227,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
           {/* Content */}
           <div
-            className="blog-content prose prose-invert prose-lg max-w-none break-words overflow-hidden
+            className="blog-content prose prose-invert prose-lg max-w-none break-words
               prose-headings:text-white prose-headings:font-bold
               prose-p:text-slate-300 prose-p:leading-relaxed
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline

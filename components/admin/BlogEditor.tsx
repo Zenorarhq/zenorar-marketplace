@@ -103,7 +103,12 @@ export default function BlogEditor({ content, onChange, placeholder = 'Start wri
 
   const setImageSize = useCallback((size: string) => {
     if (!editor) return
-    editor.chain().focus().updateAttributes('image', { 'data-size': size }).run()
+    // Full-width images must be centered — can't float a 100% wide image
+    if (size === 'full') {
+      editor.chain().focus().updateAttributes('image', { 'data-size': size, 'data-align': 'center' }).run()
+    } else {
+      editor.chain().focus().updateAttributes('image', { 'data-size': size }).run()
+    }
   }, [editor])
 
   const setLink = useCallback(() => {
@@ -145,18 +150,30 @@ export default function BlogEditor({ content, onChange, placeholder = 'Start wri
 
           <div className="w-px h-4 bg-[#2a2a2a] mx-0.5" />
 
-          {/* Alignment */}
-          <ToolbarButton onClick={() => setImageAlign('left')} active={currentAlign === 'left'} title="Float Left">
+          {/* Alignment — Left/Right disabled when size is Full */}
+          <ToolbarButton onClick={() => setImageAlign('left')} active={currentAlign === 'left'} disabled={currentSize === 'full'} title="Float Left">
             <Icon name="text-align-left" size={14} />
           </ToolbarButton>
           <ToolbarButton onClick={() => setImageAlign('center')} active={currentAlign === 'center'} title="Center">
             <Icon name="text-align-center" size={14} />
           </ToolbarButton>
-          <ToolbarButton onClick={() => setImageAlign('right')} active={currentAlign === 'right'} title="Float Right">
+          <ToolbarButton onClick={() => setImageAlign('right')} active={currentAlign === 'right'} disabled={currentSize === 'full'} title="Float Right">
             <Icon name="text-align-right" size={14} />
           </ToolbarButton>
         </div>
       )}
+
+      {/* Editor preview styles for image size/alignment */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .ProseMirror img[data-size="small"] { max-width: 280px; }
+        .ProseMirror img[data-size="medium"] { max-width: 50%; }
+        .ProseMirror img[data-size="full"] { width: 100%; }
+        .ProseMirror img[data-align="left"] { float: left; margin-right: 1rem; margin-bottom: 0.5rem; }
+        .ProseMirror img[data-align="right"] { float: right; margin-left: 1rem; margin-bottom: 0.5rem; }
+        .ProseMirror img[data-align="center"] { display: block; margin-left: auto; margin-right: auto; float: none; }
+        .ProseMirror img[data-size="full"] { float: none !important; display: block; margin-left: auto; margin-right: auto; }
+        .ProseMirror::after { content: ""; display: table; clear: both; }
+      `}} />
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 px-3 py-2 border-b border-[#2a2a2a] bg-[#141414]">
