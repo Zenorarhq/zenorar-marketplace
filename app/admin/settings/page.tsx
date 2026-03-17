@@ -1156,7 +1156,7 @@ export default function AdminSettingsPage() {
   const fetchSentNotifications = async () => {
     setLoadingSent(true)
     try {
-      const data = await localApiFetch<any[]>('/admin/notifications/sent')
+      const data = await apiFetch<any[]>('/notifications/sent')
       if (data.success) {
         setSentNotifications(data.data || [])
       }
@@ -1170,7 +1170,7 @@ export default function AdminSettingsPage() {
   const fetchRecipients = async (batchId: string) => {
     setLoadingRecipients(true)
     try {
-      const data = await localApiFetch<any[]>(`/admin/notifications/sent/${batchId}/recipients`)
+      const data = await apiFetch<any[]>(`/notifications/sent/${batchId}/recipients`)
       if (data.success) {
         setRecipients(data.data || [])
       }
@@ -1184,7 +1184,7 @@ export default function AdminSettingsPage() {
   const deleteBatch = async (batchId: string) => {
     if (!confirm('Are you sure? This will delete this notification from all users.')) return
     try {
-      const data = await localApiFetch<{ count: number }>(`/admin/notifications/sent/${batchId}`, {
+      const data = await apiFetch<{ count: number }>(`/notifications/sent/${batchId}`, {
         method: 'DELETE',
       })
       if (data.success) {
@@ -1218,7 +1218,7 @@ export default function AdminSettingsPage() {
   const bulkDelete = async (batchIds: string[]) => {
     setDeletingBulk(true)
     try {
-      const data = await localApiFetch<{ count: number }>('/admin/notifications/sent/bulk-delete', {
+      const data = await apiFetch<{ count: number }>('/notifications/sent/bulk-delete', {
         method: 'POST',
         body: JSON.stringify({ batchIds }),
       })
@@ -2563,28 +2563,35 @@ export default function AdminSettingsPage() {
                       setSendingNotif(true)
                       setMessage(null)
                       try {
-                        const payload: any = {
-                          type: sendNotif.type,
-                          title: sendNotif.title,
-                          message: sendNotif.message,
-                        }
                         if (sendMode === 'targeted') {
-                          payload.userIds = targetUsers.map(u => u.id)
-                        }
-                        const data = await localApiFetch<{ message: string; batchId: string }>('/admin/notifications/send', {
-                          method: 'POST',
-                          body: JSON.stringify(payload),
-                        })
-                        if (data.success) {
-                          const msg = sendMode === 'targeted'
-                            ? `Notification sent to ${targetUsers.length} user(s)`
-                            : (data.data?.message || 'Notification sent!')
-                          setMessage({ type: 'success', text: msg })
-                          setSendNotif({ type: 'SYSTEM', title: '', message: '' })
-                          if (sendMode === 'targeted') setTargetUsers([])
-                          fetchSentNotifications()
+                          const data = await apiFetch<{ message: string }>('/notifications/promotional', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                              userIds: targetUsers.map(u => u.id),
+                              title: sendNotif.title,
+                              message: sendNotif.message,
+                            }),
+                          })
+                          if (data.success) {
+                            setMessage({ type: 'success', text: `Notification sent to ${targetUsers.length} user(s)` })
+                            setSendNotif({ type: 'SYSTEM', title: '', message: '' })
+                            setTargetUsers([])
+                            fetchSentNotifications()
+                          } else {
+                            setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
+                          }
                         } else {
-                          setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
+                          const data = await apiFetch<{ message: string }>('/notifications/broadcast', {
+                            method: 'POST',
+                            body: JSON.stringify(sendNotif),
+                          })
+                          if (data.success) {
+                            setMessage({ type: 'success', text: data.data?.message || 'Notification sent!' })
+                            setSendNotif({ type: 'SYSTEM', title: '', message: '' })
+                            fetchSentNotifications()
+                          } else {
+                            setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
+                          }
                         }
                       } catch {
                         setMessage({ type: 'error', text: 'Failed to send notification' })
