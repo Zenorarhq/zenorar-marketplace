@@ -1156,7 +1156,7 @@ export default function AdminSettingsPage() {
   const fetchSentNotifications = async () => {
     setLoadingSent(true)
     try {
-      const data = await apiFetch<any[]>('/notifications/sent')
+      const data = await localApiFetch<any[]>('/admin/notifications/sent')
       if (data.success) {
         setSentNotifications(data.data || [])
       }
@@ -1170,7 +1170,7 @@ export default function AdminSettingsPage() {
   const fetchRecipients = async (batchId: string) => {
     setLoadingRecipients(true)
     try {
-      const data = await apiFetch<any[]>(`/notifications/sent/${batchId}/recipients`)
+      const data = await localApiFetch<any[]>(`/admin/notifications/sent/${batchId}/recipients`)
       if (data.success) {
         setRecipients(data.data || [])
       }
@@ -1184,7 +1184,7 @@ export default function AdminSettingsPage() {
   const deleteBatch = async (batchId: string) => {
     if (!confirm('Are you sure? This will delete this notification from all users.')) return
     try {
-      const data = await apiFetch<{ count: number }>(`/notifications/sent/${batchId}`, {
+      const data = await localApiFetch<{ count: number }>(`/admin/notifications/sent/${batchId}`, {
         method: 'DELETE',
       })
       if (data.success) {
@@ -1218,7 +1218,7 @@ export default function AdminSettingsPage() {
   const bulkDelete = async (batchIds: string[]) => {
     setDeletingBulk(true)
     try {
-      const data = await apiFetch<{ count: number }>('/notifications/sent/bulk-delete', {
+      const data = await localApiFetch<{ count: number }>('/admin/notifications/sent/bulk-delete', {
         method: 'POST',
         body: JSON.stringify({ batchIds }),
       })
