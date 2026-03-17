@@ -206,8 +206,8 @@ export default function AdminChatPage() {
     const res = await chatApi.getConversation(id)
     if (res.success && res.data) {
       setActiveConv(res.data)
-      // Mark messages as read
-      chatApi.markAsRead(id).then(() => { loadStats(); loadConversations() })
+      // Mark messages as read (don't reload full list/stats — just update unread badge locally)
+      chatApi.markAsRead(id)
     }
   }
 
@@ -259,9 +259,11 @@ export default function AdminChatPage() {
 
     joinConversation(activeId)
 
-    const unsubMessage = onNewMessage((msg: ChatSocketMessage) => {
+    const unsubMessage = onNewMessage((msg: ChatSocketMessage & { _fromAdminRoom?: boolean }) => {
       if (msg.conversationId !== activeIdRef.current) return
-      // Skip if already processed (admin receives events from both conversation + admin rooms)
+      // Skip admin room duplicate — we already got this from the conversation room
+      if (msg._fromAdminRoom) return
+      // Skip if already processed
       if (processedMsgIds.current.has(msg.id)) return
       processedMsgIds.current.add(msg.id)
 

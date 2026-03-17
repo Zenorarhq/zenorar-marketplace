@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import { useTimezone } from '@/hooks/use-timezone'
@@ -55,7 +55,17 @@ export default function LiveChat() {
   const tz = useTimezone()
   const [assignedAgent, setAssignedAgent] = useState<{ name: string; avatar: string | null } | null>(null)
 
-  const { joinConversation, leaveConversation, onNewMessage, onConversationStatus, onConversationAssigned, onReconnect } = useChatSocket()
+  const { joinConversation, leaveConversation, emitTyping, onNewMessage, onConversationStatus, onConversationAssigned, onReconnect } = useChatSocket()
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleTyping = useCallback(() => {
+    if (!conversationId) return
+    emitTyping(conversationId, true)
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    typingTimeoutRef.current = setTimeout(() => {
+      if (conversationId) emitTyping(conversationId, false)
+    }, 2000)
+  }, [conversationId, emitTyping])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -665,6 +675,7 @@ export default function LiveChat() {
                     value={inputValue}
                     onChange={(e) => {
                       setInputValue(e.target.value)
+                      handleTyping()
                       // Auto-resize: reset then set to scrollHeight, max 4 lines (~96px)
                       e.target.style.height = 'auto'
                       e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px'

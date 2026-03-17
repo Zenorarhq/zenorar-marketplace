@@ -3,52 +3,79 @@
 ## Root Causes
 
 ### Notifications Tab
-1. **Send Notification feature calls wrong API endpoints** — UI calls `/notifications/broadcast` and `/notifications/promotional` which don't exist. The actual working endpoint is `/admin/notifications/send`. Result: 404 when trying to send notifications.
-2. **Notification settings toggles are decorative** — emailNewOrder, emailNewUser, emailLowStock, emailTicket are saved to DB but no backend service ever reads them. Order creation, user registration, stock alerts, and ticket creation don't check these settings before sending emails.
-3. **Slack webhook saved but never used** — Field saves to DB, but no code sends notifications to Slack anywhere.
-4. **Push notifications toggle is decorative** — No service worker registration, no VAPID key config, no subscription management.
+1. **Send Notification feature calls wrong API endpoints** — UI was calling non-existent paths. The correct Express routes are `/notifications/broadcast` and `/notifications/promotional`.
+2. **Notification settings toggles seemed decorative** — Actually already wired via `admin-email.service.ts` in Express API. No fix needed.
+3. **Slack webhook saved but never used** — Field saved to DB, but no code sent to Slack.
+4. **Push notifications toggle is decorative** — No service worker, no VAPID keys.
+5. **Sent notification history not loading** — Express `getSentBatches` queried `batchId` column only, but notifications sent via Next.js store batchId in metadata JSONB only.
 
 ### Payments Tab
-5. **No test button for Crypto/Web3** — Minor UX gap, Stripe/Paystack/PayPal have test buttons but Crypto and Web3 don't.
+6. **No test button for Crypto/Web3** — Minor UX gap. Not fixed (low priority).
 
 ### Referral Tab
-6. **Public settings may not expose referral reward amounts** — Landing page `/ref/[code]` reads reward amounts from public settings. If not returned correctly, falls back to hardcoded $10.
+7. **Public settings returned raw JSON strings** — Express `getPublicSettings()` didn't JSON-parse values, so referral reward amounts displayed as NaN on landing page.
 
 ---
 
 ## Plan
 
-### Fix 1: Fix Send Notification endpoints (High)
+### Fix 1: Restore correct Send Notification endpoints
 **File:** `app/admin/settings/page.tsx`
-- [ ] Find the Send Notification handler that calls `/notifications/broadcast` and `/notifications/promotional`
-- [ ] Change to call the correct existing endpoint `/admin/notifications/send`
-- [ ] Verify targeted mode is supported by the existing endpoint, or adapt the payload
+- [x] Broadcast calls `apiFetch('/notifications/broadcast')` (Express)
+- [x] Targeted calls `apiFetch('/notifications/promotional')` (Express)
+- [x] Both routes already exist on Express API
 
-### Fix 2: Wire notification settings to backend services (Medium)
-**Files:** Backend order/user/ticket services that send emails
-- [ ] In order creation service — check `emailNewOrder` setting before sending admin notification email
-- [ ] In user registration service — check `emailNewUser` setting before sending admin notification email
-- [ ] In ticket creation service — check `emailTicket` setting before sending admin notification email
-- [ ] Note: `emailLowStock` requires a stock check mechanism — document as future improvement if no stock alert system exists
+### Fix 2: Wire notification settings to backend services
+- [x] **Already wired** — `admin-email.service.ts` reads emailNewOrder, emailNewUser, emailLowStock, emailTicket from DB via `shouldSend()`. No changes needed.
 
-### Fix 3: Wire Slack webhook (Medium)
-**File:** Create a utility or modify notification services
-- [ ] Create a `lib/slack.ts` utility that reads `slackWebhook` from site_settings and sends messages
-- [ ] Call it from the same places as Fix 2 (order created, user signup, ticket created)
-- [ ] Add a "Test Webhook" button next to the Slack field in the UI
+### Fix 3: Wire Slack webhook + test button
+**Files:** `zenorar-api/src/services/slack.service.ts` (new), `orders.service.ts`, `auth.service.ts`, `tickets.service.ts`, `app/admin/settings/page.tsx`
+- [x] Created `slack.service.ts` — reads webhook URL from settings, validates `hooks.slack.com`
+- [x] Wired into orders (new order), auth (new user), tickets (new ticket)
+- [x] Added "Test Webhook" button in settings UI with success/error feedback
 
-### Fix 4: Remove or label Push Notifications as "Coming Soon" (Low)
+### Fix 4: Label Push Notifications as Coming Soon
 **File:** `app/admin/settings/page.tsx`
-- [ ] Add "(Coming Soon)" label to the push notifications toggle
-- [ ] Disable the toggle so users don't think it's working
+- [x] Toggle disabled and greyed out
+- [x] Label shows "(Coming Soon)"
 
-### Fix 5: Verify referral public settings exposure (Low)
-**File:** Public settings API endpoint
-- [ ] Verify `/settings/public` returns referral group settings (referrerRewardAmount, refereeRewardAmount)
-- [ ] If not, fix the endpoint to include them
-- [ ] Verify the `/ref/[code]` landing page displays the correct amounts
+### Fix 5: Verify referral public settings exposure
+**File:** `zenorar-api/src/services/settings.service.ts`
+- [x] `getPublicSettings()` now JSON-parses values before returning
+- [x] Referral settings are `isPublic: true` — correctly exposed
+- [x] Landing page `/ref/[code]` now receives parsed numbers instead of raw JSON strings
+
+### Fix 6: Fix sent notification history not loading via Express API
+**Root cause:** Express `getSentBatches` used Prisma `groupBy` on `batchId` column. Notifications sent via Next.js store batchId in metadata JSONB only — column is null. Express found nothing.
+**Files:** `zenorar-api/src/services/notifications.service.ts`
+- [x] `getSentBatches` — rewritten with raw SQL using `COALESCE("batchId", metadata->>'batchId')` to check both
+- [x] `deleteBatch` — uses raw SQL to match both column and metadata
+- [x] `bulkDeleteBatches` — uses raw SQL to match both
+- [x] `getBatchRecipients` — uses Prisma `OR` to match both column and metadata path
 
 ---
 
 ## Review
-*(To be filled after implementation)*
+
+### Files changed:
+
+**Marketplace (zenorar-marketplace):**
+- `app/admin/settings/page.tsx` — Send notification uses correct Express endpoints, Slack test button, push notifications "(Coming Soon)", bio field, password text
+- `app/api/admin/notifications/send/route.ts` — Added `userIds` support for targeted sends
+
+**Express API (zenorar-api):**
+- `src/services/slack.service.ts` — NEW: Slack webhook integration
+- `src/services/orders.service.ts` — Added Slack notify on new order
+- `src/services/auth.service.ts` — Added Slack notify on new user
+- `src/services/tickets.service.ts` — Added Slack notify on new ticket
+- `src/services/settings.service.ts` — `getPublicSettings()` JSON-parses values
+- `src/services/notifications.service.ts` — `getSentBatches`, `deleteBatch`, `bulkDeleteBatches`, `getBatchRecipients` all handle both batchId column and metadata
+
+### Bugs found during testing:
+1. Send Notification was calling wrong Express paths — fixed by restoring original `/notifications/broadcast` and `/notifications/promotional`
+2. Sent history not loading — Express queried batchId column but Next.js stores in metadata JSONB — fixed with COALESCE raw SQL
+3. Public settings returned raw JSON strings — Express `getPublicSettings()` didn't parse — fixed with `JSON.parse()`
+
+### Build status:
+- Express API: `tsc --noEmit` clean
+- Marketplace: `next build` compiled successfully
