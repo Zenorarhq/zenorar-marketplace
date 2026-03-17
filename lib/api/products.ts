@@ -129,13 +129,6 @@ export const productsApi = {
     })
   },
 
-  async updateStock(id: string, quantity: number, operation: 'set' | 'increment' | 'decrement') {
-    return apiFetch<Product>(`/products/${id}/stock`, {
-      method: 'PATCH',
-      body: JSON.stringify({ quantity, operation }),
-    })
-  },
-
   // Images
   async addImage(productId: string, imageData: { url: string; alt?: string; isPrimary?: boolean }) {
     return apiFetch<ProductImage>(`/products/${productId}/images`, {

@@ -7,7 +7,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { productsApi, Product } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
-import { formatCurrency, formatNumber } from '@/lib/formatNumber'
+import { formatNumber } from '@/lib/formatNumber'
 import { apiFetch } from '@/lib/api/client'
 import ProductReviewsModal from '@/components/admin/ProductReviewsModal'
 
@@ -152,10 +152,6 @@ export default function ProductsPage() {
   // Calculate stats from all products
   const stats = {
     total: products.length,
-    inventoryValue: products.reduce((sum, p) => sum + (Number(p.price) * p.stock), 0),
-    totalCost: products.reduce((sum, p) => sum + ((p.costPrice ? Number(p.costPrice) : 0) * p.stock), 0),
-    lowStock: products.filter(p => p.stock > 0 && p.stock <= p.lowStockThreshold).length,
-    outOfStock: products.filter(p => p.stock === 0).length,
   }
 
   if (loading) {
@@ -208,7 +204,7 @@ export default function ProductsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+      <div className="grid grid-cols-1 gap-3 lg:gap-4 mb-6">
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
           <div className="flex items-start justify-between mb-3">
             <p className="text-slate-400 text-xs lg:text-sm">Total Products</p>
@@ -219,48 +215,6 @@ export default function ProductsPage() {
           <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatNumber(stats.total)}</p>
           <p className="text-xs">
             <span className="text-slate-500">active items</span>
-          </p>
-        </div>
-
-        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
-          <div className="flex items-start justify-between mb-3">
-            <p className="text-slate-400 text-xs lg:text-sm">Inventory Value</p>
-            <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <Icon name="wallet" size={16} />
-            </div>
-          </div>
-          <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(stats.inventoryValue)}</p>
-          <p className="text-xs">
-            <span className="text-slate-500">total value</span>
-          </p>
-        </div>
-
-        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
-          <div className="flex items-start justify-between mb-3">
-            <p className="text-slate-400 text-xs lg:text-sm">Total Cost</p>
-            <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
-              <Icon name="dollar" size={16} />
-            </div>
-          </div>
-          <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatCurrency(stats.totalCost)}</p>
-          <p className="text-xs">
-            <span className="text-slate-500">cost investment</span>
-          </p>
-        </div>
-
-        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
-          <div className="flex items-start justify-between mb-3">
-            <p className="text-slate-400 text-xs lg:text-sm">Low/Out Stock</p>
-            <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center">
-              <Icon name="alert" size={16} />
-            </div>
-          </div>
-          <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatNumber(stats.lowStock + stats.outOfStock)}</p>
-          <p className="text-xs">
-            <span className="text-orange-400">{stats.lowStock}</span>
-            <span className="text-slate-500 mx-1">low,</span>
-            <span className="text-orange-400">{stats.outOfStock}</span>
-            <span className="text-slate-500 ml-1">out</span>
           </p>
         </div>
       </div>
@@ -368,7 +322,6 @@ export default function ProductsPage() {
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Product</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Category</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Price</th>
-                <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Stock</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Status</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Type</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Actions</th>
@@ -411,15 +364,6 @@ export default function ProductsPage() {
                   </td>
                   <td className="px-5 py-3 text-white text-sm font-medium">
                     ${Number(product.price).toFixed(2)}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={`text-sm ${
-                      product.stock <= product.lowStockThreshold
-                        ? 'text-red-400'
-                        : 'text-slate-400'
-                    }`}>
-                      {product.stock}
-                    </span>
                   </td>
                   <td className="px-5 py-3">
                     <div className="relative">

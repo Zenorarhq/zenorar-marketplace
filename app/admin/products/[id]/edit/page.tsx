@@ -50,8 +50,6 @@ export default function EditProductPage() {
     costPrice: '',
     extendedPrice: '',
     proPrice: '',
-    stock: '',
-    lowStockThreshold: '',
     categoryId: '',
     status: 'DRAFT' as 'DRAFT' | 'ACTIVE' | 'ARCHIVED',
     isDigital: true,
@@ -111,8 +109,6 @@ export default function EditProductPage() {
         costPrice: p.costPrice?.toString() || '',
         extendedPrice: (p as any).extendedPrice?.toString() || '',
         proPrice: (p as any).proPrice?.toString() || '',
-        stock: p.stock.toString(),
-        lowStockThreshold: p.lowStockThreshold.toString(),
         categoryId: p.categoryId || '',
         status: p.status,
         isDigital: p.isDigital,
@@ -183,8 +179,6 @@ export default function EditProductPage() {
         costPrice: formData.costPrice ? parseFloat(formData.costPrice) : null,
         extendedPrice: formData.extendedPrice ? parseFloat(formData.extendedPrice) : null,
         proPrice: formData.proPrice ? parseFloat(formData.proPrice) : null,
-        stock: parseInt(formData.stock) || 0,
-        lowStockThreshold: parseInt(formData.lowStockThreshold) || 10,
         categoryId: formData.categoryId || null,
         status: formData.status,
         isDigital: formData.isDigital,
@@ -464,9 +458,9 @@ export default function EditProductPage() {
             </div>
           </div>
 
-          {/* Pricing & Inventory */}
+          {/* Pricing */}
           <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Pricing & Inventory</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">Pricing</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -545,34 +539,6 @@ export default function EditProductPage() {
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-slate-500 mt-1">Leave empty to hide pro option on product page</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Stock Quantity
-                </label>
-                <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleChange}
-                  min="0"
-                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Low Stock Alert
-                </label>
-                <input
-                  type="number"
-                  name="lowStockThreshold"
-                  value={formData.lowStockThreshold}
-                  onChange={handleChange}
-                  min="0"
-                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
               </div>
 
               <div>
