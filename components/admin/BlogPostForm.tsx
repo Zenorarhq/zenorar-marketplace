@@ -121,6 +121,24 @@ export default function BlogPostForm({ postId }: BlogPostFormProps) {
     },
   })
 
+  // Delete category
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: string) => blogApi.admin.deleteCategory(id),
+    onSuccess: (_, deletedId) => {
+      setSelectedCategoryIds(prev => prev.filter(id => id !== deletedId))
+      queryClient.invalidateQueries({ queryKey: ['admin-blog-categories'] })
+    },
+  })
+
+  // Delete tag
+  const deleteTagMutation = useMutation({
+    mutationFn: (id: string) => blogApi.admin.deleteTag(id),
+    onSuccess: (_, deletedId) => {
+      setSelectedTagIds(prev => prev.filter(id => id !== deletedId))
+      queryClient.invalidateQueries({ queryKey: ['admin-blog-tags'] })
+    },
+  })
+
   const handleSave = useCallback(async () => {
     if (!title.trim()) {
       alert('Title is required')
@@ -316,19 +334,28 @@ export default function BlogPostForm({ postId }: BlogPostFormProps) {
               <h3 className="text-white text-sm font-medium">Categories</h3>
               <div className="space-y-1 max-h-32 overflow-y-auto">
                 {categories.map((cat: BlogCategory) => (
-                  <label key={cat.id} className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer hover:text-white">
-                    <input
-                      type="checkbox"
-                      checked={selectedCategoryIds.includes(cat.id)}
-                      onChange={(e) => {
-                        setSelectedCategoryIds(prev =>
-                          e.target.checked ? [...prev, cat.id] : prev.filter(id => id !== cat.id)
-                        )
-                      }}
-                      className="rounded border-[#2a2a2a] bg-[#1a1a1a] text-primary focus:ring-primary"
-                    />
-                    {cat.name}
-                  </label>
+                  <div key={cat.id} className="flex items-center justify-between group">
+                    <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer hover:text-white">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategoryIds.includes(cat.id)}
+                        onChange={(e) => {
+                          setSelectedCategoryIds(prev =>
+                            e.target.checked ? [...prev, cat.id] : prev.filter(id => id !== cat.id)
+                          )
+                        }}
+                        className="rounded border-[#2a2a2a] bg-[#1a1a1a] text-primary focus:ring-primary"
+                      />
+                      {cat.name}
+                    </label>
+                    <button
+                      onClick={() => { if (confirm(`Delete category "${cat.name}"?`)) deleteCategoryMutation.mutate(cat.id) }}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-500 hover:text-red-400 transition-all"
+                      title="Delete category"
+                    >
+                      <Icon name="close" size={12} />
+                    </button>
+                  </div>
                 ))}
               </div>
               <div className="flex gap-2">
@@ -354,21 +381,29 @@ export default function BlogPostForm({ postId }: BlogPostFormProps) {
               <h3 className="text-white text-sm font-medium">Tags</h3>
               <div className="flex flex-wrap gap-1">
                 {tags.map((tag: BlogTag) => (
-                  <button
-                    key={tag.id}
-                    onClick={() => {
-                      setSelectedTagIds(prev =>
-                        prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
-                      )
-                    }}
-                    className={`px-2 py-0.5 rounded-full text-xs transition-colors ${
-                      selectedTagIds.includes(tag.id)
-                        ? 'bg-primary/20 text-primary'
-                        : 'bg-[#1a1a1a] text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {tag.name}
-                  </button>
+                  <div key={tag.id} className="flex items-center gap-0.5 group">
+                    <button
+                      onClick={() => {
+                        setSelectedTagIds(prev =>
+                          prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
+                        )
+                      }}
+                      className={`px-2 py-0.5 rounded-full text-xs transition-colors ${
+                        selectedTagIds.includes(tag.id)
+                          ? 'bg-primary/20 text-primary'
+                          : 'bg-[#1a1a1a] text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {tag.name}
+                    </button>
+                    <button
+                      onClick={() => { if (confirm(`Delete tag "${tag.name}"?`)) deleteTagMutation.mutate(tag.id) }}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-500 hover:text-red-400 transition-all"
+                      title="Delete tag"
+                    >
+                      <Icon name="close" size={10} />
+                    </button>
+                  </div>
                 ))}
               </div>
               <div className="flex gap-2">
