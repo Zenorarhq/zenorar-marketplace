@@ -58,7 +58,7 @@ async function getCategories() {
     `SELECT bc.id, bc.name, bc.slug, COUNT(bpc.post_id) as post_count
     FROM blog_categories bc
     JOIN blog_post_categories bpc ON bc.id = bpc.category_id
-    JOIN blog_posts bp ON bpc.post_id = bp.id AND bp.status = 'PUBLISHED' AND bp.published_at <= NOW()
+    JOIN blog_posts bp ON bpc.post_id = bp.id AND (bp.status = 'PUBLISHED' OR bp.status = 'SCHEDULED') AND bp.published_at <= NOW()
     GROUP BY bc.id
     ORDER BY bc.name`
   )
@@ -196,7 +196,7 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
           <div className="flex justify-center gap-2 mt-10">
             {page > 1 && (
               <Link
-                href={`/blog?page=${page - 1}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}`}
+                href={`/blog?page=${page - 1}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}${search ? `&search=${search}` : ''}`}
                 className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded-lg text-sm hover:bg-[#2a2a2a]"
               >
                 Previous
@@ -208,7 +208,7 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
               return (
                 <Link
                   key={p}
-                  href={`/blog?page=${p}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}`}
+                  href={`/blog?page=${p}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}${search ? `&search=${search}` : ''}`}
                   className={`px-3 py-2 rounded-lg text-sm ${
                     p === page ? 'bg-primary text-black font-medium' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a]'
                   }`}
@@ -219,7 +219,7 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
             })}
             {page < totalPages && (
               <Link
-                href={`/blog?page=${page + 1}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}`}
+                href={`/blog?page=${page + 1}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}${search ? `&search=${search}` : ''}`}
                 className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded-lg text-sm hover:bg-[#2a2a2a]"
               >
                 Next
