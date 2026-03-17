@@ -13,6 +13,7 @@ import { usePreferences } from '@/contexts/PreferencesContext'
 import { getBalance } from '@/lib/api/wallet'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
+import TestModeBanner from '@/components/ui/TestModeBanner'
 import WalletDisplay from '@/components/ui/WalletDisplay'
 import * as esimApi from '@/lib/api/esim'
 import type { EsimRegion, EsimPlan } from '@/lib/api/esim'
@@ -64,6 +65,27 @@ export default function EsimPage() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [countryPage, setCountryPage] = useState(1)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
+
+  // Test mode state
+  const [testPurchasing, setTestPurchasing] = useState(false)
+
+  const handleTestEsimPurchase = async () => {
+    setTestPurchasing(true)
+    try {
+      const token = localStorage.getItem('auth_token')
+      const res = await fetch('/api/esim/test-purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (data.success) {
+        router.push('/profile/library?filter=esim')
+      } else {
+        alert(data.error || 'Failed to create test eSIM')
+      }
+    } catch { alert('Failed to create test eSIM') }
+    finally { setTestPurchasing(false) }
+  }
 
   // Wallet payment state (matching gift cards pattern)
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -593,6 +615,9 @@ export default function EsimPage() {
           Regional eSIMs
         </button>
       </div>
+
+      {/* Sandbox Mode Banner */}
+      <TestModeBanner productType="esim" onTestPurchase={handleTestEsimPurchase} isPurchasing={testPurchasing} />
 
       {/* Local eSIMs Tab */}
       {activeTab === 'local' && (

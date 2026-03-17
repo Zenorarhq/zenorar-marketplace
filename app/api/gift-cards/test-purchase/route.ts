@@ -4,29 +4,25 @@ import { query } from '@/lib/db'
 import { canUseTestMode } from '@/lib/test-mode'
 
 /**
- * POST /api/virtual-numbers/test-number
- * Create a test virtual number for testing settings/SMS flows
- * Available when globalTestMode is enabled in admin settings, or for admin users
+ * POST /api/gift-cards/test-purchase
+ * Create a test gift card purchase with mock data (no real provider API call)
  */
 export async function POST(request: NextRequest) {
   try {
     const user = await authenticateRequest(request)
-
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      )
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
     }
 
     if (!(await canUseTestMode(user.role))) {
-      return NextResponse.json(
-        { success: false, error: 'Test mode is not enabled. An admin can enable it in Settings → API Keys.' },
-        { status: 403 }
-      )
+      return NextResponse.json({ success: false, error: 'Test mode is not enabled. An admin can enable it in Settings → API Keys.' }, { status: 403 })
     }
 
-    const price = 5.00
+    const body = await request.json().catch(() => ({}))
+    const denomination = parseFloat(body.denomination) || 25.00
+    const brand = body.brand || 'Test Brand'
+
+    const price = denomination
 
     // Check wallet balance
     const walletResult = await query(`SELECT id, balance FROM wallet_balances WHERE user_id = $1`, [user.id])
@@ -36,10 +32,9 @@ export async function POST(request: NextRequest) {
     const walletId = walletResult.rows[0].id
     const balanceBefore = parseFloat(walletResult.rows[0].balance)
 
-    // Generate a test phone number
-    const testNumber = `+1555${Math.floor(1000000 + Math.random() * 9000000)}`
-    const testLastFour = testNumber.slice(-4)
-    const orderNumber = `TVN${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`
+    const testCode = `TEST-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+    const testPin = Math.floor(1000 + Math.random() * 9000).toString()
+    const orderNumber = `TGC${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`
     const userEmail = (await query(`SELECT email FROM users WHERE id = $1`, [user.id])).rows[0]?.email || ''
 
     await query('BEGIN')
@@ -49,7 +44,7 @@ export async function POST(request: NextRequest) {
       await query(
         `INSERT INTO wallet_transactions (id, wallet_balance_id, type, amount, balance_before, balance_after, description, metadata, created_at)
          VALUES (gen_random_uuid()::text, $1, 'DEBIT', $2, $3, $4, $5, $6, NOW())`,
-        [walletId, price, balanceBefore, balanceBefore - price, `Test Virtual Number: ${testNumber}`, JSON.stringify({ reference_type: 'test_virtual_number', test_mode: true })]
+        [walletId, price, balanceBefore, balanceBefore - price, `Test Gift Card: ${brand} $${denomination}`, JSON.stringify({ reference_type: 'test_gift_card', test_mode: true })]
       )
 
       // Create order
@@ -63,39 +58,29 @@ export async function POST(request: NextRequest) {
       // Create order item
       await query(
         `INSERT INTO order_items (id, "orderId", "productId", name, price, quantity, total, product_type, metadata, "createdAt")
-         VALUES (gen_random_uuid()::text, $1, NULL, $2, $3, 1, $4, 'virtual_number', $5, NOW())`,
-        [orderId, `Test Number: ${testNumber}`, price, price, JSON.stringify({ test_mode: 'true', phone_number: testNumber })]
+         VALUES (gen_random_uuid()::text, $1, NULL, $2, $3, 1, $4, 'gift_card', $5, NOW())`,
+        [orderId, `Test Gift Card: ${brand} $${denomination}`, price, price, JSON.stringify({ test_mode: 'true', brand, denomination })]
       )
 
-      // Create a test virtual number directly in the DB
-      const result = await query(
-        `INSERT INTO user_virtual_numbers (
-           user_id, phone_number, phone_number_display, number_type, provider,
-           status, plan_id, plan_category, plan_duration_days, sms_limit,
-           expires_at, order_id, created_at, updated_at
-         ) VALUES (
-           $1, $2, $3, 'local', 'test',
-           'active', 'basic', 'basic', 30, 500,
-           NOW() + INTERVAL '30 days', $4, NOW(), NOW()
-         ) RETURNING id, phone_number, status, expires_at`,
-        [user.id, testNumber, `(555) ${testLastFour.slice(0,3)}-${testLastFour.slice(3)}`, orderId]
+      // Create user_gift_cards record
+      const gcResult = await query(
+        `INSERT INTO user_gift_cards (user_id, order_id, brand, denomination, code, pin, status, source, delivered_at, created_at)
+         VALUES ($1, $2::uuid, $3, $4, $5, $6, 'delivered', 'test', NOW(), NOW()) RETURNING id`,
+        [user.id, orderId, brand, denomination, testCode, testPin]
       )
 
       await query('COMMIT')
 
       return NextResponse.json({
         success: true,
-        data: result.rows[0],
+        data: { id: gcResult.rows[0].id, brand, denomination, code: testCode, pin: testPin, price },
       })
     } catch (error) {
       await query('ROLLBACK')
       throw error
     }
   } catch (error: any) {
-    console.error('Error creating test number:', error)
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to create test number' },
-      { status: 500 }
-    )
+    console.error('Test gift card purchase error:', error)
+    return NextResponse.json({ success: false, error: error.message || 'Failed to create test gift card' }, { status: 500 })
   }
 }

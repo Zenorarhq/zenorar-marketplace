@@ -292,6 +292,7 @@ export default function AdminSettingsPage() {
     apiEnabled: true,
     rateLimit: '1000',
     webhookUrl: '',
+    globalTestMode: false,
   })
 
   // Cron Jobs Settings State
@@ -678,6 +679,7 @@ export default function AdminSettingsPage() {
           apiEnabled: d.apiEnabled ?? prev.apiEnabled,
           rateLimit: d.rateLimit ?? prev.rateLimit,
           webhookUrl: d.webhookUrl ?? prev.webhookUrl,
+          globalTestMode: d.globalTestMode ?? prev.globalTestMode,
         }))
         // Data eSIM Provider settings
         setEsimSettings((prev) => ({
@@ -1455,6 +1457,7 @@ export default function AdminSettingsPage() {
       { key: 'apiEnabled', value: apiSettings.apiEnabled, group: 'api', isPublic: false },
       { key: 'rateLimit', value: apiSettings.rateLimit, group: 'api', isPublic: false },
       { key: 'webhookUrl', value: apiSettings.webhookUrl, group: 'api', isPublic: false },
+      { key: 'globalTestMode', value: apiSettings.globalTestMode, group: 'api', isPublic: false },
       // Payment settings - Web3 Wallet
       { key: 'walletEnabled', value: paymentSettings.walletEnabled, group: 'payments', isPublic: true },
       // Payment settings - Stripe
@@ -1648,6 +1651,15 @@ export default function AdminSettingsPage() {
 
     if (result.success) {
       setMessage({ type: 'success', text: 'Settings saved successfully!' })
+
+      // If global test mode was just turned OFF, clean up all test data
+      if (!apiSettings.globalTestMode) {
+        const token = localStorage.getItem('admin_auth_token')
+        fetch('/api/test-mode?cleanup=all', {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {}) // Best-effort cleanup
+      }
 
       // Update initial settings ref to match current state (so "Saved" shows correctly)
       captureInitialSettings()
@@ -3651,6 +3663,44 @@ export default function AdminSettingsPage() {
           {/* API Settings */}
           {activeTab === 'api' && (
             <div className="space-y-8">
+              {/* Global Test Mode Card */}
+              <div className={`rounded-xl border p-6 ${apiSettings.globalTestMode ? 'bg-yellow-500/5 border-yellow-500/30' : 'bg-[#0f0f0f] border-[#1f1f1f]'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${apiSettings.globalTestMode ? 'bg-yellow-500/20' : 'bg-orange-500/10'}`}>
+                      <Icon name="code" size={24} className={apiSettings.globalTestMode ? 'text-yellow-400' : 'text-orange-400'} />
+                    </div>
+                    <div className="text-left">
+                      <p className={`font-semibold text-lg ${apiSettings.globalTestMode ? 'text-yellow-400' : 'text-white'}`}>
+                        {apiSettings.globalTestMode ? 'Test Mode Active' : 'Global Test Mode'}
+                      </p>
+                      <p className="text-slate-500 text-sm">
+                        {apiSettings.globalTestMode
+                          ? 'All test features are enabled site-wide. Users can create test numbers, use mock OTP, and test flows without real provider APIs.'
+                          : 'Enable to allow test features across the site (virtual numbers, OTP, etc.) without requiring admin access on each page.'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setApiSettings({ ...apiSettings, globalTestMode: !apiSettings.globalTestMode })}
+                    className={`relative w-14 h-7 rounded-full transition-colors flex-shrink-0 ${
+                      apiSettings.globalTestMode ? 'bg-yellow-500' : 'bg-slate-600'
+                    }`}
+                  >
+                    <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${
+                      apiSettings.globalTestMode ? 'translate-x-8' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+                {apiSettings.globalTestMode && (
+                  <div className="mt-4 pt-4 border-t border-yellow-500/20">
+                    <p className="text-yellow-400/70 text-xs">
+                      Remember to save settings after toggling. When active, any logged-in user can use test mode features on the Virtual Numbers and OTP pages. Disable before going live.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* API Access Card */}
               <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
                 <button

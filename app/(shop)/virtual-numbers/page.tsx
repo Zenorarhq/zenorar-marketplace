@@ -14,6 +14,7 @@ import * as virtualNumbersApi from '@/lib/api/virtual-numbers'
 import * as otpNumbersApi from '@/lib/api/otp-numbers'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
+import TestModeBanner from '@/components/ui/TestModeBanner'
 import ServiceLogo from '@/components/ui/ServiceLogo'
 import WalletDisplay from '@/components/ui/WalletDisplay'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -255,7 +256,6 @@ export default function VirtualNumbersPage() {
   const [togglingTestMode, setTogglingTestMode] = useState(false)
 
   // Monthly test mode state
-  const [vnTestMode, setVnTestMode] = useState(false)
   const [creatingTestNumber, setCreatingTestNumber] = useState(false)
 
   // OTP Modal state
@@ -857,48 +857,8 @@ export default function VirtualNumbersPage() {
       {/* ===== MONTHLY NUMBERS TAB ===== */}
       {activeTab === 'monthly' && (
         <>
-          {/* Test Mode Toggle */}
-          <div className={`mb-4 p-4 rounded-xl border ${vnTestMode ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-surface-dark border-border-dark'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Icon name="code" size={20} className={vnTestMode ? 'text-yellow-400' : 'text-slate-500'} />
-                <div>
-                  <p className={`font-bold text-sm ${vnTestMode ? 'text-yellow-400' : 'text-slate-400'}`}>
-                    {vnTestMode ? 'Test Mode Active' : 'Test Mode'}
-                  </p>
-                  <p className="text-slate-500 text-xs">
-                    {vnTestMode
-                      ? 'Create a test virtual number to test settings, SMS forwarding, and other features.'
-                      : 'Enable to test the virtual number flow without real provider API'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setVnTestMode(!vnTestMode)}
-                className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-                  vnTestMode
-                    ? 'bg-yellow-500 text-black hover:bg-yellow-400'
-                    : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white hover:border-primary/50'
-                }`}
-              >
-                {vnTestMode ? 'Disable Test Mode' : 'Enable Test Mode'}
-              </button>
-            </div>
-            {vnTestMode && (
-              <div className="mt-3 pt-3 border-t border-yellow-500/20 flex items-center justify-between">
-                <p className="text-yellow-400/80 text-xs">
-                  Click the button to create a test number. You&apos;ll be redirected to the number management page where you can test settings, SMS forwarding email, and send test messages.
-                </p>
-                <button
-                  onClick={handleCreateTestNumber}
-                  disabled={creatingTestNumber}
-                  className="ml-4 px-4 py-2 bg-primary text-black font-bold text-sm rounded-lg hover:brightness-105 transition-all disabled:opacity-50 whitespace-nowrap"
-                >
-                  {creatingTestNumber ? 'Creating...' : 'Create Test Number'}
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Sandbox Mode Banner */}
+          <TestModeBanner productType="virtual_number" onTestPurchase={handleCreateTestNumber} isPurchasing={creatingTestNumber} />
 
           {/* Country Filter */}
           <div className="mb-10">
