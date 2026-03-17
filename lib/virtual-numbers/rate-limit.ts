@@ -1,11 +1,8 @@
 // Rate Limiting for Virtual Numbers SMS/Voice
-// Prevents abuse of send SMS and other endpoints
+// Database-backed using virtual_number_messages for SMS counts
+// Works correctly on serverless (Vercel) — no in-memory state
 
-interface RateLimitConfig {
-  windowMs: number
-  maxRequests: number
-  blockDurationMs: number
-}
+import { query } from '@/lib/db'
 
 // Rate limit configurations for virtual numbers
 export const VN_RATE_LIMITS = {
@@ -27,18 +24,6 @@ export const VN_RATE_LIMITS = {
     maxRequests: 200,              // 200 SMS per day
     blockDurationMs: 60 * 60 * 1000 // 1 hour block
   },
-  // Message retrieval limit
-  getMessages: {
-    windowMs: 60 * 1000,           // 1 minute
-    maxRequests: 30,               // 30 requests per minute
-    blockDurationMs: 60 * 1000     // 1 minute block
-  },
-  // Settings update limit
-  updateSettings: {
-    windowMs: 60 * 1000,           // 1 minute
-    maxRequests: 5,                // 5 updates per minute
-    blockDurationMs: 5 * 60 * 1000 // 5 minute block
-  }
 } as const
 
 interface RateLimitResult {
@@ -50,129 +35,65 @@ interface RateLimitResult {
 }
 
 /**
- * In-memory rate limit store
+ * Check SMS send rate limits by counting actual outbound messages in DB
+ * This works across all serverless instances — no in-memory state needed
  */
-const rateLimitStore = new Map<string, {
-  count: number
-  windowStart: number
-  blockedUntil?: number
-}>()
+export async function checkSmsSendLimits(userId: string): Promise<RateLimitResult> {
+  const now = new Date()
 
-// Clean up old entries periodically
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now()
-    for (const [key, value] of rateLimitStore.entries()) {
-      if (now - value.windowStart > 60 * 60 * 1000) {
-        rateLimitStore.delete(key)
-      }
-    }
-  }, 5 * 60 * 1000)
-}
+  // Count outbound SMS in the last minute, hour, and day in a single query
+  const result = await query(
+    `SELECT
+       COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 minute')::int as last_minute,
+       COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 hour')::int as last_hour,
+       COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours')::int as last_day
+     FROM virtual_number_messages
+     WHERE user_id = $1 AND direction = 'outbound' AND created_at > NOW() - INTERVAL '24 hours'`,
+    [userId]
+  )
 
-/**
- * Check and update rate limit for a user
- */
-export function checkVnRateLimit(
-  userId: string,
-  action: string,
-  config: RateLimitConfig
-): RateLimitResult {
-  const key = `vn:${action}:${userId}`
-  const now = Date.now()
+  const counts = result.rows[0] || { last_minute: 0, last_hour: 0, last_day: 0 }
 
-  let entry = rateLimitStore.get(key)
-
-  // Check if blocked
-  if (entry?.blockedUntil && now < entry.blockedUntil) {
+  // Check per-minute limit
+  if (counts.last_minute >= VN_RATE_LIMITS.sendSms.maxRequests) {
     return {
       allowed: false,
       remaining: 0,
-      resetAt: new Date(entry.windowStart + config.windowMs),
+      resetAt: new Date(now.getTime() + 60 * 1000),
       blocked: true,
-      blockExpiresAt: new Date(entry.blockedUntil)
+      blockExpiresAt: new Date(now.getTime() + VN_RATE_LIMITS.sendSms.blockDurationMs)
     }
   }
 
-  // Reset window if expired
-  if (!entry || now - entry.windowStart > config.windowMs) {
-    entry = { count: 0, windowStart: now }
-  }
-
-  // Clear block if expired
-  if (entry.blockedUntil && now >= entry.blockedUntil) {
-    entry.blockedUntil = undefined
-    entry.count = 0
-    entry.windowStart = now
-  }
-
-  // Check if limit exceeded
-  if (entry.count >= config.maxRequests) {
-    entry.blockedUntil = now + config.blockDurationMs
-    rateLimitStore.set(key, entry)
-
+  // Check hourly limit
+  if (counts.last_hour >= VN_RATE_LIMITS.sendSmsHourly.maxRequests) {
     return {
       allowed: false,
       remaining: 0,
-      resetAt: new Date(entry.windowStart + config.windowMs),
+      resetAt: new Date(now.getTime() + 60 * 60 * 1000),
       blocked: true,
-      blockExpiresAt: new Date(entry.blockedUntil)
+      blockExpiresAt: new Date(now.getTime() + VN_RATE_LIMITS.sendSmsHourly.blockDurationMs)
     }
   }
 
-  // Increment counter
-  entry.count++
-  rateLimitStore.set(key, entry)
-
-  return {
-    allowed: true,
-    remaining: config.maxRequests - entry.count,
-    resetAt: new Date(entry.windowStart + config.windowMs),
-    blocked: false
-  }
-}
-
-/**
- * Check multiple rate limits (must pass all)
- */
-export function checkMultipleVnRateLimits(
-  userId: string,
-  action: string,
-  configs: RateLimitConfig[]
-): RateLimitResult {
-  for (const config of configs) {
-    const result = checkVnRateLimit(userId, `${action}_${config.windowMs}`, config)
-    if (!result.allowed) {
-      return result
+  // Check daily limit
+  if (counts.last_day >= VN_RATE_LIMITS.sendSmsDaily.maxRequests) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      blocked: true,
+      blockExpiresAt: new Date(now.getTime() + VN_RATE_LIMITS.sendSmsDaily.blockDurationMs)
     }
   }
 
-  // All limits passed
+  // All limits passed — return remaining for the tightest limit (per-minute)
   return {
     allowed: true,
-    remaining: configs[0].maxRequests,
-    resetAt: new Date(Date.now() + configs[0].windowMs),
+    remaining: VN_RATE_LIMITS.sendSms.maxRequests - counts.last_minute,
+    resetAt: new Date(now.getTime() + 60 * 1000),
     blocked: false
   }
-}
-
-/**
- * Check SMS sending rate limits (per-minute, hourly, daily)
- */
-export function checkSmsSendLimits(userId: string): RateLimitResult {
-  return checkMultipleVnRateLimits(userId, 'sendSms', [
-    VN_RATE_LIMITS.sendSms,
-    VN_RATE_LIMITS.sendSmsHourly,
-    VN_RATE_LIMITS.sendSmsDaily
-  ])
-}
-
-/**
- * Reset rate limit for a user
- */
-export function resetVnRateLimit(userId: string, action: string): void {
-  const key = `vn:${action}:${userId}`
-  rateLimitStore.delete(key)
 }
 
 /**

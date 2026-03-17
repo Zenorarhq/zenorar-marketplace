@@ -227,6 +227,40 @@ class OtpNumberService {
         ]
       )
 
+      const userOtpId = otpResult.rows[0].id
+
+      // Create order record so OTP revenue shows in dashboard/reports
+      const orderNumber = `OTP${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+      const userEmail = (await query(`SELECT email FROM users WHERE id = $1`, [userId])).rows[0]?.email || ''
+
+      const orderResult = await query(
+        `INSERT INTO orders (
+           id, "orderNumber", "userId", status, subtotal, total, email,
+           "paymentMethod", "paymentStatus", "paidAt", "createdAt", "updatedAt"
+         ) VALUES (
+           gen_random_uuid()::text, $1, $2, 'CONFIRMED', $3, $4, $5,
+           'WALLET', 'PAID', NOW(), NOW(), NOW()
+         ) RETURNING id`,
+        [orderNumber, userId, price, price, userEmail]
+      )
+
+      const orderId = orderResult.rows[0].id
+
+      await query(
+        `INSERT INTO order_items (
+           id, "orderId", "productId", name, price, quantity, total, product_type, metadata, "createdAt"
+         ) VALUES (
+           gen_random_uuid()::text, $1, NULL, $2, $3, 1, $4, 'otp_number', $5, NOW()
+         )`,
+        [
+          orderId,
+          `OTP: ${result.number.phoneNumber} (${serviceId})`,
+          price,
+          price,
+          JSON.stringify({ otp_id: userOtpId, phone_number: result.number.phoneNumber, service_id: serviceId, country_code: countryCode, provider: name })
+        ]
+      )
+
       await query('COMMIT')
 
       return {
@@ -361,6 +395,18 @@ class OtpNumberService {
 
         await query(
           `UPDATE user_otp_numbers SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
+          [userOtpId]
+        )
+
+        // Update associated order to CANCELLED/REFUNDED
+        await query(
+          `UPDATE orders SET status = 'CANCELLED', "paymentStatus" = 'REFUNDED', "updatedAt" = NOW()
+           WHERE id = (
+             SELECT oi."orderId" FROM order_items oi
+             WHERE oi.product_type = 'otp_number'
+             AND oi.metadata->>'otp_id' = $1
+             LIMIT 1
+           )`,
           [userOtpId]
         )
 

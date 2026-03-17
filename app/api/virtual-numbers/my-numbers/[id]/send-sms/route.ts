@@ -24,7 +24,7 @@ export async function POST(
     }
 
     // Check rate limits
-    const rateLimitResult = checkSmsSendLimits(user.id)
+    const rateLimitResult = await checkSmsSendLimits(user.id)
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         {
@@ -76,6 +76,14 @@ export async function POST(
     if (virtualNumber.status !== 'active') {
       return NextResponse.json(
         { success: false, error: 'Virtual number is not active' },
+        { status: 400 }
+      )
+    }
+
+    // Check if number has expired
+    if (virtualNumber.expires_at && new Date(virtualNumber.expires_at) < new Date()) {
+      return NextResponse.json(
+        { success: false, error: 'Virtual number has expired. Please renew to continue sending SMS.' },
         { status: 400 }
       )
     }

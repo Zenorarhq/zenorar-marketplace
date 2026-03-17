@@ -61,6 +61,12 @@ export async function PATCH(
     }
 
     if (smsForwardEmail !== undefined) {
+      if (smsForwardEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(smsForwardEmail)) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid email format for SMS forwarding' },
+          { status: 400 }
+        )
+      }
       updates.push(`sms_forward_email = $${paramIndex++}`)
       values.push(smsForwardEmail || null)
     }
