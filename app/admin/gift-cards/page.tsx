@@ -484,6 +484,50 @@ function AdminGiftCardsPageContent() {
           ))}
         </div>
 
+        {/* Filters - shown on Overview and Products tabs */}
+        {(activeTab === 'overview' || activeTab === 'products') && (
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Search */}
+              <div className="relative">
+                <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={gcSearchQuery}
+                  onChange={(e) => setGcSearchQuery(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white pl-10 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              {/* Category Filter */}
+              <select
+                value={gcSelectedCategory}
+                onChange={(e) => setGcSelectedCategory(e.target.value)}
+                className="bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="all">All Categories</option>
+                {GIFT_CARD_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat} className="capitalize">
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </option>
+                ))}
+              </select>
+
+              {/* Status Filter */}
+              <select
+                value={gcSelectedStatus}
+                onChange={(e) => setGcSelectedStatus(e.target.value)}
+                className="bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        )}
+
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <>
@@ -567,14 +611,14 @@ function AdminGiftCardsPageContent() {
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
                       </tr>
-                    ) : giftCards.length === 0 ? (
+                    ) : filteredGiftCards.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                          No gift cards found. Add one or sync from Reloadly.
+                          No gift cards found.
                         </td>
                       </tr>
                     ) : (
-                      giftCards.map(card => (
+                      filteredGiftCards.map(card => (
                         <tr key={card.id} className="border-b border-border-dark hover:bg-white/5">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
@@ -620,48 +664,6 @@ function AdminGiftCardsPageContent() {
         {/* Products Tab */}
         {activeTab === 'products' && (
           <>
-          {/* Filters */}
-          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {/* Search */}
-              <div className="relative">
-                <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={gcSearchQuery}
-                  onChange={(e) => setGcSearchQuery(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white pl-10 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              {/* Category Filter */}
-              <select
-                value={gcSelectedCategory}
-                onChange={(e) => setGcSelectedCategory(e.target.value)}
-                className="bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="all">All Categories</option>
-                {GIFT_CARD_CATEGORIES.map(cat => (
-                  <option key={cat} value={cat} className="capitalize">
-                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                  </option>
-                ))}
-              </select>
-
-              {/* Status Filter */}
-              <select
-                value={gcSelectedStatus}
-                onChange={(e) => setGcSelectedStatus(e.target.value)}
-                className="bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-
           <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">

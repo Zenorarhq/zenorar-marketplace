@@ -33,9 +33,32 @@ export async function POST(req: NextRequest) {
         [resetToken, resetTokenExpiry, user.id]
       )
 
+      // Fetch branding settings (logo, site name, primary color)
+      const settingsResult = await query(
+        `SELECT key, value FROM site_settings WHERE key IN ('siteName', 'logoUrl', 'site_theme')`
+      )
+      const settings: Record<string, string> = {}
+      for (const row of settingsResult.rows) {
+        try { settings[row.key] = JSON.parse(row.value) } catch { settings[row.key] = row.value }
+      }
+
+      const siteName = settings.siteName || 'Zenorar'
+      const logoUrl = settings.logoUrl || ''
+      let brandColor = '#2563eb'
+      try {
+        const theme = typeof settings.site_theme === 'string' ? JSON.parse(settings.site_theme) : settings.site_theme
+        const data = theme?.value ? (typeof theme.value === 'string' ? JSON.parse(theme.value) : theme.value) : theme
+        if (data?.colors?.primary) brandColor = data.colors.primary
+        else if (data?.primaryColor) brandColor = data.primaryColor
+      } catch {}
+
       // Build reset URL and email
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://zenorahq.com'
       const resetUrl = `${siteUrl}/reset-password?token=${resetToken}`
+
+      const logoHtml = logoUrl
+        ? `<img src="${logoUrl}" alt="${siteName}" style="max-height: 48px; width: auto;" />`
+        : `<h1 style="margin: 0; font-size: 28px; font-weight: 700; color: white;">${siteName.toUpperCase()}</h1>`
 
       const html = `
         <!DOCTYPE html>
@@ -43,22 +66,21 @@ export async function POST(req: NextRequest) {
         <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
         <body style="font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5;">
           <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-            <div style="background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; padding: 40px 20px; text-align: center;">
-              <h1 style="margin: 0; font-size: 32px; font-weight: 700;">ZENORAR</h1>
-              <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Premium Digital Products</p>
+            <div style="background: ${brandColor}; color: white; padding: 32px 20px; text-align: center;">
+              ${logoHtml}
             </div>
             <div style="padding: 40px 30px; background: #ffffff;">
               <h2 style="color: #1f2937; font-size: 24px; margin: 0 0 20px 0;">Password Reset Request</h2>
               <p style="color: #6b7280; font-size: 16px; line-height: 1.5;">Hi <strong>${user.name}</strong>,</p>
               <p style="color: #6b7280; font-size: 16px; line-height: 1.5;">We received a request to reset your password. Click the button below to set a new password:</p>
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${resetUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Reset Password</a>
+                <a href="${resetUrl}" style="display: inline-block; background: ${brandColor}; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Reset Password</a>
               </div>
               <p style="color: #6b7280; font-size: 14px;">If you didn't request a password reset, you can safely ignore this email.</p>
               <p style="color: #6b7280; font-size: 14px;">This link will expire in 1 hour.</p>
             </div>
             <div style="padding: 30px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
-              <p style="margin: 0; color: #9ca3af; font-size: 12px;">&copy; ${new Date().getFullYear()} Zenorar Marketplace. All rights reserved.</p>
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">&copy; ${new Date().getFullYear()} ${siteName}. All rights reserved.</p>
             </div>
           </div>
         </body>
