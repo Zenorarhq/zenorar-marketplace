@@ -41,6 +41,12 @@ function formatDateShort(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+const categoryLabels: Record<string, string> = {
+  GENERAL: 'General', ORDER: 'Order', SHIPPING: 'Shipping',
+  PAYMENT: 'Payment', REFUND: 'Refund', PRODUCT: 'Product',
+  ACCOUNT: 'Account', TECHNICAL: 'Technical', OTHER: 'Other',
+}
+
 export default function TicketsPage() {
   const queryClient = useQueryClient()
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all')
@@ -83,7 +89,7 @@ export default function TicketsPage() {
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ['my-tickets'],
     queryFn: async () => {
-      const result = await ticketsApi.getMyTickets()
+      const result = await ticketsApi.getMyTickets(1, 50)
       if (result.success && result.data) return result.data
       return []
     },
@@ -343,7 +349,7 @@ export default function TicketsPage() {
                           <div className="flex flex-wrap gap-4 text-xs text-slate-500">
                             <span className="flex items-center gap-1">
                               <Icon name="tag" size={14} />
-                              {ticket.category}
+                              {categoryLabels[ticket.category] || ticket.category}
                             </span>
                             <span className="flex items-center gap-1">
                               <Icon name="calendar" size={14} />

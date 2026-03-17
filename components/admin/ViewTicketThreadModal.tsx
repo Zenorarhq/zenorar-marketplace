@@ -32,6 +32,13 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
     }
   }, [isOpen, ticketId])
 
+  // Auto-refresh ticket data while modal is open
+  useEffect(() => {
+    if (!isOpen || !ticketId) return
+    const interval = setInterval(loadTicket, 15000)
+    return () => clearInterval(interval)
+  }, [isOpen, ticketId])
+
   async function loadTicket() {
     if (!ticketId) return
 

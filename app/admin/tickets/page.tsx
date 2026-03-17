@@ -38,24 +38,11 @@ export default function TicketsPage() {
   const { data: tickets = [], isLoading: ticketsLoading, error: ticketsError } = useQuery({
     queryKey: ['admin-tickets'],
     queryFn: async () => {
-      const result = await ticketsApi.list()
+      const result = await ticketsApi.list({ limit: 100 })
       if (result.success && result.data) {
         return result.data
       }
       throw new Error(result.error || 'Failed to load tickets')
-    },
-    refetchInterval: 15000,
-  })
-
-  // Fetch stats with React Query (cached)
-  const { data: stats = { total: 0, byStatus: [], byPriority: [] } } = useQuery({
-    queryKey: ['admin-tickets-stats'],
-    queryFn: async () => {
-      const result = await ticketsApi.getStats()
-      if (result.success && result.data) {
-        return result.data
-      }
-      return { total: 0, byStatus: [], byPriority: [] }
     },
     refetchInterval: 15000,
   })
@@ -79,7 +66,6 @@ export default function TicketsPage() {
       setResolveTicketId(null)
       setResolutionText('')
       queryClient.invalidateQueries({ queryKey: ['admin-tickets'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-tickets-stats'] })
     } else {
       alert(result.error || 'Failed to resolve ticket')
     }
@@ -87,7 +73,6 @@ export default function TicketsPage() {
 
   function loadData() {
     queryClient.invalidateQueries({ queryKey: ['admin-tickets'] })
-    queryClient.invalidateQueries({ queryKey: ['admin-tickets-stats'] })
   }
 
   function handleOpenNewTicket() {
@@ -325,6 +310,22 @@ export default function TicketsPage() {
               Clear filters
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-background-dark border border-border-dark rounded-xl p-4">
+          <p className="text-xs text-slate-500 mb-1">Open Tickets</p>
+          <p className="text-2xl font-bold text-primary">{openTickets}</p>
+        </div>
+        <div className="bg-background-dark border border-border-dark rounded-xl p-4">
+          <p className="text-xs text-slate-500 mb-1">Urgent</p>
+          <p className="text-2xl font-bold text-rose-500">{urgentTickets}</p>
+        </div>
+        <div className="bg-background-dark border border-border-dark rounded-xl p-4">
+          <p className="text-xs text-slate-500 mb-1">Unassigned</p>
+          <p className="text-2xl font-bold text-amber-500">{unassignedTickets}</p>
         </div>
       </div>
 
