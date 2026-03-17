@@ -40,13 +40,6 @@ function formatFileSize(bytes: number): string {
   return `${bytes} B`
 }
 
-// Helper function to get file type from mimeType
-function getFileType(mimeType: string | null | undefined): 'image' | 'document' | 'video' {
-  if (!mimeType) return 'document'
-  if (mimeType.startsWith('image/')) return 'image'
-  if (mimeType.startsWith('video/')) return 'video'
-  return 'document'
-}
 
 export default function AdminLibraryPage() {
   const queryClient = useQueryClient()
@@ -227,7 +220,7 @@ export default function AdminLibraryPage() {
         </div>
 
         {/* Stats Cards - Dashboard Style */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mb-6">
           <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
             <div className="flex items-start justify-between mb-3">
               <p className="text-slate-400 text-xs lg:text-sm">Total Files</p>
@@ -288,6 +281,21 @@ export default function AdminLibraryPage() {
             </p>
             <p className="text-xs">
               <span className="text-slate-500">video files</span>
+            </p>
+          </div>
+
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+            <div className="flex items-start justify-between mb-3">
+              <p className="text-slate-400 text-xs lg:text-sm">Documents</p>
+              <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-green-500/10 text-green-400 flex items-center justify-center">
+                <Icon name="file" size={16} />
+              </div>
+            </div>
+            <p className="text-white text-lg lg:text-2xl font-bold mb-1">
+              {formatNumber(stats?.documentCount || 0)}
+            </p>
+            <p className="text-xs">
+              <span className="text-slate-500">document files</span>
             </p>
           </div>
         </div>
@@ -376,7 +384,7 @@ export default function AdminLibraryPage() {
                         </button>
                         {upload.type === 'image' && (
                         <button
-                          onClick={() => setPreviewingUpload(upload as any)}
+                          onClick={() => { const original = mediaFiles.find(f => f.id === upload.id); if (original) setPreviewingUpload(original); }}
                           className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                           title="View"
                         >
@@ -449,7 +457,9 @@ export default function AdminLibraryPage() {
           <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-[#1f1f1f]">
-              <h3 className="text-white font-semibold text-lg">Edit Image Details</h3>
+              <h3 className="text-white font-semibold text-lg">
+                Edit {editingUpload.type === 'IMAGE' ? 'Image' : editingUpload.type === 'VIDEO' ? 'Video' : 'Document'} Details
+              </h3>
               <button
                 onClick={() => setEditingUpload(null)}
                 className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
