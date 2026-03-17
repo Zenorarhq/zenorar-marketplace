@@ -11,7 +11,7 @@ import Icon from '@/components/ui/Icon'
 import MediaPickerModal from './MediaPickerModal'
 import { MediaFile } from '@/lib/api/media'
 
-// Extend Image extension with alignment attribute
+// Extend Image extension with alignment and size attributes
 const AlignableImage = TiptapImage.extend({
   addAttributes() {
     return {
@@ -21,6 +21,13 @@ const AlignableImage = TiptapImage.extend({
         parseHTML: (element: HTMLElement) => element.getAttribute('data-align') || 'center',
         renderHTML: (attributes: Record<string, string>) => {
           return { 'data-align': attributes['data-align'] || 'center' }
+        },
+      },
+      'data-size': {
+        default: 'full',
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-size') || 'full',
+        renderHTML: (attributes: Record<string, string>) => {
+          return { 'data-size': attributes['data-size'] || 'full' }
         },
       },
     }
@@ -94,6 +101,11 @@ export default function BlogEditor({ content, onChange, placeholder = 'Start wri
     editor.chain().focus().updateAttributes('image', { 'data-align': align }).run()
   }, [editor])
 
+  const setImageSize = useCallback((size: string) => {
+    if (!editor) return
+    editor.chain().focus().updateAttributes('image', { 'data-size': size }).run()
+  }, [editor])
+
   const setLink = useCallback(() => {
     if (!editor) return
     const previousUrl = editor.getAttributes('link').href
@@ -108,20 +120,36 @@ export default function BlogEditor({ content, onChange, placeholder = 'Start wri
 
   if (!editor) return null
 
-  const currentAlign = editor.isActive('image') ? (editor.getAttributes('image')['data-align'] || 'center') : null
+  const isImageActive = editor.isActive('image')
+  const currentAlign = isImageActive ? (editor.getAttributes('image')['data-align'] || 'center') : null
+  const currentSize = isImageActive ? (editor.getAttributes('image')['data-size'] || 'full') : null
 
   return (
     <div ref={editorWrapperRef} className="border border-[#2a2a2a] rounded-xl overflow-hidden bg-[#1a1a1a] relative">
-      {/* Floating image alignment toolbar */}
-      {imageToolbar && currentAlign && (
+      {/* Floating image toolbar — alignment + size */}
+      {imageToolbar && isImageActive && (
         <div
           className="absolute z-10 flex items-center gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-1 shadow-xl"
-          style={{ top: imageToolbar.top, left: imageToolbar.left }}
+          style={{ top: Math.max(4, imageToolbar.top), left: Math.max(4, Math.min(imageToolbar.left, 300)) }}
         >
+          {/* Size */}
+          <ToolbarButton onClick={() => setImageSize('small')} active={currentSize === 'small'} title="Small">
+            <span className="text-[10px] font-medium">S</span>
+          </ToolbarButton>
+          <ToolbarButton onClick={() => setImageSize('medium')} active={currentSize === 'medium'} title="Medium">
+            <span className="text-[10px] font-medium">M</span>
+          </ToolbarButton>
+          <ToolbarButton onClick={() => setImageSize('full')} active={currentSize === 'full'} title="Full Width">
+            <span className="text-[10px] font-medium">F</span>
+          </ToolbarButton>
+
+          <div className="w-px h-4 bg-[#2a2a2a] mx-0.5" />
+
+          {/* Alignment */}
           <ToolbarButton onClick={() => setImageAlign('left')} active={currentAlign === 'left'} title="Float Left">
             <Icon name="text-align-left" size={14} />
           </ToolbarButton>
-          <ToolbarButton onClick={() => setImageAlign('center')} active={currentAlign === 'center'} title="Full Width">
+          <ToolbarButton onClick={() => setImageAlign('center')} active={currentAlign === 'center'} title="Center">
             <Icon name="text-align-center" size={14} />
           </ToolbarButton>
           <ToolbarButton onClick={() => setImageAlign('right')} active={currentAlign === 'right'} title="Float Right">

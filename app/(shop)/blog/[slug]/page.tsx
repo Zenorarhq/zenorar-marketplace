@@ -171,31 +171,49 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </div>
           )}
 
-          {/* Image float styles — newspaper layout (md+ only, full-width on mobile) */}
+          {/* Image size + float styles — newspaper layout (md+ only, full-width on mobile) */}
           <style dangerouslySetInnerHTML={{ __html: `
+            /* Image sizes */
+            .blog-content img[data-size="small"] { max-width: 280px !important; }
+            .blog-content img[data-size="medium"] { max-width: 50% !important; }
+            .blog-content img[data-size="full"] { width: 100% !important; max-width: 100% !important; }
+
+            /* Float alignment — tablet+ only */
             @media (min-width: 768px) {
               .blog-content img[data-align="left"] {
-                float: left;
-                margin-right: 1.5rem;
-                margin-bottom: 1rem;
-                margin-top: 0.5rem;
-                max-width: 45%;
-                margin-left: 0;
+                float: left !important;
+                display: inline !important;
+                margin-right: 1.5rem !important;
+                margin-bottom: 1rem !important;
+                margin-top: 0.5rem !important;
+                margin-left: 0 !important;
               }
               .blog-content img[data-align="right"] {
-                float: right;
-                margin-left: 1.5rem;
-                margin-bottom: 1rem;
-                margin-top: 0.5rem;
-                max-width: 45%;
-                margin-right: 0;
+                float: right !important;
+                display: inline !important;
+                margin-left: 1.5rem !important;
+                margin-bottom: 1rem !important;
+                margin-top: 0.5rem !important;
+                margin-right: 0 !important;
               }
             }
             .blog-content img[data-align="center"] {
-              display: block;
-              margin-left: auto;
-              margin-right: auto;
-              width: 100%;
+              display: block !important;
+              float: none !important;
+              margin-left: auto !important;
+              margin-right: auto !important;
+            }
+
+            /* Clearfix after floated content */
+            .blog-content::after {
+              content: "";
+              display: table;
+              clear: both;
+            }
+
+            /* Mobile: force full-width regardless of size/align */
+            @media (max-width: 767px) {
+              .blog-content img { width: 100% !important; max-width: 100% !important; float: none !important; margin-left: 0 !important; margin-right: 0 !important; }
             }
           `}} />
 
