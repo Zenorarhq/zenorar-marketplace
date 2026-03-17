@@ -470,7 +470,7 @@ async function seedDefaultPlans(): Promise<{ synced: number }> {
     try {
       await query(
         `INSERT INTO virtual_number_plans
-           (name, slug, price_monthly, sms_included, voice_minutes_included, validity_days, is_active)
+           (name, slug, base_price, sms_included, voice_minutes_included, duration_days, is_active)
          VALUES ($1, $2, $3, $4, $5, $6, true)`,
         [plan.name, plan.slug, plan.priceMonthly, plan.smsIncluded, plan.voiceMinutesIncluded, plan.validityDays]
       )

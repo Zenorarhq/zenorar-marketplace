@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
          COUNT(*) as count,
          COUNT(*) FILTER (WHERE uvn.status = 'active') as active
        FROM user_virtual_numbers uvn
-       LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+       LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id::text
        GROUP BY vnp.id, vnp.name, vnp.base_price
        ORDER BY count DESC`
     )
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
          COUNT(*) as total_orders,
          SUM(vnp.base_price) as total_revenue
        FROM user_virtual_numbers uvn
-       LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+       LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id::text
        WHERE uvn.created_at > NOW() - INTERVAL '30 days'`
     )
 

@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
        FROM user_virtual_numbers uvn
        LEFT JOIN users u ON uvn.user_id = u.id
        LEFT JOIN virtual_number_countries vnc ON uvn.country_id = vnc.id
-       LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id
+       LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id::text
        ${whereClause}
        ORDER BY uvn.created_at DESC
        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,

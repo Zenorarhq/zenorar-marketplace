@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
          COUNT(uvn.id) as total_subscriptions,
          COUNT(uvn.id) FILTER (WHERE uvn.status = 'active') as active_subscriptions
        FROM virtual_number_plans vnp
-       LEFT JOIN user_virtual_numbers uvn ON uvn.plan_id = vnp.id
+       LEFT JOIN user_virtual_numbers uvn ON uvn.plan_id = vnp.id::text
        GROUP BY vnp.id
        ORDER BY vnp.display_order ASC, vnp.base_price ASC`
     )
