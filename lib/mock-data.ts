@@ -6,7 +6,6 @@ export const navCategories: NavItem[] = [
   { label: 'eSIMs', href: '/esim' },
   { label: 'Cards', href: '/cards' },
   { label: 'Gift Cards', href: '/gift-cards' },
-  { label: 'Blog', href: '/blog' },
 ]
 
 export const recommendedProducts: Product[] = [
