@@ -171,13 +171,41 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </div>
           )}
 
+          {/* Image float styles — newspaper layout (md+ only, full-width on mobile) */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            @media (min-width: 768px) {
+              .blog-content img[data-align="left"] {
+                float: left;
+                margin-right: 1.5rem;
+                margin-bottom: 1rem;
+                margin-top: 0.5rem;
+                max-width: 45%;
+                margin-left: 0;
+              }
+              .blog-content img[data-align="right"] {
+                float: right;
+                margin-left: 1.5rem;
+                margin-bottom: 1rem;
+                margin-top: 0.5rem;
+                max-width: 45%;
+                margin-right: 0;
+              }
+            }
+            .blog-content img[data-align="center"] {
+              display: block;
+              margin-left: auto;
+              margin-right: auto;
+              width: 100%;
+            }
+          `}} />
+
           {/* Content */}
           <div
-            className="prose prose-invert prose-lg max-w-none break-words overflow-hidden
+            className="blog-content prose prose-invert prose-lg max-w-none break-words overflow-hidden
               prose-headings:text-white prose-headings:font-bold
               prose-p:text-slate-300 prose-p:leading-relaxed
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-              prose-img:rounded-xl prose-img:mx-auto
+              prose-img:rounded-xl
               prose-blockquote:border-primary prose-blockquote:text-slate-400
               prose-strong:text-white
               prose-code:text-primary prose-code:bg-[#1a1a1a] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded

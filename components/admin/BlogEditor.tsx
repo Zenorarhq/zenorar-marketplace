@@ -2,14 +2,30 @@
 
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Image from '@tiptap/extension-image'
+import TiptapImage from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Icon from '@/components/ui/Icon'
 import MediaPickerModal from './MediaPickerModal'
 import { MediaFile } from '@/lib/api/media'
+
+// Extend Image extension with alignment attribute
+const AlignableImage = TiptapImage.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      'data-align': {
+        default: 'center',
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-align') || 'center',
+        renderHTML: (attributes: Record<string, string>) => {
+          return { 'data-align': attributes['data-align'] || 'center' }
+        },
+      },
+    }
+  },
+})
 
 interface BlogEditorProps {
   content: string
@@ -19,13 +35,15 @@ interface BlogEditorProps {
 
 export default function BlogEditor({ content, onChange, placeholder = 'Start writing your blog post...' }: BlogEditorProps) {
   const [showMediaPicker, setShowMediaPicker] = useState(false)
+  const [imageToolbar, setImageToolbar] = useState<{ top: number; left: number } | null>(null)
+  const editorWrapperRef = useRef<HTMLDivElement>(null)
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3, 4] },
       }),
-      Image.configure({ inline: false, allowBase64: false }),
+      AlignableImage.configure({ inline: false, allowBase64: false }),
       Link.configure({ openOnClick: false, autolink: true }),
       Placeholder.configure({ placeholder }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
@@ -38,6 +56,22 @@ export default function BlogEditor({ content, onChange, placeholder = 'Start wri
       attributes: {
         class: 'prose prose-invert max-w-none min-h-[400px] focus:outline-none px-4 py-3',
       },
+    },
+    onSelectionUpdate: ({ editor }) => {
+      if (editor.isActive('image') && editorWrapperRef.current) {
+        // Find the selected image element and position toolbar above it
+        const imgEl = editorWrapperRef.current.querySelector('img.ProseMirror-selectednode') as HTMLElement
+        if (imgEl) {
+          const wrapperRect = editorWrapperRef.current.getBoundingClientRect()
+          const imgRect = imgEl.getBoundingClientRect()
+          setImageToolbar({
+            top: imgRect.top - wrapperRect.top - 44,
+            left: imgRect.left - wrapperRect.left + imgRect.width / 2 - 60,
+          })
+          return
+        }
+      }
+      setImageToolbar(null)
     },
   })
 
@@ -55,6 +89,11 @@ export default function BlogEditor({ content, onChange, placeholder = 'Start wri
     setShowMediaPicker(false)
   }, [editor])
 
+  const setImageAlign = useCallback((align: string) => {
+    if (!editor) return
+    editor.chain().focus().updateAttributes('image', { 'data-align': align }).run()
+  }, [editor])
+
   const setLink = useCallback(() => {
     if (!editor) return
     const previousUrl = editor.getAttributes('link').href
@@ -69,8 +108,28 @@ export default function BlogEditor({ content, onChange, placeholder = 'Start wri
 
   if (!editor) return null
 
+  const currentAlign = editor.isActive('image') ? (editor.getAttributes('image')['data-align'] || 'center') : null
+
   return (
-    <div className="border border-[#2a2a2a] rounded-xl overflow-hidden bg-[#1a1a1a]">
+    <div ref={editorWrapperRef} className="border border-[#2a2a2a] rounded-xl overflow-hidden bg-[#1a1a1a] relative">
+      {/* Floating image alignment toolbar */}
+      {imageToolbar && currentAlign && (
+        <div
+          className="absolute z-10 flex items-center gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-1 shadow-xl"
+          style={{ top: imageToolbar.top, left: imageToolbar.left }}
+        >
+          <ToolbarButton onClick={() => setImageAlign('left')} active={currentAlign === 'left'} title="Float Left">
+            <Icon name="text-align-left" size={14} />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => setImageAlign('center')} active={currentAlign === 'center'} title="Full Width">
+            <Icon name="text-align-center" size={14} />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => setImageAlign('right')} active={currentAlign === 'right'} title="Float Right">
+            <Icon name="text-align-right" size={14} />
+          </ToolbarButton>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 px-3 py-2 border-b border-[#2a2a2a] bg-[#141414]">
         {/* Text formatting */}
