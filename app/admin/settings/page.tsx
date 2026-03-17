@@ -556,6 +556,9 @@ export default function AdminSettingsPage() {
           promoBannerCode: d.promoBannerCode ?? prev.promoBannerCode,
         }))
       }
+    }).catch((err) => {
+      console.error('Failed to load general settings:', err)
+    }).finally(() => {
       setLoadedGroups(prev => new Set(prev).add('general'))
     })
   }, [])
@@ -574,6 +577,9 @@ export default function AdminSettingsPage() {
           ipWhitelist: d.ipWhitelist ?? prev.ipWhitelist,
         }))
       }
+    }).catch((err) => {
+      console.error('Failed to load security settings:', err)
+    }).finally(() => {
       setLoadedGroups(prev => new Set(prev).add('security'))
     })
   }, [])
@@ -593,6 +599,9 @@ export default function AdminSettingsPage() {
           slackWebhook: d.slackWebhook ?? prev.slackWebhook,
         }))
       }
+    }).catch((err) => {
+      console.error('Failed to load notification settings:', err)
+    }).finally(() => {
       setLoadedGroups(prev => new Set(prev).add('notification'))
     })
     // Load sent notifications
@@ -666,6 +675,9 @@ export default function AdminSettingsPage() {
           bankInstructions: d.bankInstructions ?? prev.bankInstructions,
         }))
       }
+    }).catch((err) => {
+      console.error('Failed to load payment settings:', err)
+    }).finally(() => {
       setLoadedGroups(prev => new Set(prev).add('payment'))
     })
     // Load API settings (Exchange Rates, eSIM, Virtual Numbers)
@@ -783,6 +795,9 @@ export default function AdminSettingsPage() {
           fivesimApiKey: d.fivesimApiKey ?? prev.fivesimApiKey,
         }))
       }
+    }).catch((err) => {
+      console.error('Failed to load API settings:', err)
+    }).finally(() => {
       setLoadedGroups(prev => new Set(prev).add('api'))
     })
     // Load cron settings
@@ -794,6 +809,10 @@ export default function AdminSettingsPage() {
           cronSecret: d.cronSecret ?? prev.cronSecret,
         }))
       }
+    }).catch((err) => {
+      console.error('Failed to load cron settings:', err)
+    }).finally(() => {
+      setLoadedGroups(prev => new Set(prev).add('cron'))
     })
     // Load referral settings
     settingsApi.getSettingsByGroup('referral').then((res) => {
@@ -806,6 +825,9 @@ export default function AdminSettingsPage() {
           minFirstPurchase: d.minFirstPurchase ?? prev.minFirstPurchase,
         }))
       }
+    }).catch((err) => {
+      console.error('Failed to load referral settings:', err)
+    }).finally(() => {
       setLoadedGroups(prev => new Set(prev).add('referral'))
     })
     // Load virtual number pricing settings
@@ -813,8 +835,9 @@ export default function AdminSettingsPage() {
       if (res.success && res.data?.pricing) {
         setVirtualNumberPricing(res.data.pricing)
       }
-      setLoadedGroups(prev => new Set(prev).add('virtualNumberPricing'))
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('Failed to load virtual number pricing:', err)
+    }).finally(() => {
       setLoadedGroups(prev => new Set(prev).add('virtualNumberPricing'))
     })
     // Load marketing settings
@@ -830,6 +853,9 @@ export default function AdminSettingsPage() {
           customBodyCode: d.customBodyCode ?? prev.customBodyCode,
         }))
       }
+    }).catch((err) => {
+      console.error('Failed to load marketing settings:', err)
+    }).finally(() => {
       setLoadedGroups(prev => new Set(prev).add('marketing'))
     })
   }, [])
@@ -847,8 +873,9 @@ export default function AdminSettingsPage() {
           return updated
         })
       }
-      setLoadedGroups(prev => new Set(prev).add('seo'))
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('Failed to load SEO settings:', err)
+    }).finally(() => {
       setLoadedGroups(prev => new Set(prev).add('seo'))
     })
   }, [])
