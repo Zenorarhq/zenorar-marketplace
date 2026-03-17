@@ -44,6 +44,7 @@ const navItems = [
   { href: '/admin/discounts', label: 'Discounts', icon: 'tag', permission: 'view_products' },
   { href: '/admin/finance', label: 'Finance', icon: 'wallet', permission: 'view_order_analytics' },
   { href: '/admin/wallets', label: 'Wallets', icon: 'credit-card', permission: 'manage_wallets' },
+  { href: '/admin/blog', label: 'Blog', icon: 'note', permission: 'manage_content' },
   { href: '/admin/frontend', label: 'Page Builder', icon: 'layers', permission: 'manage_content' },
   { href: '/admin/library', label: 'Upload Library', icon: 'upload', permission: 'manage_content' },
   { href: '/admin/chat', label: 'Live Chat', icon: 'chat', permission: 'view_chat' },
