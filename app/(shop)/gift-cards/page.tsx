@@ -71,26 +71,6 @@ export default function GiftCardsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Test mode state
-  const [testPurchasing, setTestPurchasing] = useState(false)
-  const handleTestGiftCardPurchase = async () => {
-    setTestPurchasing(true)
-    try {
-      const token = localStorage.getItem('auth_token')
-      const res = await fetch('/api/gift-cards/test-purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ brand: 'Test Gift Card', denomination: 25 }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        router.push('/profile/library?filter=gift-cards')
-      } else {
-        alert(data.error || 'Failed to create test gift card')
-      }
-    } catch { alert('Failed to create test gift card') }
-    finally { setTestPurchasing(false) }
-  }
 
   // Fetch gift cards from API with React Query caching
   const { data: giftCardsData, isLoading: loading, isError, error } = useQuery({
@@ -464,7 +444,7 @@ export default function GiftCardsPage() {
       </div>
 
       {/* Sandbox Mode Banner */}
-      <TestModeBanner productType="gift_card" onTestPurchase={handleTestGiftCardPurchase} isPurchasing={testPurchasing} />
+      <TestModeBanner />
 
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-6 lg:p-12 mb-8 lg:mb-12">

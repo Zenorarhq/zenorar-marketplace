@@ -12,6 +12,7 @@ import { getProvider } from '@/lib/cards/providers'
 import type { CardProvider, CardType, CardBrand } from '@/lib/cards/types'
 import { executeQuery } from '@/lib/db-helpers'
 import { query } from '@/lib/db'
+import { isTestModeEnabled } from '@/lib/test-mode'
 
 /**
  * Get or create the Virtual Card product
@@ -246,6 +247,42 @@ export async function POST(request: NextRequest) {
        )`,
       [walletBalanceId, totalCost, balanceBefore, balanceAfter, `${cardDisplayName} - Order #${finalOrderNumber}`, orderId]
     )
+
+    // In sandbox mode, skip real provider and use mock data
+    const testMode = await isTestModeEnabled()
+    if (testMode) {
+      const mockResult = {
+        success: true,
+        cardId: `TEST-${Date.now()}`,
+        cardNumber: '4111111111111111',
+        cvv: '123',
+        expiry: `12/${new Date().getFullYear() + 3}`,
+        lastFour: '1111',
+        balance: cardType === 'virtual' ? (denomination || 0) : 0,
+      }
+
+      const expiresAt = new Date()
+      expiresAt.setFullYear(expiresAt.getFullYear() + (cardType === 'instant' ? 1 : 3))
+
+      const card = await createCardRecord(
+        user.id, 'test' as CardProvider, mockResult.cardId, cardType, cardBrand,
+        mockResult.lastFour, mockResult.cardNumber, mockResult.cvv, mockResult.expiry,
+        mockResult.balance, cardType === 'instant' ? denomination ?? null : null,
+        isPremium, expiresAt, { nickname, orderId }
+      )
+
+      await recordTransaction(card.id, user.id, 'test' as CardProvider, 'creation', totalCost, 0, mockResult.cardId, undefined, undefined, `Test ${cardType} card - Order #${finalOrderNumber}`)
+      await query(`UPDATE orders SET status = 'CONFIRMED', "updatedAt" = NOW() WHERE id = $1`, [orderId])
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          cardId: card.id, orderId, orderNumber: finalOrderNumber,
+          cardType, cardBrand, lastFour: mockResult.lastFour,
+          balance: mockResult.balance, totalCost, newWalletBalance: balanceAfter,
+        }
+      })
+    }
 
     // Get provider implementation
     const provider = getProvider(providerName)

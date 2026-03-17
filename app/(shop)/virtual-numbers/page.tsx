@@ -255,10 +255,7 @@ export default function VirtualNumbersPage() {
   const [otpTestMode, setOtpTestMode] = useState(false)
   const [togglingTestMode, setTogglingTestMode] = useState(false)
 
-  // Monthly test mode state
-  const [creatingTestNumber, setCreatingTestNumber] = useState(false)
-
-  // Global test mode check (controls visibility of ALL test features on this page)
+  // Global test mode check (controls visibility of OTP test features)
   const [globalTestEnabled, setGlobalTestEnabled] = useState(false)
   useEffect(() => {
     if (!isAuthenticated) return
@@ -375,30 +372,6 @@ export default function VirtualNumbersPage() {
       console.error('Error toggling test mode:', error)
     } finally {
       setTogglingTestMode(false)
-    }
-  }
-
-  // Create a test virtual number for testing settings/SMS flows
-  const handleCreateTestNumber = async () => {
-    if (!isAuthenticated) return
-    setCreatingTestNumber(true)
-    try {
-      const token = localStorage.getItem('auth_token')
-      const res = await fetch('/api/virtual-numbers/test-number', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (data.success && data.data?.id) {
-        router.push(`/profile/numbers/${data.data.id}`)
-      } else {
-        alert(data.error || 'Failed to create test number')
-      }
-    } catch (error) {
-      console.error('Error creating test number:', error)
-      alert('Failed to create test number')
-    } finally {
-      setCreatingTestNumber(false)
     }
   }
 
@@ -869,7 +842,7 @@ export default function VirtualNumbersPage() {
       {activeTab === 'monthly' && (
         <>
           {/* Sandbox Mode Banner */}
-          <TestModeBanner productType="virtual_number" onTestPurchase={handleCreateTestNumber} isPurchasing={creatingTestNumber} />
+          <TestModeBanner />
 
           {/* Country Filter */}
           <div className="mb-10">

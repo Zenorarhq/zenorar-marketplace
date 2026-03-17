@@ -66,27 +66,6 @@ export default function EsimPage() {
   const [countryPage, setCountryPage] = useState(1)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
 
-  // Test mode state
-  const [testPurchasing, setTestPurchasing] = useState(false)
-
-  const handleTestEsimPurchase = async () => {
-    setTestPurchasing(true)
-    try {
-      const token = localStorage.getItem('auth_token')
-      const res = await fetch('/api/esim/test-purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (data.success) {
-        router.push('/profile/library?filter=esim')
-      } else {
-        alert(data.error || 'Failed to create test eSIM')
-      }
-    } catch { alert('Failed to create test eSIM') }
-    finally { setTestPurchasing(false) }
-  }
-
   // Wallet payment state (matching gift cards pattern)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [processingPayment, setProcessingPayment] = useState<string | null>(null)
@@ -617,7 +596,7 @@ export default function EsimPage() {
       </div>
 
       {/* Sandbox Mode Banner */}
-      <TestModeBanner productType="esim" onTestPurchase={handleTestEsimPurchase} isPurchasing={testPurchasing} />
+      <TestModeBanner />
 
       {/* Local eSIMs Tab */}
       {activeTab === 'local' && (

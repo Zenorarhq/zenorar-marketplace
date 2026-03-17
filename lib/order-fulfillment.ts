@@ -23,6 +23,7 @@ import {
 } from './cards/service'
 import { getProvider } from './cards/providers'
 import type { CardProvider, CardType, CardBrand } from './cards/types'
+import { isTestModeEnabled } from './test-mode'
 
 const LICENSE_KEY_PREFIX = 'ZNRSCR'
 
@@ -314,12 +315,27 @@ async function processEsimItem(
       planId = planByNameResult.rows[0].id
     }
 
-    const provisionResult = await esimProvisioningService.provisionEsim(
-      userId,
-      planId,
-      orderId,
-      item.item_id
-    )
+    let provisionResult: any
+
+    // In sandbox mode, create mock eSIM directly (no real provider call)
+    const testMode = await isTestModeEnabled()
+    if (testMode) {
+      const testIccid = `8901${Math.floor(10000000000000 + Math.random() * 90000000000000)}`
+      const testQrCode = `LPA:1$test.smdp.example.com$TEST${Date.now()}`
+      const mockResult = await query(
+        `INSERT INTO user_esims (user_id, plan_id, order_id, order_item_id, source_type, iccid, smdp_address, qr_code_data, activation_code, status, delivery_method, delivered_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, 'test', $5, 'test.smdp.example.com', $6, $7, 'active', 'qr', NOW(), NOW(), NOW()) RETURNING id`,
+        [userId, planId, orderId, item.item_id, testIccid, testQrCode, `TEST-${testIccid.slice(-8)}`]
+      )
+      provisionResult = { success: true, userEsimId: mockResult.rows[0].id }
+    } else {
+      provisionResult = await esimProvisioningService.provisionEsim(
+        userId,
+        planId,
+        orderId,
+        item.item_id
+      )
+    }
 
     if (!provisionResult.success) {
       throw new Error(provisionResult.error || 'eSIM provisioning failed')
@@ -441,38 +457,53 @@ async function processCardItem(
     const denomination = cardType === 'instant' ? (metadata.denomination || price) : undefined
     const isPremium = metadata.isPremium || providerName === 'lithic'
 
-    // Get provider pricing
-    const pricing = await getProviderPricing(providerName)
-    if (!pricing || !pricing.isEnabled) {
-      throw new Error('Card provider is not available')
-    }
-
-    // Get provider implementation
-    const provider = getProvider(providerName)
-    if (!provider) {
-      throw new Error(`Provider ${providerName} not found`)
-    }
-
-    // Create the card with the provider
-    const result = await provider.createCard({
-      userId,
-      currency: 'USD',
-      denomination,
-      cardBrand
-    })
-
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to create card')
-    }
-
-    // Calculate expiry date (3 years for virtual, 1 year for instant)
+    let result: any
     const expiresAt = new Date()
     expiresAt.setFullYear(expiresAt.getFullYear() + (cardType === 'instant' ? 1 : 3))
+
+    // Get provider pricing (needed for cost calculation below)
+    const pricing = await getProviderPricing(providerName).catch(() => null)
+
+    // In sandbox mode, use mock card data
+    const testMode = await isTestModeEnabled()
+    if (testMode) {
+      result = {
+        success: true,
+        cardId: `TEST-${Date.now()}`,
+        cardNumber: '4111111111111111',
+        cvv: '123',
+        expiry: `12/${new Date().getFullYear() + 3}`,
+        lastFour: '1111',
+        balance: cardType === 'virtual' ? (denomination || 0) : 0,
+      }
+    } else {
+      if (!pricing || !pricing.isEnabled) {
+        throw new Error('Card provider is not available')
+      }
+
+      // Get provider implementation
+      const provider = getProvider(providerName)
+      if (!provider) {
+        throw new Error(`Provider ${providerName} not found`)
+      }
+
+      // Create the card with the provider
+      result = await provider.createCard({
+        userId,
+        currency: 'USD',
+        denomination,
+        cardBrand
+      })
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create card')
+      }
+    }
 
     // Save card to database
     const card = await createCardRecord(
       userId,
-      providerName,
+      testMode ? 'test' as CardProvider : providerName,
       result.cardId || null,
       cardType,
       cardBrand,
@@ -489,16 +520,16 @@ async function processCardItem(
 
     // Record the creation transaction
     const totalCost = cardType === 'instant'
-      ? calculateInstantCardPrice(denomination!, pricing.instantMarkupPercent)
-      : pricing.creationFee
+      ? calculateInstantCardPrice(denomination!, pricing?.instantMarkupPercent || 0)
+      : (pricing?.creationFee || 0)
 
     await recordTransaction(
       card.id,
       userId,
-      providerName,
+      testMode ? 'test' as CardProvider : providerName,
       'creation',
       totalCost,
-      cardType === 'virtual' ? pricing.creationFee : 0,
+      cardType === 'virtual' ? (pricing?.creationFee || 0) : 0,
       result.cardId,
       undefined,
       undefined,
@@ -753,13 +784,32 @@ async function processGiftCardItem(
       reservedCodeId
     })
 
-    const provisionResult = await provisionGiftCard(
-      giftCardId,
-      denomination,
-      userId,
-      orderId,
-      reservedCodeId
-    )
+    let provisionResult: any
+
+    // In sandbox mode, create mock gift card directly (no real provider call)
+    const testMode = await isTestModeEnabled()
+    if (testMode) {
+      const testCode = `TEST-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+      const testPin = Math.floor(1000 + Math.random() * 9000).toString()
+      const gcResult = await query(
+        `SELECT brand, category, image_url FROM gift_cards WHERE id = $1`, [giftCardId]
+      )
+      const gc = gcResult.rows[0] || {}
+      const mockResult = await query(
+        `INSERT INTO user_gift_cards (user_id, gift_card_id, order_id, brand, category, image_url, denomination, code, pin, status, source, delivered_at, created_at)
+         VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, $8, $9, 'delivered', 'test', NOW(), NOW()) RETURNING id`,
+        [userId, giftCardId, orderId, gc.brand || 'Test Brand', gc.category || 'Test', gc.image_url || null, denomination, testCode, testPin]
+      )
+      provisionResult = { success: true, userGiftCardId: mockResult.rows[0].id }
+    } else {
+      provisionResult = await provisionGiftCard(
+        giftCardId,
+        denomination,
+        userId,
+        orderId,
+        reservedCodeId
+      )
+    }
 
     console.log('[OrderFulfillment] provisionGiftCard result:', {
       success: provisionResult.success,
@@ -894,20 +944,44 @@ async function processVirtualNumberItem(
       throw new Error(`Invalid country ID: ${countryId}`)
     }
 
-    const provisionResult = await virtualNumberService.provisionNumber(
-      userId,
-      countryId,
-      planId,
-      phoneNumber,
-      orderId,
-      numberType,
-      amountPaid,
-      minuteTier,
-      minuteTierPrice,
-      durationDays,
-      smsLimit,
-      minuteIncluded
-    )
+    let provisionResult: any
+
+    // In sandbox mode, create mock record directly (no real provider call)
+    const testMode = await isTestModeEnabled()
+    if (testMode || metadata.test_mode === 'true') {
+      const mockResult = await query(
+        `INSERT INTO user_virtual_numbers (
+           user_id, phone_number, phone_number_display, number_type, provider,
+           country_id, status, plan_id, plan_category, plan_duration_days, sms_limit,
+           expires_at, order_id, created_at, updated_at
+         ) VALUES (
+           $1, $2, $3, $4, 'test',
+           $5, 'active', $6, $6, $7, $8,
+           NOW() + INTERVAL '1 day' * $7, $9, NOW(), NOW()
+         ) RETURNING id, phone_number_display`,
+        [userId, phoneNumber, phoneNumber, numberType, countryId, planId, durationDays || 30, smsLimit || 500, orderId]
+      )
+      provisionResult = {
+        success: true,
+        userVirtualNumberId: mockResult.rows[0].id,
+        phoneNumberDisplay: mockResult.rows[0].phone_number_display
+      }
+    } else {
+      provisionResult = await virtualNumberService.provisionNumber(
+        userId,
+        countryId,
+        planId,
+        phoneNumber,
+        orderId,
+        numberType,
+        amountPaid,
+        minuteTier,
+        minuteTierPrice,
+        durationDays,
+        smsLimit,
+        minuteIncluded
+      )
+    }
 
     if (!provisionResult.success) {
       throw new Error(provisionResult.error || 'Virtual number provisioning failed')

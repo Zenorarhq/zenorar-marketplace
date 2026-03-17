@@ -72,27 +72,6 @@ export default function CardsPage() {
   const [selectedDenomination, setSelectedDenomination] = useState<number | null>(null)
   const [selectedBrand, setSelectedBrand] = useState<'visa' | 'mastercard'>('visa')
 
-  // Test mode state
-  const [testPurchasing, setTestPurchasing] = useState(false)
-  const handleTestCardPurchase = async (cardType: 'virtual' | 'instant' = 'virtual') => {
-    setTestPurchasing(true)
-    try {
-      const token = localStorage.getItem('auth_token')
-      const res = await fetch('/api/cards/test-purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ cardType, denomination: 25 }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        router.push('/profile/library?filter=cards')
-      } else {
-        alert(data.error || 'Failed to create test card')
-      }
-    } catch { alert('Failed to create test card') }
-    finally { setTestPurchasing(false) }
-  }
-
   // Payment state
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [processingPayment, setProcessingPayment] = useState<string | null>(null) // Track specific card being processed
@@ -325,11 +304,7 @@ export default function CardsPage() {
       </div>
 
       {/* Sandbox Mode Banner */}
-      <TestModeBanner
-        productType={activeTab === 'instant' ? 'instant_card' : 'virtual_card'}
-        onTestPurchase={() => handleTestCardPurchase(activeTab)}
-        isPurchasing={testPurchasing}
-      />
+      <TestModeBanner />
 
       {/* Page Header */}
       <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-6 lg:p-12 mb-8 lg:mb-12">

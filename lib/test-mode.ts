@@ -44,7 +44,7 @@ export async function canUseTestMode(userRole?: string): Promise<boolean> {
 
 /**
  * Clean up ALL test data for a specific user
- * Refunds wallet for test purchases, then deletes test records
+ * Refunds wallet silently and deletes every trace of the sandbox session
  */
 export async function cleanupTestDataForUser(userId: string): Promise<{ deleted: number }> {
   let deleted = 0
@@ -60,7 +60,7 @@ export async function cleanupTestDataForUser(userId: string): Promise<{ deleted:
       [userId]
     )
 
-    // Refund wallet for each test order
+    // Refund wallet silently (no audit trail — clean slate)
     for (const order of testOrders.rows) {
       const total = parseFloat(order.total)
       if (total > 0) {
@@ -68,49 +68,53 @@ export async function cleanupTestDataForUser(userId: string): Promise<{ deleted:
           `UPDATE wallet_balances SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2`,
           [total, userId]
         )
-        // Record refund transaction for audit trail
-        const wb = await query(`SELECT id, balance FROM wallet_balances WHERE user_id = $1`, [userId])
-        const newBal = parseFloat(wb.rows[0]?.balance || 0)
-        await query(
-          `INSERT INTO wallet_transactions (id, wallet_balance_id, type, amount, balance_before, balance_after, description, metadata, created_at)
-           VALUES (gen_random_uuid()::text, $1, 'CREDIT', $2, $3, $4, 'Sandbox mode cleanup refund', $5, NOW())`,
-          [wb.rows[0]?.id, total, newBal - total, newBal, JSON.stringify({ reference_type: 'test_mode_cleanup', order_id: order.id })]
-        )
       }
     }
 
-    // Delete test virtual numbers + their messages
+    // Delete all test wallet transactions (DEBIT from purchases + any CREDIT refunds)
+    await query(
+      `DELETE FROM wallet_transactions
+       WHERE wallet_balance_id = (SELECT id FROM wallet_balances WHERE user_id = $1)
+       AND metadata->>'test_mode' = 'true'`,
+      [userId]
+    )
+    // Also delete cleanup refund transactions from previous cleanups
+    await query(
+      `DELETE FROM wallet_transactions
+       WHERE wallet_balance_id = (SELECT id FROM wallet_balances WHERE user_id = $1)
+       AND metadata->>'reference_type' = 'test_mode_cleanup'`,
+      [userId]
+    )
+
+    // Delete test virtual numbers (messages auto-cascade via FK)
     const vnResult = await query(
       `DELETE FROM user_virtual_numbers WHERE user_id = $1 AND provider = 'test' RETURNING id`,
       [userId]
     )
     deleted += vnResult.rowCount || 0
 
-    // Delete test eSIMs (tagged by source_type = 'test')
+    // Delete test eSIMs
     const esimResult = await query(
       `DELETE FROM user_esims WHERE user_id = $1 AND source_type = 'test' RETURNING id`,
       [userId]
     )
     deleted += esimResult.rowCount || 0
 
-    // Delete test gift cards (tagged by source = 'test')
+    // Delete test gift cards
     const gcResult = await query(
       `DELETE FROM user_gift_cards WHERE user_id = $1 AND source = 'test' RETURNING id`,
       [userId]
     )
     deleted += gcResult.rowCount || 0
 
-    // Delete test cards + their transactions
+    // Delete test cards (transactions first, then cards)
     const cardIds = await query(
       `SELECT id FROM user_cards WHERE user_id = $1 AND provider = 'test'`,
       [userId]
     )
     if (cardIds.rows.length > 0) {
       const ids = cardIds.rows.map((r: any) => r.id)
-      await query(
-        `DELETE FROM card_transactions WHERE card_id = ANY($1)`,
-        [ids]
-      )
+      await query(`DELETE FROM card_transactions WHERE card_id = ANY($1)`, [ids])
       const cardResult = await query(
         `DELETE FROM user_cards WHERE user_id = $1 AND provider = 'test' RETURNING id`,
         [userId]
@@ -118,7 +122,7 @@ export async function cleanupTestDataForUser(userId: string): Promise<{ deleted:
       deleted += cardResult.rowCount || 0
     }
 
-    // Delete test order_items and orders
+    // Delete test orders and order items
     const orderIds = testOrders.rows.map((r: any) => r.id)
     if (orderIds.length > 0) {
       await query(`DELETE FROM order_items WHERE "orderId" = ANY($1)`, [orderIds])
@@ -136,13 +140,14 @@ export async function cleanupTestDataForUser(userId: string): Promise<{ deleted:
 
 /**
  * Clean up ALL test data across all users (called when admin toggles off)
+ * Leaves zero trace — as if sandbox mode was never used
  */
 export async function cleanupAllTestData(): Promise<{ deleted: number }> {
   let deleted = 0
 
   await query('BEGIN')
   try {
-    // Refund all test orders
+    // Find all test orders to refund
     const testOrders = await query(
       `SELECT o.id, o."userId", o.total FROM orders o
        JOIN order_items oi ON oi."orderId" = o.id
@@ -150,6 +155,7 @@ export async function cleanupAllTestData(): Promise<{ deleted: number }> {
        AND o."paymentStatus" = 'PAID'`
     )
 
+    // Refund wallet silently for each user
     for (const order of testOrders.rows) {
       const total = parseFloat(order.total)
       if (total > 0) {
@@ -157,17 +163,18 @@ export async function cleanupAllTestData(): Promise<{ deleted: number }> {
           `UPDATE wallet_balances SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2`,
           [total, order.userId]
         )
-        const wb2 = await query(`SELECT id, balance FROM wallet_balances WHERE user_id = $1`, [order.userId])
-        const newBal2 = parseFloat(wb2.rows[0]?.balance || 0)
-        await query(
-          `INSERT INTO wallet_transactions (id, wallet_balance_id, type, amount, balance_before, balance_after, description, metadata, created_at)
-           VALUES (gen_random_uuid()::text, $1, 'CREDIT', $2, $3, $4, 'Sandbox mode cleanup refund', $5, NOW())`,
-          [wb2.rows[0]?.id, total, newBal2 - total, newBal2, JSON.stringify({ reference_type: 'test_mode_cleanup', order_id: order.id })]
-        )
       }
     }
 
-    // Delete all test records
+    // Delete all test wallet transactions across all users
+    await query(
+      `DELETE FROM wallet_transactions WHERE metadata->>'test_mode' = 'true'`
+    )
+    await query(
+      `DELETE FROM wallet_transactions WHERE metadata->>'reference_type' = 'test_mode_cleanup'`
+    )
+
+    // Delete all test product records
     const vn = await query(`DELETE FROM user_virtual_numbers WHERE provider = 'test'`)
     deleted += vn.rowCount || 0
 
@@ -177,7 +184,6 @@ export async function cleanupAllTestData(): Promise<{ deleted: number }> {
     const gc = await query(`DELETE FROM user_gift_cards WHERE source = 'test'`)
     deleted += gc.rowCount || 0
 
-    // Delete test card transactions first, then cards
     await query(
       `DELETE FROM card_transactions WHERE card_id IN (SELECT id FROM user_cards WHERE provider = 'test')`
     )

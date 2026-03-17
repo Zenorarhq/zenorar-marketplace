@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { inventoryService } from '@/lib/virtual-numbers/inventory'
+import { isTestModeEnabled } from '@/lib/test-mode'
 
 /**
  * GET /api/virtual-numbers/available
@@ -39,6 +40,42 @@ export async function GET(request: NextRequest) {
     }
 
     const baseRetailMonthly = parseFloat(countryResult.rows[0].retail_monthly) || 5.00
+
+    // In sandbox mode, return mock numbers instead of querying providers
+    const testMode = await isTestModeEnabled()
+    if (testMode) {
+      const countryIdResult = await query(
+        `SELECT id, dial_code FROM virtual_number_countries WHERE iso_code = $1`, [countryCode]
+      )
+      const dialCode = countryIdResult.rows[0]?.dial_code || '+1'
+      const resolvedCountryId = countryIdResult.rows[0]?.id || null
+      const types = type ? [type] : ['local', 'toll-free', 'mobile']
+      const mockNumbers = types.flatMap(t => {
+        const count = Math.min(Math.ceil(limit / types.length), 8)
+        return Array.from({ length: count }, (_, i) => {
+          const num = `${dialCode}555${String(Math.floor(1000000 + Math.random() * 9000000)).slice(0, 7)}`
+          const retailMonthly = t === 'toll-free' ? baseRetailMonthly * 1.5 : t === 'mobile' ? baseRetailMonthly * 1.2 : baseRetailMonthly
+          return {
+            phoneNumber: num,
+            friendlyName: num,
+            locality: 'Test City',
+            region: countryCode,
+            type: t,
+            capabilities: { sms: true, voice: true, mms: false },
+            monthlyPrice: retailMonthly,
+            source: 'test',
+            countryId: resolvedCountryId,
+            provider: 'test'
+          }
+        })
+      }).slice(0, limit)
+
+      return NextResponse.json({
+        success: true,
+        data: mockNumbers,
+        stats: { total: mockNumbers.length, fromInventory: 0, fromProviders: 0, fromTest: mockNumbers.length },
+      })
+    }
 
     let allNumbers: any[] = []
 
