@@ -171,6 +171,15 @@ export async function fulfillOrder(orderId: string): Promise<FulfillmentResult> 
       }
     }
 
+    // Tag order_items with test_mode if sandbox is active (for cleanup)
+    const isTest = await isTestModeEnabled()
+    if (isTest) {
+      await query(
+        `UPDATE order_items SET metadata = COALESCE(metadata, '{}'::jsonb) || '{"test_mode":"true"}'::jsonb WHERE "orderId" = $1`,
+        [orderId]
+      )
+    }
+
     // Update order fulfillment status — orders table uses camelCase
     // Digital products use CONFIRMED as final status (same as wallet path — no shipping needed)
     if (result.itemsFailed === 0 && result.itemsProcessed > 0) {

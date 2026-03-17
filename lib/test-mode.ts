@@ -44,23 +44,30 @@ export async function canUseTestMode(userRole?: string): Promise<boolean> {
 
 /**
  * Clean up ALL test data for a specific user
- * Refunds wallet silently and deletes every trace of the sandbox session
+ * Finds test data by product tags (provider='test', source_type='test', source='test')
+ * AND by order_items metadata. Refunds wallet silently, deletes everything.
  */
 export async function cleanupTestDataForUser(userId: string): Promise<{ deleted: number }> {
   let deleted = 0
 
   await query('BEGIN')
   try {
-    // Find test orders to refund
+    // Find test orders by BOTH metadata tag AND by linked test products
     const testOrders = await query(
-      `SELECT o.id, o.total FROM orders o
+      `SELECT DISTINCT o.id, o.total FROM orders o
        JOIN order_items oi ON oi."orderId" = o.id
-       WHERE o."userId" = $1 AND oi.metadata->>'test_mode' = 'true'
-       AND o."paymentStatus" = 'PAID'`,
+       WHERE o."userId" = $1
+       AND o."paymentStatus" = 'PAID'
+       AND (
+         oi.metadata->>'test_mode' = 'true'
+         OR o.id IN (SELECT order_id FROM user_virtual_numbers WHERE user_id = $1 AND provider = 'test')
+         OR o.id IN (SELECT order_id FROM user_esims WHERE user_id = $1 AND source_type = 'test')
+         OR o.id::uuid IN (SELECT order_id FROM user_gift_cards WHERE user_id = $1 AND source = 'test')
+       )`,
       [userId]
     )
 
-    // Refund wallet silently (no audit trail — clean slate)
+    // Refund wallet silently
     for (const order of testOrders.rows) {
       const total = parseFloat(order.total)
       if (total > 0) {
@@ -71,20 +78,23 @@ export async function cleanupTestDataForUser(userId: string): Promise<{ deleted:
       }
     }
 
-    // Delete all test wallet transactions (DEBIT from purchases + any CREDIT refunds)
+    // Delete all test wallet transactions
     await query(
       `DELETE FROM wallet_transactions
        WHERE wallet_balance_id = (SELECT id FROM wallet_balances WHERE user_id = $1)
-       AND metadata->>'test_mode' = 'true'`,
+       AND (metadata->>'test_mode' = 'true' OR metadata->>'reference_type' = 'test_mode_cleanup')`,
       [userId]
     )
-    // Also delete cleanup refund transactions from previous cleanups
-    await query(
-      `DELETE FROM wallet_transactions
-       WHERE wallet_balance_id = (SELECT id FROM wallet_balances WHERE user_id = $1)
-       AND metadata->>'reference_type' = 'test_mode_cleanup'`,
-      [userId]
-    )
+    // Also delete wallet transactions linked to test orders
+    const orderIds = testOrders.rows.map((r: any) => r.id)
+    if (orderIds.length > 0) {
+      await query(
+        `DELETE FROM wallet_transactions
+         WHERE wallet_balance_id = (SELECT id FROM wallet_balances WHERE user_id = $1)
+         AND order_id = ANY($2)`,
+        [userId, orderIds]
+      )
+    }
 
     // Delete test virtual numbers (messages auto-cascade via FK)
     const vnResult = await query(
@@ -123,7 +133,6 @@ export async function cleanupTestDataForUser(userId: string): Promise<{ deleted:
     }
 
     // Delete test orders and order items
-    const orderIds = testOrders.rows.map((r: any) => r.id)
     if (orderIds.length > 0) {
       await query(`DELETE FROM order_items WHERE "orderId" = ANY($1)`, [orderIds])
       await query(`DELETE FROM orders WHERE id = ANY($1)`, [orderIds])
@@ -147,12 +156,17 @@ export async function cleanupAllTestData(): Promise<{ deleted: number }> {
 
   await query('BEGIN')
   try {
-    // Find all test orders to refund
+    // Find ALL test orders by product tags AND metadata
     const testOrders = await query(
-      `SELECT o.id, o."userId", o.total FROM orders o
+      `SELECT DISTINCT o.id, o."userId", o.total FROM orders o
        JOIN order_items oi ON oi."orderId" = o.id
-       WHERE oi.metadata->>'test_mode' = 'true'
-       AND o."paymentStatus" = 'PAID'`
+       WHERE o."paymentStatus" = 'PAID'
+       AND (
+         oi.metadata->>'test_mode' = 'true'
+         OR o.id IN (SELECT order_id FROM user_virtual_numbers WHERE provider = 'test')
+         OR o.id IN (SELECT order_id FROM user_esims WHERE source_type = 'test')
+         OR o.id::uuid IN (SELECT order_id FROM user_gift_cards WHERE source = 'test')
+       )`
     )
 
     // Refund wallet silently for each user
@@ -166,13 +180,21 @@ export async function cleanupAllTestData(): Promise<{ deleted: number }> {
       }
     }
 
-    // Delete all test wallet transactions across all users
+    // Delete all test wallet transactions
     await query(
       `DELETE FROM wallet_transactions WHERE metadata->>'test_mode' = 'true'`
     )
     await query(
       `DELETE FROM wallet_transactions WHERE metadata->>'reference_type' = 'test_mode_cleanup'`
     )
+    // Delete wallet transactions linked to test orders
+    const orderIds = testOrders.rows.map((r: any) => r.id)
+    if (orderIds.length > 0) {
+      await query(
+        `DELETE FROM wallet_transactions WHERE order_id = ANY($1)`,
+        [orderIds]
+      )
+    }
 
     // Delete all test product records
     const vn = await query(`DELETE FROM user_virtual_numbers WHERE provider = 'test'`)
@@ -191,7 +213,6 @@ export async function cleanupAllTestData(): Promise<{ deleted: number }> {
     deleted += cards.rowCount || 0
 
     // Delete test orders
-    const orderIds = testOrders.rows.map((r: any) => r.id)
     if (orderIds.length > 0) {
       await query(`DELETE FROM order_items WHERE "orderId" = ANY($1)`, [orderIds])
       await query(`DELETE FROM orders WHERE id = ANY($1)`, [orderIds])
