@@ -12,6 +12,7 @@ import { GoogleLogin, CredentialResponse } from '@react-oauth/google'
 import { BrowserProvider } from 'ethers'
 import { authApi } from '@/lib/api'
 import { validateReferralCode } from '@/lib/api/referrals'
+import { getLandingPageAttribution } from '@/lib/landing-page-attribution'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -160,6 +161,14 @@ export default function SignupPage() {
     try {
       const result = await register(formData.email, formData.password, formData.fullName, formData.referralCode || undefined)
       if (result.success) {
+        const lpAttr = getLandingPageAttribution()
+        if (lpAttr) {
+          fetch('/api/analytics/landing-page', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pageId: lpAttr.pageId, sessionId: lpAttr.sessionId, eventType: 'signup' }),
+          }).catch(() => {})
+        }
         router.push('/')
       } else {
         setError(result.error || 'An error occurred. Please try again.')
@@ -183,6 +192,14 @@ export default function SignupPage() {
       const result = await authApi.googleAuth(credentialResponse.credential, formData.referralCode || undefined)
       if (result.success) {
         refreshUser()
+        const lpAttr = getLandingPageAttribution()
+        if (lpAttr) {
+          fetch('/api/analytics/landing-page', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pageId: lpAttr.pageId, sessionId: lpAttr.sessionId, eventType: 'signup' }),
+          }).catch(() => {})
+        }
         router.push('/')
       } else {
         setError(result.error || 'Failed to authenticate with Google')
@@ -270,6 +287,14 @@ export default function SignupPage() {
       const result = await authApi.walletAuth(walletAddress, signature, nonce, formData.referralCode || undefined)
       if (result.success) {
         refreshUser()
+        const lpAttr = getLandingPageAttribution()
+        if (lpAttr) {
+          fetch('/api/analytics/landing-page', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pageId: lpAttr.pageId, sessionId: lpAttr.sessionId, eventType: 'signup' }),
+          }).catch(() => {})
+        }
         router.push('/')
       } else {
         console.error('Auth failed:', result)

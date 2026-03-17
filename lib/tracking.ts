@@ -1,6 +1,20 @@
 // Tracking utility for Facebook Pixel and Google Analytics 4
 // Events fire to both platforms when their scripts are loaded
 
+import { getLandingPageAttribution } from '@/lib/landing-page-attribution'
+
+// Fire a landing page attribution event if visitor came from a landing page
+export function fireLpEvent(eventType: string, extra?: Record<string, any>) {
+  if (typeof window === 'undefined') return
+  const attr = getLandingPageAttribution()
+  if (!attr) return
+  fetch('/api/analytics/landing-page', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pageId: attr.pageId, sessionId: attr.sessionId, eventType, ...extra }),
+  }).catch(() => {})
+}
+
 declare global {
   interface Window {
     fbq?: (...args: any[]) => void
@@ -57,6 +71,8 @@ export function trackAddToCart(product: { id: string; name: string; price: numbe
       currency: 'USD',
     })
   }
+
+  fireLpEvent('add_to_cart', { metadata: { productId: product.id, value } })
 }
 
 export function trackInitiateCheckout(value: number, numItems: number) {
@@ -91,4 +107,6 @@ export function trackPurchase(orderId: string, value: number, items: { id: strin
       items: items.map(i => ({ item_id: i.id, item_name: i.name, price: i.price, quantity: i.quantity })),
     })
   }
+
+  fireLpEvent('purchase', { revenue: value, orderId })
 }

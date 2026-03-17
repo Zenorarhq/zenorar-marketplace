@@ -3,6 +3,7 @@
 import { Page } from '@/lib/cms/api'
 import PageRenderer from './PageRenderer'
 import AdminEditBar from './AdminEditBar'
+import LandingPageTracker from '@/components/tracking/LandingPageTracker'
 
 interface PageWithAdminBarProps {
   page: Page
@@ -11,6 +12,7 @@ interface PageWithAdminBarProps {
 export default function PageWithAdminBar({ page }: PageWithAdminBarProps) {
   return (
     <>
+      <LandingPageTracker pageId={page.id} />
       <PageRenderer page={page} />
       <AdminEditBar
         pageId={page.id}

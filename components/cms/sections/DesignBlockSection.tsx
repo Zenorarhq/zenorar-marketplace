@@ -36,7 +36,7 @@ function applyOverrides(html: string, overridesJson: string): string {
   }
 }
 
-// Inject a resize script that tells the parent the content height
+// Inject a resize script that tells the parent the content height + tracks button clicks
 const RESIZE_SCRIPT = `<script>
 function __notifyHeight() {
   var h = Math.max(document.body.scrollHeight, document.body.offsetHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight);
@@ -47,6 +47,17 @@ window.addEventListener('resize', __notifyHeight);
 new MutationObserver(__notifyHeight).observe(document.body, { childList: true, subtree: true, attributes: true });
 new ResizeObserver(__notifyHeight).observe(document.documentElement);
 setInterval(__notifyHeight, 2000);
+// Track button and link clicks
+document.addEventListener('click', function(e) {
+  var el = e.target;
+  while (el && el !== document.body) {
+    if (el.tagName === 'A' || el.tagName === 'BUTTON') {
+      window.parent.postMessage({ type: '__lpButtonClick', text: el.textContent?.trim().slice(0, 200) || '', url: el.href || el.getAttribute('data-href') || '' }, '*');
+      break;
+    }
+    el = el.parentElement;
+  }
+});
 </script>`
 
 export default function DesignBlockSection({ props }: DesignBlockSectionProps) {

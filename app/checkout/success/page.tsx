@@ -234,7 +234,7 @@ function SuccessPageContent() {
         if (result.success && result.data) {
           setOrderData(result.data)
           setError(null)
-          // Fire Purchase conversion event
+          // Fire Purchase conversion event (also fires LP attribution if cookie exists)
           trackPurchase(
             result.data.orderNumber,
             result.data.total,

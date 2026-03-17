@@ -10,6 +10,8 @@ import EditorCanvas from '@/components/page-builder/EditorCanvas'
 import useEditorHistory from '@/components/page-builder/hooks/useEditorHistory'
 import useAutoSave from '@/components/page-builder/hooks/useAutoSave'
 import { pagesApi, componentsApi, Page, Section, ComponentTemplate, PageVersion } from '@/lib/cms/api'
+import LinkButtonScanner from '@/components/cms/LinkButtonScanner'
+import LandingPageAnalytics from '@/components/cms/LandingPageAnalytics'
 
 // Helper to update a section in a nested structure
 function updateSectionInTree(
@@ -58,6 +60,7 @@ export default function PageEditorPage() {
   const [viewMode, setViewMode] = useState<'visual' | 'preview'>('visual')
   const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [showVersions, setShowVersions] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(false)
   const [versions, setVersions] = useState<PageVersion[]>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null)
@@ -476,6 +479,15 @@ export default function PageEditorPage() {
             </a>
           )}
 
+          {/* Analytics */}
+          <button
+            onClick={() => setShowAnalytics(true)}
+            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            title="Page Analytics"
+          >
+            <Icon name="analytics" size={18} />
+          </button>
+
           {/* Version History */}
           <button
             onClick={handleOpenVersions}
@@ -534,7 +546,7 @@ export default function PageEditorPage() {
 
             {/* Right Panel - Properties */}
             {showProperties && (
-              <aside className="w-80 bg-[#111111] border-l border-[#1f1f1f] flex-shrink-0 overflow-hidden">
+              <aside className="w-80 bg-[#111111] border-l border-[#1f1f1f] flex-shrink-0 overflow-y-auto">
                 <PropertiesPanel
                   section={selectedSection}
                   componentTemplate={selectedTemplate}
@@ -545,6 +557,20 @@ export default function PageEditorPage() {
                   onSelectSection={setSelectedSectionId}
                   onDeleteSection={() => {}}
                 />
+                {/* Link/Button Scanner */}
+                {selectedSection?.type === 'design-block' && selectedSection.props?.code && (
+                  <div className="border-t border-[#1f1f1f]">
+                    <LinkButtonScanner
+                      code={selectedSection.props.code}
+                      onCodeUpdate={(newCode) => {
+                        handleUpdateSection(selectedSection.id, {
+                          ...selectedSection.props,
+                          code: newCode,
+                        })
+                      }}
+                    />
+                  </div>
+                )}
               </aside>
             )}
           </>
@@ -610,6 +636,11 @@ export default function PageEditorPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Analytics Modal */}
+      {showAnalytics && (
+        <LandingPageAnalytics pageId={pageId} onClose={() => setShowAnalytics(false)} />
       )}
     </div>
   )
