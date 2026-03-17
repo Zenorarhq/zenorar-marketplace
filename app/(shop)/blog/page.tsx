@@ -92,7 +92,7 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-container mx-auto px-4 lg:px-12 py-8">
         <Breadcrumbs items={breadcrumbs} />
 
         <div className="mt-6 mb-8">

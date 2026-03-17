@@ -127,7 +127,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <div className="min-h-screen bg-black">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-container mx-auto px-4 lg:px-12 py-8">
         <Breadcrumbs items={breadcrumbs} />
 
         <article className="mt-6">
