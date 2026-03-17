@@ -68,7 +68,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       seo_title, seo_description, status: postStatus, published_at, category_ids, tag_ids } = body
 
     // Build dynamic update
-    const fields: string[] = []
+    const fields: string[] = ['updated_at = NOW()']
     const values: any[] = []
     let idx = 1
 
@@ -91,6 +91,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // Auto-set published_at when publishing for the first time
       if (postStatus === 'PUBLISHED' && !published_at) {
         fields.push(`published_at = COALESCE(published_at, NOW())`)
+      } else if (postStatus === 'DRAFT') {
+        fields.push(`published_at = NULL`)
       }
     }
     // Only set published_at explicitly if a value was provided (not null/empty)

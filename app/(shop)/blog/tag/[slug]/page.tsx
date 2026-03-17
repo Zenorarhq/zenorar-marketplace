@@ -21,7 +21,7 @@ async function getPostsByTag(tagId: string, page: number, limit: number) {
   const countResult = await executeQuery(
     `SELECT COUNT(*) FROM blog_posts bp
     JOIN blog_post_tags bpt ON bp.id = bpt.post_id
-    WHERE bpt.tag_id = $1 AND bp.status = 'PUBLISHED' AND bp.published_at <= NOW()`,
+    WHERE bpt.tag_id = $1 AND (bp.status = 'PUBLISHED' OR bp.status = 'SCHEDULED') AND bp.published_at <= NOW()`,
     [tagId]
   )
   const total = parseInt(countResult.rows[0].count)
@@ -31,7 +31,7 @@ async function getPostsByTag(tagId: string, page: number, limit: number) {
       bp.author_name, bp.published_at
     FROM blog_posts bp
     JOIN blog_post_tags bpt ON bp.id = bpt.post_id
-    WHERE bpt.tag_id = $1 AND bp.status = 'PUBLISHED' AND bp.published_at <= NOW()
+    WHERE bpt.tag_id = $1 AND (bp.status = 'PUBLISHED' OR bp.status = 'SCHEDULED') AND bp.published_at <= NOW()
     ORDER BY bp.published_at DESC
     LIMIT $2 OFFSET $3`,
     [tagId, limit, offset]

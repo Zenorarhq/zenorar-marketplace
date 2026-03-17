@@ -21,7 +21,7 @@ async function getPostsByCategory(categoryId: string, page: number, limit: numbe
   const countResult = await executeQuery(
     `SELECT COUNT(*) FROM blog_posts bp
     JOIN blog_post_categories bpc ON bp.id = bpc.post_id
-    WHERE bpc.category_id = $1 AND bp.status = 'PUBLISHED' AND bp.published_at <= NOW()`,
+    WHERE bpc.category_id = $1 AND (bp.status = 'PUBLISHED' OR bp.status = 'SCHEDULED') AND bp.published_at <= NOW()`,
     [categoryId]
   )
   const total = parseInt(countResult.rows[0].count)
@@ -31,7 +31,7 @@ async function getPostsByCategory(categoryId: string, page: number, limit: numbe
       bp.author_name, bp.published_at
     FROM blog_posts bp
     JOIN blog_post_categories bpc ON bp.id = bpc.post_id
-    WHERE bpc.category_id = $1 AND bp.status = 'PUBLISHED' AND bp.published_at <= NOW()
+    WHERE bpc.category_id = $1 AND (bp.status = 'PUBLISHED' OR bp.status = 'SCHEDULED') AND bp.published_at <= NOW()
     ORDER BY bp.published_at DESC
     LIMIT $2 OFFSET $3`,
     [categoryId, limit, offset]

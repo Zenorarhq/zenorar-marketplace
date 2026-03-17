@@ -12,6 +12,11 @@ const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-yellow-500/20 text-yellow-400',
   SCHEDULED: 'bg-blue-500/20 text-blue-400',
 }
+const STATUS_LABELS: Record<string, string> = {
+  PUBLISHED: 'Published',
+  DRAFT: 'Draft',
+  SCHEDULED: 'Scheduled',
+}
 
 export default function AdminBlogPage() {
   const router = useRouter()
@@ -129,7 +134,7 @@ export default function AdminBlogPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[post.status] || ''}`}>
-                          {post.status}
+                          {STATUS_LABELS[post.status] || post.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-sm hidden sm:table-cell">

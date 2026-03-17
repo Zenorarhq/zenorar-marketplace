@@ -13,7 +13,7 @@ async function getPublishedPosts(opts: { page: number; limit: number; category?:
   const { page, limit, category, tag, search } = opts
   const offset = (page - 1) * limit
 
-  let where = `WHERE bp.status = 'PUBLISHED' AND bp.published_at <= NOW()`
+  let where = `WHERE (bp.status = 'PUBLISHED' OR bp.status = 'SCHEDULED') AND bp.published_at <= NOW()`
   const params: any[] = []
 
   if (category) {
@@ -125,6 +125,21 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
           </div>
         )}
 
+        {/* Search */}
+        <form method="GET" action="/blog" className="mb-6">
+          {category && <input type="hidden" name="category" value={category} />}
+          <div className="relative max-w-sm">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input
+              type="text"
+              name="search"
+              defaultValue={search}
+              placeholder="Search posts..."
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white pl-10 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </form>
+
         {/* Posts grid */}
         {posts.length === 0 ? (
           <div className="text-center py-20">
@@ -188,7 +203,8 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
               </Link>
             )}
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const p = i + 1
+              const start = Math.max(1, Math.min(page - 2, totalPages - 4))
+              const p = start + i
               return (
                 <Link
                   key={p}

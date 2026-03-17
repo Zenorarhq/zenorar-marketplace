@@ -35,7 +35,7 @@ async function getPost(slug: string) {
     LEFT JOIN blog_categories bc ON bpc.category_id = bc.id
     LEFT JOIN blog_post_tags bpt ON bp.id = bpt.post_id
     LEFT JOIN blog_tags bt ON bpt.tag_id = bt.id
-    WHERE bp.slug = $1 AND bp.status = 'PUBLISHED' AND bp.published_at <= NOW()
+    WHERE bp.slug = $1 AND (bp.status = 'PUBLISHED' OR bp.status = 'SCHEDULED') AND bp.published_at <= NOW()
     GROUP BY bp.id`,
     [slug]
   )
