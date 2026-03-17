@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
     const walletId = walletResult.rows[0].id
     const balanceBefore = parseFloat(walletResult.rows[0].balance)
 
+    // Get a valid country_id for the test number
+    const countryResult = await query(`SELECT id FROM virtual_number_countries WHERE is_active = true LIMIT 1`)
+    const countryId = countryResult.rows[0]?.id
+    if (!countryId) {
+      return NextResponse.json({ success: false, error: 'No active countries found. Sync virtual number providers first.' }, { status: 400 })
+    }
+
     // Generate a test phone number
     const testNumber = `+1555${Math.floor(1000000 + Math.random() * 9000000)}`
     const testLastFour = testNumber.slice(-4)
@@ -71,14 +78,14 @@ export async function POST(request: NextRequest) {
       const result = await query(
         `INSERT INTO user_virtual_numbers (
            user_id, phone_number, phone_number_display, number_type, provider,
-           status, plan_id, plan_category, plan_duration_days, sms_limit,
+           country_id, status, plan_id, plan_category, plan_duration_days, sms_limit,
            expires_at, order_id, created_at, updated_at
          ) VALUES (
            $1, $2, $3, 'local', 'test',
-           'active', 'basic', 'basic', 30, 500,
+           $5, 'active', 'basic', 'basic', 30, 500,
            NOW() + INTERVAL '30 days', $4, NOW(), NOW()
          ) RETURNING id, phone_number, status, expires_at`,
-        [user.id, testNumber, `(555) ${testLastFour.slice(0,3)}-${testLastFour.slice(3)}`, orderId]
+        [user.id, testNumber, `(555) ${testLastFour.slice(0,3)}-${testLastFour.slice(3)}`, orderId, countryId]
       )
 
       await query('COMMIT')
