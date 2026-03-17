@@ -205,7 +205,7 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
               <div className="flex-1">
                 <p className="text-red-400 text-sm mb-2">{error}</p>
                 <button
-                  onClick={loadTicket}
+                  onClick={() => loadTicket()}
                   className="text-xs text-primary hover:text-primary/80 font-semibold"
                 >
                   Try Again
