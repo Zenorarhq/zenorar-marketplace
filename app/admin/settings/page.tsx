@@ -128,6 +128,7 @@ export default function AdminSettingsPage() {
   // Profile Settings State
   const [profileSettings, setProfileSettings] = useState({
     name: user?.name || '',
+    bio: (user as any)?.bio || '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
@@ -139,6 +140,7 @@ export default function AdminSettingsPage() {
       setProfileSettings((prev) => ({
         ...prev,
         name: user.name,
+        bio: (user as any).bio || prev.bio,
       }))
       setLoadedGroups(prev => new Set(prev).add('profile'))
     }
@@ -1260,7 +1262,7 @@ export default function AdminSettingsPage() {
     setSaving(true)
     setMessage(null)
 
-    const result = await profileApi.update({ name: profileSettings.name })
+    const result = await profileApi.update({ name: profileSettings.name, bio: profileSettings.bio })
 
     if (result.success && result.data) {
       updateUser(result.data)
@@ -1855,6 +1857,19 @@ export default function AdminSettingsPage() {
                   </div>
 
                   <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Bio</label>
+                    <textarea
+                      value={profileSettings.bio}
+                      onChange={(e) => setProfileSettings({ ...profileSettings, bio: e.target.value })}
+                      placeholder="Tell us a little about yourself"
+                      maxLength={500}
+                      rows={3}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50 resize-none"
+                    />
+                    <p className="text-xs text-slate-500">{profileSettings.bio.length}/500</p>
+                  </div>
+
+                  <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">Email Address</label>
                     <input
                       type="email"
@@ -1925,7 +1940,7 @@ export default function AdminSettingsPage() {
 
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                   <p className="text-blue-400 text-sm">
-                    <strong>Password requirements:</strong> At least 8 characters, including uppercase, lowercase, number, and special character.
+                    <strong>Password requirements:</strong> At least 8 characters.
                   </p>
                 </div>
 
