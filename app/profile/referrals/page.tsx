@@ -223,6 +223,49 @@ export default function ReferralsPage() {
               </button>
             </div>
           </div>
+
+          {/* Share Buttons */}
+          {referralLink && (
+            <div className="mt-4">
+              <p className="text-slate-500 text-xs mb-2">Share via</p>
+              <div className="flex gap-2">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`Join me on ${typeof window !== 'undefined' ? document.title : 'our marketplace'} and get a welcome bonus! ${referralLink}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] rounded-xl text-sm font-medium hover:bg-[#25D366]/20 transition-colors"
+                >
+                  <Icon name="chat" size={16} />
+                  WhatsApp
+                </a>
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me and get a welcome bonus!`)}&url=${encodeURIComponent(referralLink)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl text-sm font-medium hover:bg-white/10 transition-colors"
+                >
+                  <Icon name="share" size={16} />
+                  X / Twitter
+                </a>
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-[#1877F2]/10 border border-[#1877F2]/20 text-[#1877F2] rounded-xl text-sm font-medium hover:bg-[#1877F2]/20 transition-colors"
+                >
+                  <Icon name="globe" size={16} />
+                  Facebook
+                </a>
+                <a
+                  href={`mailto:?subject=${encodeURIComponent('Join me and get a welcome bonus!')}&body=${encodeURIComponent(`Hey! Sign up using my referral link and get a welcome bonus: ${referralLink}`)}`}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl text-sm font-medium hover:bg-white/10 transition-colors"
+                >
+                  <Icon name="email" size={16} />
+                  Email
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
