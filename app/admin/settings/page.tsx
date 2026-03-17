@@ -1697,10 +1697,15 @@ export default function AdminSettingsPage() {
     const result = await settingsApi.updateSettings(settingsToSave)
 
     // Also save virtual number pricing settings
-    await apiFetch('/admin/virtual-numbers/settings', {
-      method: 'PUT',
-      body: JSON.stringify({ pricing: virtualNumberPricing }),
-    })
+    try {
+      await apiFetch('/admin/virtual-numbers/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ pricing: virtualNumberPricing }),
+      })
+    } catch (err) {
+      console.error('Failed to save virtual number pricing:', err)
+      setMessage({ type: 'error', text: 'Settings saved but virtual number pricing failed to save.' })
+    }
 
     if (result.success) {
       setMessage({ type: 'success', text: 'Settings saved successfully!' })
@@ -6045,6 +6050,9 @@ export default function AdminSettingsPage() {
           {/* Email Service Settings */}
           {activeTab === 'email' && (
             <div className="space-y-6">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3">
+                <p className="text-blue-400 text-sm">Email settings save individually per provider using the buttons below — they are not affected by the main "Save Changes" button.</p>
+              </div>
               <EmailConfigSection />
             </div>
           )}

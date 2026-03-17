@@ -63,6 +63,22 @@ export default function EmailConfigSection() {
 
   // Save email provider configuration
   const handleSave = async (provider: string, config: any, isActive: boolean) => {
+    // Validate required fields when activating a provider
+    if (isActive) {
+      if (provider === 'smtp') {
+        if (!config.host?.trim()) return alert('SMTP host is required')
+        if (!config.from?.trim() || !config.from.includes('@')) return alert('Valid "From" email address is required')
+        if (!config.user?.trim()) return alert('SMTP username is required')
+        if (!config.password?.trim()) return alert('SMTP password is required')
+      } else if (provider === 'resend') {
+        if (!config.apiKey?.trim()) return alert('Resend API key is required')
+        if (!config.from?.trim() || !config.from.includes('@')) return alert('Valid "From" email address is required')
+      } else if (provider === 'sendgrid') {
+        if (!config.apiKey?.trim()) return alert('SendGrid API key is required')
+        if (!config.from?.trim() || !config.from.includes('@')) return alert('Valid "From" email address is required')
+      }
+    }
+
     setSaving(true)
     try {
       const res = await fetch('/api/settings/email', {

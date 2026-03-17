@@ -447,7 +447,7 @@ export const POST = requireAdmin(async (req: NextRequest, user: AuthenticatedUse
 
       const transporter = nodemailer.createTransport({
         host: config.host,
-        port: parseInt(config.port),
+        port: Number(config.port) || 587,
         secure: config.secure === true || config.secure === 'true',
         auth: {
           user: config.user,
