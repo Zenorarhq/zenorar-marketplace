@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { Section } from '@/lib/cms/api'
 
 const MAX_HISTORY = 50
@@ -11,50 +11,52 @@ interface UseEditorHistoryReturn {
   canRedo: boolean
 }
 
-export default function useEditorHistory(initialSections: Section[]): UseEditorHistoryReturn {
-  const [history, setHistory] = useState<Section[][]>([initialSections])
-  const [index, setIndex] = useState(0)
+interface HistoryState {
+  stack: Section[][]
+  index: number
+}
 
-  // Reset history when initial sections change from outside (e.g. page load)
-  useEffect(() => {
-    setHistory([initialSections])
-    setIndex(0)
-  }, []) // Only on mount — subsequent changes go through pushState
+export default function useEditorHistory(initialSections: Section[]): UseEditorHistoryReturn {
+  const [state, setState] = useState<HistoryState>({ stack: [initialSections], index: 0 })
 
   const pushState = useCallback((sections: Section[]) => {
-    setHistory(prev => {
-      // Trim future states (if we undid and then made a new change)
-      const trimmed = prev.slice(0, index + 1)
-      const newHistory = [...trimmed, sections]
-      // Cap at MAX_HISTORY
-      if (newHistory.length > MAX_HISTORY) {
-        newHistory.shift()
-        return newHistory
-      }
-      return newHistory
+    setState(prev => {
+      // Trim any future states (branch after undo), then append
+      const trimmed = prev.stack.slice(0, prev.index + 1)
+      const newStack = [...trimmed, sections]
+      // Cap at MAX_HISTORY — drop oldest entry if over limit
+      if (newStack.length > MAX_HISTORY) newStack.shift()
+      return { stack: newStack, index: newStack.length - 1 }
     })
-    setIndex(prev => Math.min(prev + 1, MAX_HISTORY - 1))
-  }, [index])
+  }, [])
 
   const undo = useCallback((): Section[] | null => {
-    if (index <= 0) return null
-    const newIndex = index - 1
-    setIndex(newIndex)
-    return history[newIndex] || null
-  }, [index, history])
+    let result: Section[] | null = null
+    setState(prev => {
+      if (prev.index <= 0) return prev
+      const newIndex = prev.index - 1
+      result = prev.stack[newIndex] || null
+      return { ...prev, index: newIndex }
+    })
+    return result
+  }, [])
 
   const redo = useCallback((): Section[] | null => {
-    if (index >= history.length - 1) return null
-    const newIndex = index + 1
-    setIndex(newIndex)
-    return history[newIndex] || null
-  }, [index, history])
+    let result: Section[] | null = null
+    setState(prev => {
+      if (prev.index >= prev.stack.length - 1) return prev
+      const newIndex = prev.index + 1
+      result = prev.stack[newIndex] || null
+      return { ...prev, index: newIndex }
+    })
+    return result
+  }, [])
 
   return {
     pushState,
     undo,
     redo,
-    canUndo: index > 0,
-    canRedo: index < history.length - 1,
+    canUndo: state.index > 0,
+    canRedo: state.index < state.stack.length - 1,
   }
 }

@@ -19,18 +19,26 @@ const SYSTEM_PAGES = [
 
 export default function PageBuilderPage() {
   const [pages, setPages] = useState<Page[]>([])
+  const [allPages, setAllPages] = useState<Page[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [analyticsPageId, setAnalyticsPageId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const loadPages = useCallback(async () => {
     setLoading(true)
     try {
       const status = activeTab === 'all' ? undefined : activeTab.toUpperCase()
-      const result = await pagesApi.list({ status })
-      if (result.success && result.data) {
-        setPages(result.data)
+      const [filteredResult, allResult] = await Promise.all([
+        pagesApi.list({ status }),
+        pagesApi.list(),
+      ])
+      if (filteredResult.success && filteredResult.data) {
+        setPages(filteredResult.data)
+      }
+      if (allResult.success && allResult.data) {
+        setAllPages(allResult.data)
       }
     } catch (error) {
       console.error('Failed to load pages:', error)
@@ -49,49 +57,54 @@ export default function PageBuilderPage() {
   )
 
   const tabs: { id: TabType; label: string; count?: number }[] = [
-    { id: 'all', label: 'All Pages', count: pages.length },
-    { id: 'published', label: 'Published', count: pages.filter(p => p.status === 'PUBLISHED').length },
-    { id: 'draft', label: 'Drafts', count: pages.filter(p => p.status === 'DRAFT').length },
-    { id: 'archived', label: 'Archived', count: pages.filter(p => p.status === 'ARCHIVED').length },
+    { id: 'all', label: 'All Pages', count: allPages.length },
+    { id: 'published', label: 'Published', count: allPages.filter(p => p.status === 'PUBLISHED').length },
+    { id: 'draft', label: 'Drafts', count: allPages.filter(p => p.status === 'DRAFT').length },
+    { id: 'archived', label: 'Archived', count: allPages.filter(p => p.status === 'ARCHIVED').length },
   ]
 
   async function handleDelete(id: string) {
     if (!confirm('Are you sure you want to delete this page?')) return
-
+    setActionError(null)
     try {
       await pagesApi.delete(id)
       loadPages()
-    } catch (error) {
-      console.error('Failed to delete page:', error)
+    } catch {
+      setActionError('Failed to delete page. Please try again.')
     }
   }
 
   async function handlePublish(id: string) {
+    setActionError(null)
     try {
       await pagesApi.publish(id)
       loadPages()
-    } catch (error) {
-      console.error('Failed to publish page:', error)
+    } catch {
+      setActionError('Failed to publish page. Please try again.')
     }
   }
 
   async function handleUnpublish(id: string) {
+    setActionError(null)
     try {
       await pagesApi.unpublish(id)
       loadPages()
-    } catch (error) {
-      console.error('Failed to unpublish page:', error)
+    } catch {
+      setActionError('Failed to unpublish page. Please try again.')
     }
   }
 
   async function handleDuplicate(id: string) {
+    setActionError(null)
     try {
       const result = await pagesApi.duplicate(id)
       if (result.success) {
         loadPages()
+      } else {
+        setActionError('Failed to duplicate page. Please try again.')
       }
-    } catch (error) {
-      console.error('Failed to duplicate page:', error)
+    } catch {
+      setActionError('Failed to duplicate page. Please try again.')
     }
   }
 
@@ -178,6 +191,12 @@ export default function PageBuilderPage() {
 
       {/* Custom Pages */}
       <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Custom Pages</h2>
+      {actionError && (
+        <div className="mb-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center justify-between">
+          <p className="text-red-400 text-sm">{actionError}</p>
+          <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-300 ml-4 text-xs">Dismiss</button>
+        </div>
+      )}
 
       {/* Tabs and Search */}
       <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl mb-6">
@@ -356,7 +375,7 @@ export default function PageBuilderPage() {
               <Icon name="file" size={20} className="text-primary" />
             </div>
             <div>
-              <p className="text-white text-xl font-bold">{pages.length}</p>
+              <p className="text-white text-xl font-bold">{allPages.length}</p>
               <p className="text-slate-500 text-xs">Total Pages</p>
             </div>
           </div>
@@ -367,7 +386,7 @@ export default function PageBuilderPage() {
               <Icon name="check-circle" size={20} className="text-green-400" />
             </div>
             <div>
-              <p className="text-white text-xl font-bold">{pages.filter(p => p.status === 'PUBLISHED').length}</p>
+              <p className="text-white text-xl font-bold">{allPages.filter(p => p.status === 'PUBLISHED').length}</p>
               <p className="text-slate-500 text-xs">Published</p>
             </div>
           </div>
@@ -378,7 +397,7 @@ export default function PageBuilderPage() {
               <Icon name="edit" size={20} className="text-yellow-400" />
             </div>
             <div>
-              <p className="text-white text-xl font-bold">{pages.filter(p => p.status === 'DRAFT').length}</p>
+              <p className="text-white text-xl font-bold">{allPages.filter(p => p.status === 'DRAFT').length}</p>
               <p className="text-slate-500 text-xs">Drafts</p>
             </div>
           </div>
@@ -390,7 +409,7 @@ export default function PageBuilderPage() {
             </div>
             <div>
               <p className="text-white text-xl font-bold">
-                {pages.reduce((acc, p) => acc + (p.content?.length || 0), 0)}
+                {allPages.reduce((acc, p) => acc + (p.content?.length || 0), 0)}
               </p>
               <p className="text-slate-500 text-xs">Total Sections</p>
             </div>

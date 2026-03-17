@@ -73,18 +73,18 @@ export default function PageEditorPage() {
     const prev = undo()
     if (prev) {
       setPage({ ...page, content: prev })
-      savePage({ ...page, content: prev })
+      scheduleSave(async () => savePage({ ...page, content: prev }))
     }
-  }, [page, undo])
+  }, [page, undo, scheduleSave])
 
   const handleRedo = useCallback(() => {
     if (!page) return
     const next = redo()
     if (next) {
       setPage({ ...page, content: next })
-      savePage({ ...page, content: next })
+      scheduleSave(async () => savePage({ ...page, content: next }))
     }
-  }, [page, redo])
+  }, [page, redo, scheduleSave])
 
   // Keyboard shortcuts for undo/redo/save
   useEffect(() => {
@@ -99,7 +99,7 @@ export default function PageEditorPage() {
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        if (page) savePage(page).catch(() => {})
+        if (page) scheduleSave(async () => savePage(page))
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -192,8 +192,48 @@ export default function PageEditorPage() {
       updateContent(updatedContent)
       scheduleSave(async () => savePage({ ...page, content: updatedContent }))
     },
-    [page]
+    [page, updateContent, scheduleSave]
   )
+
+  const handleDeleteSection = useCallback((sectionId: string) => {
+    if (!page) return
+    const filtered = (page.content || []).filter(s => s.id !== sectionId)
+    const reordered = filtered.map((s, i) => ({ ...s, order: i }))
+    updateContent(reordered)
+    scheduleSave(async () => savePage({ ...page, content: reordered }))
+    if (selectedSectionId === sectionId) setSelectedSectionId(null)
+  }, [page, updateContent, scheduleSave, selectedSectionId])
+
+  const handleDuplicateSection = useCallback((sectionId: string) => {
+    if (!page) return
+    const content = page.content || []
+    const idx = content.findIndex(s => s.id === sectionId)
+    if (idx === -1) return
+    const original = content[idx]
+    const copy: Section = {
+      ...original,
+      id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      order: original.order + 0.5,
+    }
+    const withCopy = [...content, copy].sort((a, b) => a.order - b.order).map((s, i) => ({ ...s, order: i }))
+    updateContent(withCopy)
+    scheduleSave(async () => savePage({ ...page, content: withCopy }))
+  }, [page, updateContent, scheduleSave])
+
+  const handleMoveSection = useCallback((sectionId: string, direction: -1 | 1) => {
+    if (!page) return
+    const sorted = [...(page.content || [])].sort((a, b) => a.order - b.order)
+    const idx = sorted.findIndex(s => s.id === sectionId)
+    const swapIdx = idx + direction
+    if (idx === -1 || swapIdx < 0 || swapIdx >= sorted.length) return
+    const updatedContent = sorted.map((s, i) => {
+      if (i === idx) return { ...s, order: sorted[swapIdx].order }
+      if (i === swapIdx) return { ...s, order: sorted[idx].order }
+      return s
+    })
+    updateContent(updatedContent)
+    scheduleSave(async () => savePage({ ...page, content: updatedContent }))
+  }, [page, updateContent, scheduleSave])
 
   async function savePage(pageData: Page) {
     const updatePayload: Record<string, unknown> = {
@@ -536,9 +576,9 @@ export default function PageEditorPage() {
                 isDragging={false}
                 viewportSize={viewportSize}
                 onSelectSection={setSelectedSectionId}
-                onDeleteSection={() => {}}
-                onDuplicateSection={() => {}}
-                onMoveSection={() => {}}
+                onDeleteSection={handleDeleteSection}
+                onDuplicateSection={handleDuplicateSection}
+                onMoveSection={handleMoveSection}
                 onAddSection={() => {}}
                 onAddToContainer={() => {}}
               />
@@ -555,7 +595,7 @@ export default function PageEditorPage() {
                   sections={page?.content || []}
                   componentTemplates={components}
                   onSelectSection={setSelectedSectionId}
-                  onDeleteSection={() => {}}
+                  onDeleteSection={handleDeleteSection}
                 />
                 {/* Link/Button Scanner */}
                 {selectedSection?.type === 'design-block' && selectedSection.props?.code && (
