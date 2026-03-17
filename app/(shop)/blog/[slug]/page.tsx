@@ -147,7 +147,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           )}
 
           {/* Title */}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4 break-words">
             {post.title}
           </h1>
 
@@ -173,7 +173,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
           {/* Content */}
           <div
-            className="prose prose-invert prose-lg max-w-none
+            className="prose prose-invert prose-lg max-w-none break-words overflow-hidden
               prose-headings:text-white prose-headings:font-bold
               prose-p:text-slate-300 prose-p:leading-relaxed
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline
