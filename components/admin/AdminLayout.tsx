@@ -37,6 +37,7 @@ const navItems = [
   { href: '/admin/gift-cards', label: 'Gift Cards', icon: 'gift', permission: 'view_products' },
   { href: '/admin/esim', label: 'eSIMs', icon: 'sim-card', permission: 'view_products' },
   { href: '/admin/cards', label: 'Cards', icon: 'credit-card', permission: 'view_products' },
+  { href: '/admin/virtual-numbers', label: 'Virtual Numbers', icon: 'phone', permission: 'view_products' },
   { href: '/admin/categories', label: 'Categories', icon: 'grid-view', permission: 'manage_categories' },
   { href: '/admin/purchases', label: 'Purchases', icon: 'shopping-cart', permission: 'view_orders' },
   { href: '/admin/analytics', label: 'Analytics', icon: 'analytics', permission: 'view_analytics' },
