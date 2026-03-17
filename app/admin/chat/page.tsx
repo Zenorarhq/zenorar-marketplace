@@ -353,6 +353,8 @@ export default function AdminChatPage() {
       unsubAssigned()
       unsubTyping()
       setUserTyping(false)
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      if (emitTypingTimeoutRef.current) clearTimeout(emitTypingTimeoutRef.current)
       processedMsgIds.current.clear()
       lastAssignRef.current = { agentId: '', time: 0 }
     }

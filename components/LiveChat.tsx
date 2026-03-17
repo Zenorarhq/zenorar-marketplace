@@ -228,6 +228,7 @@ export default function LiveChat() {
       unsubStatus()
       unsubAssigned()
       unsubReconnect()
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
   }, [conversationId, joinConversation, leaveConversation, onNewMessage, onConversationStatus, onConversationAssigned, onReconnect])
 
