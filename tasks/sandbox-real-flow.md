@@ -11,68 +11,77 @@ When `globalTestMode` is enabled, existing API endpoints detect it and return mo
 ---
 
 ### Virtual Numbers
-**Endpoints to modify:**
-- [ ] `GET /api/virtual-numbers/available` — when test mode ON, return mock phone numbers instead of querying Twilio/providers
-- [ ] `POST /api/orders/instant` (virtual_number flow) — when test mode ON, skip real provisioning, create mock user_virtual_number with provider='test'
-- [ ] `lib/order-fulfillment.ts` processVirtualNumberItem — when provider='test' or test mode ON, skip real provider purchase, create mock record directly
-
-**User flow (unchanged):**
-1. Select country → see mock available numbers
-2. Select number → choose plan (Basic/Business, 1/7/30 days)
-3. Pay with wallet → order created → mock number provisioned
-4. Redirected to /profile/numbers/[id] with working inbox/settings
-
----
+**Endpoints modified:**
+- [x] `GET /api/virtual-numbers/available` — returns mock 555 numbers when test mode ON
+- [x] `lib/order-fulfillment.ts` processVirtualNumberItem — creates mock user_virtual_number with provider='test'
 
 ### eSIMs
-**Endpoints to modify:**
-- [ ] `GET /api/esim/plans` — already returns real plans from DB (no provider call needed), so no change
-- [ ] `POST /api/orders/instant` (esim flow) — when test mode ON, skip real eSIM provisioning, create mock user_esims with source_type='test'
-- [ ] `lib/order-fulfillment.ts` processEsimItem — when test mode ON, skip provider API, insert mock QR/ICCID
-
-**User flow (unchanged):**
-1. Browse Local/Regional eSIMs → see real plans from DB
-2. Select plan → pay with wallet
-3. Order created → mock eSIM provisioned with fake QR code
-4. Appears in /profile/library with mock data
-
----
+**Endpoints modified:**
+- [x] `lib/order-fulfillment.ts` processEsimItem — creates mock user_esims with source_type='test', fake QR/ICCID
 
 ### Gift Cards
-**Endpoints to modify:**
-- [ ] `GET /api/gift-cards` — already returns real gift cards from DB, no change needed
-- [ ] `POST /api/gift-cards/purchase` — when test mode ON, skip real code provisioning (Reloadly/bulk), create mock user_gift_cards with source='test' and fake code/PIN
-- [ ] `lib/gift-cards/provisioning.ts` — when test mode ON, return mock code instead of calling provider
-
-**User flow (unchanged):**
-1. Browse gift cards → select brand → pick denomination
-2. Pay with wallet
-3. Mock gift card delivered with fake code TEST-XXXX-XXXX
-4. Appears in /profile/library
-
----
+**Endpoints modified:**
+- [x] `lib/order-fulfillment.ts` processGiftCardItem — creates mock user_gift_cards with source='test', fake code/PIN
 
 ### Cards (Virtual + Instant)
-**Endpoints to modify:**
-- [ ] `GET /api/cards/providers` — already returns configs from DB, no change needed
-- [ ] `POST /api/cards/purchase` — when test mode ON, skip real provider (Sudo/Lithic/Reloadly), create mock user_cards with provider='test' and fake card number
-- [ ] `lib/cards/service.ts` or relevant provider code — when test mode ON, return mock card data
+**Endpoints modified:**
+- [x] `POST /api/cards/purchase` — creates mock user_cards with provider='test', fake card number 4111...1111
+- [x] `lib/order-fulfillment.ts` processCardItem — mock card data when test mode ON
 
-**User flow (unchanged):**
-1. Browse Virtual/Instant cards → select provider or denomination
-2. Pay with wallet
-3. Mock card created with test number 4111...1111
-4. Appears in /profile/library, can reveal mock card details
+### Cleanup & Tagging
+- [x] Removed shortcut "Create Test" buttons from all pages
+- [x] Removed test-purchase endpoints (deleted)
+- [x] `TestModeBanner` changed to info-only (no button)
+- [x] `lib/test-mode.ts` cleanup finds orders by product link AND metadata tag
+- [x] `lib/order-fulfillment.ts` tags order_items with `test_mode: 'true'` after sandbox fulfillment
+- [x] `app/api/cards/purchase/route.ts` tags order_items with `test_mode: 'true'` in sandbox path
 
 ---
 
-### Cleanup
-- [ ] Remove shortcut "Create Test" buttons from all pages (replace with just the banner indicator)
-- [ ] Remove test-purchase endpoints (no longer needed)
-- [ ] Keep `TestModeBanner` component but change it to just show "Sandbox Mode Active" info, no button
-- [ ] Keep cleanup logic in `lib/test-mode.ts` — still needed for purging test data on toggle OFF
+## Bugs Found & Fixed
+
+### Bug 1 (Critical): Cleanup orphaned orders
+**Root cause:** Cleanup deleted products FIRST, then searched for orders by product link — found nothing because products were already gone. Orders and wallet transactions were left orphaned.
+**Fix:** Cleanup now finds orders by BOTH metadata tag AND product link BEFORE deleting anything. Order IDs collected first, then refund, then delete wallet txns, then products, then orders.
+
+### Bug 2 (High): order_items not tagged with test_mode
+**Root cause:** The real purchase flow goes through `/api/orders/instant` → `fulfillOrder()` → process functions. But `fulfillOrder()` didn't tag order_items with `test_mode: 'true'` in the metadata. Cleanup by metadata found nothing.
+**Fix:** Added tagging step in `fulfillOrder()` after processing all items when test mode is ON.
+
+### Bug 3 (Medium): Cards purchase endpoint not tagging
+**Root cause:** Cards purchase has its own flow outside `fulfillOrder()`, so the fulfillment tagging didn't apply.
+**Fix:** Added metadata tagging in the sandbox branch of `/api/cards/purchase`.
+
+### Bug 4 (Medium): processCardItem in order-fulfillment had no test mode check
+**Root cause:** Cart checkout for cards goes through `processCardItem()` which called real provider APIs.
+**Fix:** Added test mode check before provider call, returns mock card data.
+
+### Bug 5 (Medium): `pricing` variable scoped inside else block but used after
+**Root cause:** After adding test mode branch, `pricing` was only available in the else block but referenced later.
+**Fix:** Moved `getProviderPricing()` before the branch with `.catch(() => null)`, used optional chaining.
 
 ---
 
 ## Review
-*(To be filled after implementation)*
+
+### Files changed:
+
+**Modified:**
+- `app/api/virtual-numbers/available/route.ts` — mock numbers when test mode ON
+- `lib/order-fulfillment.ts` — mock provisioning for VN/eSIM/gift cards/cards + order_items tagging
+- `app/api/cards/purchase/route.ts` — mock card creation + order_items tagging
+- `components/ui/TestModeBanner.tsx` — info-only banner, no shortcut buttons
+- `app/(shop)/esim/page.tsx` — removed shortcut handler, simplified banner
+- `app/(shop)/gift-cards/page.tsx` — removed shortcut handler, simplified banner
+- `app/(shop)/cards/page.tsx` — removed shortcut handler, simplified banner
+- `app/(shop)/virtual-numbers/page.tsx` — removed shortcut handler, simplified banner
+- `lib/test-mode.ts` — cleanup by product link + metadata, zero-trace deletion
+
+**Deleted:**
+- `app/api/esim/test-purchase/route.ts`
+- `app/api/gift-cards/test-purchase/route.ts`
+- `app/api/cards/test-purchase/route.ts`
+- `app/api/virtual-numbers/test-number/route.ts`
+
+### Build status:
+- `next build` compiles successfully

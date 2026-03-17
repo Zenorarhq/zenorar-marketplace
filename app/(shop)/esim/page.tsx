@@ -569,13 +569,13 @@ export default function EsimPage() {
             setActiveTab('local')
             setSelectedRegion(null)
           }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+          className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
             activeTab === 'local'
               ? 'bg-primary text-black'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Icon name="sim-card" size={16} />
+          <Icon name="sim-card" size={18} />
           Local eSIMs
         </button>
         <button
@@ -584,13 +584,13 @@ export default function EsimPage() {
             setSelectedCountry(null)
             setCountryPage(1)
           }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+          className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
             activeTab === 'regional'
               ? 'bg-primary text-black'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Icon name="globe" size={16} />
+          <Icon name="globe" size={18} />
           Regional eSIMs
         </button>
       </div>
