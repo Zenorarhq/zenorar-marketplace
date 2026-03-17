@@ -258,6 +258,17 @@ export default function VirtualNumbersPage() {
   // Monthly test mode state
   const [creatingTestNumber, setCreatingTestNumber] = useState(false)
 
+  // Global test mode check (controls visibility of ALL test features on this page)
+  const [globalTestEnabled, setGlobalTestEnabled] = useState(false)
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const token = localStorage.getItem('auth_token')
+    fetch('/api/test-mode', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(data => { if (data.success) setGlobalTestEnabled(data.data.enabled) })
+      .catch(() => {})
+  }, [isAuthenticated])
+
   // OTP Modal state
   const [showOtpModal, setShowOtpModal] = useState(false)
   const [otpModalStatus, setOtpModalStatus] = useState<'pending' | 'received' | 'cancelled' | 'expired'>('pending')
@@ -1031,7 +1042,8 @@ export default function VirtualNumbersPage() {
       {/* ===== OTP TAB ===== */}
       {activeTab === 'otp' && (
         <>
-          {/* Test Mode Toggle */}
+          {/* Test Mode Toggle — only visible when global test mode is enabled */}
+          {globalTestEnabled && (
           <div className={`mb-4 p-4 rounded-xl border ${otpTestMode ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-surface-dark border-border-dark'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1076,6 +1088,7 @@ export default function VirtualNumbersPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* How it works */}
           <div className="bg-surface-dark border border-border-dark rounded-2xl p-6 mb-8">
