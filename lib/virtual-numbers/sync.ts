@@ -12,61 +12,66 @@ interface SyncResult {
   errors: string[]
 }
 
-// Country name mapping for common codes
-const countryNames: Record<string, string> = {
-  US: 'United States',
-  GB: 'United Kingdom',
-  CA: 'Canada',
-  AU: 'Australia',
-  DE: 'Germany',
-  FR: 'France',
-  NL: 'Netherlands',
-  SE: 'Sweden',
-  NO: 'Norway',
-  DK: 'Denmark',
-  FI: 'Finland',
-  ES: 'Spain',
-  IT: 'Italy',
-  PT: 'Portugal',
-  IE: 'Ireland',
-  AT: 'Austria',
-  CH: 'Switzerland',
-  BE: 'Belgium',
-  PL: 'Poland',
-  CZ: 'Czech Republic',
-  HU: 'Hungary',
-  RO: 'Romania',
-  BG: 'Bulgaria',
-  GR: 'Greece',
-  JP: 'Japan',
-  SG: 'Singapore',
-  HK: 'Hong Kong',
-  IL: 'Israel',
-  MX: 'Mexico',
-  BR: 'Brazil',
-  AR: 'Argentina',
-  CL: 'Chile',
-  CO: 'Colombia',
-  PE: 'Peru',
-  ZA: 'South Africa',
-  NG: 'Nigeria',
-  KE: 'Kenya',
-  NZ: 'New Zealand',
-  IN: 'India',
-  PH: 'Philippines',
-  ID: 'Indonesia',
-  MY: 'Malaysia',
-  TH: 'Thailand',
-  VN: 'Vietnam',
-  KR: 'South Korea',
-  TW: 'Taiwan',
-  AE: 'United Arab Emirates',
-  SA: 'Saudi Arabia',
-  EG: 'Egypt',
-  TR: 'Turkey',
-  RU: 'Russia',
-  UA: 'Ukraine'
+// Country metadata for sync — name, dial code, flag emoji, default retail price
+const countryMeta: Record<string, { name: string; dialCode: string; flag: string; retail: number }> = {
+  US: { name: 'United States', dialCode: '+1', flag: '🇺🇸', retail: 5.00 },
+  GB: { name: 'United Kingdom', dialCode: '+44', flag: '🇬🇧', retail: 6.00 },
+  CA: { name: 'Canada', dialCode: '+1', flag: '🇨🇦', retail: 5.00 },
+  AU: { name: 'Australia', dialCode: '+61', flag: '🇦🇺', retail: 7.00 },
+  DE: { name: 'Germany', dialCode: '+49', flag: '🇩🇪', retail: 6.00 },
+  FR: { name: 'France', dialCode: '+33', flag: '🇫🇷', retail: 6.00 },
+  NL: { name: 'Netherlands', dialCode: '+31', flag: '🇳🇱', retail: 6.00 },
+  SE: { name: 'Sweden', dialCode: '+46', flag: '🇸🇪', retail: 6.00 },
+  NO: { name: 'Norway', dialCode: '+47', flag: '🇳🇴', retail: 7.00 },
+  DK: { name: 'Denmark', dialCode: '+45', flag: '🇩🇰', retail: 6.00 },
+  FI: { name: 'Finland', dialCode: '+358', flag: '🇫🇮', retail: 6.00 },
+  ES: { name: 'Spain', dialCode: '+34', flag: '🇪🇸', retail: 6.00 },
+  IT: { name: 'Italy', dialCode: '+39', flag: '🇮🇹', retail: 6.00 },
+  PT: { name: 'Portugal', dialCode: '+351', flag: '🇵🇹', retail: 6.00 },
+  IE: { name: 'Ireland', dialCode: '+353', flag: '🇮🇪', retail: 6.00 },
+  AT: { name: 'Austria', dialCode: '+43', flag: '🇦🇹', retail: 6.00 },
+  CH: { name: 'Switzerland', dialCode: '+41', flag: '🇨🇭', retail: 8.00 },
+  BE: { name: 'Belgium', dialCode: '+32', flag: '🇧🇪', retail: 6.00 },
+  PL: { name: 'Poland', dialCode: '+48', flag: '🇵🇱', retail: 5.00 },
+  CZ: { name: 'Czech Republic', dialCode: '+420', flag: '🇨🇿', retail: 5.00 },
+  HU: { name: 'Hungary', dialCode: '+36', flag: '🇭🇺', retail: 5.00 },
+  RO: { name: 'Romania', dialCode: '+40', flag: '🇷🇴', retail: 5.00 },
+  BG: { name: 'Bulgaria', dialCode: '+359', flag: '🇧🇬', retail: 5.00 },
+  GR: { name: 'Greece', dialCode: '+30', flag: '🇬🇷', retail: 6.00 },
+  JP: { name: 'Japan', dialCode: '+81', flag: '🇯🇵', retail: 8.00 },
+  SG: { name: 'Singapore', dialCode: '+65', flag: '🇸🇬', retail: 7.00 },
+  HK: { name: 'Hong Kong', dialCode: '+852', flag: '🇭🇰', retail: 7.00 },
+  IL: { name: 'Israel', dialCode: '+972', flag: '🇮🇱', retail: 6.00 },
+  MX: { name: 'Mexico', dialCode: '+52', flag: '🇲🇽', retail: 5.00 },
+  BR: { name: 'Brazil', dialCode: '+55', flag: '🇧🇷', retail: 5.00 },
+  AR: { name: 'Argentina', dialCode: '+54', flag: '🇦🇷', retail: 5.00 },
+  CL: { name: 'Chile', dialCode: '+56', flag: '🇨🇱', retail: 5.00 },
+  CO: { name: 'Colombia', dialCode: '+57', flag: '🇨🇴', retail: 5.00 },
+  PE: { name: 'Peru', dialCode: '+51', flag: '🇵🇪', retail: 5.00 },
+  ZA: { name: 'South Africa', dialCode: '+27', flag: '🇿🇦', retail: 5.00 },
+  NG: { name: 'Nigeria', dialCode: '+234', flag: '🇳🇬', retail: 5.00 },
+  KE: { name: 'Kenya', dialCode: '+254', flag: '🇰🇪', retail: 5.00 },
+  NZ: { name: 'New Zealand', dialCode: '+64', flag: '🇳🇿', retail: 7.00 },
+  IN: { name: 'India', dialCode: '+91', flag: '🇮🇳', retail: 4.00 },
+  PH: { name: 'Philippines', dialCode: '+63', flag: '🇵🇭', retail: 5.00 },
+  ID: { name: 'Indonesia', dialCode: '+62', flag: '🇮🇩', retail: 5.00 },
+  MY: { name: 'Malaysia', dialCode: '+60', flag: '🇲🇾', retail: 5.00 },
+  TH: { name: 'Thailand', dialCode: '+66', flag: '🇹🇭', retail: 5.00 },
+  VN: { name: 'Vietnam', dialCode: '+84', flag: '🇻🇳', retail: 5.00 },
+  KR: { name: 'South Korea', dialCode: '+82', flag: '🇰🇷', retail: 7.00 },
+  TW: { name: 'Taiwan', dialCode: '+886', flag: '🇹🇼', retail: 6.00 },
+  AE: { name: 'United Arab Emirates', dialCode: '+971', flag: '🇦🇪', retail: 7.00 },
+  SA: { name: 'Saudi Arabia', dialCode: '+966', flag: '🇸🇦', retail: 7.00 },
+  EG: { name: 'Egypt', dialCode: '+20', flag: '🇪🇬', retail: 5.00 },
+  TR: { name: 'Turkey', dialCode: '+90', flag: '🇹🇷', retail: 5.00 },
+  RU: { name: 'Russia', dialCode: '+7', flag: '🇷🇺', retail: 5.00 },
+  UA: { name: 'Ukraine', dialCode: '+380', flag: '🇺🇦', retail: 5.00 },
 }
+
+// Legacy alias for backward compatibility
+const countryNames: Record<string, string> = Object.fromEntries(
+  Object.entries(countryMeta).map(([k, v]) => [k, v.name])
+)
 
 /**
  * Get Twilio credentials
@@ -200,7 +205,8 @@ async function syncTwilioCountries(): Promise<SyncResult> {
 
     for (const country of countries) {
       const countryCode = country.country_code || country.country
-      const countryName = countryNames[countryCode] || countryCode
+      const meta = countryMeta[countryCode]
+      const countryName = meta?.name || countryCode
 
       try {
         // Check if country exists
@@ -210,7 +216,7 @@ async function syncTwilioCountries(): Promise<SyncResult> {
         )
 
         if (existing.rows.length > 0) {
-          // Update - add twilio to providers if not present
+          // Update - add twilio to providers, fill in missing metadata
           await query(
             `UPDATE virtual_number_countries
              SET is_active = true,
@@ -218,18 +224,23 @@ async function syncTwilioCountries(): Promise<SyncResult> {
                    WHEN 'twilio' = ANY(providers) THEN providers
                    ELSE array_append(COALESCE(providers, ARRAY[]::text[]), 'twilio')
                  END,
+                 dial_code = COALESCE(NULLIF(dial_code, ''), $2),
+                 flag_emoji = COALESCE(NULLIF(flag_emoji, ''), $3),
+                 retail_monthly = COALESCE(NULLIF(retail_monthly, 0), $4),
+                 sms_enabled = COALESCE(sms_enabled, true),
+                 voice_enabled = COALESCE(voice_enabled, true),
                  updated_at = NOW()
              WHERE id = $1`,
-            [existing.rows[0].id]
+            [existing.rows[0].id, meta?.dialCode || '', meta?.flag || '', meta?.retail || 5.00]
           )
           result.updated++
         } else {
-          // Insert
+          // Insert with full metadata
           await query(
             `INSERT INTO virtual_number_countries
-               (name, iso_code, providers, is_active)
-             VALUES ($1, $2, ARRAY['twilio'], true)`,
-            [countryName, countryCode]
+               (name, iso_code, dial_code, flag_emoji, providers, sms_enabled, voice_enabled, retail_monthly, is_active)
+             VALUES ($1, $2, $3, $4, ARRAY['twilio'], true, true, $5, true)`,
+            [countryName, countryCode, meta?.dialCode || '', meta?.flag || '', meta?.retail || 5.00]
           )
           result.synced++
         }
@@ -294,7 +305,8 @@ async function syncPlivoCountries(): Promise<SyncResult> {
           continue // No numbers available
         }
 
-        const countryName = countryNames[countryCode] || countryCode
+        const meta = countryMeta[countryCode]
+        const countryName = meta?.name || countryCode
 
         // Check if country exists
         const existing = await query(
@@ -303,7 +315,6 @@ async function syncPlivoCountries(): Promise<SyncResult> {
         )
 
         if (existing.rows.length > 0) {
-          // Update - add plivo to providers if not present
           await query(
             `UPDATE virtual_number_countries
              SET is_active = true,
@@ -311,18 +322,22 @@ async function syncPlivoCountries(): Promise<SyncResult> {
                    WHEN 'plivo' = ANY(providers) THEN providers
                    ELSE array_append(COALESCE(providers, ARRAY[]::text[]), 'plivo')
                  END,
+                 dial_code = COALESCE(NULLIF(dial_code, ''), $2),
+                 flag_emoji = COALESCE(NULLIF(flag_emoji, ''), $3),
+                 retail_monthly = COALESCE(NULLIF(retail_monthly, 0), $4),
+                 sms_enabled = COALESCE(sms_enabled, true),
+                 voice_enabled = COALESCE(voice_enabled, true),
                  updated_at = NOW()
              WHERE id = $1`,
-            [existing.rows[0].id]
+            [existing.rows[0].id, meta?.dialCode || '', meta?.flag || '', meta?.retail || 5.00]
           )
           result.updated++
         } else {
-          // Insert
           await query(
             `INSERT INTO virtual_number_countries
-               (name, iso_code, providers, is_active)
-             VALUES ($1, $2, ARRAY['plivo'], true)`,
-            [countryName, countryCode]
+               (name, iso_code, dial_code, flag_emoji, providers, sms_enabled, voice_enabled, retail_monthly, is_active)
+             VALUES ($1, $2, $3, $4, ARRAY['plivo'], true, true, $5, true)`,
+            [countryName, countryCode, meta?.dialCode || '', meta?.flag || '', meta?.retail || 5.00]
           )
           result.synced++
         }
@@ -383,7 +398,8 @@ async function syncVonageCountries(): Promise<SyncResult> {
           continue // No numbers available
         }
 
-        const countryName = countryNames[countryCode] || countryCode
+        const meta = countryMeta[countryCode]
+        const countryName = meta?.name || countryCode
 
         // Check if country exists
         const existing = await query(
@@ -392,7 +408,6 @@ async function syncVonageCountries(): Promise<SyncResult> {
         )
 
         if (existing.rows.length > 0) {
-          // Update - add vonage to providers if not present
           await query(
             `UPDATE virtual_number_countries
              SET is_active = true,
@@ -400,18 +415,22 @@ async function syncVonageCountries(): Promise<SyncResult> {
                    WHEN 'vonage' = ANY(providers) THEN providers
                    ELSE array_append(COALESCE(providers, ARRAY[]::text[]), 'vonage')
                  END,
+                 dial_code = COALESCE(NULLIF(dial_code, ''), $2),
+                 flag_emoji = COALESCE(NULLIF(flag_emoji, ''), $3),
+                 retail_monthly = COALESCE(NULLIF(retail_monthly, 0), $4),
+                 sms_enabled = COALESCE(sms_enabled, true),
+                 voice_enabled = COALESCE(voice_enabled, true),
                  updated_at = NOW()
              WHERE id = $1`,
-            [existing.rows[0].id]
+            [existing.rows[0].id, meta?.dialCode || '', meta?.flag || '', meta?.retail || 5.00]
           )
           result.updated++
         } else {
-          // Insert
           await query(
             `INSERT INTO virtual_number_countries
-               (name, iso_code, providers, is_active)
-             VALUES ($1, $2, ARRAY['vonage'], true)`,
-            [countryName, countryCode]
+               (name, iso_code, dial_code, flag_emoji, providers, sms_enabled, voice_enabled, retail_monthly, is_active)
+             VALUES ($1, $2, $3, $4, ARRAY['vonage'], true, true, $5, true)`,
+            [countryName, countryCode, meta?.dialCode || '', meta?.flag || '', meta?.retail || 5.00]
           )
           result.synced++
         }

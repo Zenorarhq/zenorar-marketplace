@@ -234,6 +234,8 @@ function AdminVirtualNumbersContent() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-virtual-numbers'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-virtual-number-countries'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-virtual-number-plans'] })
       queryClient.invalidateQueries({ queryKey: ['virtual-number-provider-status'] })
       setLastSyncResult(data)
       setShowSyncDetails(true)
