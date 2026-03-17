@@ -9,7 +9,7 @@ interface PageProps {
 async function getPage(slug: string) {
   try {
     // Use absolute URL for server-side fetch
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
     const res = await fetch(`${baseUrl}/api/cms/pages/public/${slug}`, {
       next: { revalidate: 60 },
     })

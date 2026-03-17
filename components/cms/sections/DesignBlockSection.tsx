@@ -74,22 +74,34 @@ export default function DesignBlockSection({ props }: DesignBlockSectionProps) {
   // Build a full HTML document from the pasted code
   const srcdoc = useMemo(() => {
     if (!code) return ''
-    // Override viewport-height locks and internal scroll so content flows naturally
+    // Viewport meta tag for mobile responsiveness
+    const viewportMeta = `<meta name="viewport" content="width=device-width, initial-scale=1">`
+    // Override viewport-height locks, ensure responsive images/containers
     const containStyle = `<style>
 html, body { margin: 0; padding: 0; overflow-x: hidden; max-width: 100%; height: auto !important; min-height: auto !important; }
 .h-screen, .min-h-screen { height: auto !important; min-height: auto !important; }
 .overflow-y-auto, .overflow-y-scroll { overflow-y: visible !important; }
 header[class*="fixed"] { position: sticky !important; }
 aside[class*="fixed"] { position: sticky !important; top: 0; height: auto !important; }
+img, video, iframe, svg { max-width: 100%; height: auto; }
+* { box-sizing: border-box; }
+@media (max-width: 768px) {
+  [style*="width:"] { max-width: 100% !important; }
+  table { width: 100% !important; }
+  td, th { display: block !important; width: 100% !important; }
+}
 </style>`
     let html = processed
+    // Inject viewport meta if not already present
+    const hasViewport = html.includes('name="viewport"') || html.includes("name='viewport'")
+    const metaToInject = hasViewport ? '' : viewportMeta
     if (html.includes('</head>')) {
-      html = html.replace('</head>', `${containStyle}${RESIZE_SCRIPT}</head>`)
+      html = html.replace('</head>', `${metaToInject}${containStyle}${RESIZE_SCRIPT}</head>`)
     } else if (html.includes('</body>')) {
       html = html.replace('</body>', `${containStyle}${RESIZE_SCRIPT}</body>`)
     } else {
       // Wrap in a basic document
-      html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${containStyle}${RESIZE_SCRIPT}</head><body>${html}</body></html>`
+      html = `<!DOCTYPE html><html><head><meta charset="utf-8">${viewportMeta}${containStyle}${RESIZE_SCRIPT}</head><body>${html}</body></html>`
     }
     return html
   }, [processed, code])
@@ -110,6 +122,7 @@ aside[class*="fixed"] { position: sticky !important; top: 0; height: auto !impor
       <div className="py-8 px-4">
         <div className="max-w-4xl mx-auto bg-[#141414] border border-[#1f1f1f] rounded-xl p-8 text-center">
           <p className="text-slate-500">Paste your design code to render it here.</p>
+          <p className="text-slate-600 text-xs mt-2">Tip: For mobile-friendly pages, ensure your Figma design uses responsive breakpoints before exporting to code.</p>
         </div>
       </div>
     )

@@ -9,6 +9,7 @@ import { useTimezone } from '@/hooks/use-timezone'
 import ThemeEditor from '@/components/admin/ThemeEditor'
 import HeaderFooterEditor from '@/components/admin/HeaderFooterEditor'
 import { formatDateShort } from '@/lib/date-utils'
+import LandingPageAnalytics from '@/components/cms/LandingPageAnalytics'
 
 type TabType = 'all' | 'published' | 'draft' | 'archived'
 
@@ -21,6 +22,7 @@ export default function PageBuilderPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [analyticsPageId, setAnalyticsPageId] = useState<string | null>(null)
 
   const loadPages = useCallback(async () => {
     setLoading(true)
@@ -301,6 +303,13 @@ export default function PageBuilderPage() {
                         <Icon name="check" size={18} />
                       </button>
                     )}
+                    <button
+                      onClick={() => setAnalyticsPageId(page.id)}
+                      className="p-2 text-slate-400 hover:text-green-400 hover:bg-green-400/10 rounded-lg transition-colors"
+                      title="Analytics"
+                    >
+                      <Icon name="analytics" size={18} />
+                    </button>
                     <Link
                       href={`/admin/frontend/${page.id}`}
                       className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
@@ -388,6 +397,10 @@ export default function PageBuilderPage() {
           </div>
         </div>
       </div>
+      {/* Analytics Modal */}
+      {analyticsPageId && (
+        <LandingPageAnalytics pageId={analyticsPageId} onClose={() => setAnalyticsPageId(null)} />
+      )}
     </AdminLayout>
   )
 }

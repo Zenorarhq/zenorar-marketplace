@@ -68,14 +68,17 @@ function CodeField({ name, value, schema, onChange }: FieldProps) {
           dangerouslySetInnerHTML={{ __html: value || '<p style="color:#999">No code yet</p>' }}
         />
       ) : (
-        <textarea
-          rows={12}
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={`Paste your ${name === 'css' ? 'CSS' : 'HTML'} code here...`}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-green-400 placeholder:text-slate-600 focus:outline-none focus:border-primary/50 resize-none font-mono leading-relaxed"
-          spellCheck={false}
-        />
+        <>
+          <textarea
+            rows={12}
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={`Paste your ${name === 'css' ? 'CSS' : 'HTML'} code here...`}
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-green-400 placeholder:text-slate-600 focus:outline-none focus:border-primary/50 resize-none font-mono leading-relaxed"
+            spellCheck={false}
+          />
+          <p className="text-slate-600 text-[10px] mt-1.5 leading-relaxed">Tip: For mobile-friendly pages, make sure your design uses responsive breakpoints before exporting to code. Basic responsive CSS is auto-injected.</p>
+        </>
       )}
     </div>
   )
