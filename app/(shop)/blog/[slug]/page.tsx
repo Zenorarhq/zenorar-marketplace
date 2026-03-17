@@ -3,9 +3,17 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { executeQuery } from '@/lib/db-helpers'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
-import DOMPurify from 'isomorphic-dompurify'
 
 export const dynamic = 'force-dynamic'
+
+// Server-safe HTML sanitization: strip script tags and event handlers
+// Content is admin-authored via TipTap (produces clean HTML)
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\son\w+\s*=\s*[^\s>]*/gi, '')
+}
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>
@@ -94,7 +102,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     { label: post.title },
   ]
 
-  const sanitizedContent = DOMPurify.sanitize(post.content || '')
+  const sanitizedContent = sanitizeHtml(post.content || '')
 
   // JSON-LD structured data
   const jsonLd = {

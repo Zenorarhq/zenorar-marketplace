@@ -173,7 +173,7 @@ export default function BlogPostForm({ postId }: BlogPostFormProps) {
 
   return (
     <AdminLayout>
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

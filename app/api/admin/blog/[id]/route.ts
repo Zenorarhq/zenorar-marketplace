@@ -93,7 +93,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         fields.push(`published_at = COALESCE(published_at, NOW())`)
       }
     }
-    if (published_at !== undefined) { fields.push(`published_at = $${idx++}`); values.push(published_at) }
+    // Only set published_at explicitly if a value was provided (not null/empty)
+    // Avoids overwriting the COALESCE(published_at, NOW()) above
+    if (published_at) { fields.push(`published_at = $${idx++}`); values.push(published_at) }
 
     if (fields.length === 0 && !category_ids && !tag_ids) {
       return NextResponse.json({ success: false, error: 'No fields to update' }, { status: 400 })
