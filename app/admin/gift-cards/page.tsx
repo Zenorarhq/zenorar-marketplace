@@ -70,6 +70,8 @@ function AdminGiftCardsPageContent() {
   const [gcSearchQuery, setGcSearchQuery] = useState('')
   const [gcSelectedCategory, setGcSelectedCategory] = useState('all')
   const [gcSelectedStatus, setGcSelectedStatus] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 50
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingCard, setEditingCard] = useState<GiftCard | null>(null)
   const [importData, setImportData] = useState('')
@@ -399,6 +401,16 @@ function AdminGiftCardsPageContent() {
     return matchesSearch && matchesCategory && matchesStatus
   })
 
+  // Pagination
+  const totalFiltered = filteredGiftCards.length
+  const totalPages = Math.ceil(totalFiltered / pageSize)
+  const paginatedGiftCards = filteredGiftCards.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [gcSearchQuery, gcSelectedCategory, gcSelectedStatus])
+
   // Calculate totals from inventory
   const totalAvailable = inventoryStats?.reduce((sum, s) => sum + s.available, 0) || 0
   const totalSold = inventoryStats?.reduce((sum, s) => sum + s.sold, 0) || 0
@@ -611,14 +623,14 @@ function AdminGiftCardsPageContent() {
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
                       </tr>
-                    ) : filteredGiftCards.length === 0 ? (
+                    ) : paginatedGiftCards.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                           No gift cards found.
                         </td>
                       </tr>
                     ) : (
-                      filteredGiftCards.map(card => (
+                      paginatedGiftCards.map(card => (
                         <tr key={card.id} className="border-b border-border-dark hover:bg-white/5">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
@@ -657,6 +669,53 @@ function AdminGiftCardsPageContent() {
                   </tbody>
                 </table>
               </div>
+              {totalFiltered > pageSize && (
+                <div className="border-t border-[#1f1f1f] px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-slate-400 text-sm">
+                      Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalFiltered)} of {formatNumber(totalFiltered)}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum: number
+                          if (totalPages <= 5) pageNum = i + 1
+                          else if (currentPage <= 3) pageNum = i + 1
+                          else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                          else pageNum = currentPage - 2 + i
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`w-8 h-8 rounded-lg text-sm transition-colors ${
+                                currentPage === pageNum
+                                  ? 'bg-primary text-black font-semibold'
+                                  : 'bg-[#1a1a1a] hover:bg-white/10 text-slate-400'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -683,14 +742,14 @@ function AdminGiftCardsPageContent() {
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
                     </tr>
-                  ) : filteredGiftCards.length === 0 ? (
+                  ) : paginatedGiftCards.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                         No gift cards found.
                       </td>
                     </tr>
                   ) : (
-                    filteredGiftCards.map(card => (
+                    paginatedGiftCards.map(card => (
                       <tr key={card.id} className="border-b border-border-dark hover:bg-white/5">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
@@ -746,6 +805,53 @@ function AdminGiftCardsPageContent() {
                 </tbody>
               </table>
             </div>
+            {totalFiltered > pageSize && (
+              <div className="border-t border-[#1f1f1f] px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-slate-400 text-sm">
+                    Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalFiltered)} of {formatNumber(totalFiltered)}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum: number
+                        if (totalPages <= 5) pageNum = i + 1
+                        else if (currentPage <= 3) pageNum = i + 1
+                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                        else pageNum = currentPage - 2 + i
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-8 h-8 rounded-lg text-sm transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-primary text-black font-semibold'
+                                : 'bg-[#1a1a1a] hover:bg-white/10 text-slate-400'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           </>
         )}
