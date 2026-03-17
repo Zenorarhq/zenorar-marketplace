@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { type, title, message } = body
+    const { type, title, message, userIds: targetUserIds } = body
 
     if (!type || !title || !message) {
       return NextResponse.json({ success: false, error: 'type, title, and message are required' }, { status: 400 })
@@ -25,9 +25,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'type must be PROMOTIONAL or SYSTEM' }, { status: 400 })
     }
 
-    // Get all users (exclude system accounts if needed)
-    const usersResult = await executeQuery(`SELECT id FROM users`)
-    const userIds = usersResult.rows.map((row: any) => row.id)
+    // If targeted user IDs provided, use those; otherwise broadcast to all users
+    let userIds: string[]
+    if (targetUserIds && Array.isArray(targetUserIds) && targetUserIds.length > 0) {
+      userIds = targetUserIds
+    } else {
+      const usersResult = await executeQuery(`SELECT id FROM users`)
+      userIds = usersResult.rows.map((row: any) => row.id)
+    }
 
     // Generate batch ID to track this notification batch
     const batchId = randomUUID()

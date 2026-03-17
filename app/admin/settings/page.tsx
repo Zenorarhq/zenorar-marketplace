@@ -532,6 +532,30 @@ export default function AdminSettingsPage() {
   // Export/Import state
   const [importing, setImporting] = useState(false)
 
+  // Slack test state
+  const [testingSlack, setTestingSlack] = useState(false)
+  const [slackTestResult, setSlackTestResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  const handleTestSlack = async () => {
+    setTestingSlack(true)
+    setSlackTestResult(null)
+    try {
+      const res = await fetch(notificationSettings.slackWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: '✅ Zenorar Slack integration test — connection successful!' }),
+      })
+      if (res.ok) {
+        setSlackTestResult({ success: true, message: 'Test message sent to Slack!' })
+      } else {
+        setSlackTestResult({ success: false, message: `Slack returned ${res.status}` })
+      }
+    } catch {
+      setSlackTestResult({ success: false, message: 'Failed to connect to Slack webhook' })
+    }
+    setTestingSlack(false)
+  }
+
   // Payment test state
   const [testingPayment, setTestingPayment] = useState<string | null>(null)
   const [paymentTestResult, setPaymentTestResult] = useState<{ provider: string; success: boolean; message: string } | null>(null)
@@ -2364,22 +2388,13 @@ export default function AdminSettingsPage() {
                       <Icon name="bell" size={20} className="text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-white font-medium">Push Notifications</p>
-                      <p className="text-slate-500 text-sm">Enable browser push notifications</p>
+                      <p className="text-white font-medium">Push Notifications <span className="text-xs text-slate-500 font-normal">(Coming Soon)</span></p>
+                      <p className="text-slate-500 text-sm">Browser push notifications are not yet available</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setNotificationSettings({ ...notificationSettings, pushEnabled: !notificationSettings.pushEnabled })}
-                    className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
-                      notificationSettings.pushEnabled ? 'bg-primary' : 'bg-[#2a2a2a]'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                        notificationSettings.pushEnabled ? 'left-7' : 'left-1'
-                      }`}
-                    />
-                  </button>
+                  <div className="relative w-12 h-6 rounded-full bg-[#2a2a2a] opacity-50 cursor-not-allowed flex-shrink-0">
+                    <span className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white" />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -2391,7 +2406,23 @@ export default function AdminSettingsPage() {
                     placeholder="https://hooks.slack.com/services/..."
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
                   />
-                  <p className="text-slate-500 text-xs">Send notifications to a Slack channel</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-slate-500 text-xs flex-1">Send notifications to a Slack channel when orders, signups, or tickets arrive</p>
+                    {notificationSettings.slackWebhook && (
+                      <button
+                        onClick={handleTestSlack}
+                        disabled={testingSlack}
+                        className="text-xs px-3 py-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-slate-400 hover:text-white hover:border-primary/50 transition-colors disabled:opacity-50"
+                      >
+                        {testingSlack ? 'Testing...' : 'Test Webhook'}
+                      </button>
+                    )}
+                  </div>
+                  {slackTestResult && (
+                    <p className={`text-xs mt-1 ${slackTestResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                      {slackTestResult.message}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2532,35 +2563,28 @@ export default function AdminSettingsPage() {
                       setSendingNotif(true)
                       setMessage(null)
                       try {
+                        const payload: any = {
+                          type: sendNotif.type,
+                          title: sendNotif.title,
+                          message: sendNotif.message,
+                        }
                         if (sendMode === 'targeted') {
-                          const data = await apiFetch<{ message: string }>('/notifications/promotional', {
-                            method: 'POST',
-                            body: JSON.stringify({
-                              userIds: targetUsers.map(u => u.id),
-                              type: sendNotif.type,
-                              title: sendNotif.title,
-                              message: sendNotif.message,
-                            }),
-                          })
-                          if (data.success) {
-                            setMessage({ type: 'success', text: `Notification sent to ${targetUsers.length} user(s)` })
-                            setSendNotif({ type: 'SYSTEM', title: '', message: '' })
-                            setTargetUsers([])
-                          } else {
-                            setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
-                          }
+                          payload.userIds = targetUsers.map(u => u.id)
+                        }
+                        const data = await localApiFetch<{ message: string; batchId: string }>('/admin/notifications/send', {
+                          method: 'POST',
+                          body: JSON.stringify(payload),
+                        })
+                        if (data.success) {
+                          const msg = sendMode === 'targeted'
+                            ? `Notification sent to ${targetUsers.length} user(s)`
+                            : (data.data?.message || 'Notification sent!')
+                          setMessage({ type: 'success', text: msg })
+                          setSendNotif({ type: 'SYSTEM', title: '', message: '' })
+                          if (sendMode === 'targeted') setTargetUsers([])
+                          fetchSentNotifications()
                         } else {
-                          const data = await apiFetch<{ message: string }>('/notifications/broadcast', {
-                            method: 'POST',
-                            body: JSON.stringify(sendNotif),
-                          })
-                          if (data.success) {
-                            setMessage({ type: 'success', text: data.data?.message || 'Notification sent!' })
-                            setSendNotif({ type: 'SYSTEM', title: '', message: '' })
-                            fetchSentNotifications()
-                          } else {
-                            setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
-                          }
+                          setMessage({ type: 'error', text: data.error || 'Failed to send notification' })
                         }
                       } catch {
                         setMessage({ type: 'error', text: 'Failed to send notification' })
