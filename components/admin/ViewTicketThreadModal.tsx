@@ -35,14 +35,14 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
   // Auto-refresh ticket data while modal is open
   useEffect(() => {
     if (!isOpen || !ticketId) return
-    const interval = setInterval(loadTicket, 15000)
+    const interval = setInterval(() => loadTicket(true), 15000)
     return () => clearInterval(interval)
   }, [isOpen, ticketId])
 
-  async function loadTicket() {
+  async function loadTicket(isBackgroundRefresh = false) {
     if (!ticketId) return
 
-    setLoading(true)
+    if (!isBackgroundRefresh) setLoading(true)
     setError('')
 
     try {
@@ -56,7 +56,7 @@ export default function ViewTicketThreadModal({ isOpen, onClose, ticketId, onSuc
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load ticket')
     } finally {
-      setLoading(false)
+      if (!isBackgroundRefresh) setLoading(false)
     }
   }
 

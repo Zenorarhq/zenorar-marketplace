@@ -611,7 +611,7 @@ export default function TicketsPage() {
                   <div className="flex flex-wrap items-center gap-3 mb-3">
                     {getStatusBadge(ticketDetail.status)}
                     {getPriorityBadge(ticketDetail.priority)}
-                    <span className="text-slate-500 text-xs">{ticketDetail.category}</span>
+                    <span className="text-slate-500 text-xs">{categoryLabels[ticketDetail.category] || ticketDetail.category}</span>
                     {ticketDetail.product && (
                       <span className="text-xs bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full">{ticketDetail.product.name}</span>
                     )}
