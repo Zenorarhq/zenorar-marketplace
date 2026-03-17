@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (user.role !== 'admin') {
+    const isAdmin = user.role?.toUpperCase() === 'ADMIN' || user.role?.toUpperCase() === 'EDITOR'
+    if (!isAdmin) {
       return NextResponse.json(
         { success: false, error: 'Admin access required' },
         { status: 403 }

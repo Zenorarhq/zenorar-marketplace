@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   try {
     const user = await authenticateRequest(request)
 
-    if (!user || user.role !== 'admin') {
+    const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'EDITOR'
+    if (!isAdmin) {
       return NextResponse.json(
         { success: false, error: 'Admin access required' },
         { status: 403 }
@@ -49,7 +50,8 @@ export async function POST(request: NextRequest) {
   try {
     const user = await authenticateRequest(request)
 
-    if (!user || user.role !== 'admin') {
+    const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'EDITOR'
+    if (!isAdmin) {
       return NextResponse.json(
         { success: false, error: 'Admin access required' },
         { status: 403 }
@@ -122,7 +124,8 @@ export async function PATCH(request: NextRequest) {
   try {
     const user = await authenticateRequest(request)
 
-    if (!user || user.role !== 'admin') {
+    const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'EDITOR'
+    if (!isAdmin) {
       return NextResponse.json(
         { success: false, error: 'Admin access required' },
         { status: 403 }
