@@ -512,7 +512,6 @@ export default function AdminSettingsPage() {
   const [seoSettings, setSeoSettings] = useState({
     globalMetaTitleTemplate: '{{title}} | Zenorar',
     globalMetaDescription: '',
-    canonicalUrlPrefix: '',
     googleSiteVerification: '',
     defaultOgTitle: '',
     defaultOgDescription: '',
@@ -1586,7 +1585,6 @@ export default function AdminSettingsPage() {
       // SEO settings
       { key: 'globalMetaTitleTemplate', value: seoSettings.globalMetaTitleTemplate, group: 'seo', isPublic: true },
       { key: 'globalMetaDescription', value: seoSettings.globalMetaDescription, group: 'seo', isPublic: true },
-      { key: 'canonicalUrlPrefix', value: seoSettings.canonicalUrlPrefix, group: 'seo', isPublic: true },
       { key: 'googleSiteVerification', value: seoSettings.googleSiteVerification, group: 'seo', isPublic: true },
       { key: 'defaultOgTitle', value: seoSettings.defaultOgTitle, group: 'seo', isPublic: true },
       { key: 'defaultOgDescription', value: seoSettings.defaultOgDescription, group: 'seo', isPublic: true },
@@ -6175,22 +6173,22 @@ export default function AdminSettingsPage() {
                       <textarea
                         value={marketingSettings.customHeadCode}
                         onChange={(e) => setMarketingSettings({ ...marketingSettings, customHeadCode: e.target.value })}
-                        placeholder="<!-- Scripts, meta tags, or styles for <head> -->"
+                        placeholder="// Paste raw JavaScript only — no <script> tags&#10;// e.g. window._hjSettings = { hjid: 123, hjsv: 6 };"
                         rows={4}
                         className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm"
                       />
-                      <p className="text-xs text-slate-500 mt-1">Injected before &lt;/head&gt;. Use for TikTok Pixel, Hotjar, Crisp, etc.</p>
+                      <p className="text-xs text-slate-500 mt-1">JavaScript injected into &lt;head&gt; — do <strong className="text-slate-300">not</strong> include &lt;script&gt; tags. Use for Hotjar, Crisp, TikTok Pixel, etc.</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">Custom Body Code</label>
                       <textarea
                         value={marketingSettings.customBodyCode}
                         onChange={(e) => setMarketingSettings({ ...marketingSettings, customBodyCode: e.target.value })}
-                        placeholder="<!-- Scripts for end of <body> -->"
+                        placeholder="// Paste raw JavaScript only — no <script> tags"
                         rows={4}
                         className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm"
                       />
-                      <p className="text-xs text-slate-500 mt-1">Injected before &lt;/body&gt;.</p>
+                      <p className="text-xs text-slate-500 mt-1">JavaScript injected before &lt;/body&gt; — do <strong className="text-slate-300">not</strong> include &lt;script&gt; tags.</p>
                     </div>
                   </div>
                 )}
@@ -6236,10 +6234,6 @@ export default function AdminSettingsPage() {
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">Default Meta Description</label>
                       <textarea value={seoSettings.globalMetaDescription} onChange={(e) => setSeoSettings({ ...seoSettings, globalMetaDescription: e.target.value })} placeholder="Your marketplace description for search engines..." rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1">Canonical URL Prefix</label>
-                      <input type="text" value={seoSettings.canonicalUrlPrefix} onChange={(e) => setSeoSettings({ ...seoSettings, canonicalUrlPrefix: e.target.value })} placeholder="https://zenorar.com" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50" />
                     </div>
                   </div>
                 )}
@@ -6388,12 +6382,19 @@ export default function AdminSettingsPage() {
                   className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-3 py-1.5 text-sm text-white focus:outline-none"
                 >
                   <option value="">All Actions</option>
+                  <option value="SETTINGS_CHANGED">Settings Changed</option>
                   <option value="PIN_SETUP">PIN Setup</option>
                   <option value="PIN_CHANGED">PIN Changed</option>
+                  <option value="PIN_RESET_REQUESTED">PIN Reset Requested</option>
+                  <option value="PIN_RESET_COMPLETED">PIN Reset Completed</option>
                   <option value="PIN_VERIFICATION_FAILED">PIN Failed</option>
                   <option value="LICENSE_SUSPENDED">License Suspended</option>
                   <option value="LICENSE_REVOKED">License Revoked</option>
+                  <option value="LICENSE_REACTIVATED">License Reactivated</option>
                   <option value="LICENSE_GENERATED_MANUAL">License Generated</option>
+                  <option value="LICENSE_DETAILS_VIEWED">License Details Viewed</option>
+                  <option value="PRODUCT_FILE_DELETED">File Deleted</option>
+                  <option value="TRACE_LOOKUP">Trace Lookup</option>
                   <option value="R2_CREDENTIALS_CHANGED">R2 Settings Changed</option>
                   <option value="PROTECTION_LEVELS_CHANGED">Protection Levels Changed</option>
                   <option value="DATA_REVEALED">Data Revealed</option>

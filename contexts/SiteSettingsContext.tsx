@@ -125,9 +125,9 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
           sessionTimeout: 'sessionTimeout' in d ? Number(d.sessionTimeout) || 30 : (cached.sessionTimeout || 30),
           customHeadCode: 'customHeadCode' in d ? extractValue(d, 'customHeadCode') : (cached.customHeadCode || ''),
           customBodyCode: 'customBodyCode' in d ? extractValue(d, 'customBodyCode') : (cached.customBodyCode || ''),
-          metaTitleTemplate: 'metaTitleTemplate' in d ? extractValue(d, 'metaTitleTemplate') : (cached.metaTitleTemplate || ''),
+          metaTitleTemplate: 'globalMetaTitleTemplate' in d ? extractValue(d, 'globalMetaTitleTemplate') : (cached.metaTitleTemplate || ''),
           globalMetaDescription: 'globalMetaDescription' in d ? extractValue(d, 'globalMetaDescription') : (cached.globalMetaDescription || ''),
-          googleVerificationId: 'googleVerificationId' in d ? extractValue(d, 'googleVerificationId') : (cached.googleVerificationId || ''),
+          googleVerificationId: 'googleSiteVerification' in d ? extractValue(d, 'googleSiteVerification') : (cached.googleVerificationId || ''),
         }
         setSettings(fresh)
         saveCache(fresh)

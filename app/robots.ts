@@ -4,12 +4,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
 
 async function getRobotsContent(): Promise<string | null> {
   try {
-    const res = await fetch(`${API_BASE}/settings/robotsTxtContent`, {
+    const res = await fetch(`${API_BASE}/settings/public`, {
       next: { revalidate: 300 },
     })
     if (!res.ok) return null
     const data = await res.json()
-    const value = data.data?.value
+    const settings = data.data || data
+    const raw = settings.robotsTxtContent
+    const value = typeof raw === 'object' && raw !== null ? raw.value : raw
     return typeof value === 'string' && value.trim() ? value.trim() : null
   } catch {
     return null
