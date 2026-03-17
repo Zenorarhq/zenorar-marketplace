@@ -351,7 +351,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </Link>
         </div>
         {/* Navigation */}
-        <nav className="admin-sidebar-nav flex-1 py-4 px-2 overflow-y-auto overflow-x-hidden">
+        <nav className="admin-sidebar-nav flex-1 py-4 px-2 overflow-y-auto overflow-x-hidden no-scrollbar">
           {visibleNavItems.map((item) => {
             const isActive = pathname === item.href
             return (
