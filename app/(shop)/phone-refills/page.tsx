@@ -8,6 +8,7 @@ import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { useCart } from '@/lib/cart-context'
 import { getBalance } from '@/lib/api/wallet'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
@@ -15,9 +16,38 @@ import WalletDisplay from '@/components/ui/WalletDisplay'
 import * as phoneRefillsApi from '@/lib/api/phone-refills'
 import type { TopupOperator, TopupOffer } from '@/lib/api/phone-refills'
 
-const OPERATORS_PER_PAGE = 24
+const OPERATORS_PER_PAGE = 20
 
-// Resolve country name from ISO code
+// Popular carrier brand names to sort first (case-insensitive partial match)
+const POPULAR_CARRIERS = [
+  'at&t', 'verizon', 't-mobile', 'vodafone', 'airtel', 'mtn',
+  'orange', 'claro', 'movistar', 'jio', 'o2', 'three', 'ee',
+  'telcel', 'digicel', 'etisalat', 'globe', 'smart',
+]
+
+// Brand-based gradient colors for card headers
+const brandGradients: Record<string, string> = {
+  'at&t': 'from-blue-800/90 via-blue-700/70 to-sky-900/90',
+  'verizon': 'from-red-900/90 via-red-800/70 to-red-700/90',
+  't-mobile': 'from-pink-800/90 via-pink-700/70 to-fuchsia-900/90',
+  'vodafone': 'from-red-800/90 via-red-700/70 to-rose-900/90',
+  'airtel': 'from-red-700/90 via-red-600/70 to-rose-800/90',
+  'mtn': 'from-yellow-700/90 via-yellow-600/70 to-amber-800/90',
+  'orange': 'from-orange-700/90 via-orange-600/70 to-amber-700/90',
+  'claro': 'from-red-800/90 via-rose-700/70 to-red-900/90',
+  'movistar': 'from-blue-700/90 via-cyan-600/70 to-teal-800/90',
+  'jio': 'from-blue-800/90 via-blue-700/70 to-indigo-900/90',
+  'o2': 'from-blue-700/90 via-indigo-600/70 to-blue-800/90',
+  'three': 'from-purple-800/90 via-purple-700/70 to-indigo-900/90',
+  'ee': 'from-teal-700/90 via-teal-600/70 to-cyan-800/90',
+  'telcel': 'from-blue-800/90 via-blue-700/70 to-sky-900/90',
+  'digicel': 'from-red-800/90 via-rose-700/70 to-pink-900/90',
+  'etisalat': 'from-green-800/90 via-emerald-700/70 to-teal-900/90',
+  'globe': 'from-blue-700/90 via-blue-600/70 to-indigo-800/90',
+  'smart': 'from-green-700/90 via-emerald-600/70 to-green-800/90',
+}
+const defaultGradient = 'from-slate-800/90 via-slate-700/70 to-slate-800/90'
+
 function resolveCountryName(isoCode: string): string {
   try {
     const displayNames = new Intl.DisplayNames(['en'], { type: 'region' })
@@ -27,26 +57,55 @@ function resolveCountryName(isoCode: string): string {
   }
 }
 
+function getCarrierGradient(name: string): string {
+  const lower = name.toLowerCase()
+  for (const [key, gradient] of Object.entries(brandGradients)) {
+    if (lower.includes(key)) return gradient
+  }
+  return defaultGradient
+}
+
+function isPopularCarrier(name: string): boolean {
+  const lower = name.toLowerCase()
+  return POPULAR_CARRIERS.some((p) => lower.includes(p))
+}
+
+// Get carrier initials for the logo placeholder
+function getCarrierInitials(name: string): string {
+  return name
+    .split(/[\s\-&]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || '')
+    .join('')
+}
+
 export default function PhoneRefillsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [operatorPage, setOperatorPage] = useState(1)
-  const [selectedOperator, setSelectedOperator] = useState<TopupOperator | null>(null)
-  const [selectedOffer, setSelectedOffer] = useState<TopupOffer | null>(null)
-  const [phoneNumber, setPhoneNumber] = useState('')
-  const [purchasing, setPurchasing] = useState(false)
-  const [purchaseError, setPurchaseError] = useState<string | null>(null)
-  const [purchaseSuccess, setPurchaseSuccess] = useState<{ transactionId: string } | null>(null)
+
+  // Per-card state: keyed by operator composite key
+  const [selectedOffers, setSelectedOffers] = useState<Record<string, TopupOffer>>({})
+  const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>({})
+  const [processingCard, setProcessingCard] = useState<string | null>(null)
+  const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({})
+  const [purchaseSuccess, setPurchaseSuccess] = useState<{ operatorKey: string; offer: TopupOffer; phone: string } | null>(null)
 
   // Wallet/auth state
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
   const [showDepositModal, setShowDepositModal] = useState(false)
-  const [pendingPurchase, setPendingPurchase] = useState(false)
+  const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
+  const [pendingOperator, setPendingOperator] = useState<TopupOperator | null>(null)
 
   const router = useRouter()
   const { isAuthenticated } = useAuth()
   const { formatPrice } = usePreferences()
+  const { addItem, showAddedToCartPopup } = useCart()
+
+  // Composite key for an operator
+  const opKey = (op: TopupOperator) => `${op.id}-${op.country}`
 
   // Fetch all operators
   const { data: operators = [], isLoading: loadingOperators } = useQuery({
@@ -60,16 +119,24 @@ export default function PhoneRefillsPage() {
     gcTime: 10 * 60 * 1000,
   })
 
-  // Filter operators by search
+  // Sort: popular first, then alphabetical. Filter by search.
   const filteredOperators = useMemo(() => {
-    if (!searchQuery) return operators
-    const q = searchQuery.toLowerCase()
-    return operators.filter(
-      (op) =>
-        op.name.toLowerCase().includes(q) ||
-        op.country.toLowerCase().includes(q) ||
-        resolveCountryName(op.country).toLowerCase().includes(q)
-    )
+    let list = operators
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      list = list.filter(
+        (op) =>
+          op.name.toLowerCase().includes(q) ||
+          op.country.toLowerCase().includes(q) ||
+          resolveCountryName(op.country).toLowerCase().includes(q)
+      )
+    }
+    return [...list].sort((a, b) => {
+      const aPop = isPopularCarrier(a.name) ? 0 : 1
+      const bPop = isPopularCarrier(b.name) ? 0 : 1
+      if (aPop !== bPop) return aPop - bPop
+      return a.name.localeCompare(b.name)
+    })
   }, [operators, searchQuery])
 
   // Pagination
@@ -79,7 +146,6 @@ export default function PhoneRefillsPage() {
     operatorPage * OPERATORS_PER_PAGE
   )
 
-  // Reset page when search changes
   useEffect(() => {
     setOperatorPage(1)
   }, [searchQuery])
@@ -108,28 +174,37 @@ export default function PhoneRefillsPage() {
     }
   }, [isAuthenticated])
 
-  // Auto-continue after login
+  // Auto-continue purchase after login
   useEffect(() => {
-    if (pendingPurchase && isAuthenticated && walletBalance !== null && selectedOffer) {
-      setPendingPurchase(false)
-      if (walletBalance >= selectedOffer.price) {
-        processPurchase()
+    if (pendingWalletCheckout && isAuthenticated && walletBalance !== null && pendingOperator) {
+      setPendingWalletCheckout(false)
+      const key = opKey(pendingOperator)
+      const offer = selectedOffers[key]
+      const phone = phoneNumbers[key]
+      if (!offer || !phone) {
+        setPendingOperator(null)
+        return
+      }
+      if (walletBalance >= offer.price) {
+        processWalletPayment(pendingOperator, offer, phone)
       } else {
         setShowDepositModal(true)
       }
     }
-  }, [pendingPurchase, isAuthenticated, walletBalance, selectedOffer])
+  }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingOperator])
 
-  // Process purchase
-  const processPurchase = async () => {
-    if (!selectedOffer || !phoneNumber) return
-
-    setPurchasing(true)
-    setPurchaseError(null)
+  // Process wallet payment
+  const processWalletPayment = async (operator: TopupOperator, offer: TopupOffer, phone: string) => {
+    const key = opKey(operator)
+    setProcessingCard(key)
+    setPaymentErrors((prev) => {
+      const n = { ...prev }
+      delete n[key]
+      return n
+    })
 
     try {
       const token = localStorage.getItem('auth_token')
-      // Use instant order endpoint (wallet payment)
       const response = await fetch('/api/orders/instant', {
         method: 'POST',
         headers: {
@@ -137,24 +212,26 @@ export default function PhoneRefillsPage() {
           ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({
-          items: [{
-            productId: selectedOffer.offerId,
-            name: `${selectedOperator?.name || 'Mobile'} Top-Up - ${selectedOffer.sendAmount} ${selectedOffer.sendCurrency}`,
-            quantity: 1,
-            price: selectedOffer.price,
-            productType: 'phone_refill',
-            metadata: {
+          items: [
+            {
+              productId: offer.offerId,
+              name: `${operator.name} Top-Up - ${offer.sendAmount} ${offer.sendCurrency}`,
+              quantity: 1,
+              price: offer.price,
               productType: 'phone_refill',
-              offerId: selectedOffer.offerId,
-              recipientPhone: phoneNumber.replace(/[^+\d]/g, ''),
-              operatorName: selectedOperator?.name,
-              country: selectedOperator?.country,
-              sendAmount: selectedOffer.sendAmount,
-              sendCurrency: selectedOffer.sendCurrency,
+              metadata: {
+                productType: 'phone_refill',
+                offerId: offer.offerId,
+                recipientPhone: phone.replace(/[^+\d]/g, ''),
+                operatorName: operator.name,
+                country: operator.country,
+                sendAmount: offer.sendAmount,
+                sendCurrency: offer.sendCurrency,
+              },
             },
-          }],
+          ],
           paymentMethod: 'wallet',
-          total: selectedOffer.price,
+          total: offer.price,
         }),
       })
 
@@ -162,24 +239,44 @@ export default function PhoneRefillsPage() {
 
       if (result.success) {
         await fetchWalletBalance()
-        setPurchaseSuccess({ transactionId: result.data?.orderId || 'completed' })
+        setPurchaseSuccess({ operatorKey: key, offer, phone })
+        // Clear card state
+        setSelectedOffers((prev) => {
+          const n = { ...prev }
+          delete n[key]
+          return n
+        })
+        setPhoneNumbers((prev) => {
+          const n = { ...prev }
+          delete n[key]
+          return n
+        })
+        setPendingOperator(null)
       } else {
-        setPurchaseError(result.error || 'Failed to process top-up')
+        setPaymentErrors((prev) => ({ ...prev, [key]: result.error || 'Payment failed' }))
       }
-    } catch (error: any) {
-      setPurchaseError(error.message || 'Failed to process top-up')
+    } catch (err: any) {
+      setPaymentErrors((prev) => ({ ...prev, [key]: err.message || 'Payment failed' }))
     } finally {
-      setPurchasing(false)
+      setProcessingCard(null)
     }
   }
 
-  // Handle buy click
-  const handleBuy = async () => {
-    if (!selectedOffer || !phoneNumber) return
+  // Handle Pay with Wallet
+  const handlePayWithWallet = async (operator: TopupOperator) => {
+    const key = opKey(operator)
+    const offer = selectedOffers[key]
+    const phone = phoneNumbers[key]?.replace(/[^+\d]/g, '')
+    if (!offer || !phone || phone.length < 8) return
 
-    setPurchaseError(null)
+    setPaymentErrors((prev) => {
+      const n = { ...prev }
+      delete n[key]
+      return n
+    })
 
     if (!isAuthenticated) {
+      setPendingOperator(operator)
       setShowLoginModal(true)
       return
     }
@@ -193,31 +290,68 @@ export default function PhoneRefillsPage() {
           currentBalance = result.data.balance || 0
           setWalletBalance(currentBalance)
         } else {
+          setPaymentErrors((prev) => ({ ...prev, [key]: 'Failed to fetch wallet balance' }))
           setLoadingBalance(false)
           return
         }
       } catch {
+        setPaymentErrors((prev) => ({ ...prev, [key]: 'Failed to fetch wallet balance' }))
         setLoadingBalance(false)
         return
       }
       setLoadingBalance(false)
     }
 
-    if (currentBalance === null || currentBalance < selectedOffer.price) {
+    if (currentBalance === null || currentBalance < offer.price) {
+      setPendingOperator(operator)
       setShowDepositModal(true)
       return
     }
 
-    await processPurchase()
+    await processWalletPayment(operator, offer, phone)
   }
 
-  // Reset flow
-  const handleReset = () => {
-    setSelectedOperator(null)
-    setSelectedOffer(null)
-    setPhoneNumber('')
-    setPurchaseError(null)
-    setPurchaseSuccess(null)
+  // Handle Add to Cart
+  const handleAddToCart = (operator: TopupOperator) => {
+    const key = opKey(operator)
+    const offer = selectedOffers[key]
+    const phone = phoneNumbers[key]?.replace(/[^+\d]/g, '')
+    if (!offer || !phone || phone.length < 8) return
+
+    const product = {
+      id: `refill-${offer.offerId}-${Date.now()}`,
+      name: `${operator.name} Top-Up (${offer.sendAmount} ${offer.sendCurrency})`,
+      slug: `phone-refill-${operator.id}`,
+      description: `Mobile top-up for ${phone}`,
+      price: offer.price,
+      rating: 5,
+      reviewCount: 0,
+      category: 'Phone Refills',
+      icon: 'phone',
+      iconColor: 'primary',
+      tags: [operator.name, 'Phone Refill'],
+      productType: 'phone_refill',
+      product_type: 'phone_refill',
+      metadata: {
+        productType: 'phone_refill',
+        offerId: offer.offerId,
+        recipientPhone: phone,
+        operatorName: operator.name,
+        country: operator.country,
+        sendAmount: offer.sendAmount,
+        sendCurrency: offer.sendCurrency,
+      },
+    }
+
+    addItem(product, 'standard', offer.price)
+    showAddedToCartPopup(product, offer.price)
+  }
+
+  // Check if card is ready for purchase
+  const isCardReady = (key: string): boolean => {
+    const offer = selectedOffers[key]
+    const phone = phoneNumbers[key]?.replace(/[^+\d]/g, '') || ''
+    return !!offer && phone.length >= 8
   }
 
   // Render pagination
@@ -240,7 +374,9 @@ export default function PhoneRefillsPage() {
     return (
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-slate-500">
-          Showing {((operatorPage - 1) * OPERATORS_PER_PAGE) + 1} - {Math.min(operatorPage * OPERATORS_PER_PAGE, filteredOperators.length)} of {filteredOperators.length} carriers
+          Showing {(operatorPage - 1) * OPERATORS_PER_PAGE + 1} -{' '}
+          {Math.min(operatorPage * OPERATORS_PER_PAGE, filteredOperators.length)} of{' '}
+          {filteredOperators.length} carriers
         </p>
         <div className="flex items-center gap-2">
           <button
@@ -254,7 +390,9 @@ export default function PhoneRefillsPage() {
           <div className="flex items-center gap-1">
             {pages.map((page, idx) =>
               page === 'ellipsis' ? (
-                <span key={`ellipsis-${idx}`} className="px-2 text-slate-500">...</span>
+                <span key={`ellipsis-${idx}`} className="px-2 text-slate-500">
+                  ...
+                </span>
               ) : (
                 <button
                   key={page}
@@ -291,7 +429,7 @@ export default function PhoneRefillsPage() {
         onClose={() => setShowLoginModal(false)}
         onSuccess={() => {
           setShowLoginModal(false)
-          setPendingPurchase(true)
+          setPendingWalletCheckout(true)
           fetchWalletBalance()
         }}
         defaultTab="login"
@@ -303,29 +441,29 @@ export default function PhoneRefillsPage() {
         onClose={async () => {
           setShowDepositModal(false)
           const newBalance = await fetchWalletBalance()
-          if (selectedOffer && newBalance !== null && newBalance >= selectedOffer.price) {
-            processPurchase()
+          if (pendingOperator && newBalance !== null) {
+            const key = opKey(pendingOperator)
+            const offer = selectedOffers[key]
+            const phone = phoneNumbers[key]?.replace(/[^+\d]/g, '')
+            if (offer && phone && newBalance >= offer.price) {
+              processWalletPayment(pendingOperator, offer, phone)
+            }
           }
         }}
       />
 
       {/* Breadcrumbs */}
       <div className="py-4">
-        <Breadcrumbs
-          items={[{ label: 'Home', href: '/' }, { label: 'Phone Refills' }]}
-          className="mb-0"
-        />
+        <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Phone Refills' }]} className="mb-0" />
       </div>
 
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-6 lg:p-12 mb-8 lg:mb-12">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-2">
-              Phone Refills
-            </h1>
+            <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-2">Phone Refills</h1>
             <p className="text-slate-500 text-sm lg:text-base max-w-2xl">
-              Top up any mobile phone instantly. Select a carrier, enter the phone number, and send airtime in seconds.
+              Top up any mobile phone instantly. Pick a carrier, enter the number, choose an amount, and pay in seconds.
             </p>
           </div>
           <WalletDisplay variant="desktop" />
@@ -334,7 +472,7 @@ export default function PhoneRefillsPage() {
 
       <WalletDisplay variant="mobile" />
 
-      {/* Success State */}
+      {/* Success Banner */}
       {purchaseSuccess && (
         <div className="mb-8 bg-green-500/10 border border-green-500/20 rounded-2xl p-8 text-center">
           <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
@@ -342,13 +480,11 @@ export default function PhoneRefillsPage() {
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Top-Up Sent!</h2>
           <p className="text-slate-400 mb-2">
-            {selectedOffer && `${selectedOffer.sendAmount} ${selectedOffer.sendCurrency}`} has been sent to {phoneNumber}
-          </p>
-          <p className="text-slate-500 text-sm mb-6">
-            {selectedOperator?.name} - {resolveCountryName(selectedOperator?.country || '')}
+            {purchaseSuccess.offer.sendAmount} {purchaseSuccess.offer.sendCurrency} has been sent to{' '}
+            {purchaseSuccess.phone}
           </p>
           <button
-            onClick={handleReset}
+            onClick={() => setPurchaseSuccess(null)}
             className="px-6 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all"
           >
             Send Another Top-Up
@@ -356,220 +492,266 @@ export default function PhoneRefillsPage() {
         </div>
       )}
 
-      {/* Main Flow */}
-      {!purchaseSuccess && (
+      {/* Search */}
+      <div className="mb-6">
+        <div className="relative">
+          <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search carriers (AT&T, Vodafone, MTN, etc.)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+          />
+        </div>
+      </div>
+
+      {/* Carrier count */}
+      {!loadingOperators && filteredOperators.length > 0 && (
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-white">
+            {searchQuery ? 'Search Results' : 'All Carriers'}
+          </h2>
+          <span className="text-slate-500 text-sm">{filteredOperators.length} carriers available</span>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loadingOperators && (
+        <div className="grid grid-cols-1 min-[560px]:grid-cols-2 min-[700px]:grid-cols-3 min-[960px]:grid-cols-4 gap-6">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="bg-charcoal border border-border-dark rounded-2xl overflow-hidden animate-pulse">
+              <div className="h-28 bg-slate-700" />
+              <div className="p-5">
+                <div className="h-5 bg-slate-700 rounded w-3/4 mb-3" />
+                <div className="h-4 bg-slate-700 rounded w-1/2 mb-4" />
+                <div className="flex gap-2">
+                  <div className="h-8 bg-slate-700 rounded w-16" />
+                  <div className="h-8 bg-slate-700 rounded w-16" />
+                  <div className="h-8 bg-slate-700 rounded w-16" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty */}
+      {!loadingOperators && filteredOperators.length === 0 && (
+        <div className="text-center py-16 bg-charcoal border border-border-dark rounded-2xl">
+          <Icon name="phone" size={48} className="text-slate-600 mx-auto mb-4" />
+          <h3 className="text-white font-bold mb-2">
+            {searchQuery ? 'No carriers found' : 'No carriers available'}
+          </h3>
+          <p className="text-slate-500">
+            {searchQuery ? 'Try a different search term' : 'Phone refill carriers will appear here once configured.'}
+          </p>
+        </div>
+      )}
+
+      {/* Carrier Cards Grid */}
+      {!loadingOperators && filteredOperators.length > 0 && (
         <>
-          {/* Step 1: Select Operator (or show selected) */}
-          {selectedOperator ? (
-            <div className="mb-8">
-              {/* Selected operator pill */}
-              <div className="bg-primary/10 border border-primary rounded-2xl p-4 flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <FlagIcon countryCode={selectedOperator.country} className="w-10 h-10 rounded" />
-                  <div>
-                    <h3 className="font-bold text-white">{selectedOperator.name}</h3>
-                    <p className="text-sm text-slate-400">{resolveCountryName(selectedOperator.country)}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleReset}
-                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                  aria-label="Change carrier"
+          <div className="grid grid-cols-1 min-[560px]:grid-cols-2 min-[700px]:grid-cols-3 min-[960px]:grid-cols-4 gap-6 items-start">
+            {paginatedOperators.map((operator) => {
+              const key = opKey(operator)
+              const selectedOffer = selectedOffers[key] || null
+              const phone = phoneNumbers[key] || ''
+              const hasSelection = !!selectedOffer
+              const ready = isCardReady(key)
+              const isProcessing = processingCard === key
+              const gradient = getCarrierGradient(operator.name)
+              const initials = getCarrierInitials(operator.name)
+
+              return (
+                <div
+                  key={key}
+                  className={`bg-charcoal border rounded-2xl overflow-hidden transition-all ${
+                    hasSelection
+                      ? 'border-primary ring-2 ring-primary/20'
+                      : 'border-border-dark hover:border-primary/50'
+                  }`}
                 >
-                  <Icon name="x" size={20} className="text-white" />
-                </button>
-              </div>
-
-              {/* Step 2: Enter phone number */}
-              <div className="mb-6">
-                <label className="block text-white font-bold mb-2">Recipient Phone Number</label>
-                <div className="relative">
-                  <Icon name="phone" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="tel"
-                    placeholder="e.g. +1 234 567 8900"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-                  />
-                </div>
-                <p className="text-slate-500 text-xs mt-1">Include country code (e.g. +1 for US, +44 for UK)</p>
-              </div>
-
-              {/* Step 3: Select amount */}
-              <div className="mb-6">
-                <h3 className="text-white font-bold mb-3">Select Amount</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {selectedOperator.offers.map((offer) => (
-                    <button
-                      key={offer.offerId}
-                      onClick={() => setSelectedOffer(offer)}
-                      className={`p-4 rounded-xl border transition-all text-left ${
-                        selectedOffer?.offerId === offer.offerId
-                          ? 'bg-primary/10 border-primary'
-                          : 'bg-charcoal border-border-dark hover:border-primary/50'
-                      }`}
-                    >
-                      <div className="text-lg font-extrabold text-white">
-                        {offer.sendAmount} {offer.sendCurrency}
-                      </div>
-                      <div className="text-sm text-slate-400 mt-1">
-                        {formatPrice(offer.price)}
-                      </div>
-                      {offer.shortNotes && (
-                        <div className="text-xs text-slate-500 mt-1 truncate">{offer.shortNotes}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Error */}
-              {purchaseError && (
-                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                  <p className="text-red-400 text-sm">{purchaseError}</p>
-                </div>
-              )}
-
-              {/* Step 4: Buy button */}
-              <button
-                onClick={handleBuy}
-                disabled={!selectedOffer || !phoneNumber || phoneNumber.replace(/[^+\d]/g, '').length < 8 || purchasing || loadingBalance}
-                className="w-full py-4 rounded-xl bg-primary text-black font-bold hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {purchasing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent"></div>
-                    Processing...
-                  </>
-                ) : loadingBalance ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent"></div>
-                    Checking Balance...
-                  </>
-                ) : selectedOffer && isAuthenticated ? (
-                  <>
-                    <Icon name="wallet" size={18} />
-                    Pay {formatPrice(selectedOffer.price)} with Wallet
-                  </>
-                ) : (
-                  <>
-                    <Icon name="wallet" size={18} />
-                    Pay with Wallet
-                  </>
-                )}
-              </button>
-              <p className="text-slate-500 text-xs text-center mt-3">
-                Airtime delivered instantly after payment
-              </p>
-            </div>
-          ) : (
-            /* Operator Selection Grid */
-            <div className="mb-10">
-              {/* Search */}
-              <div className="mb-6">
-                <div className="relative">
-                  <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder="Search carriers (AT&T, Vodafone, MTN, etc.)..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-                  />
-                </div>
-              </div>
-
-              {/* Operators Grid */}
-              {loadingOperators ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {[...Array(24)].map((_, i) => (
-                    <div key={i} className="bg-charcoal border border-border-dark rounded-2xl p-4 animate-pulse">
-                      <div className="w-8 h-8 bg-slate-700 rounded mb-3" />
-                      <div className="h-4 bg-slate-700 rounded w-3/4 mb-2" />
-                      <div className="h-3 bg-slate-700 rounded w-1/2" />
+                  {/* Card Header - Brand gradient with initials */}
+                  <div
+                    className={`relative h-28 bg-gradient-to-br ${gradient} flex items-center justify-center`}
+                  >
+                    <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                      <span className="text-2xl font-extrabold text-white/90">{initials}</span>
                     </div>
-                  ))}
-                </div>
-              ) : filteredOperators.length === 0 ? (
-                <div className="text-center py-12">
-                  <Icon name="phone" size={48} className="text-slate-600 mx-auto mb-4" />
-                  <h3 className="text-white font-bold mb-2">
-                    {searchQuery ? 'No carriers found' : 'No carriers available'}
-                  </h3>
-                  <p className="text-slate-500">
-                    {searchQuery ? 'Try a different search term' : 'Phone refill carriers will appear here once configured.'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                    {paginatedOperators.map((operator) => (
-                      <button
-                        key={`${operator.id}-${operator.country}`}
-                        onClick={() => {
-                          setSelectedOperator(operator)
-                          setSelectedOffer(null)
-                          setPhoneNumber('')
-                          setPurchaseError(null)
-                        }}
-                        className="flex items-center gap-3 p-4 bg-charcoal border border-border-dark rounded-2xl hover:border-primary/50 transition-all text-left"
-                      >
-                        <FlagIcon countryCode={operator.country} className="w-8 h-8 rounded flex-shrink-0" />
-                        <div className="min-w-0">
-                          <h3 className="font-medium text-white text-sm truncate">{operator.name}</h3>
-                          <p className="text-xs text-slate-500">{resolveCountryName(operator.country)}</p>
-                        </div>
-                      </button>
-                    ))}
+                    {isPopularCarrier(operator.name) && (
+                      <span className="absolute top-2 right-2 bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded-md shadow-lg">
+                        Popular
+                      </span>
+                    )}
+                    <div className="absolute bottom-2 left-3">
+                      <FlagIcon countryCode={operator.country} className="w-5 h-5 rounded-sm" />
+                    </div>
                   </div>
-                  {renderPagination()}
-                </>
-              )}
-            </div>
-          )}
+
+                  {/* Card Content */}
+                  <div className="p-5">
+                    <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{operator.name}</h3>
+                    <p className="text-xs text-slate-500 mb-3">{resolveCountryName(operator.country)}</p>
+
+                    {/* Amount Pills */}
+                    <div className="mb-3">
+                      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                        {operator.offers.slice(0, 8).map((offer) => (
+                          <button
+                            key={offer.offerId}
+                            onClick={() => {
+                              if (selectedOffer?.offerId === offer.offerId) {
+                                // Deselect
+                                setSelectedOffers((prev) => {
+                                  const n = { ...prev }
+                                  delete n[key]
+                                  return n
+                                })
+                              } else {
+                                setSelectedOffers((prev) => ({ ...prev, [key]: offer }))
+                              }
+                              setPaymentErrors((prev) => {
+                                const n = { ...prev }
+                                delete n[key]
+                                return n
+                              })
+                            }}
+                            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              selectedOffer?.offerId === offer.offerId
+                                ? 'bg-primary text-black'
+                                : 'bg-surface-dark border border-border-dark text-white hover:border-primary hover:bg-primary/10'
+                            }`}
+                          >
+                            {formatPrice(offer.price)}
+                          </button>
+                        ))}
+                      </div>
+                      {operator.offers.length > 8 && (
+                        <p className="text-[10px] text-slate-500 mt-1">+{operator.offers.length - 8} more amounts</p>
+                      )}
+                    </div>
+
+                    {/* Phone Number Input (visible when amount selected) */}
+                    {hasSelection && (
+                      <>
+                        <div className="mb-3">
+                          <div className="relative">
+                            <Icon
+                              name="phone"
+                              size={14}
+                              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                            />
+                            <input
+                              type="tel"
+                              placeholder="+1 234 567 8900"
+                              value={phone}
+                              onChange={(e) => setPhoneNumbers((prev) => ({ ...prev, [key]: e.target.value }))}
+                              className="w-full pl-8 pr-3 py-2.5 bg-surface-dark border border-border-dark rounded-xl text-white text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+                            />
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-1">Include country code</p>
+                        </div>
+
+                        {/* Price Summary */}
+                        <div className="mb-3 p-3 bg-surface-dark rounded-xl">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Recipient gets</span>
+                            <span className="text-white font-bold">
+                              {selectedOffer.sendAmount} {selectedOffer.sendCurrency}
+                            </span>
+                          </div>
+                          <div className="flex justify-between mt-1">
+                            <span className="text-slate-400 font-bold">You Pay</span>
+                            <span className="text-white font-extrabold">{formatPrice(selectedOffer.price)}</span>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => handlePayWithWallet(operator)}
+                            disabled={!ready || isProcessing || loadingBalance}
+                            className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" />
+                                <span>Processing...</span>
+                              </>
+                            ) : loadingBalance ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" />
+                                <span>Checking Balance...</span>
+                              </>
+                            ) : isAuthenticated ? (
+                              <>
+                                <Icon name="wallet" size={16} />
+                                <span>Pay {formatPrice(selectedOffer.price)} with Wallet</span>
+                              </>
+                            ) : (
+                              <>
+                                <Icon name="wallet" size={16} />
+                                <span>Pay with Wallet</span>
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleAddToCart(operator)}
+                            disabled={!ready}
+                            className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Icon name="cart" size={16} />
+                            <span>Add to Cart</span>
+                          </button>
+                        </div>
+
+                        {/* Payment Error */}
+                        {paymentErrors[key] && !isProcessing && (
+                          <p className="mt-2 text-xs text-red-400 text-center">{paymentErrors[key]}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {renderPagination()}
         </>
       )}
 
       {/* How It Works */}
-      <div className="bg-charcoal border border-border-dark rounded-2xl lg:rounded-3xl p-4 lg:p-12">
+      <div className="mt-12 bg-charcoal border border-border-dark rounded-2xl lg:rounded-3xl p-4 lg:p-12">
         <h2 className="text-2xl font-bold text-white mb-8 text-center">How Phone Refills Work</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="search" size={24} className="text-primary" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
+              1
             </div>
             <h3 className="font-bold text-white mb-2">Find Carrier</h3>
-            <p className="text-slate-500 text-sm">
-              Search for the mobile carrier you want to top up.
-            </p>
+            <p className="text-slate-500 text-sm">Search for the mobile carrier you want to top up.</p>
           </div>
           <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="phone" size={24} className="text-primary" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
+              2
+            </div>
+            <h3 className="font-bold text-white mb-2">Select Amount</h3>
+            <p className="text-slate-500 text-sm">Choose from available denominations on the card.</p>
+          </div>
+          <div className="text-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
+              3
             </div>
             <h3 className="font-bold text-white mb-2">Enter Number</h3>
-            <p className="text-slate-500 text-sm">
-              Enter the phone number you want to recharge.
-            </p>
+            <p className="text-slate-500 text-sm">Type the phone number to recharge with country code.</p>
           </div>
           <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="wallet" size={24} className="text-primary" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
+              4
             </div>
-            <h3 className="font-bold text-white mb-2">Pay Instantly</h3>
-            <p className="text-slate-500 text-sm">
-              Pay with your wallet balance. No extra fees.
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="flash" size={24} className="text-primary" />
-            </div>
-            <h3 className="font-bold text-white mb-2">Instant Delivery</h3>
-            <p className="text-slate-500 text-sm">
-              Airtime is delivered to the phone within seconds.
-            </p>
+            <h3 className="font-bold text-white mb-2">Pay & Done</h3>
+            <p className="text-slate-500 text-sm">Pay with wallet or add to cart. Airtime delivered instantly.</p>
           </div>
         </div>
       </div>
