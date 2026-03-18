@@ -60,6 +60,7 @@ export default function AdminSettingsPage() {
     exchangeRate?: any
     virtualNumberPricing?: any
     virtualCards?: any
+    vendor?: any
   }>({})
 
   // Auto-clear message after 4 seconds
@@ -469,6 +470,12 @@ export default function AdminSettingsPage() {
     lithicCreationFee: 5.00,
     lithicTopUpFeePercent: 2.5,
     reloadlyInstantMarkupPercent: 5.0,
+  })
+
+  // Vendor Commission Settings State
+  const [vendorSettings, setVendorSettings] = useState({
+    vendorCommissionPercent: 15,
+    vendorMinPayoutAmount: 20,
   })
 
   // OTP Providers Settings State
@@ -931,6 +938,11 @@ export default function AdminSettingsPage() {
           lithicTopUpFeePercent: d.lithicTopUpFeePercent ?? prev.lithicTopUpFeePercent,
           reloadlyInstantMarkupPercent: d.reloadlyInstantMarkupPercent ?? prev.reloadlyInstantMarkupPercent,
         }))
+        // Vendor Settings
+        setVendorSettings((prev) => ({
+          vendorCommissionPercent: d.vendorCommissionPercent !== undefined ? Number(d.vendorCommissionPercent) : prev.vendorCommissionPercent,
+          vendorMinPayoutAmount: d.vendorMinPayoutAmount !== undefined ? Number(d.vendorMinPayoutAmount) : prev.vendorMinPayoutAmount,
+        }))
       }
       setLoadedGroups(prev => new Set(prev).add('markup'))
     }).catch(() => {
@@ -983,10 +995,11 @@ export default function AdminSettingsPage() {
       exchangeRate: { ...exchangeRateKeys },
       virtualNumberPricing: { ...virtualNumberPricing },
       virtualCards: { ...virtualCardsSettings },
+      vendor: { ...vendorSettings },
     }
     setSettingsLoaded(true)
     setSettingsSaveCount(c => c + 1) // Force re-render to update hasUnsavedChanges
-  }, [generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys, virtualNumberPricing, virtualCardsSettings])
+  }, [generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys, virtualNumberPricing, virtualCardsSettings, vendorSettings])
 
   // Capture initial state when all settings groups have loaded from API
   useEffect(() => {
@@ -1033,10 +1046,11 @@ export default function AdminSettingsPage() {
       (initial.profile && initial.profile.name !== profileSettings.name) ||
       compareObjects(initial.exchangeRate, exchangeRateKeys) ||
       compareObjects(initial.virtualNumberPricing, virtualNumberPricing) ||
-      compareObjects(initial.virtualCards, virtualCardsSettings)
+      compareObjects(initial.virtualCards, virtualCardsSettings) ||
+      compareObjects(initial.vendor, vendorSettings)
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsLoaded, settingsSaveCount, generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys, virtualNumberPricing, virtualCardsSettings])
+  }, [settingsLoaded, settingsSaveCount, generalSettings, securitySettings, notificationSettings, paymentSettings, apiSettings, esimSettings, voiceEsimSettings, virtualNumberSettings, giftCardSettings, otpSettings, cronSettings, referralSettings, marketingSettings, seoSettings, profileSettings.name, exchangeRateKeys, virtualNumberPricing, virtualCardsSettings, vendorSettings])
 
   // Reset settings to initial values (for Cancel button)
   const handleCancelChanges = useCallback(() => {
@@ -1059,6 +1073,7 @@ export default function AdminSettingsPage() {
     if (initial.exchangeRate) setExchangeRateKeys(initial.exchangeRate)
     if (initial.virtualNumberPricing) setVirtualNumberPricing(initial.virtualNumberPricing)
     if (initial.virtualCards) setVirtualCardsSettings(initial.virtualCards)
+    if (initial.vendor) setVendorSettings(initial.vendor)
     setMessage(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
@@ -1681,6 +1696,9 @@ export default function AdminSettingsPage() {
       { key: 'lithicCreationFee', value: virtualCardsSettings.lithicCreationFee, group: 'markup', isPublic: true },
       { key: 'lithicTopUpFeePercent', value: virtualCardsSettings.lithicTopUpFeePercent, group: 'markup', isPublic: true },
       { key: 'reloadlyInstantMarkupPercent', value: virtualCardsSettings.reloadlyInstantMarkupPercent, group: 'markup', isPublic: true },
+      // Vendor Commission Settings
+      { key: 'vendorCommissionPercent', value: vendorSettings.vendorCommissionPercent, group: 'vendor', isPublic: false },
+      { key: 'vendorMinPayoutAmount', value: vendorSettings.vendorMinPayoutAmount, group: 'vendor', isPublic: false },
       // OTP Providers (stored in 'api' group for consistency)
       { key: 'otpDefaultProvider', value: otpSettings.otpDefaultProvider, group: 'api', isPublic: false },
       { key: 'smspoolEnabled', value: otpSettings.smspoolEnabled, group: 'api', isPublic: true },
@@ -6042,6 +6060,46 @@ export default function AdminSettingsPage() {
                 expanded={expandedSections.virtualNumberMarkup}
                 onToggle={() => toggleSection('virtualNumberMarkup')}
               />
+
+              {/* Vendor Commission Settings */}
+              <div className="bg-surface-dark border border-border-dark rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border-dark">
+                  <div>
+                    <p className="text-white font-semibold text-lg">Vendor Commission</p>
+                    <p className="text-slate-500 text-sm mt-0.5">Settings for the vendor reseller programme</p>
+                  </div>
+                </div>
+                <div className="p-6 space-y-5">
+                  <div>
+                    <label className="text-sm font-medium text-slate-300 block mb-1.5">Commission Percentage (%)</label>
+                    <p className="text-slate-500 text-xs mb-2">Vendors earn this % of Zenorar&apos;s markup profit on every order they place.</p>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      value={vendorSettings.vendorCommissionPercent}
+                      onChange={(e) => setVendorSettings((prev) => ({ ...prev, vendorCommissionPercent: Number(e.target.value) }))}
+                      className="w-40 bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary"
+                    />
+                    <p className="text-slate-600 text-xs mt-1.5">
+                      Example: if markup profit on an order is $50 and commission is {vendorSettings.vendorCommissionPercent}%, vendor earns ${(50 * vendorSettings.vendorCommissionPercent / 100).toFixed(2)}.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-300 block mb-1.5">Minimum Payout Amount ($)</label>
+                    <p className="text-slate-500 text-xs mb-2">Vendors must have at least this much available before they can request a payout.</p>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={vendorSettings.vendorMinPayoutAmount}
+                      onChange={(e) => setVendorSettings((prev) => ({ ...prev, vendorMinPayoutAmount: Number(e.target.value) }))}
+                      className="w-40 bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

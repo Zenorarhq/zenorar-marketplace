@@ -153,7 +153,7 @@ export default function Footer() {
           {(config?.columns && config.columns.length > 0 ? config.columns : [
             { title: 'Products', links: [{ label: 'Premium Scripts', url: '/scripts' }, { label: 'Global eSIMs', url: '/esim' }, { label: 'Virtual Numbers', url: '/virtual-numbers' }, { label: 'Gift Cards', url: '/gift-cards' }] },
             { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }, { label: 'Product Request', url: '/product-request' }, { label: 'My Account', url: '/profile' }, { label: 'Terms of Service', url: '/terms' }, { label: 'Privacy Policy', url: '/privacy' }] },
-            { title: 'Company', links: [{ label: 'About Us', url: '/about' }, { label: 'Blog', url: '/blog' }, { label: 'Careers', url: '/careers' }] },
+            { title: 'Company', links: [{ label: 'About Us', url: '/about' }, { label: 'Blog', url: '/blog' }, { label: 'Careers', url: '/careers' }, { label: 'Become a Vendor', url: '/become-a-vendor' }] },
           ]).map((col, i) => (
             <div key={i} className="col-span-1 md:col-span-2">
               <h4 className="font-bold mb-4 sm:mb-6 text-white text-sm sm:text-base">{col.title}</h4>

@@ -9,17 +9,19 @@ import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface ProfileLayoutProps {
   children: React.ReactNode
 }
 
-const navItems = [
+const baseNavItems = [
   { href: '/profile/orders', label: 'My Orders', shortLabel: 'Orders', icon: 'shopping-bag' },
   { href: '/profile/library', label: 'My Library', shortLabel: 'Library', icon: 'library' },
   { href: '/profile/wishlist', label: 'My Wishlist', shortLabel: 'Wishlist', icon: 'heart' },
   { href: '/profile/wallet', label: 'Wallet & Credits', shortLabel: 'Wallet', icon: 'wallet' },
   { href: '/profile/referrals', label: 'Referral & Rewards', shortLabel: 'Referrals', icon: 'gift' },
+  { href: '/profile/commissions', label: 'Commissions', shortLabel: 'Commissions', icon: 'trending-up', vendorOnly: true },
   { href: '/profile/billing', label: 'Billing & Payments', shortLabel: 'Billing', icon: 'credit-card' },
   { href: '/profile/tickets', label: 'Support Tickets', shortLabel: 'Support', icon: 'ticket' },
   { href: '/profile/security', label: 'Security', shortLabel: 'Security', icon: 'shield' },
@@ -28,6 +30,8 @@ const navItems = [
 
 export default function ProfileLayout({ children }: ProfileLayoutProps) {
   const pathname = usePathname()
+  const { user } = useAuth()
+  const navItems = baseNavItems.filter(item => !item.vendorOnly || user?.isVendor)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const activeTabRef = useRef<HTMLAnchorElement>(null)
 

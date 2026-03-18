@@ -24,6 +24,7 @@ export interface User {
   role: 'ADMIN' | 'EDITOR' | 'VIEWER'
   avatar: string | null
   isStaff: boolean
+  isVendor?: boolean
   permissions?: string[]
   createdAt: string
 }
