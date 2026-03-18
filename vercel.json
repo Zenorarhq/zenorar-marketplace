@@ -7,10 +7,6 @@
     {
       "path": "/api/cron/publish-scheduled",
       "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/keep-warm",
-      "schedule": "*/5 * * * *"
     }
   ]
 }
