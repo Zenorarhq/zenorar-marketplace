@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
@@ -149,7 +149,7 @@ export default function CardsPage() {
   } | null>(null)
 
   // Process wallet payment
-  const processWalletPayment = async (provider: string, denomination: number | undefined, totalCost: number, cardBrand?: 'visa' | 'mastercard') => {
+  const processWalletPayment = useCallback(async (provider: string, denomination: number | undefined, totalCost: number, cardBrand?: 'visa' | 'mastercard') => {
     const purchaseId = denomination ? `instant-${denomination}` : `virtual-${provider}`
     setProcessingPayment(purchaseId)
     setPaymentError(null)
@@ -182,7 +182,7 @@ export default function CardsPage() {
       setProcessingPayment(null)
       setPendingCheckout(null)
     }
-  }
+  }, [selectedBrand, router])
 
   // Handle pay with wallet click
   const handlePayWithWallet = async (provider: string, denomination: number | undefined, totalCost: number, cardBrand?: 'visa' | 'mastercard') => {
@@ -220,7 +220,7 @@ export default function CardsPage() {
 
     // If insufficient balance, show deposit modal
     if (currentBalance === null || currentBalance < totalCost) {
-      setPendingCheckout({ provider, denomination, totalCost })
+      setPendingCheckout({ provider, denomination, totalCost, cardBrand })
       setShowDepositModal(true)
       return
     }
@@ -253,7 +253,7 @@ export default function CardsPage() {
         })
         .catch(console.error)
     }
-  }, [isAuthenticated, pendingCheckout])
+  }, [isAuthenticated, pendingCheckout, processWalletPayment])
 
   // Handle adding instant card to cart
   const handleAddToCart = (denomination: { value: number; totalPrice: number; brand: string }) => {

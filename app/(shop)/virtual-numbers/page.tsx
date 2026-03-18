@@ -57,7 +57,7 @@ interface AvailableNumber {
     mms: boolean
   }
   monthlyPrice: number
-  source?: 'inventory' | 'twilio'  // inventory = instant activation
+  source?: 'inventory' | 'provider'  // inventory = instant activation
 }
 
 interface Plan {

@@ -119,15 +119,16 @@ function AdminCardsPageContent() {
 
   const tabParam = searchParams.get('tab') as TabType | null
   const [activeTab, setActiveTab] = useState<TabType>(tabParam || 'overview')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [cardsPage, setCardsPage] = useState(1)
+  const [txPage, setTxPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
   const [providerFilter, setProviderFilter] = useState('')
   const [txTypeFilter, setTxTypeFilter] = useState('')
   const [txProviderFilter, setTxProviderFilter] = useState('')
+  const [togglingProvider, setTogglingProvider] = useState<string | null>(null)
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab)
-    setCurrentPage(1)
     const params = new URLSearchParams(searchParams.toString())
     params.set('tab', tab)
     router.push(`/admin/cards?${params.toString()}`, { scroll: false })
@@ -141,10 +142,10 @@ function AdminCardsPageContent() {
 
   // Fetch cards overview (stats + paginated cards)
   const { data: cardsData, isLoading: loadingCards } = useQuery({
-    queryKey: ['admin-cards', currentPage, statusFilter, providerFilter],
+    queryKey: ['admin-cards', cardsPage, statusFilter, providerFilter],
     queryFn: async () => {
       const token = localStorage.getItem('admin_auth_token')
-      const params = new URLSearchParams({ page: String(currentPage), limit: '20' })
+      const params = new URLSearchParams({ page: String(cardsPage), limit: '20' })
       if (statusFilter) params.set('status', statusFilter)
       if (providerFilter) params.set('provider', providerFilter)
       const res = await fetch(`/api/admin/cards?${params}`, {
@@ -173,10 +174,10 @@ function AdminCardsPageContent() {
 
   // Fetch transactions
   const { data: txData, isLoading: loadingTx } = useQuery({
-    queryKey: ['admin-card-transactions', currentPage, txTypeFilter, txProviderFilter],
+    queryKey: ['admin-card-transactions', txPage, txTypeFilter, txProviderFilter],
     queryFn: async () => {
       const token = localStorage.getItem('admin_auth_token')
-      const params = new URLSearchParams({ page: String(currentPage), limit: '20' })
+      const params = new URLSearchParams({ page: String(txPage), limit: '20' })
       if (txTypeFilter) params.set('type', txTypeFilter)
       if (txProviderFilter) params.set('provider', txProviderFilter)
       const res = await fetch(`/api/admin/cards/transactions?${params}`, {
@@ -204,6 +205,11 @@ function AdminCardsPageContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-card-providers'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-cards'] })
+      setTogglingProvider(null)
+    },
+    onError: () => {
+      setTogglingProvider(null)
     },
   })
 
@@ -216,7 +222,7 @@ function AdminCardsPageContent() {
   const pagination = cardsData?.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 }
   const txPagination = txData?.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 }
 
-  const renderPagination = (pag: typeof pagination, label?: string) => {
+  const renderPagination = (pag: typeof pagination, setPage: (p: number | ((prev: number) => number)) => void, label?: string) => {
     if (pag.totalPages <= 1) return null
     const startItem = ((pag.page - 1) * pag.limit) + 1
     const endItem = Math.min(pag.page * pag.limit, pag.total)
@@ -228,7 +234,7 @@ function AdminCardsPageContent() {
           </p>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={pag.page === 1}
               className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -244,7 +250,7 @@ function AdminCardsPageContent() {
                 return (
                   <button
                     key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
+                    onClick={() => setPage(pageNum)}
                     className={`w-8 h-8 rounded-lg text-sm transition-colors ${
                       pag.page === pageNum
                         ? 'bg-primary text-black font-semibold'
@@ -257,7 +263,7 @@ function AdminCardsPageContent() {
               })}
             </div>
             <button
-              onClick={() => setCurrentPage(p => Math.min(pag.totalPages, p + 1))}
+              onClick={() => setPage(p => Math.min(pag.totalPages, p + 1))}
               disabled={pag.page === pag.totalPages}
               className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -486,8 +492,8 @@ function AdminCardsPageContent() {
                         <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 border border-red-500/20">Not Configured</span>
                       )}
                       <button
-                        onClick={() => toggleMutation.mutate({ provider: p.provider, is_enabled: !p.is_enabled })}
-                        disabled={toggleMutation.isPending}
+                        onClick={() => { setTogglingProvider(p.provider); toggleMutation.mutate({ provider: p.provider, is_enabled: !p.is_enabled }) }}
+                        disabled={togglingProvider === p.provider}
                         className={`relative w-12 h-6 rounded-full transition-colors ${
                           p.is_enabled ? 'bg-primary' : 'bg-slate-600'
                         }`}
@@ -540,7 +546,7 @@ function AdminCardsPageContent() {
             <div className="flex flex-wrap gap-3 mb-4">
               <select
                 value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
+                onChange={(e) => { setStatusFilter(e.target.value); setCardsPage(1) }}
                 className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
               >
                 <option value="">All Statuses</option>
@@ -551,7 +557,7 @@ function AdminCardsPageContent() {
               </select>
               <select
                 value={providerFilter}
-                onChange={(e) => { setProviderFilter(e.target.value); setCurrentPage(1) }}
+                onChange={(e) => { setProviderFilter(e.target.value); setCardsPage(1) }}
                 className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
               >
                 <option value="">All Providers</option>
@@ -622,7 +628,7 @@ function AdminCardsPageContent() {
                   </tbody>
                 </table>
               </div>
-              {renderPagination(pagination, 'cards')}
+              {renderPagination(pagination, setCardsPage, 'cards')}
             </div>
           </>
         )}
@@ -634,7 +640,7 @@ function AdminCardsPageContent() {
             <div className="flex flex-wrap gap-3 mb-4">
               <select
                 value={txTypeFilter}
-                onChange={(e) => { setTxTypeFilter(e.target.value); setCurrentPage(1) }}
+                onChange={(e) => { setTxTypeFilter(e.target.value); setTxPage(1) }}
                 className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
               >
                 <option value="">All Types</option>
@@ -646,7 +652,7 @@ function AdminCardsPageContent() {
               </select>
               <select
                 value={txProviderFilter}
-                onChange={(e) => { setTxProviderFilter(e.target.value); setCurrentPage(1) }}
+                onChange={(e) => { setTxProviderFilter(e.target.value); setTxPage(1) }}
                 className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
               >
                 <option value="">All Providers</option>
@@ -702,7 +708,7 @@ function AdminCardsPageContent() {
                   </tbody>
                 </table>
               </div>
-              {renderPagination(txPagination, 'transactions')}
+              {renderPagination(txPagination, setTxPage, 'transactions')}
             </div>
           </>
         )}
