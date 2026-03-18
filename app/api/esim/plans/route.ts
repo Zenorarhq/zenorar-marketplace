@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const regionSlug = searchParams.get('region')
     const countryCode = searchParams.get('country')
     const featured = searchParams.get('featured')
+    const topupOnly = searchParams.get('topupOnly') === 'true'
     const includeInactive = searchParams.get('includeInactive') === 'true'
 
     let sql = `
@@ -70,6 +71,10 @@ export async function GET(request: Request) {
 
     if (featured === 'true') {
       conditions.push('p.is_featured = true')
+    }
+
+    if (topupOnly) {
+      conditions.push('p.supports_topup = true')
     }
 
     if (conditions.length > 0) {

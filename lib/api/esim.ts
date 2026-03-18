@@ -168,6 +168,21 @@ export async function getTopupOptions(esimId: string): Promise<{
 }
 
 /**
+ * Get eSIM plans that support top-up/refill
+ */
+export async function getRefillPlans(filters?: {
+  countryCode?: string
+  featured?: boolean
+}): Promise<{ success: boolean; data?: EsimPlan[]; error?: string }> {
+  const params = new URLSearchParams()
+  params.append('topupOnly', 'true')
+  if (filters?.countryCode) params.append('country', filters.countryCode)
+  if (filters?.featured) params.append('featured', 'true')
+
+  return localApiFetch(`/esim/plans?${params.toString()}`)
+}
+
+/**
  * Check plan availability (for cart validation)
  */
 export async function checkAvailability(planId: string): Promise<{
