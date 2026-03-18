@@ -74,23 +74,18 @@ function StripeCardForm({
       if (error) {
         onError(error.message || 'Payment failed')
       } else if (paymentIntent?.status === 'succeeded') {
-        // Confirm deposit via local API route (verifies with Stripe, then credits wallet via Railway)
-        const confirmRes = await fetch('/api/deposits/stripe/confirm', {
+        // Stripe confirmed money captured — show success immediately
+        onSuccess()
+        // Sync wallet credit with backend in the background
+        const authToken = localStorage.getItem('auth_token')
+        fetch('/api/deposits/stripe/confirm', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(localStorage.getItem('auth_token') && {
-              Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-            }),
+            ...(authToken && { Authorization: `Bearer ${authToken}` }),
           },
           body: JSON.stringify({ depositId, paymentIntentId: paymentIntent.id }),
-        })
-        const confirmResult = await confirmRes.json()
-        if (!confirmRes.ok || !confirmResult.success) {
-          onError(confirmResult.error || 'Payment succeeded but wallet credit failed. Please contact support.')
-        } else {
-          onSuccess()
-        }
+        }).catch(err => console.error('Stripe background confirm failed:', err))
       } else {
         onError('Payment was not completed')
       }
