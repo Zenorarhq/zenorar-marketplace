@@ -101,7 +101,7 @@ function exportToCsv(orders: Order[], tz?: string) {
     o.status,
     formatDate(o.createdAt, tz),
   ])
-  const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -183,6 +183,7 @@ export default function PurchasesPage() {
       setCryptoPayment(null)
       setAdminTxHash('')
       setAdminPaymentNote('')
+      setStatusNote('')
       return
     }
     setDetailLoading(true)
@@ -244,7 +245,7 @@ export default function PurchasesPage() {
   const endIndex = startIndex + itemsPerPage
   const paginatedOrders = filteredOrders.slice(startIndex, endIndex)
 
-  useEffect(() => { setCurrentPage(1) }, [statusFilter, searchQuery, startDate, endDate])
+  useEffect(() => { setCurrentPage(1) }, [statusFilter, searchQuery, startDate, endDate, sortField, sortDir])
 
   function toggleSort(field: SortField) {
     if (sortField === field) {
@@ -262,6 +263,7 @@ export default function PurchasesPage() {
 
   async function handleStatusUpdate(newStatus: string) {
     if (!detailOrder) return
+    if (newStatus === detailOrder.status) return
     if (!confirm(`Change order status to ${newStatus}?`)) return
     setUpdatingStatus(true)
     try {
@@ -279,6 +281,8 @@ export default function PurchasesPage() {
 
   async function handlePaymentUpdate(newStatus: string) {
     if (!detailOrder) return
+    if (newStatus === detailOrder.paymentStatus) return
+    if (!confirm(`Change payment status to ${newStatus}?`)) return
     setUpdatingPayment(true)
     try {
       const result = await ordersApi.updatePaymentStatus(detailOrder.id, newStatus)
