@@ -212,16 +212,18 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet, resumeDe
           if (data.usdtTronAddress) wallets['TRON'] = data.usdtTronAddress
           setCryptoWallets(wallets)
 
-          // Set default method to first enabled
-          if (data.stripeEnabled) setMethod('stripe')
-          else if (data.paystackEnabled) setMethod('paystack')
-          else if (data.paypalEnabled) setMethod('paypal')
-          else if (data.cryptoEnabled) setMethod('crypto')
-          else if (data.depositBankEnabled) setMethod('bank')
+          // Set default method to first enabled (skip when resuming a deposit)
+          if (!resumeDeposit) {
+            if (data.stripeEnabled) setMethod('stripe')
+            else if (data.paystackEnabled) setMethod('paystack')
+            else if (data.paypalEnabled) setMethod('paypal')
+            else if (data.cryptoEnabled) setMethod('crypto')
+            else if (data.depositBankEnabled) setMethod('bank')
+          }
         }
       })
       .catch(err => console.error('Failed to load settings:', err))
-  }, [isOpen])
+  }, [isOpen, resumeDeposit])
 
   // Load Stripe when enabled (external backend like checkout)
   useEffect(() => {
