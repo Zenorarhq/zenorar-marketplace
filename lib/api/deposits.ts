@@ -173,7 +173,7 @@ export async function uploadBankProof(depositId: string, proofUrl: string): Prom
  * Cancel a pending deposit
  */
 export async function cancelDeposit(depositId: string): Promise<ApiResponse<void>> {
-  return localApiFetch<void>(`/deposits/${depositId}/cancel`, {
+  return apiFetch<void>(`/deposits/${depositId}/cancel`, {
     method: 'POST',
   })
 }

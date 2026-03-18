@@ -7,7 +7,7 @@ import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import DepositModal from '@/components/wallet/DepositModal'
 import { getBalance, getTransactionHistory } from '@/lib/api/wallet'
-import { getMyDeposits, cancelDeposit, type Deposit, type DepositStatus, type DepositMethod } from '@/lib/api/deposits'
+import { getMyDeposits, cancelDeposit, type Deposit, type DepositStatus } from '@/lib/api/deposits'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import Link from 'next/link'
 
@@ -110,6 +110,8 @@ function WalletPageContent() {
         window.history.replaceState({}, '', '/profile/wallet')
       } else if (deposit === 'success') {
         setDepositMessage({ type: 'success', text: 'Payment completed successfully!' })
+        queryClient.invalidateQueries({ queryKey: ['wallet'] })
+        queryClient.invalidateQueries({ queryKey: ['deposits'] })
         window.history.replaceState({}, '', '/profile/wallet')
       }
     }
@@ -118,7 +120,7 @@ function WalletPageContent() {
   }, [searchParams, queryClient])
 
   // Fetch wallet balance
-  const { data: walletData, isLoading: walletLoading, refetch: refetchBalance } = useQuery({
+  const { data: walletData, isLoading: walletLoading, isError: walletError } = useQuery({
     queryKey: ['wallet', 'balance'],
     queryFn: async () => {
       const result = await getBalance()
@@ -302,6 +304,8 @@ function WalletPageContent() {
 
             {walletLoading ? (
               <div className="h-16 bg-black/10 animate-pulse rounded-lg mb-6" />
+            ) : walletError ? (
+              <p className="text-black/60 text-lg font-medium mb-6">Unable to load balance</p>
             ) : (
               <p className="text-3xl sm:text-5xl font-bold text-black mb-6">
                 {formatPrice(walletData?.balance || 0)}
@@ -366,7 +370,7 @@ function WalletPageContent() {
                       : 'bg-surface-dark text-slate-400 hover:bg-border-dark'
                   }`}
                 >
-                  {type === 'all' ? 'All' : type.charAt(0) + type.slice(1).toLowerCase()}
+                  {type === 'all' ? 'All' : type === 'DEPOSIT' ? 'Credits' : type.charAt(0) + type.slice(1).toLowerCase()}
                 </button>
               ))}
             </div>
@@ -383,6 +387,7 @@ function WalletPageContent() {
               {transactionsData.transactions.map((transaction) => {
                 const { icon, color } = getTransactionIcon(transaction.type)
                 const isCredit = transaction.type === 'CREDIT' || transaction.type === 'DEPOSIT' || transaction.type === 'REFUND'
+                  || (transaction.type === 'ADJUSTMENT' && Number(transaction.amount) > 0)
 
                 return (
                   <div
@@ -492,7 +497,7 @@ function WalletPageContent() {
               Deposit History
             </h3>
             <div className="flex gap-2 flex-wrap">
-              {(['all', 'PENDING', 'COMPLETED', 'FAILED'] as const).map((s) => (
+              {(['all', 'PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => { setDepositFilter(s); setDepositPage(1) }}
