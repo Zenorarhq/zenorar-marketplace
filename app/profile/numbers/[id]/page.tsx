@@ -25,6 +25,7 @@ export default function VirtualNumberPage() {
   const { user } = useAuth()
   const numberId = params.id as string
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const prevMessageCount = useRef(0)
   const isAdmin = user?.role === 'ADMIN'
 
   const [activeTab, setActiveTab] = useState<'inbox' | 'settings'>('inbox')
@@ -99,11 +100,13 @@ export default function VirtualNumberPage() {
     }
   }, [numberData])
 
-  // Auto-scroll inbox to bottom when messages load or update
+  // Auto-scroll inbox to bottom only when new messages arrive
   useEffect(() => {
-    if (messagesData?.messages && activeTab === 'inbox') {
+    const count = messagesData?.messages?.length ?? 0
+    if (count > prevMessageCount.current && activeTab === 'inbox') {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
+    prevMessageCount.current = count
   }, [messagesData, activeTab])
 
   // Mark messages as read when viewing inbox
@@ -113,9 +116,11 @@ export default function VirtualNumberPage() {
         .filter((m) => !m.isRead && m.direction === 'inbound')
         .map((m) => m.id)
       if (unreadIds.length > 0) {
-        markMessagesRead(numberId, unreadIds).then(() => {
-          queryClient.invalidateQueries({ queryKey: ['virtual-number-messages', numberId] })
-        })
+        markMessagesRead(numberId, unreadIds)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ['virtual-number-messages', numberId] })
+          })
+          .catch(() => {})
       }
     }
   }, [messagesData, activeTab, numberId, queryClient])

@@ -992,8 +992,7 @@ export default function VirtualNumbersPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredNumbers.map((number, idx) => {
-                  // Use the smallest plan price (24hr Basic = $2)
-                  const startingPrice = 2
+                  const startingPrice = plans.length > 0 ? Math.min(...plans.map(p => p.basePrice)) : 2
 
                   return (
                     <div

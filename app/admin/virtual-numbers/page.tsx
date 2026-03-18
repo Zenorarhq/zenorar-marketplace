@@ -225,15 +225,9 @@ function AdminVirtualNumbersContent() {
   // Save plan mutation
   const savePlanMutation = useMutation({
     mutationFn: async (data: any) => {
-      const token = localStorage.getItem('admin_auth_token')
       const method = editingPlan ? 'PATCH' : 'POST'
       const body = editingPlan ? { id: editingPlan.id, ...data } : data
-      const res = await fetch('/api/admin/virtual-numbers/plans', {
-        method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
-      })
-      const result = await res.json()
+      const result = await localApiFetch('/admin/virtual-numbers/plans', { method, body: JSON.stringify(body) })
       if (!result.success) throw new Error(result.error)
       return result
     },
@@ -248,12 +242,7 @@ function AdminVirtualNumbersContent() {
   // Delete plan mutation
   const deletePlanMutation = useMutation({
     mutationFn: async (id: string) => {
-      const token = localStorage.getItem('admin_auth_token')
-      const res = await fetch(`/api/admin/virtual-numbers/plans?id=${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const result = await res.json()
+      const result = await localApiFetch(`/admin/virtual-numbers/plans?id=${id}`, { method: 'DELETE' })
       if (!result.success) throw new Error(result.error)
       return result
     },
@@ -266,15 +255,9 @@ function AdminVirtualNumbersContent() {
   // Save country mutation
   const saveCountryMutation = useMutation({
     mutationFn: async (data: any) => {
-      const token = localStorage.getItem('admin_auth_token')
       const method = editingCountry ? 'PATCH' : 'POST'
       const body = editingCountry ? { id: editingCountry.id, ...data } : data
-      const res = await fetch('/api/admin/virtual-numbers/countries', {
-        method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
-      })
-      const result = await res.json()
+      const result = await localApiFetch('/admin/virtual-numbers/countries', { method, body: JSON.stringify(body) })
       if (!result.success) throw new Error(result.error)
       return result
     },
