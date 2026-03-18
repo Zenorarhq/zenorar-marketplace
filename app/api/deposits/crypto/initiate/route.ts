@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       `SELECT id, status, created_at FROM deposits
        WHERE user_id = $1 AND payment_method::text LIKE 'CRYPTO%' AND crypto_network = $2
        AND status = 'PENDING'
-       AND created_at > NOW() - INTERVAL '45 minutes'
+       AND created_at > NOW() - INTERVAL '6 hours'
        ORDER BY created_at DESC LIMIT 1`,
       [user.id, network]
     )
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     if (existingResult.rows.length > 0) {
       const existing = existingResult.rows[0]
       const createdAt = new Date(existing.created_at)
-      const expiresAt = new Date(createdAt.getTime() + 45 * 60 * 1000)
+      const expiresAt = new Date(createdAt.getTime() + 6 * 60 * 60 * 1000)
 
       // If not expired, return existing pending deposit
       if (expiresAt > new Date()) {
@@ -131,14 +131,14 @@ export async function POST(request: NextRequest) {
     )
 
     const deposit = insertResult.rows[0]
-    const expiresAt = new Date(new Date(deposit.created_at).getTime() + 45 * 60 * 1000)
+    const expiresAt = new Date(new Date(deposit.created_at).getTime() + 6 * 60 * 60 * 1000)
 
     return NextResponse.json({
       success: true,
       data: {
         depositId: deposit.id,
         expiresAt: expiresAt.toISOString(),
-        timeRemaining: 45 * 60 * 1000, // Always 45 minutes for new deposits
+        timeRemaining: 6 * 60 * 60 * 1000, // Always 45 minutes for new deposits
         address: receivingAddress,
         network,
         networkLabel: getNetworkLabel(network),

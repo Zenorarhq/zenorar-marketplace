@@ -54,7 +54,7 @@ export async function GET(
 
     // Check if expired (45 minutes from creation)
     const createdAt = new Date(deposit.created_at)
-    const expiresAt = new Date(createdAt.getTime() + 45 * 60 * 1000)
+    const expiresAt = new Date(createdAt.getTime() + 6 * 60 * 60 * 1000)
 
     if (deposit.status === 'EXPIRED') {
       return NextResponse.json({

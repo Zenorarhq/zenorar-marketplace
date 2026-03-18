@@ -98,7 +98,7 @@ export default function PaymentPage() {
   const [cryptoPaymentInitiated, setCryptoPaymentInitiated] = useState(false)
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null)
   const [cryptoVerificationStatus, setCryptoVerificationStatus] = useState<'idle' | 'pending' | 'confirmed' | 'expired'>('idle')
-  const [cryptoTimeRemaining, setCryptoTimeRemaining] = useState<number>(45 * 60 * 1000) // 45 minutes in ms
+  const [cryptoTimeRemaining, setCryptoTimeRemaining] = useState<number>(6 * 60 * 60 * 1000) // 45 minutes in ms
   const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null)
   const [userTxHash, setUserTxHash] = useState<string>('')
   const [confirmedTxHash, setConfirmedTxHash] = useState<string>('')
@@ -484,7 +484,7 @@ export default function PaymentPage() {
     setCryptoPaymentInitiated(false)
     setPendingPaymentId(null)
     setCryptoVerificationStatus('idle')
-    setCryptoTimeRemaining(45 * 60 * 1000)
+    setCryptoTimeRemaining(6 * 60 * 60 * 1000)
     setUserTxHash('')
     setConfirmedTxHash('')
     setExplorerUrl('')

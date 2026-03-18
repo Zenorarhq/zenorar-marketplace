@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new pending payment (45 minute expiry)
-    const expiresAt = new Date(Date.now() + 45 * 60 * 1000)
+    const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000)
 
     const insertResult = await executeQuery(
       `INSERT INTO pending_crypto_payments

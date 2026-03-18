@@ -225,7 +225,7 @@ function WalletPageContent() {
 
   const handleResumeDeposit = (deposit: Deposit) => {
     if (!deposit.cryptoNetwork || !deposit.cryptoAddress) return
-    const expiresAt = new Date(deposit.createdAt).getTime() + 45 * 60 * 1000
+    const expiresAt = new Date(deposit.createdAt).getTime() + 6 * 60 * 60 * 1000
     const timeRemaining = Math.max(0, expiresAt - Date.now())
     if (timeRemaining <= 0) return
     setResumeDeposit({
@@ -553,7 +553,7 @@ function WalletPageContent() {
               {depositsData.deposits.map((deposit: Deposit) => {
                 const isCryptoWindowExpired = deposit.status === 'PENDING'
                   && deposit.paymentMethod.startsWith('CRYPTO')
-                  && Date.now() > new Date(deposit.createdAt).getTime() + 45 * 60 * 1000
+                  && Date.now() > new Date(deposit.createdAt).getTime() + 6 * 60 * 60 * 1000
                 const statusConfig = depositStatusConfig[isCryptoWindowExpired ? 'EXPIRED' : deposit.status] || depositStatusConfig.PENDING
                 const methodLabel = depositMethodLabels[deposit.paymentMethod] || deposit.paymentMethod
 
@@ -588,7 +588,7 @@ function WalletPageContent() {
                             </div>
                           )}
                           {deposit.status === 'PENDING' && deposit.paymentMethod.startsWith('CRYPTO') && (() => {
-                            const expiresAt = new Date(deposit.createdAt).getTime() + 45 * 60 * 1000
+                            const expiresAt = new Date(deposit.createdAt).getTime() + 6 * 60 * 60 * 1000
                             const remaining = Math.max(0, expiresAt - Date.now())
                             const mins = Math.floor(remaining / 60000)
                             const secs = Math.floor((remaining % 60000) / 1000)
