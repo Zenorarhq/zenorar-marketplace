@@ -31,7 +31,7 @@ export interface LibraryItem {
   name: string
   slug?: string
   description: string
-  category: 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers' | 'gift-cards' | 'cards'
+  category: 'scripts' | 'esims' | 'tools' | 'api' | 'virtual-numbers' | 'gift-cards' | 'cards' | 'phone-refills'
   icon: string
   purchaseDate: string
   status: 'active' | 'expired' | 'update-available' | 'suspended' | 'pending' | 'failed' | 'delivered' | 'redeemed'
@@ -56,6 +56,12 @@ export interface LibraryItem {
   giftCardCategory?: string
   redeemedAt?: string
   giftCardId?: string
+  // Phone refill specific fields
+  operatorName?: string
+  country?: string
+  recipientPhone?: string
+  sendAmount?: number
+  sendCurrency?: string
   // Card specific fields
   cardBrand?: string
   cardType?: string

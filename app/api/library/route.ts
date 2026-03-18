@@ -445,8 +445,61 @@ export async function GET(request: Request) {
       }
     })
 
+    // Query user's phone refill orders
+    const phoneRefillsResult = await query(
+      `
+      SELECT
+        oi.id,
+        oi.name,
+        oi.price,
+        oi.metadata,
+        o."createdAt" as purchase_date,
+        o.status as order_status,
+        o.id as order_id
+      FROM orders o
+      JOIN order_items oi ON oi."orderId" = o.id
+      WHERE o."userId" = $1
+        AND oi.product_type = 'phone_refill'
+      ORDER BY o."createdAt" DESC
+      `,
+      [userId]
+    ).catch(() => ({ rows: [] }))
+
+    // Transform phone refills to library item format
+    const phoneRefillItems = phoneRefillsResult.rows.map((row: any) => {
+      const metadata = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata || {})
+      const operatorName = metadata.operatorName || 'Top-Up'
+      const sendAmount = metadata.sendAmount
+      const sendCurrency = metadata.sendCurrency || 'USD'
+      const country = metadata.country || ''
+
+      return {
+        id: row.id,
+        name: `${operatorName} Top-Up`,
+        slug: null,
+        description: sendAmount
+          ? `${sendAmount} ${sendCurrency} to ${metadata.recipientPhone || 'recipient'}`
+          : row.name || 'Phone Refill',
+        category: 'phone-refills',
+        icon: 'phone',
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
+        purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        status: row.order_status === 'CONFIRMED' ? 'delivered' : 'pending',
+        operatorName,
+        country,
+        recipientPhone: metadata.recipientPhone,
+        sendAmount,
+        sendCurrency,
+        orderId: row.order_id,
+      }
+    })
+
     // Combine all library items (include pending/failed virtual numbers and eSIMs)
-    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...pendingEsimItems, ...cardItems]
+    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...pendingEsimItems, ...cardItems, ...phoneRefillItems]
 
     // Sort all items by purchase date (newest first)
     libraryItems.sort((a, b) => {

@@ -7,6 +7,7 @@ import Image from 'next/image'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
+import ServiceLogo from '@/components/ui/ServiceLogo'
 import { libraryApi } from '@/lib/api/library'
 import EsimDetailModal from '@/components/library/EsimDetailModal'
 import GiftCardDetailModal from '@/components/library/GiftCardDetailModal'
@@ -32,7 +33,7 @@ function maskLicenseKey(key: string): string {
   return [first, ...middle, last].join('-')
 }
 
-type LibraryFilter = 'all' | 'scripts' | 'virtual-numbers' | 'esims' | 'cards' | 'gift-cards'
+type LibraryFilter = 'all' | 'scripts' | 'virtual-numbers' | 'esims' | 'cards' | 'gift-cards' | 'phone-refills'
 
 const ITEMS_PER_PAGE = 5
 
@@ -374,6 +375,7 @@ export default function LibraryPage() {
     { key: 'esims', label: 'eSIMs', icon: 'sim-card' },
     { key: 'cards', label: 'Cards', icon: 'credit-card' },
     { key: 'gift-cards', label: 'Gift Cards', icon: 'gift' },
+    { key: 'phone-refills', label: 'Top-Ups', icon: 'phone' },
   ]
 
   return (
@@ -493,7 +495,9 @@ export default function LibraryPage() {
                       </div>
                     ) : (
                     <div className="h-14 w-14 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {item.category === 'esims' && item.countries?.[0] ? (
+                      {item.category === 'phone-refills' && item.operatorName ? (
+                        <ServiceLogo name={item.operatorName} size={36} />
+                      ) : item.category === 'esims' && item.countries?.[0] ? (
                         <FlagIcon countryCode={item.countries[0]} className="w-8 h-8 rounded" />
                       ) : item.category === 'gift-cards' && item.imageUrl ? (
                         <Image
@@ -548,6 +552,18 @@ export default function LibraryPage() {
                           <span className="flex items-center gap-1">
                             <Icon name="message" size={13} />
                             SMS: {item.smsUsed} / {item.smsIncluded === 0 ? '∞' : item.smsIncluded}
+                          </span>
+                        )}
+                        {item.category === 'phone-refills' && item.recipientPhone && (
+                          <span className="flex items-center gap-1 font-mono">
+                            <Icon name="phone" size={13} />
+                            {item.recipientPhone}
+                          </span>
+                        )}
+                        {item.category === 'phone-refills' && item.sendAmount && (
+                          <span className="flex items-center gap-1">
+                            <Icon name="arrow-right" size={13} />
+                            {item.sendAmount} {item.sendCurrency}
                           </span>
                         )}
                       </div>
@@ -681,6 +697,15 @@ export default function LibraryPage() {
                             View Code
                           </button>
                         )}
+                        {item.category === 'phone-refills' && (
+                          <button
+                            onClick={() => router.push('/phone-refills')}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
+                          >
+                            <Icon name="refresh" size={16} />
+                            Buy Again
+                          </button>
+                        )}
                         {item.category === 'api' && (
                           <button
                             onClick={() => handleApiKey(item.id, item.name, cardId)}
@@ -710,7 +735,15 @@ export default function LibraryPage() {
                           {openMenuId === cardId && (
                             <div className="absolute right-0 bottom-full mb-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
                               {/* View Product Page - handle different categories */}
-                              {item.category === 'gift-cards' ? (
+                              {item.category === 'phone-refills' ? (
+                                <button
+                                  onClick={() => { setOpenMenuId(null); router.push('/phone-refills') }}
+                                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                                >
+                                  <Icon name="eye" size={16} />
+                                  Browse Top-Ups
+                                </button>
+                              ) : item.category === 'gift-cards' ? (
                                 <button
                                   onClick={() => { setOpenMenuId(null); router.push('/gift-cards') }}
                                   className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"

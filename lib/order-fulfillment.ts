@@ -256,6 +256,14 @@ async function processOrderItem(
         // Provision card for cart checkout (instant checkout handles this via /api/cards/purchase)
         return await processCardItem(orderId, userId, item, productType as CardType)
 
+      case 'phone_refill':
+        // Phone refills are delivered instantly via Zendit API at purchase time — no provisioning needed
+        return {
+          itemId: item.item_id,
+          productType: 'phone_refill',
+          status: 'success',
+        }
+
       default:
         // Generic digital product - just grant access
         return await processDigitalDownload(orderId, userId, item)
