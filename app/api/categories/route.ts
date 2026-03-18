@@ -57,7 +57,8 @@ export async function GET(request: NextRequest) {
       SELECT c.id, c.name, c.slug, c.icon,
         (SELECT COUNT(*) FROM products p WHERE p."categoryId" = c.id AND p.status = 'ACTIVE') as "productCount"
       FROM categories c
-      ORDER BY c.name ASC
+      WHERE c."parentId" IS NULL AND c."isActive" = true
+      ORDER BY c."order" ASC, c.name ASC
     `)
 
     const data = result.rows.map(row => ({

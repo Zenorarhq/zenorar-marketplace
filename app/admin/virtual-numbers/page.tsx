@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { formatNumber } from '@/lib/formatNumber'
+import { localApiFetch } from '@/lib/api/client'
 
 interface VirtualNumber {
   id: string
@@ -144,19 +145,15 @@ function AdminVirtualNumbersContent() {
   const { data: numbersData, isLoading: loadingNumbers } = useQuery({
     queryKey: ['admin-virtual-numbers', currentPage, statusFilter, searchQuery, countryFilter],
     queryFn: async () => {
-      const token = localStorage.getItem('admin_auth_token')
       const params = new URLSearchParams()
       params.set('page', currentPage.toString())
       params.set('limit', pageSize.toString())
       if (statusFilter) params.set('status', statusFilter)
       if (searchQuery) params.set('search', searchQuery)
       if (countryFilter) params.set('country', countryFilter)
-      const res = await fetch(`/api/admin/virtual-numbers?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error)
-      return data.data
+      const result = await localApiFetch(`/admin/virtual-numbers?${params}`)
+      if (!result.success) throw new Error(result.error)
+      return result.data as any
     },
     enabled: activeTab === 'overview',
   })
@@ -165,13 +162,9 @@ function AdminVirtualNumbersContent() {
   const { data: detailedStats } = useQuery<DetailedStats>({
     queryKey: ['admin-virtual-numbers-stats'],
     queryFn: async () => {
-      const token = localStorage.getItem('admin_auth_token')
-      const res = await fetch('/api/admin/virtual-numbers/stats', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error)
-      return data.data
+      const result = await localApiFetch<DetailedStats>('/admin/virtual-numbers/stats')
+      if (!result.success) throw new Error(result.error)
+      return result.data as DetailedStats
     },
     enabled: activeTab === 'overview',
   })
@@ -180,13 +173,9 @@ function AdminVirtualNumbersContent() {
   const { data: plans = [], isLoading: loadingPlans } = useQuery<Plan[]>({
     queryKey: ['admin-virtual-number-plans'],
     queryFn: async () => {
-      const token = localStorage.getItem('admin_auth_token')
-      const res = await fetch('/api/admin/virtual-numbers/plans', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error)
-      return data.data
+      const result = await localApiFetch('/admin/virtual-numbers/plans')
+      if (!result.success) throw new Error(result.error)
+      return result.data as Plan[]
     },
     enabled: activeTab === 'plans' || activeTab === 'overview',
   })
@@ -195,13 +184,9 @@ function AdminVirtualNumbersContent() {
   const { data: countries = [], isLoading: loadingCountries } = useQuery<Country[]>({
     queryKey: ['admin-virtual-number-countries'],
     queryFn: async () => {
-      const token = localStorage.getItem('admin_auth_token')
-      const res = await fetch('/api/admin/virtual-numbers/countries', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error)
-      return data.data
+      const result = await localApiFetch('/admin/virtual-numbers/countries')
+      if (!result.success) throw new Error(result.error)
+      return result.data as Country[]
     },
     enabled: activeTab === 'countries' || activeTab === 'overview',
   })
@@ -210,12 +195,8 @@ function AdminVirtualNumbersContent() {
   const { data: providerStatus } = useQuery({
     queryKey: ['virtual-number-provider-status'],
     queryFn: async () => {
-      const token = localStorage.getItem('admin_auth_token')
-      const res = await fetch('/api/admin/sync/virtual-numbers', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      return data
+      const result = await localApiFetch('/admin/sync/virtual-numbers')
+      return result as any
     },
     enabled: activeTab === 'providers',
   })
@@ -223,14 +204,9 @@ function AdminVirtualNumbersContent() {
   // Sync mutation
   const syncMutation = useMutation({
     mutationFn: async () => {
-      const token = localStorage.getItem('admin_auth_token')
-      const res = await fetch('/api/admin/sync/virtual-numbers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error)
-      return data
+      const result = await localApiFetch('/admin/sync/virtual-numbers', { method: 'POST' })
+      if (!result.success) throw new Error(result.error)
+      return result
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-virtual-numbers'] })
