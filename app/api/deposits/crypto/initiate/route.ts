@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     // Check for existing pending deposit for this user and network
     const existingResult = await executeQuery(
       `SELECT id, status, created_at FROM deposits
-       WHERE user_id = $1 AND payment_method LIKE 'CRYPTO%' AND crypto_network = $2
+       WHERE user_id = $1 AND payment_method::text LIKE 'CRYPTO%' AND crypto_network = $2
        AND status = 'PENDING'
        AND created_at > NOW() - INTERVAL '45 minutes'
        ORDER BY created_at DESC LIMIT 1`,
