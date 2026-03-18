@@ -27,11 +27,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get deposit record
-    const depositResult = await executeQuery(
-      `SELECT id, user_id, amount, status FROM deposits WHERE id = $1`,
-      [depositId]
-    )
+    // Fetch deposit record and Stripe settings in parallel — they're independent
+    const [depositResult, [mode, liveKey, testKey]] = await Promise.all([
+      executeQuery(
+        `SELECT id, user_id, amount, status FROM deposits WHERE id = $1`,
+        [depositId]
+      ),
+      Promise.all([
+        getSiteSetting('stripeMode'),
+        getSiteSetting('stripeLiveSecretKey'),
+        getSiteSetting('stripeTestSecretKey'),
+      ]),
+    ])
 
     if (depositResult.rows.length === 0) {
       return NextResponse.json(
@@ -58,12 +65,6 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Get Stripe secret key — fetch all three settings in parallel
-    const [mode, liveKey, testKey] = await Promise.all([
-      getSiteSetting('stripeMode'),
-      getSiteSetting('stripeLiveSecretKey'),
-      getSiteSetting('stripeTestSecretKey'),
-    ])
     const secretKey = (mode === 'live') ? liveKey : testKey
 
     if (!secretKey) {

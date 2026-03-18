@@ -26,11 +26,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get Stripe secret key from site settings
-    const mode = (await getSiteSetting('stripeMode')) || 'test'
-    const secretKey = mode === 'live'
-      ? await getSiteSetting('stripeLiveSecretKey')
-      : await getSiteSetting('stripeTestSecretKey')
+    // Fetch settings and create deposit record in parallel — they're independent
+    const [[mode, liveKey, testKey], depositResult] = await Promise.all([
+      Promise.all([
+        getSiteSetting('stripeMode'),
+        getSiteSetting('stripeLiveSecretKey'),
+        getSiteSetting('stripeTestSecretKey'),
+      ]),
+      executeQuery(
+        `INSERT INTO deposits (user_id, amount, currency, payment_method, status)
+         VALUES ($1, $2, $3, 'CARD', 'PENDING')
+         RETURNING id`,
+        [user.id, amount, currency.toUpperCase()]
+      ),
+    ])
+
+    const secretKey = (mode === 'live') ? liveKey : testKey
 
     if (!secretKey) {
       return NextResponse.json(
@@ -38,14 +49,6 @@ export async function POST(req: NextRequest) {
         { status: 503 }
       )
     }
-
-    // Create deposit record in database
-    const depositResult = await executeQuery(
-      `INSERT INTO deposits (user_id, amount, currency, payment_method, status)
-       VALUES ($1, $2, $3, 'CARD', 'PENDING')
-       RETURNING id`,
-      [user.id, amount, currency.toUpperCase()]
-    )
 
     const depositId = depositResult.rows[0].id
 
