@@ -8,7 +8,7 @@ import CategoryNav from '@/components/layout/CategoryNav'
 import Footer from '@/components/layout/Footer'
 import Icon from '@/components/ui/Icon'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, localApiFetch } from '@/lib/api/client'
 
 const AVG_ORDER_OPTIONS = [
   { value: 'under_500', label: 'Under $500 / month' },
@@ -55,8 +55,7 @@ export default function VendorApplyPage() {
     try {
       const formData = new FormData()
       formData.append('file', idFile)
-      const res = await fetch('/api/media/upload', { method: 'POST', body: formData })
-      const data = await res.json()
+      const data = await localApiFetch<{ url: string }>('/media/upload', { method: 'POST', body: formData })
       if (!data.success || !data.data?.url) throw new Error(data.error || 'Upload failed')
       return data.data.url as string
     } finally {
