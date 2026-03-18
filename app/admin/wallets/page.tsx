@@ -47,6 +47,11 @@ export default function AdminWalletsPage() {
   const [freezeUserId, setFreezeUserId] = useState<string | null>(null)
   const [showFreezeModal, setShowFreezeModal] = useState(false)
 
+  // Feedback state
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [mutationError, setMutationError] = useState<string | null>(null)
+  const [tableError, setTableError] = useState<string | null>(null)
+
   // Deposits state
   const [depositPage, setDepositPage] = useState(1)
   const [depositStatus, setDepositStatus] = useState<DepositStatus | 'all'>('all')
@@ -55,10 +60,11 @@ export default function AdminWalletsPage() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null)
   const [depositSort, setDepositSort] = useState<{ field: 'createdAt' | 'amount' | 'status'; order: 'asc' | 'desc' }>({ field: 'createdAt', order: 'desc' })
+  const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null)
 
   // Transactions state
   const [txPage, setTxPage] = useState(1)
-  const [txFilter, setTxFilter] = useState<'all' | 'CREDIT' | 'DEBIT'>('all')
+  const [txFilter, setTxFilter] = useState<'all' | 'CREDIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'>('all')
 
   const limit = 20
 
@@ -75,12 +81,16 @@ export default function AdminWalletsPage() {
   })
 
   const { data: depositsData, isLoading: depositsLoading } = useQuery({
-    queryKey: ['admin', 'deposits', depositPage, depositStatus],
+    queryKey: ['admin', 'deposits', depositPage, depositStatus, depositSort],
     queryFn: async () => {
       const result = await getAllDeposits(
         depositPage,
         limit,
-        depositStatus === 'all' ? undefined : depositStatus
+        depositStatus === 'all' ? undefined : depositStatus,
+        undefined,
+        undefined,
+        depositSort.field,
+        depositSort.order
       )
       if (!result.success || !result.data) throw new Error(result.error || 'Failed to load deposits')
       const data = result.data as any
@@ -137,7 +147,12 @@ export default function AdminWalletsPage() {
       const result = await addCredit(data.userId, data.amount, data.description)
       if (!result.success) throw new Error(result.error || 'Failed to add credit')
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] }); resetActionModal() },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] })
+      setSuccessMessage('Credit added successfully')
+      resetActionModal()
+    },
+    onError: (err: any) => setMutationError(err.message || 'Failed to add credit'),
   })
 
   const deductCreditMutation = useMutation({
@@ -145,7 +160,12 @@ export default function AdminWalletsPage() {
       const result = await deductCredit(data.userId, data.amount, data.description)
       if (!result.success) throw new Error(result.error || 'Failed to deduct credit')
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] }); resetActionModal() },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] })
+      setSuccessMessage('Credit deducted successfully')
+      resetActionModal()
+    },
+    onError: (err: any) => setMutationError(err.message || 'Failed to deduct credit'),
   })
 
   const adjustBalanceMutation = useMutation({
@@ -153,7 +173,12 @@ export default function AdminWalletsPage() {
       const result = await adjustBalance(data.userId, data.amount, data.description)
       if (!result.success) throw new Error(result.error || 'Failed to adjust balance')
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] }); resetActionModal() },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] })
+      setSuccessMessage('Balance adjusted successfully')
+      resetActionModal()
+    },
+    onError: (err: any) => setMutationError(err.message || 'Failed to adjust balance'),
   })
 
   const freezeMutation = useMutation({
@@ -163,10 +188,12 @@ export default function AdminWalletsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] })
+      setSuccessMessage('Wallet frozen successfully')
       setShowFreezeModal(false)
       setFreezeReason('')
       setFreezeUserId(null)
     },
+    onError: (err: any) => setMutationError(err.message || 'Failed to freeze wallet'),
   })
 
   const unfreezeMutation = useMutation({
@@ -174,7 +201,11 @@ export default function AdminWalletsPage() {
       const result = await unfreezeWallet(userId)
       if (!result.success) throw new Error(result.error || 'Failed to unfreeze wallet')
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] }) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'wallets'] })
+      setSuccessMessage('Wallet unfrozen successfully')
+    },
+    onError: (err: any) => setTableError(err.message || 'Failed to unfreeze wallet'),
   })
 
   const approveMutation = useMutation({
@@ -185,7 +216,9 @@ export default function AdminWalletsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'deposits'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'deposit-stats'] })
+      setSuccessMessage('Deposit approved and wallet credited')
     },
+    onError: (err: any) => setTableError(err.message || 'Failed to approve deposit'),
   })
 
   const rejectMutation = useMutation({
@@ -195,10 +228,12 @@ export default function AdminWalletsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'deposits'] })
+      setSuccessMessage('Deposit rejected')
       setShowRejectModal(false)
       setRejectReason('')
       setRejectDepositId(null)
     },
+    onError: (err: any) => setMutationError(err.message || 'Failed to reject deposit'),
   })
 
   const resetMutation = useMutation({
@@ -208,7 +243,9 @@ export default function AdminWalletsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'deposits'] })
+      setSuccessMessage('Deposit reset to pending')
     },
+    onError: (err: any) => setTableError(err.message || 'Failed to reset deposit'),
   })
 
   // ---- HELPERS ----
@@ -217,6 +254,7 @@ export default function AdminWalletsPage() {
     setAmount('')
     setDescription('')
     setSelectedUserId(null)
+    setMutationError(null)
   }
 
   const handleWalletAction = () => {
@@ -232,6 +270,7 @@ export default function AdminWalletsPage() {
   const openActionModal = (userId: string, type: WalletActionType) => {
     setSelectedUserId(userId)
     setActionType(type)
+    setMutationError(null)
     setShowActionModal(true)
   }
 
@@ -252,6 +291,28 @@ export default function AdminWalletsPage() {
         <h1 className="text-3xl font-bold text-white mb-2">Wallet Management</h1>
         <p className="text-slate-400">Manage user wallets, approve deposits, and adjust balances.</p>
       </div>
+
+      {/* Success banner */}
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3">
+          <Icon name="check-circle" size={20} className="text-green-500 flex-shrink-0" />
+          <span className="text-green-400 text-sm font-medium">{successMessage}</span>
+          <button onClick={() => setSuccessMessage(null)} className="ml-auto text-slate-500 hover:text-white">
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Table-level error (unfreeze, approve, reset) */}
+      {tableError && (
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+          <Icon name="alert" size={20} className="text-red-400 flex-shrink-0" />
+          <span className="text-red-400 text-sm font-medium">{tableError}</span>
+          <button onClick={() => setTableError(null)} className="ml-auto text-slate-500 hover:text-white">
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Wallet Stats (shown when wallets tab is active) */}
       {activeTab === 'wallets' && walletStats && (
@@ -397,7 +458,7 @@ export default function AdminWalletsPage() {
                                 </button>
                               ) : (
                                 <button
-                                  onClick={() => { setFreezeUserId(wallet.userId); setShowFreezeModal(true) }}
+                                  onClick={() => { setFreezeUserId(wallet.userId); setMutationError(null); setShowFreezeModal(true) }}
                                   className="px-3 py-1 bg-slate-500/10 border border-slate-500/30 text-slate-400 rounded-lg text-xs font-medium hover:bg-slate-500/20 transition-colors"
                                 >
                                   Freeze
@@ -517,12 +578,6 @@ export default function AdminWalletsPage() {
           ) : depositsData?.deposits && depositsData.deposits.length > 0 ? (
             <>
               {(() => {
-                const sortedDeposits = [...depositsData.deposits].sort((a: any, b: any) => {
-                  const dir = depositSort.order === 'asc' ? 1 : -1
-                  if (depositSort.field === 'amount') return (Number(a.amount) - Number(b.amount)) * dir
-                  if (depositSort.field === 'status') return a.status.localeCompare(b.status) * dir
-                  return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir
-                })
                 const sortIcon = (field: 'createdAt' | 'amount' | 'status') =>
                   depositSort.field === field ? (depositSort.order === 'asc' ? ' ↑' : ' ↓') : ' ↕'
                 return (
@@ -539,7 +594,7 @@ export default function AdminWalletsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-dark bg-black/20">
-                    {sortedDeposits.map((deposit: any) => {
+                    {depositsData.deposits.map((deposit: any) => {
                       const statusConfig = depositStatusConfig[deposit.status as DepositStatus] || depositStatusConfig.PENDING
                       const method = methodLabels[deposit.paymentMethod as DepositMethod] || deposit.paymentMethod
                       const needsApproval = (deposit.status === 'PENDING' || deposit.status === 'PROCESSING') &&
@@ -563,13 +618,31 @@ export default function AdminWalletsPage() {
                             <div className="flex gap-2 justify-center">
                               {needsApproval && (
                                 <>
-                                  <button
-                                    onClick={() => approveMutation.mutate(deposit.id)}
-                                    disabled={approveMutation.isPending}
-                                    className="px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50"
-                                  >
-                                    Approve
-                                  </button>
+                                  {confirmApproveId === deposit.id ? (
+                                    <>
+                                      <span className="text-yellow-400 text-xs font-medium">Confirm?</span>
+                                      <button
+                                        onClick={() => { approveMutation.mutate(deposit.id); setConfirmApproveId(null) }}
+                                        disabled={approveMutation.isPending}
+                                        className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
+                                      >
+                                        Yes
+                                      </button>
+                                      <button
+                                        onClick={() => setConfirmApproveId(null)}
+                                        className="px-3 py-1 bg-surface-dark border border-border-dark text-slate-400 rounded-lg text-xs font-medium hover:bg-border-dark transition-colors"
+                                      >
+                                        No
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => setConfirmApproveId(deposit.id)}
+                                      className="px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20 transition-colors"
+                                    >
+                                      Approve
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => { setRejectDepositId(deposit.id); setShowRejectModal(true) }}
                                     className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
@@ -636,7 +709,7 @@ export default function AdminWalletsPage() {
       {activeTab === 'transactions' && (
         <div>
           <div className="flex gap-2 mb-6 flex-wrap">
-            {(['all', 'CREDIT', 'DEBIT'] as const).map((t) => (
+            {(['all', 'CREDIT', 'DEBIT', 'REFUND', 'ADJUSTMENT'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => { setTxFilter(t); setTxPage(1) }}
@@ -762,6 +835,12 @@ export default function AdminWalletsPage() {
               </div>
             </div>
 
+            {mutationError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4 text-red-400 text-sm">
+                {mutationError}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button onClick={resetActionModal} className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl hover:bg-border-dark transition-colors">Cancel</button>
               <button
@@ -804,8 +883,14 @@ export default function AdminWalletsPage() {
               />
             </div>
 
+            {mutationError && showFreezeModal && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4 text-red-400 text-sm">
+                {mutationError}
+              </div>
+            )}
+
             <div className="flex gap-3">
-              <button onClick={() => { setShowFreezeModal(false); setFreezeReason(''); setFreezeUserId(null) }} className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl hover:bg-border-dark transition-colors">Cancel</button>
+              <button onClick={() => { setShowFreezeModal(false); setFreezeReason(''); setFreezeUserId(null); setMutationError(null) }} className="flex-1 bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl hover:bg-border-dark transition-colors">Cancel</button>
               <button
                 onClick={() => { if (freezeUserId && freezeReason.trim()) freezeMutation.mutate({ userId: freezeUserId, reason: freezeReason }) }}
                 disabled={freezeMutation.isPending || !freezeReason.trim()}

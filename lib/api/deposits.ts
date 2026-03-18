@@ -211,7 +211,9 @@ export async function getAllDeposits(
   limit = 20,
   status?: DepositStatus,
   method?: DepositMethod,
-  search?: string
+  search?: string,
+  sortField?: 'createdAt' | 'amount' | 'status',
+  sortOrder?: 'asc' | 'desc'
 ): Promise<ApiResponse<DepositsListResponse & { stats?: any }>> {
   const params = new URLSearchParams()
   params.set('page', page.toString())
@@ -219,6 +221,8 @@ export async function getAllDeposits(
   if (status) params.set('status', status)
   if (method) params.set('method', method)
   if (search) params.set('search', search)
+  if (sortField) params.set('sortField', sortField)
+  if (sortOrder) params.set('sortOrder', sortOrder)
 
   return apiFetch(`/deposits?${params.toString()}`)
 }

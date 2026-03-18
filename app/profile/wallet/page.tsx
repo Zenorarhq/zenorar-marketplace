@@ -7,7 +7,7 @@ import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import DepositModal from '@/components/wallet/DepositModal'
 import { getBalance, getTransactionHistory } from '@/lib/api/wallet'
-import { getMyDeposits, type Deposit, type DepositStatus, type DepositMethod } from '@/lib/api/deposits'
+import { getMyDeposits, cancelDeposit, type Deposit, type DepositStatus, type DepositMethod } from '@/lib/api/deposits'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import Link from 'next/link'
 
@@ -44,6 +44,8 @@ function WalletPageContent() {
   const [depositMessage, setDepositMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [txPage, setTxPage] = useState(1)
   const [depositPage, setDepositPage] = useState(1)
+  const [depositFilter, setDepositFilter] = useState<DepositStatus | 'all'>('all')
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
 
   // Handle PayPal and other payment gateway redirects
   useEffect(() => {
@@ -131,7 +133,7 @@ function WalletPageContent() {
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: ['wallet', 'transactions', filter, txPage],
     queryFn: async () => {
-      const type = filter === 'all' ? undefined : filter as any
+      const type = filter === 'all' ? undefined : filter === 'DEPOSIT' ? 'CREDIT' : filter as any
       const result = await getTransactionHistory(txPage, 10, type)
       if (!result.success) {
         throw new Error(result.error || 'Failed to load transactions')
@@ -145,10 +147,10 @@ function WalletPageContent() {
   })
 
   // Fetch deposit history
-  const { data: depositsData, isLoading: depositsLoading } = useQuery({
-    queryKey: ['deposits', 'my', depositPage],
+  const { data: depositsData, isLoading: depositsLoading, refetch: refetchDeposits } = useQuery({
+    queryKey: ['deposits', 'my', depositPage, depositFilter],
     queryFn: async () => {
-      const result = await getMyDeposits(depositPage, 10)
+      const result = await getMyDeposits(depositPage, 10, depositFilter === 'all' ? undefined : depositFilter)
       if (!result.success) {
         return { deposits: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } }
       }
@@ -213,6 +215,22 @@ function WalletPageContent() {
     setShowDepositModal(false)
     queryClient.invalidateQueries({ queryKey: ['wallet'] })
     queryClient.invalidateQueries({ queryKey: ['deposits'] })
+  }
+
+  const handleCancelDeposit = async (depositId: string) => {
+    setCancellingId(depositId)
+    try {
+      const result = await cancelDeposit(depositId)
+      if (result.success) {
+        refetchDeposits()
+      } else {
+        setDepositMessage({ type: 'error', text: result.error || 'Failed to cancel deposit' })
+      }
+    } catch {
+      setDepositMessage({ type: 'error', text: 'Failed to cancel deposit' })
+    } finally {
+      setCancellingId(null)
+    }
   }
 
   return (
@@ -468,11 +486,26 @@ function WalletPageContent() {
       {/* Deposit History */}
       {activeTab === 'deposits' && (
         <div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
               <Icon name="money-receive" size={20} className="text-primary" />
               Deposit History
             </h3>
+            <div className="flex gap-2 flex-wrap">
+              {(['all', 'PENDING', 'COMPLETED', 'FAILED'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => { setDepositFilter(s); setDepositPage(1) }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    depositFilter === s
+                      ? 'bg-primary text-black'
+                      : 'bg-surface-dark text-slate-400 hover:bg-border-dark'
+                  }`}
+                >
+                  {s === 'all' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+                </button>
+              ))}
+            </div>
           </div>
 
           {depositsLoading ? (
@@ -506,7 +539,16 @@ function WalletPageContent() {
                           </div>
                           <p className="text-slate-500 text-sm">{formatDate(deposit.createdAt)}</p>
                           {deposit.status === 'PENDING' && (deposit.paymentMethod === 'BANK_TRANSFER' || deposit.paymentMethod.startsWith('CRYPTO')) && (
-                            <p className="text-yellow-500 text-xs mt-1">Awaiting admin verification</p>
+                            <div className="flex items-center gap-3 mt-1">
+                              <p className="text-yellow-500 text-xs">Awaiting admin verification</p>
+                              <button
+                                onClick={() => handleCancelDeposit(deposit.id)}
+                                disabled={cancellingId === deposit.id}
+                                className="text-xs text-red-400 hover:text-red-300 underline disabled:opacity-50"
+                              >
+                                {cancellingId === deposit.id ? 'Cancelling...' : 'Cancel'}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
