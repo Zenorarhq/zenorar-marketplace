@@ -14,8 +14,8 @@ import {
   markMessagesRead,
   cancelNumber,
   sendTestSms,
-  UserVirtualNumber,
-  VirtualNumberMessage,
+  getRenewalPrice,
+  renewNumber,
 } from '@/lib/api/virtual-numbers'
 
 export default function VirtualNumberPage() {
@@ -33,6 +33,11 @@ export default function VirtualNumberPage() {
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showTestSmsModal, setShowTestSmsModal] = useState(false)
   const [testSmsData, setTestSmsData] = useState({ fromNumber: '+15559876543', message: '' })
+  const [showRenewModal, setShowRenewModal] = useState(false)
+  const [renewPriceData, setRenewPriceData] = useState<{ price: number; durationDays: number; walletBalance: number; canPayWithWallet: boolean } | null>(null)
+  const [renewLoading, setRenewLoading] = useState(false)
+  const [renewError, setRenewError] = useState<string | null>(null)
+  const [renewSuccess, setRenewSuccess] = useState<string | null>(null)
 
   // Forwarding settings state
   const [settings, setSettings] = useState({
@@ -94,6 +99,13 @@ export default function VirtualNumberPage() {
     }
   }, [numberData])
 
+  // Auto-scroll inbox to bottom when messages load or update
+  useEffect(() => {
+    if (messagesData?.messages && activeTab === 'inbox') {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messagesData, activeTab])
+
   // Mark messages as read when viewing inbox
   useEffect(() => {
     if (messagesData?.messages && activeTab === 'inbox') {
@@ -101,10 +113,12 @@ export default function VirtualNumberPage() {
         .filter((m) => !m.isRead && m.direction === 'inbound')
         .map((m) => m.id)
       if (unreadIds.length > 0) {
-        markMessagesRead(numberId, unreadIds)
+        markMessagesRead(numberId, unreadIds).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['virtual-number-messages', numberId] })
+        })
       }
     }
-  }, [messagesData, activeTab, numberId])
+  }, [messagesData, activeTab, numberId, queryClient])
 
   // Send SMS mutation
   const sendSmsMutation = useMutation({
@@ -136,6 +150,11 @@ export default function VirtualNumberPage() {
     },
   })
 
+  const updateSetting = (patch: Partial<typeof settings>) => {
+    setSettings((prev) => ({ ...prev, ...patch }))
+    updateSettingsMutation.reset()
+  }
+
   // Cancel number mutation
   const cancelMutation = useMutation({
     mutationFn: async () => {
@@ -165,6 +184,47 @@ export default function VirtualNumberPage() {
       queryClient.invalidateQueries({ queryKey: ['virtual-number', numberId] })
     },
   })
+
+  // Renew number
+  const renewMutation = useMutation({
+    mutationFn: async () => {
+      const result = await renewNumber(numberId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to renew number')
+      }
+      return result.data
+    },
+    onSuccess: (data) => {
+      setRenewSuccess(`Renewed! New expiry: ${new Date(data!.newExpiresAt).toLocaleDateString()}`)
+      queryClient.invalidateQueries({ queryKey: ['virtual-number', numberId] })
+    },
+  })
+
+  const handleOpenRenewModal = async () => {
+    setRenewError(null)
+    setRenewSuccess(null)
+    setRenewPriceData(null)
+    renewMutation.reset()
+    setRenewLoading(true)
+    setShowRenewModal(true)
+    try {
+      const result = await getRenewalPrice(numberId)
+      if (!result.success) {
+        setRenewError(result.error || 'Failed to get renewal price')
+      } else {
+        setRenewPriceData({
+          price: result.price!,
+          durationDays: result.durationDays!,
+          walletBalance: result.walletBalance!,
+          canPayWithWallet: result.canPayWithWallet!,
+        })
+      }
+    } catch (err: any) {
+      setRenewError(err.message || 'Failed to get renewal price')
+    } finally {
+      setRenewLoading(false)
+    }
+  }
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -257,6 +317,15 @@ export default function VirtualNumberPage() {
               >
                 <Icon name="zap" size={18} />
                 Test Receive SMS
+              </button>
+            )}
+            {numberData.status !== 'cancelled' && (
+              <button
+                onClick={handleOpenRenewModal}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 border border-blue-500/50 text-blue-400 font-bold rounded-lg hover:bg-blue-600/30 transition-all"
+              >
+                <Icon name="refresh-cw" size={18} />
+                Renew
               </button>
             )}
             <button
@@ -383,16 +452,18 @@ export default function VirtualNumberPage() {
                       </div>
                       <p className="text-white whitespace-pre-wrap">{message.body}</p>
                     </div>
-                    <button
-                      onClick={() => {
-                        setNewMessage({ to: message.fromNumber, body: '' })
-                        setShowSendModal(true)
-                      }}
-                      className="text-slate-400 hover:text-primary p-2"
-                      title="Reply"
-                    >
-                      <Icon name="reply" size={18} />
-                    </button>
+                    {message.direction === 'inbound' && (
+                      <button
+                        onClick={() => {
+                          setNewMessage({ to: message.fromNumber, body: '' })
+                          setShowSendModal(true)
+                        }}
+                        className="text-slate-400 hover:text-primary p-2"
+                        title="Reply"
+                      >
+                        <Icon name="reply" size={18} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -411,7 +482,7 @@ export default function VirtualNumberPage() {
             <input
               type="text"
               value={settings.nickname}
-              onChange={(e) => setSettings({ ...settings, nickname: e.target.value })}
+              onChange={(e) => updateSetting({ nickname: e.target.value })}
               placeholder="e.g., Business, Tinder, Verifications"
               className="w-full bg-black border border-border-dark rounded-lg px-4 py-3 text-white placeholder:text-slate-600"
             />
@@ -426,7 +497,7 @@ export default function VirtualNumberPage() {
                   type="checkbox"
                   checked={settings.smsForwardingEnabled}
                   onChange={(e) =>
-                    setSettings({ ...settings, smsForwardingEnabled: e.target.checked })
+                    updateSetting({ smsForwardingEnabled: e.target.checked })
                   }
                   className="sr-only peer"
                 />
@@ -440,7 +511,7 @@ export default function VirtualNumberPage() {
                   <input
                     type="email"
                     value={settings.smsForwardEmail}
-                    onChange={(e) => setSettings({ ...settings, smsForwardEmail: e.target.value })}
+                    onChange={(e) => updateSetting({ smsForwardEmail: e.target.value })}
                     placeholder="your@email.com"
                     className="w-full bg-black border border-border-dark rounded-lg px-4 py-3 text-white placeholder:text-slate-600"
                   />
@@ -450,7 +521,7 @@ export default function VirtualNumberPage() {
                   <input
                     type="tel"
                     value={settings.smsForwardTo}
-                    onChange={(e) => setSettings({ ...settings, smsForwardTo: e.target.value })}
+                    onChange={(e) => updateSetting({ smsForwardTo: e.target.value })}
                     placeholder="+1234567890"
                     className="w-full bg-black border border-border-dark rounded-lg px-4 py-3 text-white placeholder:text-slate-600"
                   />
@@ -468,7 +539,7 @@ export default function VirtualNumberPage() {
                   type="checkbox"
                   checked={settings.voiceForwardingEnabled}
                   onChange={(e) =>
-                    setSettings({ ...settings, voiceForwardingEnabled: e.target.checked })
+                    updateSetting({ voiceForwardingEnabled: e.target.checked })
                   }
                   className="sr-only peer"
                 />
@@ -481,7 +552,7 @@ export default function VirtualNumberPage() {
                 <input
                   type="tel"
                   value={settings.voiceForwardTo}
-                  onChange={(e) => setSettings({ ...settings, voiceForwardTo: e.target.value })}
+                  onChange={(e) => updateSetting({ voiceForwardTo: e.target.value })}
                   placeholder="+1234567890"
                   className="w-full bg-black border border-border-dark rounded-lg px-4 py-3 text-white placeholder:text-slate-600"
                 />
@@ -498,7 +569,7 @@ export default function VirtualNumberPage() {
                     type="checkbox"
                     checked={settings.voicemailEnabled}
                     onChange={(e) =>
-                      setSettings({ ...settings, voicemailEnabled: e.target.checked })
+                      updateSetting({ voicemailEnabled: e.target.checked })
                     }
                     className="sr-only peer"
                   />
@@ -516,6 +587,14 @@ export default function VirtualNumberPage() {
           >
             {updateSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
           </button>
+          {updateSettingsMutation.isSuccess && (
+            <p className="text-green-500 text-sm text-center">Settings saved successfully.</p>
+          )}
+          {updateSettingsMutation.isError && (
+            <p className="text-red-500 text-sm text-center">
+              {(updateSettingsMutation.error as Error).message}
+            </p>
+          )}
 
           {/* Danger Zone */}
           <div className="bg-[#121212] border border-red-500/20 rounded-xl p-6">
@@ -541,7 +620,7 @@ export default function VirtualNumberPage() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-white">Send SMS</h3>
               <button
-                onClick={() => setShowSendModal(false)}
+                onClick={() => { setShowSendModal(false); sendSmsMutation.reset() }}
                 className="text-slate-400 hover:text-white"
               >
                 <Icon name="close" size={20} />
@@ -571,9 +650,10 @@ export default function VirtualNumberPage() {
                   onChange={(e) => setNewMessage({ ...newMessage, body: e.target.value })}
                   placeholder="Type your message..."
                   rows={4}
+                  maxLength={160}
                   className="w-full bg-black border border-border-dark rounded-lg px-4 py-3 text-white placeholder:text-slate-600 resize-none"
                 />
-                <div className="text-slate-500 text-xs mt-1 text-right">
+                <div className={`text-xs mt-1 text-right ${newMessage.body.length >= 160 ? 'text-red-400' : 'text-slate-500'}`}>
                   {newMessage.body.length} / 160 characters
                 </div>
               </div>
@@ -601,7 +681,7 @@ export default function VirtualNumberPage() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-red-500">Cancel Number</h3>
               <button
-                onClick={() => setShowCancelModal(false)}
+                onClick={() => { setShowCancelModal(false); cancelMutation.reset() }}
                 className="text-slate-400 hover:text-white"
               >
                 <Icon name="close" size={20} />
@@ -611,9 +691,14 @@ export default function VirtualNumberPage() {
               Are you sure you want to cancel <strong className="text-primary">{numberData.phoneNumberDisplay}</strong>?
               This action cannot be undone.
             </p>
+            {cancelMutation.isError && (
+              <p className="text-red-500 text-sm text-center mb-4">
+                {(cancelMutation.error as Error).message}
+              </p>
+            )}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowCancelModal(false)}
+                onClick={() => { setShowCancelModal(false); cancelMutation.reset() }}
                 className="flex-1 py-3 bg-surface-dark border border-border-dark rounded-xl text-slate-300 hover:text-white transition-colors"
               >
                 Keep Number
@@ -697,6 +782,89 @@ export default function VirtualNumberPage() {
                 </p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {/* Renew Modal */}
+      {showRenewModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-dark rounded-2xl p-6 max-w-md w-full border border-border-dark">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Renew Number</h3>
+              <button
+                onClick={() => { setShowRenewModal(false); setRenewSuccess(null); setRenewError(null) }}
+                className="text-slate-400 hover:text-white"
+              >
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+
+            {renewLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : renewSuccess ? (
+              <div className="text-center py-4">
+                <Icon name="check-circle" size={48} className="text-green-500 mx-auto mb-3" />
+                <p className="text-green-400 font-bold">{renewSuccess}</p>
+                <button
+                  onClick={() => { setShowRenewModal(false); setRenewSuccess(null) }}
+                  className="mt-4 px-6 py-2 bg-primary text-black font-bold rounded-xl hover:brightness-105"
+                >
+                  Done
+                </button>
+              </div>
+            ) : renewError ? (
+              <div className="text-center py-4">
+                <p className="text-red-500 text-sm mb-4">{renewError}</p>
+                <button
+                  onClick={handleOpenRenewModal}
+                  className="px-6 py-2 bg-primary text-black font-bold rounded-xl hover:brightness-105"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : renewPriceData ? (
+              <>
+                <div className="space-y-3 mb-6">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Renewal period</span>
+                    <span className="text-white">{renewPriceData.durationDays} days</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Renewal price</span>
+                    <span className="text-white font-bold">${renewPriceData.price.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-border-dark pt-3 flex justify-between text-sm">
+                    <span className="text-slate-400">Wallet balance</span>
+                    <span className={renewPriceData.canPayWithWallet ? 'text-green-400' : 'text-red-400'}>
+                      ${renewPriceData.walletBalance.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                {!renewPriceData.canPayWithWallet && (
+                  <p className="text-red-400 text-sm mb-4">Insufficient wallet balance. Please top up your wallet first.</p>
+                )}
+                {renewMutation.isError && (
+                  <p className="text-red-500 text-sm mb-4">{(renewMutation.error as Error).message}</p>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setShowRenewModal(false); setRenewPriceData(null) }}
+                    className="flex-1 py-3 bg-surface-dark border border-border-dark rounded-xl text-slate-300 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => renewMutation.mutate()}
+                    disabled={!renewPriceData.canPayWithWallet || renewMutation.isPending}
+                    className="flex-1 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {renewMutation.isPending ? 'Processing...' : `Pay $${renewPriceData.price.toFixed(2)}`}
+                  </button>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       )}

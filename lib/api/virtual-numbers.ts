@@ -53,6 +53,7 @@ export interface AvailableNumber {
     mms: boolean
   }
   monthlyPrice: number
+  source?: 'inventory' | 'provider'
 }
 
 export interface UserVirtualNumber {
@@ -262,22 +263,25 @@ export async function markMessagesRead(
 }
 
 /**
- * Get unread message count
+ * Get renewal price and wallet balance for a virtual number
  */
-export async function getUnreadCount(numberId: string): Promise<{
+export async function getRenewalPrice(numberId: string): Promise<{
   success: boolean
-  data?: { count: number }
+  price?: number
+  durationDays?: number
+  walletBalance?: number
+  canPayWithWallet?: boolean
   error?: string
 }> {
-  return localApiFetch(`/virtual-numbers/my-numbers/${numberId}/unread-count`)
+  return localApiFetch(`/virtual-numbers/my-numbers/${numberId}/renew`)
 }
 
 /**
- * Renew virtual number subscription
+ * Renew virtual number subscription (wallet payment)
  */
 export async function renewNumber(numberId: string): Promise<{
   success: boolean
-  data?: { redirectUrl: string }
+  data?: { newExpiresAt: string; amountPaid: number; newBalance: number; message: string }
   error?: string
 }> {
   return localApiFetch(`/virtual-numbers/my-numbers/${numberId}/renew`, {
