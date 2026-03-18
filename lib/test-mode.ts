@@ -7,7 +7,7 @@ import { query } from '@/lib/db'
 // Cache test mode status for 30 seconds to avoid hitting DB on every request
 let cachedTestMode: boolean | null = null
 let cacheTimestamp = 0
-const CACHE_TTL = 30 * 1000
+const CACHE_TTL = 5 * 1000
 
 /**
  * Check if global test mode is enabled (cached)
