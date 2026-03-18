@@ -235,6 +235,7 @@ function AdminVirtualNumbersContent() {
       queryClient.invalidateQueries({ queryKey: ['admin-virtual-number-plans'] })
       setShowPlanModal(false)
       setEditingPlan(null)
+      resetPlanForm()
     },
     onError: (error: any) => setFormError(error.message),
   })
@@ -249,7 +250,7 @@ function AdminVirtualNumbersContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-virtual-number-plans'] })
     },
-    onError: (error: any) => alert(error.message),
+    onError: (error: any) => setFormError(error.message),
   })
 
   // Save country mutation
@@ -265,6 +266,7 @@ function AdminVirtualNumbersContent() {
       queryClient.invalidateQueries({ queryKey: ['admin-virtual-number-countries'] })
       setShowCountryModal(false)
       setEditingCountry(null)
+      resetCountryForm()
     },
     onError: (error: any) => setFormError(error.message),
   })
@@ -306,6 +308,14 @@ function AdminVirtualNumbersContent() {
     setFormError('')
     if (!planForm.name || !planForm.slug || !planForm.base_price) {
       setFormError('Name, slug, and base price are required')
+      return
+    }
+    if (parseInt(planForm.duration_days) <= 0) {
+      setFormError('Duration must be greater than 0')
+      return
+    }
+    if (parseInt(planForm.sms_included) < 0) {
+      setFormError('SMS included cannot be negative')
       return
     }
     savePlanMutation.mutate({
@@ -733,7 +743,7 @@ function AdminVirtualNumbersContent() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-white">{editingPlan ? 'Edit Plan' : 'Add Plan'}</h2>
-                <button onClick={() => { setShowPlanModal(false); setEditingPlan(null) }} className="text-slate-400 hover:text-white"><Icon name="close" size={20} /></button>
+                <button onClick={() => { setShowPlanModal(false); setEditingPlan(null); resetPlanForm() }} className="text-slate-400 hover:text-white"><Icon name="close" size={20} /></button>
               </div>
 
               {formError && <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4"><p className="text-red-400 text-sm">{formError}</p></div>}
@@ -792,7 +802,7 @@ function AdminVirtualNumbersContent() {
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
-                <button onClick={() => { setShowPlanModal(false); setEditingPlan(null) }} className="px-4 py-2 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                <button onClick={() => { setShowPlanModal(false); setEditingPlan(null); resetPlanForm() }} className="px-4 py-2 text-slate-400 hover:text-white transition-colors">Cancel</button>
                 <button onClick={handleSavePlan} disabled={savePlanMutation.isPending}
                   className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 disabled:opacity-50">
                   {savePlanMutation.isPending ? 'Saving...' : editingPlan ? 'Update Plan' : 'Create Plan'}
@@ -810,7 +820,7 @@ function AdminVirtualNumbersContent() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-white">{editingCountry ? 'Edit Country' : 'Add Country'}</h2>
-                <button onClick={() => { setShowCountryModal(false); setEditingCountry(null) }} className="text-slate-400 hover:text-white"><Icon name="close" size={20} /></button>
+                <button onClick={() => { setShowCountryModal(false); setEditingCountry(null); resetCountryForm() }} className="text-slate-400 hover:text-white"><Icon name="close" size={20} /></button>
               </div>
 
               {formError && <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4"><p className="text-red-400 text-sm">{formError}</p></div>}
@@ -877,7 +887,7 @@ function AdminVirtualNumbersContent() {
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
-                <button onClick={() => { setShowCountryModal(false); setEditingCountry(null) }} className="px-4 py-2 text-slate-400 hover:text-white transition-colors">Cancel</button>
+                <button onClick={() => { setShowCountryModal(false); setEditingCountry(null); resetCountryForm() }} className="px-4 py-2 text-slate-400 hover:text-white transition-colors">Cancel</button>
                 <button onClick={handleSaveCountry} disabled={saveCountryMutation.isPending}
                   className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 disabled:opacity-50">
                   {saveCountryMutation.isPending ? 'Saving...' : editingCountry ? 'Update Country' : 'Add Country'}
@@ -895,7 +905,7 @@ function AdminVirtualNumbersContent() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-white">Sync Results</h2>
-                <button onClick={() => setShowSyncDetails(false)} className="text-slate-400 hover:text-white"><Icon name="close" size={20} /></button>
+                <button onClick={() => { setShowSyncDetails(false); setLastSyncResult(null) }} className="text-slate-400 hover:text-white"><Icon name="close" size={20} /></button>
               </div>
               {lastSyncResult.success ? (
                 <div className="space-y-2">
@@ -906,7 +916,7 @@ function AdminVirtualNumbersContent() {
                 <p className="text-red-400">{lastSyncResult.error || 'Sync failed'}</p>
               )}
               <div className="flex justify-end mt-4">
-                <button onClick={() => setShowSyncDetails(false)} className="px-4 py-2 bg-primary text-black font-bold rounded-lg">Close</button>
+                <button onClick={() => { setShowSyncDetails(false); setLastSyncResult(null) }} className="px-4 py-2 bg-primary text-black font-bold rounded-lg">Close</button>
               </div>
             </div>
           </div>
