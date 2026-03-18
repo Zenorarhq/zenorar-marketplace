@@ -22,6 +22,20 @@ import { usePreferences } from '@/contexts/PreferencesContext'
 type NumberType = 'all' | 'local' | 'toll-free' | 'mobile'
 type TabType = 'monthly' | 'otp'
 
+const COUNTRIES_PER_PAGE = 24
+const OTP_SERVICES_PER_PAGE = 24
+
+// Resolve country name from ISO code using Intl API
+function resolveCountryName(isoCode: string, dbName: string | null): string {
+  if (dbName && dbName !== isoCode) return dbName
+  try {
+    const displayNames = new Intl.DisplayNames(['en'], { type: 'region' })
+    return displayNames.of(isoCode) || isoCode
+  } catch {
+    return isoCode
+  }
+}
+
 interface Country {
   id: string
   name: string
@@ -216,6 +230,7 @@ export default function VirtualNumbersPage() {
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null)
   const [numberType, setNumberType] = useState<NumberType>('all')
   const prevCountryIdRef = useRef<string | null>(null)
+  const [countryPage, setCountryPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [showPlanModal, setShowPlanModal] = useState(false)
@@ -230,6 +245,8 @@ export default function VirtualNumbersPage() {
   const [selectedOtpService, setSelectedOtpService] = useState<OtpService | null>(null)
   const [selectedOtpCountry, setSelectedOtpCountry] = useState<OtpCountry | null>(null)
   const [otpPrice, setOtpPrice] = useState<number | null>(null)
+  const [otpServicePage, setOtpServicePage] = useState(1)
+  const [otpCountryPage, setOtpCountryPage] = useState(1)
   const [otpSearchQuery, setOtpSearchQuery] = useState('')
   const [otpCountrySearchQuery, setOtpCountrySearchQuery] = useState('')
   const [otpActiveStep, setOtpActiveStep] = useState<'service' | 'country'>('service')
@@ -844,7 +861,7 @@ export default function VirtualNumbersPage() {
           {/* Sandbox Mode Banner */}
           <TestModeBanner />
 
-          {/* Country Filter */}
+          {/* Country Selection */}
           <div className="mb-10">
             <h2 className="text-xl font-bold text-white mb-4">Select Country</h2>
             {loadingCountries ? (
@@ -852,12 +869,11 @@ export default function VirtualNumbersPage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : selectedCountry ? (
-              /* Selected Country - Show only this country with X button */
               <div className="bg-primary/10 border border-primary rounded-2xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <FlagIcon countryCode={selectedCountry.isoCode} className="w-10 h-10 rounded" />
                   <div>
-                    <h3 className="font-bold text-white">{selectedCountry.name}</h3>
+                    <h3 className="font-bold text-white">{resolveCountryName(selectedCountry.isoCode, selectedCountry.name)}</h3>
                     <p className="text-sm text-slate-400">{selectedCountry.dialCode}</p>
                   </div>
                 </div>
@@ -869,27 +885,84 @@ export default function VirtualNumbersPage() {
                   <Icon name="x" size={20} className="text-white" />
                 </button>
               </div>
-            ) : (
-              /* No Selection - Show all countries */
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                {countries.map((country) => (
-                    <button
-                      key={country.id}
-                      onClick={() => setSelectedCountry(country)}
-                      className="p-4 rounded-2xl border transition-all text-center bg-charcoal border-border-dark hover:border-primary/50"
-                    >
-                      <div className="flex justify-center mb-2">
-                        <FlagIcon countryCode={country.isoCode} className="w-8 h-8 rounded" />
+            ) : (() => {
+              const totalCountryPages = Math.ceil(countries.length / COUNTRIES_PER_PAGE)
+              const paginatedCountries = countries.slice(
+                (countryPage - 1) * COUNTRIES_PER_PAGE,
+                countryPage * COUNTRIES_PER_PAGE
+              )
+              return (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {paginatedCountries.map((country) => (
+                      <button
+                        key={country.id}
+                        onClick={() => setSelectedCountry(country)}
+                        className="flex items-center gap-3 p-4 bg-charcoal border border-border-dark rounded-2xl hover:border-primary/50 transition-all text-left"
+                      >
+                        <FlagIcon countryCode={country.isoCode} className="w-8 h-8 rounded flex-shrink-0" />
+                        <div className="min-w-0">
+                          <h3 className="font-medium text-white text-sm truncate">{resolveCountryName(country.isoCode, country.name)}</h3>
+                          <p className="text-xs text-slate-500">From {formatPrice(country.retailMonthly || 5)}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {totalCountryPages > 1 && (
+                    <div className="mt-6 flex items-center justify-between">
+                      <p className="text-sm text-slate-500">
+                        Showing {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, countries.length)} of {countries.length} countries
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCountryPage(p => Math.max(1, p - 1))}
+                          disabled={countryPage === 1}
+                          className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Icon name="chevron-left" size={16} />
+                          <span className="hidden md:inline">Previous</span>
+                        </button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, totalCountryPages) }, (_, i) => {
+                            let pageNum: number
+                            if (totalCountryPages <= 5) pageNum = i + 1
+                            else if (countryPage <= 3) pageNum = i + 1
+                            else if (countryPage >= totalCountryPages - 2) pageNum = totalCountryPages - 4 + i
+                            else pageNum = countryPage - 2 + i
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setCountryPage(pageNum)}
+                                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                                  countryPage === pageNum
+                                    ? 'bg-primary text-black font-bold'
+                                    : 'bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626]'
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <button
+                          onClick={() => setCountryPage(p => Math.min(totalCountryPages, p + 1))}
+                          disabled={countryPage === totalCountryPages}
+                          className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="hidden md:inline">Next</span>
+                          <Icon name="chevron-right" size={16} />
+                        </button>
                       </div>
-                      <h3 className="font-bold text-white text-xs mb-1">{country.name}</h3>
-                      <p className="text-xs text-primary font-bold">Starting From {formatPrice(2)}</p>
-                    </button>
-                ))}
-              </div>
-            )}
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
 
-          {/* Type Filter - Smart ordering based on availability */}
+          {/* Type Filter & Numbers - Only shown after country selection */}
+          {selectedCountry && (
+          <>
           <SmartTypeTabs
             masterNumbers={allTypesNumbers}
             loadingNumbers={loadingNumbers}
@@ -1009,6 +1082,8 @@ export default function VirtualNumbersPage() {
               </div>
             )}
           </div>
+          </>
+          )}
         </>
       )}
 
@@ -1211,28 +1286,62 @@ export default function VirtualNumbersPage() {
                         <h3 className="text-white font-bold mb-1">No Services Found</h3>
                         <p className="text-slate-500 text-sm">Try a different search term</p>
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2">
-                        {filteredOtpServices.map((service) => (
-                          <button
-                            key={service.id}
-                            onClick={() => {
-                              setSelectedOtpService(service)
-                              setSelectedOtpCountry(null)
-                              setOtpPrice(null)
-                              setOtpSearchQuery('')
-                              setOtpActiveStep('country')
-                            }}
-                            className="p-3 rounded-xl border transition-all text-center bg-surface-dark border-border-dark hover:border-primary/50 hover:bg-charcoal"
-                          >
-                            <div className="flex justify-center mb-2">
-                              <ServiceLogo name={service.name} size={32} />
+                    ) : (() => {
+                        const totalOtpPages = Math.ceil(filteredOtpServices.length / OTP_SERVICES_PER_PAGE)
+                        const paginatedServices = filteredOtpServices.slice(
+                          (otpServicePage - 1) * OTP_SERVICES_PER_PAGE,
+                          otpServicePage * OTP_SERVICES_PER_PAGE
+                        )
+                        return (
+                          <>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-3">
+                              {paginatedServices.map((service) => (
+                                <button
+                                  key={service.id}
+                                  onClick={() => {
+                                    setSelectedOtpService(service)
+                                    setSelectedOtpCountry(null)
+                                    setOtpPrice(null)
+                                    setOtpSearchQuery('')
+                                    setOtpServicePage(1)
+                                    setOtpActiveStep('country')
+                                  }}
+                                  className="p-3 rounded-xl border transition-all text-center bg-surface-dark border-border-dark hover:border-primary/50 hover:bg-charcoal"
+                                >
+                                  <div className="flex justify-center mb-2">
+                                    <ServiceLogo name={service.name} size={32} />
+                                  </div>
+                                  <h3 className="font-bold text-white text-xs truncate">{service.name}</h3>
+                                </button>
+                              ))}
                             </div>
-                            <h3 className="font-bold text-white text-xs truncate">{service.name}</h3>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                            {totalOtpPages > 1 && (
+                              <div className="mt-4 flex items-center justify-between">
+                                <p className="text-xs text-slate-500">
+                                  {((otpServicePage - 1) * OTP_SERVICES_PER_PAGE) + 1} - {Math.min(otpServicePage * OTP_SERVICES_PER_PAGE, filteredOtpServices.length)} of {filteredOtpServices.length}
+                                </p>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => setOtpServicePage(p => Math.max(1, p - 1))}
+                                    disabled={otpServicePage === 1}
+                                    className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <Icon name="chevron-left" size={14} />
+                                  </button>
+                                  <span className="text-xs text-slate-400 px-2">{otpServicePage} / {totalOtpPages}</span>
+                                  <button
+                                    onClick={() => setOtpServicePage(p => Math.min(totalOtpPages, p + 1))}
+                                    disabled={otpServicePage === totalOtpPages}
+                                    className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <Icon name="chevron-right" size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
                   </>
                 )}
 
@@ -1270,25 +1379,60 @@ export default function VirtualNumbersPage() {
                           {otpCountrySearchQuery ? 'Try a different search term' : 'This service may not be available right now'}
                         </p>
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2">
-                        {filteredOtpCountries.map((country) => (
-                          <button
-                            key={country.code}
-                            onClick={() => {
-                              setSelectedOtpCountry(country)
-                              setOtpCountrySearchQuery('')
-                            }}
-                            className="p-3 rounded-xl border transition-all text-center bg-surface-dark border-border-dark hover:border-primary/50"
-                          >
-                            <div className="flex justify-center mb-2">
-                              <FlagIcon countryCode={country.code} className="w-8 h-8 rounded" />
+                    ) : (() => {
+                        const OTP_COUNTRIES_PER_PAGE = 24
+                        const totalOtpCountryPages = Math.ceil(filteredOtpCountries.length / OTP_COUNTRIES_PER_PAGE)
+                        const paginatedOtpCountries = filteredOtpCountries.slice(
+                          (otpCountryPage - 1) * OTP_COUNTRIES_PER_PAGE,
+                          otpCountryPage * OTP_COUNTRIES_PER_PAGE
+                        )
+                        return (
+                          <>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-3">
+                              {paginatedOtpCountries.map((country) => (
+                                <button
+                                  key={country.code}
+                                  onClick={() => {
+                                    setSelectedOtpCountry(country)
+                                    setOtpCountrySearchQuery('')
+                                    setOtpCountryPage(1)
+                                  }}
+                                  className="p-3 rounded-xl border transition-all text-center bg-surface-dark border-border-dark hover:border-primary/50"
+                                >
+                                  <div className="flex justify-center mb-2">
+                                    <FlagIcon countryCode={country.code} className="w-8 h-8 rounded" />
+                                  </div>
+                                  <h3 className="font-medium text-white text-xs truncate">{country.name}</h3>
+                                </button>
+                              ))}
                             </div>
-                            <h3 className="font-medium text-white text-xs truncate">{country.name}</h3>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                            {totalOtpCountryPages > 1 && (
+                              <div className="mt-4 flex items-center justify-between">
+                                <p className="text-xs text-slate-500">
+                                  {((otpCountryPage - 1) * OTP_COUNTRIES_PER_PAGE) + 1} - {Math.min(otpCountryPage * OTP_COUNTRIES_PER_PAGE, filteredOtpCountries.length)} of {filteredOtpCountries.length}
+                                </p>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => setOtpCountryPage(p => Math.max(1, p - 1))}
+                                    disabled={otpCountryPage === 1}
+                                    className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <Icon name="chevron-left" size={14} />
+                                  </button>
+                                  <span className="text-xs text-slate-400 px-2">{otpCountryPage} / {totalOtpCountryPages}</span>
+                                  <button
+                                    onClick={() => setOtpCountryPage(p => Math.min(totalOtpCountryPages, p + 1))}
+                                    disabled={otpCountryPage === totalOtpCountryPages}
+                                    className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <Icon name="chevron-right" size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
                   </>
                 )}
 
