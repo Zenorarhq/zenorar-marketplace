@@ -322,7 +322,7 @@ const SERVICE_DOMAINS: Record<string, string> = {
   banglalink: 'banglalink.net',
   safaricom: 'safaricom.co.ke',
   glo: 'gloworld.com',
-  9mobile: '9mobile.com.ng',
+  '9mobile': '9mobile.com.ng',
   lycamobile: 'lycamobile.com',
   lebara: 'lebara.com',
   cubacel: 'etecsa.cu',
