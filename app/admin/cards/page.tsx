@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -112,7 +112,6 @@ function getTxTypeBadge(type: string) {
 }
 
 function AdminCardsPageContent() {
-  const queryClient = useQueryClient()
   const router = useRouter()
   const searchParams = useSearchParams()
   const tz = useTimezone()
@@ -125,7 +124,6 @@ function AdminCardsPageContent() {
   const [providerFilter, setProviderFilter] = useState('')
   const [txTypeFilter, setTxTypeFilter] = useState('')
   const [txProviderFilter, setTxProviderFilter] = useState('')
-  const [togglingProvider, setTogglingProvider] = useState<string | null>(null)
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab)
@@ -191,28 +189,6 @@ function AdminCardsPageContent() {
     enabled: activeTab === 'transactions',
   })
 
-  // Toggle provider enabled
-  const toggleMutation = useMutation({
-    mutationFn: async ({ provider, is_enabled }: { provider: string; is_enabled: boolean }) => {
-      const token = localStorage.getItem('admin_auth_token')
-      const res = await fetch('/api/admin/cards/providers', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ provider, is_enabled }),
-      })
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error)
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-card-providers'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-cards'] })
-      setTogglingProvider(null)
-    },
-    onError: () => {
-      setTogglingProvider(null)
-    },
-  })
 
   const stats: CardStats = cardsData?.stats || {
     total_cards: 0, active_cards: 0, frozen_cards: 0, expired_cards: 0, used_cards: 0,
@@ -292,17 +268,17 @@ function AdminCardsPageContent() {
           <div className="mb-4 space-y-2">
             {providers.map((p) => (
               <div key={p.provider} className={`p-3 rounded-lg border ${
-                p.status.configured && p.is_enabled
+                p.status.configured && p.status.enabled
                   ? 'bg-green-900/20 border-green-500/20 text-green-400'
-                  : p.is_enabled && !p.status.configured
+                  : p.status.enabled && !p.status.configured
                   ? 'bg-yellow-900/20 border-yellow-500/20 text-yellow-400'
                   : 'bg-slate-900/20 border-slate-500/20 text-slate-400'
               }`}>
                 <div className="flex items-center gap-2 text-sm">
-                  <Icon name={p.status.configured && p.is_enabled ? 'check-circle' : p.is_enabled ? 'alert' : 'x-circle'} size={16} />
-                  {p.status.configured && p.is_enabled
+                  <Icon name={p.status.configured && p.status.enabled ? 'check-circle' : p.status.enabled ? 'alert' : 'x-circle'} size={16} />
+                  {p.status.configured && p.status.enabled
                     ? `${p.display_name} (${p.provider}) connected — ${p.status.mode} mode`
-                    : p.is_enabled && !p.status.configured
+                    : p.status.enabled && !p.status.configured
                     ? `${p.display_name} (${p.provider}): Missing credentials`
                     : `${p.display_name} (${p.provider}): Disabled`
                   }
@@ -496,17 +472,11 @@ function AdminCardsPageContent() {
                       ) : (
                         <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 border border-red-500/20">Not Configured</span>
                       )}
-                      <button
-                        onClick={() => { setTogglingProvider(p.provider); toggleMutation.mutate({ provider: p.provider, is_enabled: !p.is_enabled }) }}
-                        disabled={togglingProvider === p.provider}
-                        className={`relative w-12 h-6 rounded-full transition-colors ${
-                          p.is_enabled ? 'bg-primary' : 'bg-slate-600'
-                        }`}
-                      >
-                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                          p.is_enabled ? 'translate-x-7' : 'translate-x-1'
-                        }`} />
-                      </button>
+                      {p.status.enabled ? (
+                        <span className="px-2 py-1 text-xs rounded-full bg-primary/20 text-primary border border-primary/30">Enabled</span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs rounded-full bg-slate-900/30 text-slate-400 border border-slate-500/20">Disabled</span>
+                      )}
                     </div>
                   </div>
                   <div className="p-5">
