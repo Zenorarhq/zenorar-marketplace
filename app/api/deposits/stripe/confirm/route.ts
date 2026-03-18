@@ -58,11 +58,13 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Get Stripe secret key
-    const mode = (await getSiteSetting('stripeMode')) || 'test'
-    const secretKey = mode === 'live'
-      ? await getSiteSetting('stripeLiveSecretKey')
-      : await getSiteSetting('stripeTestSecretKey')
+    // Get Stripe secret key — fetch all three settings in parallel
+    const [mode, liveKey, testKey] = await Promise.all([
+      getSiteSetting('stripeMode'),
+      getSiteSetting('stripeLiveSecretKey'),
+      getSiteSetting('stripeTestSecretKey'),
+    ])
+    const secretKey = (mode === 'live') ? liveKey : testKey
 
     if (!secretKey) {
       return NextResponse.json(

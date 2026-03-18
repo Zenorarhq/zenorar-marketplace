@@ -1,97 +1,117 @@
-# Discounts Security & Bug Fixes
+# Purchases Page Fixes — Todo
 
 ## Files in Scope
 
 | File | Role |
 |------|------|
-| `zenorar-api/src/routes/discounts.routes.ts` | Fix 1 — add requireAdmin to apply-to-order; Fix 2 — add authenticate to /use |
-| `zenorar-marketplace/app/admin/discounts/page.tsx` | Fix 3 — clearing usageLimit/minOrderValue/maxDiscountValue on edit |
+| `app/admin/purchases/page.tsx` | All 5 fixes — single file |
 
 ---
 
 ## Checklist
 
-- [ ] Fix 1 — SECURITY HIGH: Add `requireAdmin` to `POST /apply-to-order`
-- [ ] Fix 2 — SECURITY MEDIUM: Add `authenticate` to `POST /use`
-- [ ] Fix 3 — BUG MEDIUM: Clearing `usageLimit`, `minOrderValue`, `maxDiscountValue` on edit sends `undefined` instead of `null`
+- [ ] 1. MEDIUM — Reset `currentPage` when sort changes (`page.tsx:247`)
+- [ ] 2. MEDIUM — Escape double quotes in CSV export (`page.tsx:104`)
+- [ ] 3. LOW — Skip API call when status dropdown re-selects same value (`page.tsx:263`)
+- [ ] 4. LOW — Add confirmation dialog to payment status change (`page.tsx:280`)
+- [ ] 5. LOW — Clear `statusNote` when closing detail panel (`page.tsx:181`)
 
 ---
 
 ## Fix Detail
 
-### Fix 1 — SECURITY HIGH: `/apply-to-order` missing `requireAdmin`
+### Fix 1 — Reset pagination on sort change
 
-**Root cause:** `discounts.routes.ts:61` — route has `authenticate` but not `requireAdmin`.
-Any logged-in customer can call `POST /discounts/apply-to-order` with any
-`orderId`, any `discountCode`, and a self-invented `discountAmount`. There is no
-server-side recalculation — the amount comes entirely from the request body.
+**Root cause:** `useEffect` at line 247 resets `currentPage` on filter changes but not on sort changes. User stays on stale page after re-sorting.
 
-```typescript
-// Before (line 61)
-router.post('/apply-to-order', authenticate, validateBody(applyDiscountSchema), discountsController.applyDiscountToOrder)
+```ts
+// Before (line 247)
+useEffect(() => { setCurrentPage(1) }, [statusFilter, searchQuery, startDate, endDate])
 
 // After
-router.post('/apply-to-order', authenticate, requireAdmin, validateBody(applyDiscountSchema), discountsController.applyDiscountToOrder)
+useEffect(() => { setCurrentPage(1) }, [statusFilter, searchQuery, startDate, endDate, sortField, sortDir])
 ```
 
 ---
 
-### Fix 2 — SECURITY MEDIUM: `POST /use` has no authentication
+### Fix 2 — CSV escape double quotes
 
-**Root cause:** `discounts.routes.ts:51` — `/use` has no middleware at all. Anyone
-(not just logged-in users) can call `POST /discounts/use` with any code and
-increment its `usageCount`, exhausting a code's `usageLimit` without purchasing.
+**Root cause:** Line 104 wraps fields in `"${c}"` but doesn't double inner quotes. A customer email like `john"doe@test.com` breaks the CSV.
 
-Fixing this properly would require moving usage increment server-side inside order
-creation (architectural change). The minimal safe fix is to require authentication,
-so at minimum a valid session token is needed to call this endpoint.
-
-```typescript
-// Before (line 51)
-router.post('/use', validateBody(useDiscountSchema), discountsController.useDiscount)
+```ts
+// Before (line 104)
+const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
 
 // After
-router.post('/use', authenticate, validateBody(useDiscountSchema), discountsController.useDiscount)
+const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
 ```
 
 ---
 
-### Fix 3 — BUG MEDIUM: Clearing numeric optional fields on edit is broken
+### Fix 3 — Skip same-status re-selection
 
-**Root cause:** `page.tsx:149–151` — when an admin clears `usageLimit`,
-`minOrderValue`, or `maxDiscountValue` on an edit, the form sends `undefined`
-because of the `? parseFloat(...) : undefined` ternary. The service's update()
-skips `if (data.field !== undefined)` and the old value persists in the DB.
-Same pattern as the `startsAt`/`expiresAt` fix already shipped.
+**Root cause:** `handleStatusUpdate` at line 263 fires on every `onChange`, including when admin re-selects the current status. Triggers unnecessary confirm dialog + API call.
 
-Fix: send `null` on the update path (same solution as Fix 1 from discounts-reaudit-fixes.md).
-
-```typescript
-// Before (lines 149-151)
-usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : undefined,
-minOrderValue: formData.minOrderValue ? parseFloat(formData.minOrderValue) : undefined,
-maxDiscountValue: formData.maxDiscountValue ? parseFloat(formData.maxDiscountValue) : undefined,
+```ts
+// Before (line 263)
+async function handleStatusUpdate(newStatus: string) {
+  if (!detailOrder) return
 
 // After
-usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : (editingDiscount ? null : undefined),
-minOrderValue: formData.minOrderValue ? parseFloat(formData.minOrderValue) : (editingDiscount ? null : undefined),
-maxDiscountValue: formData.maxDiscountValue ? parseFloat(formData.maxDiscountValue) : (editingDiscount ? null : undefined),
+async function handleStatusUpdate(newStatus: string) {
+  if (!detailOrder) return
+  if (newStatus === detailOrder.status) return
 ```
 
-- Create path: empty → `undefined` → Zod `z.number().positive().optional()` passes ✅
-- Update path: empty → `null` → service sets field to null in DB ✅
+---
+
+### Fix 4 — Add confirmation to payment status change
+
+**Root cause:** `handlePaymentUpdate` at line 280 has no `confirm()` — unlike `handleStatusUpdate`. Payment status changes are critical (PAID triggers license generation).
+
+```ts
+// Before (line 280-281)
+async function handlePaymentUpdate(newStatus: string) {
+  if (!detailOrder) return
+
+// After
+async function handlePaymentUpdate(newStatus: string) {
+  if (!detailOrder) return
+  if (newStatus === detailOrder.paymentStatus) return
+  if (!confirm(`Change payment status to ${newStatus}?`)) return
+```
+
+---
+
+### Fix 5 — Clear statusNote on panel close
+
+**Root cause:** Line 181-186 clears `detailOrder`, `cryptoPayment`, `adminTxHash`, `adminPaymentNote` when panel closes — but misses `statusNote`.
+
+```ts
+// Before (line 184-185)
+  setAdminTxHash('')
+  setAdminPaymentNote('')
+
+// After
+  setAdminTxHash('')
+  setAdminPaymentNote('')
+  setStatusNote('')
+```
 
 ---
 
 ## Execution Order
 
-### zenorar-api (Railway deploy)
-1. **Fix 1** — Add `requireAdmin` to `/apply-to-order`
-2. **Fix 2** — Add `authenticate` to `/use`
+All fixes in 1 file (`app/admin/purchases/page.tsx`):
 
-### zenorar-marketplace (Vercel deploy)
-3. **Fix 3** — Fix clearing of numeric optional fields on edit
+1. Fix 5 — clear statusNote (smallest, least risk)
+2. Fix 3 — skip same-status (guard clause)
+3. Fix 4 — payment confirmation (guard clause)
+4. Fix 1 — pagination reset deps
+5. Fix 2 — CSV escape
 
-**Total files touched: 2**
-- `zenorar-api/src/routes/discounts.routes.ts`
-- `zenorar-marketplace/app/admin/discounts/page.tsx`
+---
+
+## Review
+
+*(To be filled in after implementation)*

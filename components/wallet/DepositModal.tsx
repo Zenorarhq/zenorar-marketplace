@@ -87,9 +87,10 @@ function StripeCardForm({
         })
         const confirmResult = await confirmRes.json()
         if (!confirmRes.ok || !confirmResult.success) {
-          console.error('Stripe completion failed:', confirmResult)
+          onError(confirmResult.error || 'Payment succeeded but wallet credit failed. Please contact support.')
+        } else {
+          onSuccess()
         }
-        onSuccess()
       } else {
         onError('Payment was not completed')
       }
