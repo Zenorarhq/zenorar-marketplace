@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { query } from '@/lib/db'
 import { importCodes, getInventoryStats, getCodesByBatch } from '@/lib/gift-cards/inventory'
+import { maskCode } from '@/lib/gift-cards/encryption'
 import type { GiftCardCSVRow } from '@/lib/gift-cards/types'
 
 /**
@@ -239,9 +240,3 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-function maskCode(code: string): string {
-  if (code.length <= 8) {
-    return code.substring(0, 2) + '****' + code.substring(code.length - 2)
-  }
-  return code.substring(0, 4) + '****' + code.substring(code.length - 4)
-}

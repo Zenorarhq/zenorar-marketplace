@@ -77,6 +77,7 @@ function AdminGiftCardsPageContent() {
   const [editingCard, setEditingCard] = useState<GiftCard | null>(null)
   const [importData, setImportData] = useState('')
   const [importError, setImportError] = useState('')
+  const [importSuccess, setImportSuccess] = useState('')
   const [formError, setFormError] = useState('')
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [showSyncDetails, setShowSyncDetails] = useState(false)
@@ -239,7 +240,8 @@ function AdminGiftCardsPageContent() {
       queryClient.invalidateQueries({ queryKey: ['admin-gift-cards-inventory'] })
       setImportData('')
       setImportCardId('')
-      alert(`Import complete: ${data.successCount} imported, ${data.failureCount} failed`)
+      setImportError('')
+      setImportSuccess(`Import complete: ${data.successCount} imported, ${data.failureCount} failed`)
     },
     onError: (error: any) => {
       setImportError(error.message)
@@ -986,6 +988,11 @@ function AdminGiftCardsPageContent() {
                 {importError && (
                   <div className="p-3 bg-red-900/30 border border-red-500/20 rounded-lg text-red-400 text-sm">
                     {importError}
+                  </div>
+                )}
+                {importSuccess && (
+                  <div className="p-3 bg-green-900/30 border border-green-500/20 rounded-lg text-green-400 text-sm">
+                    {importSuccess}
                   </div>
                 )}
 

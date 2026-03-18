@@ -64,7 +64,7 @@ async function calculateFinalPrice(amount: number, discountPercent: number): Pro
 
   const withMarkup = amount * (1 + markupPercent / 100)
   const discount = amount * (discountPercent / 100)
-  return withMarkup - discount
+  return Math.round((withMarkup - discount) * 100) / 100
 }
 
 /**
