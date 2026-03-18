@@ -46,6 +46,9 @@ function WalletPageContent() {
   const [depositPage, setDepositPage] = useState(1)
   const [depositFilter, setDepositFilter] = useState<DepositStatus | 'all'>('all')
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [resumeDeposit, setResumeDeposit] = useState<{
+    depositId: string; network: string; amount: number; timeRemaining: number; cryptoAddress: string
+  } | null>(null)
 
   // Handle PayPal and other payment gateway redirects
   useEffect(() => {
@@ -215,8 +218,24 @@ function WalletPageContent() {
 
   const handleDepositModalClose = () => {
     setShowDepositModal(false)
+    setResumeDeposit(null)
     queryClient.invalidateQueries({ queryKey: ['wallet'] })
     queryClient.invalidateQueries({ queryKey: ['deposits'] })
+  }
+
+  const handleResumeDeposit = (deposit: Deposit) => {
+    if (!deposit.cryptoNetwork || !deposit.cryptoAddress) return
+    const expiresAt = new Date(deposit.createdAt).getTime() + 45 * 60 * 1000
+    const timeRemaining = Math.max(0, expiresAt - Date.now())
+    if (timeRemaining <= 0) return
+    setResumeDeposit({
+      depositId: deposit.id,
+      network: deposit.cryptoNetwork,
+      amount: Number(deposit.amount),
+      timeRemaining,
+      cryptoAddress: deposit.cryptoAddress,
+    })
+    setShowDepositModal(true)
   }
 
   const handleCancelDeposit = async (depositId: string) => {
@@ -241,6 +260,7 @@ function WalletPageContent() {
       <DepositModal
         isOpen={showDepositModal}
         onClose={handleDepositModalClose}
+        resumeDeposit={resumeDeposit ?? undefined}
         onBackToWallet={() => {
           setActiveTab('deposits')
           queryClient.invalidateQueries({ queryKey: ['wallet'] })
@@ -552,7 +572,7 @@ function WalletPageContent() {
                             </span>
                           </div>
                           <p className="text-slate-500 text-sm">{formatDate(deposit.createdAt)}</p>
-                          {deposit.status === 'PENDING' && (deposit.paymentMethod === 'BANK_TRANSFER' || deposit.paymentMethod.startsWith('CRYPTO')) && (
+                          {deposit.status === 'PENDING' && deposit.paymentMethod === 'BANK_TRANSFER' && (
                             <div className="flex items-center gap-3 mt-1">
                               <p className="text-yellow-500 text-xs">Awaiting admin verification</p>
                               <button
@@ -564,6 +584,36 @@ function WalletPageContent() {
                               </button>
                             </div>
                           )}
+                          {deposit.status === 'PENDING' && deposit.paymentMethod.startsWith('CRYPTO') && (() => {
+                            const expiresAt = new Date(deposit.createdAt).getTime() + 45 * 60 * 1000
+                            const remaining = Math.max(0, expiresAt - Date.now())
+                            const mins = Math.floor(remaining / 60000)
+                            const secs = Math.floor((remaining % 60000) / 1000)
+                            const timeLabel = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+                            return (
+                              <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                {remaining > 0 ? (
+                                  <>
+                                    <button
+                                      onClick={() => handleResumeDeposit(deposit)}
+                                      className="text-xs text-primary font-medium hover:brightness-110"
+                                    >
+                                      ▶ Resume Payment ({timeLabel})
+                                    </button>
+                                    <button
+                                      onClick={() => handleCancelDeposit(deposit.id)}
+                                      disabled={cancellingId === deposit.id}
+                                      className="text-xs text-red-400 hover:text-red-300 underline disabled:opacity-50"
+                                    >
+                                      {cancellingId === deposit.id ? 'Cancelling...' : 'Cancel'}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <p className="text-slate-500 text-xs">Payment window expired</p>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </div>
                       </div>
 

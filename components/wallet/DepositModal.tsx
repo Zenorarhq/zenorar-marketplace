@@ -26,6 +26,13 @@ interface DepositModalProps {
   isOpen: boolean
   onClose: () => void
   onBackToWallet?: () => void
+  resumeDeposit?: {
+    depositId: string
+    network: string
+    amount: number
+    timeRemaining: number
+    cryptoAddress: string
+  }
 }
 
 // Stripe Card Form component - uses local API routes
@@ -129,7 +136,7 @@ function StripeCardForm({
   )
 }
 
-export default function DepositModal({ isOpen, onClose, onBackToWallet }: DepositModalProps) {
+export default function DepositModal({ isOpen, onClose, onBackToWallet, resumeDeposit }: DepositModalProps) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [method, setMethod] = useState<PaymentMethod>('stripe')
@@ -317,6 +324,19 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
       // JSON parse error
     }
   }, [isOpen, user])
+
+  // Resume a pending crypto deposit — skip to payment step immediately
+  useEffect(() => {
+    if (!isOpen || !resumeDeposit) return
+    setMethod('crypto')
+    setSelectedCrypto(resumeDeposit.network as CryptoNetwork)
+    setAmount(resumeDeposit.amount)
+    setCryptoWallets(prev => ({ ...prev, [resumeDeposit.network]: resumeDeposit.cryptoAddress }))
+    setPendingDepositId(resumeDeposit.depositId)
+    setCryptoTimeRemaining(Math.max(0, resumeDeposit.timeRemaining))
+    setCryptoVerificationStatus('pending')
+    setStep('payment')
+  }, [isOpen, resumeDeposit])
 
   // Crypto verification polling (45-min auto-confirm)
   useEffect(() => {
