@@ -112,13 +112,17 @@ export default function CartDropdown({ isOpen, onClose, variant = 'dropdown' }: 
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen && variant === 'modal') {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
       document.body.style.overflow = 'hidden'
+      document.body.style.paddingRight = `${scrollbarWidth}px`
     } else if (variant === 'modal') {
       document.body.style.overflow = ''
+      document.body.style.paddingRight = ''
     }
     return () => {
       if (variant === 'modal') {
         document.body.style.overflow = ''
+        document.body.style.paddingRight = ''
       }
     }
   }, [isOpen, variant])
