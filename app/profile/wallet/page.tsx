@@ -11,7 +11,7 @@ import { getMyDeposits, cancelDeposit, type Deposit, type DepositStatus } from '
 import { usePreferences } from '@/contexts/PreferencesContext'
 import Link from 'next/link'
 
-type TransactionFilter = 'all' | 'DEPOSIT' | 'DEBIT'
+type TransactionFilter = 'all' | 'DEPOSIT' | 'DEBIT' | 'REFUND' | 'ADJUSTMENT'
 
 const depositMethodLabels: Record<string, string> = {
   CARD: 'Card',
@@ -132,7 +132,7 @@ function WalletPageContent() {
   })
 
   // Fetch transaction history
-  const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
+  const { data: transactionsData, isLoading: transactionsLoading, isError: transactionsError } = useQuery({
     queryKey: ['wallet', 'transactions', filter, txPage],
     queryFn: async () => {
       const type = filter === 'all' ? undefined : filter === 'DEPOSIT' ? 'CREDIT' : filter as any
@@ -149,12 +149,12 @@ function WalletPageContent() {
   })
 
   // Fetch deposit history
-  const { data: depositsData, isLoading: depositsLoading, refetch: refetchDeposits } = useQuery({
+  const { data: depositsData, isLoading: depositsLoading, isError: depositsError, refetch: refetchDeposits } = useQuery({
     queryKey: ['deposits', 'my', depositPage, depositFilter],
     queryFn: async () => {
       const result = await getMyDeposits(depositPage, 10, depositFilter === 'all' ? undefined : depositFilter)
       if (!result.success) {
-        return { deposits: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } }
+        throw new Error(result.error || 'Failed to load deposits')
       }
       // Railway returns { data: [array], pagination: {...} } at top level
       const deposits = Array.isArray(result.data) ? result.data : (result.data?.deposits || [])
@@ -243,7 +243,8 @@ function WalletPageContent() {
         onClose={handleDepositModalClose}
         onBackToWallet={() => {
           setActiveTab('deposits')
-          queryClient.invalidateQueries({ queryKey: ['deposits', 'my'] })
+          queryClient.invalidateQueries({ queryKey: ['wallet'] })
+          queryClient.invalidateQueries({ queryKey: ['deposits'] })
         }}
       />
 
@@ -360,7 +361,7 @@ function WalletPageContent() {
 
             {/* Filter */}
             <div className="flex gap-2 flex-wrap">
-              {(['all', 'DEPOSIT', 'DEBIT'] as TransactionFilter[]).map((type) => (
+              {(['all', 'DEPOSIT', 'DEBIT', 'REFUND', 'ADJUSTMENT'] as TransactionFilter[]).map((type) => (
                 <button
                   key={type}
                   onClick={() => { setFilter(type); setTxPage(1) }}
@@ -381,6 +382,10 @@ function WalletPageContent() {
               {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="h-20 bg-surface-dark animate-pulse rounded-xl" />
               ))}
+            </div>
+          ) : transactionsError ? (
+            <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
+              <p className="text-slate-500">Unable to load transaction history. Please try again later.</p>
             </div>
           ) : transactionsData?.transactions && transactionsData.transactions.length > 0 ? (
             <div className="space-y-3">
@@ -497,7 +502,7 @@ function WalletPageContent() {
               Deposit History
             </h3>
             <div className="flex gap-2 flex-wrap">
-              {(['all', 'PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'] as const).map((s) => (
+              {(['all', 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => { setDepositFilter(s); setDepositPage(1) }}
@@ -518,6 +523,10 @@ function WalletPageContent() {
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-20 bg-surface-dark animate-pulse rounded-xl" />
               ))}
+            </div>
+          ) : depositsError ? (
+            <div className="bg-black border border-border-dark rounded-2xl p-12 text-center">
+              <p className="text-slate-500">Unable to load deposit history. Please try again later.</p>
             </div>
           ) : depositsData?.deposits && depositsData.deposits.length > 0 ? (
             <div className="space-y-3">
