@@ -46,16 +46,16 @@ function StatCard({ label, value, sub, icon, color = 'primary' }: {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    PENDING: 'bg-yellow-500/15 text-yellow-400',
-    APPROVED: 'bg-green-500/15 text-green-400',
-    REJECTED: 'bg-red-500/15 text-red-400',
-    PAID: 'bg-green-500/15 text-green-400',
-    CANCELLED: 'bg-slate-500/15 text-slate-400',
-    AVAILABLE: 'bg-blue-500/15 text-blue-400',
-    LOCKED: 'bg-yellow-500/15 text-yellow-400',
+    PENDING:   'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+    APPROVED:  'bg-green-500/20 text-green-400 border border-green-500/30',
+    REJECTED:  'bg-red-500/20 text-red-400 border border-red-500/30',
+    PAID:      'bg-green-500/20 text-green-400 border border-green-500/30',
+    CANCELLED: 'bg-slate-500/20 text-slate-400 border border-slate-500/30',
+    AVAILABLE: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+    LOCKED:    'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
   }
   return (
-    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${map[status] || 'bg-slate-500/15 text-slate-400'}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${map[status] || 'bg-slate-500/20 text-slate-400 border border-slate-500/30'}`}>
       {status}
     </span>
   )
@@ -268,13 +268,16 @@ export default function AdminVendorsPage() {
             <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Quick Actions</h3>
               <div className="flex flex-wrap gap-3">
-                <button onClick={() => setTab('applications')} className="px-4 py-2 bg-yellow-500/10 text-yellow-400 rounded-lg text-sm hover:bg-yellow-500/20 transition-colors">
+                <button onClick={() => setTab('applications')} className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 text-yellow-400 rounded-lg text-sm hover:bg-yellow-500/20 transition-colors">
+                  <Icon name="document" size={14} />
                   Review Applications ({stats?.pendingApplications ?? 0})
                 </button>
-                <button onClick={() => setTab('payouts')} className="px-4 py-2 bg-red-500/10 text-red-400 rounded-lg text-sm hover:bg-red-500/20 transition-colors">
+                <button onClick={() => setTab('payouts')} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 rounded-lg text-sm hover:bg-red-500/20 transition-colors">
+                  <Icon name="wallet" size={14} />
                   Process Payouts ({stats?.pendingPayouts ?? 0})
                 </button>
-                <button onClick={() => setTab('settings')} className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm hover:bg-primary/20 transition-colors">
+                <button onClick={() => setTab('settings')} className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm hover:bg-primary/20 transition-colors">
+                  <Icon name="settings" size={14} />
                   Commission Settings
                 </button>
               </div>
@@ -285,12 +288,12 @@ export default function AdminVendorsPage() {
         {/* ── APPLICATIONS ─────────────────────────────────────────────── */}
         {tab === 'applications' && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 flex items-center gap-3">
               {['PENDING', 'APPROVED', 'REJECTED'].map(s => (
                 <button
                   key={s}
                   onClick={() => { setAppStatusFilter(s); setAppPage(1) }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${appStatusFilter === s ? 'bg-primary text-black' : 'bg-[#111] border border-[#1f1f1f] text-slate-400 hover:text-white'}`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${appStatusFilter === s ? 'bg-primary text-black' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-slate-400 hover:text-white'}`}
                 >
                   {s}
                 </button>
@@ -305,14 +308,14 @@ export default function AdminVendorsPage() {
               ) : (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1f1f1f] text-slate-500 text-left">
-                      <th className="px-4 py-3 font-medium">Applicant</th>
-                      <th className="px-4 py-3 font-medium">Business</th>
-                      <th className="px-4 py-3 font-medium">Country</th>
-                      <th className="px-4 py-3 font-medium">Avg Volume</th>
-                      <th className="px-4 py-3 font-medium">Applied</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Actions</th>
+                    <tr className="border-b border-[#1f1f1f] text-left">
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Applicant</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Business</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Country</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Avg Volume</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Applied</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Status</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1a1a1a]">
@@ -401,13 +404,18 @@ export default function AdminVendorsPage() {
         {/* ── ACTIVE VENDORS ────────────────────────────────────────────── */}
         {tab === 'vendors' && (
           <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Search vendors by name or email..."
-              value={vendorSearch}
-              onChange={e => { setVendorSearch(e.target.value); setVendorPage(1) }}
-              className="w-full md:w-80 bg-[#111] border border-[#1f1f1f] rounded-lg px-4 py-2 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-primary/50"
-            />
+            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+              <div className="relative w-full md:w-80">
+                <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search vendors by name or email..."
+                  value={vendorSearch}
+                  onChange={e => { setVendorSearch(e.target.value); setVendorPage(1) }}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-9 pr-4 py-2 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Vendors table */}
@@ -419,11 +427,11 @@ export default function AdminVendorsPage() {
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-[#1f1f1f] text-slate-500 text-left">
-                        <th className="px-4 py-3 font-medium">Vendor</th>
-                        <th className="px-4 py-3 font-medium">Total Earned</th>
-                        <th className="px-4 py-3 font-medium">Available</th>
-                        <th className="px-4 py-3 font-medium">Status</th>
+                      <tr className="border-b border-[#1f1f1f] text-left">
+                        <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Vendor</th>
+                        <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Total Earned</th>
+                        <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Available</th>
+                        <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#1a1a1a]">
@@ -479,7 +487,7 @@ export default function AdminVendorsPage() {
                       {[
                         { label: 'Available', value: `$${vendorDetail.balance?.available?.toFixed(2) ?? '0.00'}`, color: 'text-green-400' },
                         { label: 'Locked', value: `$${vendorDetail.balance?.locked?.toFixed(2) ?? '0.00'}`, color: 'text-yellow-400' },
-                        { label: 'Total Earned', value: `$${vendorDetail.balance?.totalEarned?.toFixed(2) ?? '0.00'}`, color: 'text-white' },
+                        { label: 'Total Earned', value: `$${vendorDetail.balance?.lifetimeEarned?.toFixed(2) ?? '0.00'}`, color: 'text-white' },
                         { label: 'Total Paid', value: `$${vendorDetail.balance?.totalPaid?.toFixed(2) ?? '0.00'}`, color: 'text-slate-300' },
                       ].map(item => (
                         <div key={item.label} className="bg-[#0a0a0a] rounded-lg p-3">
@@ -545,12 +553,12 @@ export default function AdminVendorsPage() {
         {/* ── PAYOUTS ───────────────────────────────────────────────────── */}
         {tab === 'payouts' && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 flex items-center gap-3">
               {['PENDING', 'PAID', 'REJECTED'].map(s => (
                 <button
                   key={s}
                   onClick={() => { setPayoutStatusFilter(s); setPayoutPage(1) }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${payoutStatusFilter === s ? 'bg-primary text-black' : 'bg-[#111] border border-[#1f1f1f] text-slate-400 hover:text-white'}`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${payoutStatusFilter === s ? 'bg-primary text-black' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-slate-400 hover:text-white'}`}
                 >
                   {s}
                 </button>
@@ -565,13 +573,13 @@ export default function AdminVendorsPage() {
               ) : (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1f1f1f] text-slate-500 text-left">
-                      <th className="px-4 py-3 font-medium">Vendor</th>
-                      <th className="px-4 py-3 font-medium">Amount</th>
-                      <th className="px-4 py-3 font-medium">Method</th>
-                      <th className="px-4 py-3 font-medium">Requested</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Actions</th>
+                    <tr className="border-b border-[#1f1f1f] text-left">
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Vendor</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Amount</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Method</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Requested</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Status</th>
+                      <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1a1a1a]">
