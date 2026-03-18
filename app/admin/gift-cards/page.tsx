@@ -66,7 +66,8 @@ function AdminGiftCardsPageContent() {
       setActiveTab(tabParam)
     }
   }, [tabParam])
-  const [selectedGiftCard, setSelectedGiftCard] = useState<string>('')
+  const [inventoryFilter, setInventoryFilter] = useState<string>('')
+  const [importCardId, setImportCardId] = useState<string>('')
   const [gcSearchQuery, setGcSearchQuery] = useState('')
   const [gcSelectedCategory, setGcSelectedCategory] = useState('all')
   const [gcSelectedStatus, setGcSelectedStatus] = useState('all')
@@ -77,6 +78,7 @@ function AdminGiftCardsPageContent() {
   const [importData, setImportData] = useState('')
   const [importError, setImportError] = useState('')
   const [formError, setFormError] = useState('')
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const [showSyncDetails, setShowSyncDetails] = useState(false)
   const [lastSyncResult, setLastSyncResult] = useState<{ success: boolean; synced: number; updated: number; error?: string } | null>(null)
 
@@ -124,12 +126,12 @@ function AdminGiftCardsPageContent() {
 
   // Fetch inventory stats
   const { data: inventoryStats, isLoading: loadingInventory } = useQuery<InventoryStats[]>({
-    queryKey: ['admin-gift-cards-inventory', selectedGiftCard],
+    queryKey: ['admin-gift-cards-inventory', inventoryFilter],
     queryFn: async () => {
       const token = localStorage.getItem('admin_auth_token')
       const params = new URLSearchParams()
       params.append('stats', 'true')
-      if (selectedGiftCard) params.append('giftCardId', selectedGiftCard)
+      if (inventoryFilter) params.append('giftCardId', inventoryFilter)
       const res = await fetch(`/api/admin/gift-cards/inventory?${params}`, {
         headers: {
           'Content-Type': 'application/json',
@@ -209,7 +211,11 @@ function AdminGiftCardsPageContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-gift-cards'] })
-    }
+      setTogglingId(null)
+    },
+    onError: () => {
+      setTogglingId(null)
+    },
   })
 
   // Import codes mutation
@@ -232,7 +238,7 @@ function AdminGiftCardsPageContent() {
       queryClient.invalidateQueries({ queryKey: ['admin-gift-cards'] })
       queryClient.invalidateQueries({ queryKey: ['admin-gift-cards-inventory'] })
       setImportData('')
-      setSelectedGiftCard('')
+      setImportCardId('')
       alert(`Import complete: ${data.successCount} imported, ${data.failureCount} failed`)
     },
     onError: (error: any) => {
@@ -288,6 +294,7 @@ function AdminGiftCardsPageContent() {
 
   const handleEdit = (card: GiftCard) => {
     setEditingCard(card)
+    setFormError('')
     setFormData({
       brand: card.brand,
       slug: card.slug,
@@ -337,7 +344,7 @@ function AdminGiftCardsPageContent() {
   const handleImport = () => {
     setImportError('')
 
-    if (!selectedGiftCard) {
+    if (!importCardId) {
       setImportError('Please select a gift card')
       return
     }
@@ -368,7 +375,7 @@ function AdminGiftCardsPageContent() {
       return
     }
 
-    importMutation.mutate({ giftCardId: selectedGiftCard, codes })
+    importMutation.mutate({ giftCardId: importCardId, codes })
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -785,8 +792,8 @@ function AdminGiftCardsPageContent() {
                         </td>
                         <td className="px-4 py-3">
                           <button
-                            onClick={() => toggleActiveMutation.mutate({ id: card.id, isActive: !card.isActive })}
-                            disabled={toggleActiveMutation.isPending}
+                            onClick={() => { setTogglingId(card.id); toggleActiveMutation.mutate({ id: card.id, isActive: !card.isActive }) }}
+                            disabled={togglingId === card.id}
                           >
                             {getStatusBadge(card.isActive)}
                           </button>
@@ -861,8 +868,8 @@ function AdminGiftCardsPageContent() {
           <>
             <div className="flex flex-wrap gap-3 mb-4">
               <select
-                value={selectedGiftCard}
-                onChange={(e) => setSelectedGiftCard(e.target.value)}
+                value={inventoryFilter}
+                onChange={(e) => setInventoryFilter(e.target.value)}
                 className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
               >
                 <option value="">All Gift Cards</option>
@@ -929,8 +936,8 @@ function AdminGiftCardsPageContent() {
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-2">Select Gift Card</label>
                   <select
-                    value={selectedGiftCard}
-                    onChange={(e) => setSelectedGiftCard(e.target.value)}
+                    value={importCardId}
+                    onChange={(e) => setImportCardId(e.target.value)}
                     className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white"
                   >
                     <option value="">Select a gift card...</option>
@@ -984,7 +991,7 @@ function AdminGiftCardsPageContent() {
 
                 <button
                   onClick={handleImport}
-                  disabled={importMutation.isPending || !selectedGiftCard || !importData.trim()}
+                  disabled={importMutation.isPending || !importCardId || !importData.trim()}
                   className="w-full px-4 py-3 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50"
                 >
                   {importMutation.isPending ? 'Importing...' : 'Import Codes'}

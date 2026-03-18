@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
@@ -200,6 +200,13 @@ export default function GiftCardsPage() {
     }
   }, [selectedCategory])
 
+  // Calculate final price with markup and discount
+  const calculateFinalPrice = useCallback((amount: number, discountPercent: number): number => {
+    const withMarkup = amount * (1 + markupPercent / 100)
+    const discount = amount * (discountPercent / 100)
+    return withMarkup - discount
+  }, [markupPercent])
+
   // Auto-continue purchase after login (like virtual numbers)
   useEffect(() => {
     if (pendingWalletCheckout && isAuthenticated && walletBalance !== null && pendingCard) {
@@ -220,16 +227,9 @@ export default function GiftCardsPage() {
         setShowDepositModal(true)
       }
     }
-  }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingCard])
+  }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingCard, calculateFinalPrice])
 
   const popularCards = giftCards.filter(card => card.isFeatured)
-
-  // Calculate final price with markup and discount
-  const calculateFinalPrice = (amount: number, discountPercent: number): number => {
-    const withMarkup = amount * (1 + markupPercent / 100)
-    const discount = amount * (discountPercent / 100)
-    return withMarkup - discount
-  }
 
   // Get selected amount for a card
   const getSelectedAmount = (cardId: string): number | null => {
