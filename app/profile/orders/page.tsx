@@ -7,6 +7,7 @@ import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import { CardVisualMini } from '@/components/cards/CardVisual'
+import ServiceLogo from '@/components/ui/ServiceLogo'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { libraryApi } from '@/lib/api/library'
 import { localApiFetch } from '@/lib/api/client'
@@ -457,6 +458,17 @@ export default function OrdersPage() {
                           )
                         }
 
+                        const isPhoneRefill = productType === 'phone_refill'
+                        const operatorName = mergedMeta?.operatorName
+
+                        if (isPhoneRefill && operatorName) {
+                          return (
+                            <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              <ServiceLogo name={operatorName} size={40} />
+                            </div>
+                          )
+                        }
+
                         return (
                           <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
                             {imageUrl ? (
@@ -471,7 +483,7 @@ export default function OrdersPage() {
                               />
                             ) : null}
                             <div className={`${imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
-                              <Icon name={isGiftCard ? 'gift' : isEsim ? 'sim-card' : 'box'} size={36} className="text-slate-500" />
+                              <Icon name={isGiftCard ? 'gift' : isEsim ? 'sim-card' : isPhoneRefill ? 'phone' : 'box'} size={36} className="text-slate-500" />
                             </div>
                           </div>
                         )

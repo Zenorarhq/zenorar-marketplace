@@ -10,6 +10,7 @@ import { localApiFetch } from '@/lib/api/client'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { CardVisualMini } from '@/components/cards/CardVisual'
 import FlagIcon from '@/components/ui/FlagIcon'
+import ServiceLogo from '@/components/ui/ServiceLogo'
 
 function getStatusBadge(status: string) {
   const styles: Record<string, { bg: string; text: string; dot?: string; icon?: string }> = {
@@ -211,6 +212,17 @@ export default function OrderDetailPage() {
                         )
                       }
 
+                      const isPhoneRefill = productType === 'phone_refill'
+                      const operatorName = metadata.operatorName
+
+                      if (isPhoneRefill && operatorName) {
+                        return (
+                          <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center overflow-hidden">
+                            <ServiceLogo name={operatorName} size={40} />
+                          </div>
+                        )
+                      }
+
                       const imageUrl = item.product?.images?.[0]?.url
                         || (item.product as any)?.image
                         || (item.product as any)?.imageUrl
@@ -230,7 +242,7 @@ export default function OrderDetailPage() {
                             />
                           ) : null}
                           <div className={`${imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
-                            <Icon name={isGiftCard ? 'gift' : isEsim ? 'sim-card' : 'box'} size={36} className="text-slate-500" />
+                            <Icon name={isGiftCard ? 'gift' : isEsim ? 'sim-card' : isPhoneRefill ? 'phone' : 'box'} size={36} className="text-slate-500" />
                           </div>
                         </div>
                       )
