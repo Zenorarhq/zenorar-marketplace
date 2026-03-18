@@ -149,8 +149,8 @@ export default function DiscountsPage() {
       usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : undefined,
       minOrderValue: formData.minOrderValue ? parseFloat(formData.minOrderValue) : undefined,
       maxDiscountValue: formData.maxDiscountValue ? parseFloat(formData.maxDiscountValue) : undefined,
-      startsAt: formData.startsAt || undefined,
-      expiresAt: formData.expiresAt || undefined,
+      startsAt: formData.startsAt || (editingDiscount ? null : undefined),
+      expiresAt: formData.expiresAt || (editingDiscount ? null : undefined),
       isActive: formData.isActive,
     }
 
