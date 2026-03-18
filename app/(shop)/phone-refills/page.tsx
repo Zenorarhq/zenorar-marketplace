@@ -5,29 +5,20 @@ import { useQuery } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
-import { useCart } from '@/lib/cart-context'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { getBalance } from '@/lib/api/wallet'
 import AuthDialog from '@/components/dialogs/AuthDialog'
 import DepositModal from '@/components/wallet/DepositModal'
-import TestModeBanner from '@/components/ui/TestModeBanner'
 import WalletDisplay from '@/components/ui/WalletDisplay'
-import * as esimApi from '@/lib/api/esim'
-import type { EsimPlan } from '@/lib/api/esim'
-import type { Product } from '@/lib/types'
+import * as phoneRefillsApi from '@/lib/api/phone-refills'
+import type { TopupOperator, TopupOffer } from '@/lib/api/phone-refills'
 
-const COUNTRIES_PER_PAGE = 16
+const OPERATORS_PER_PAGE = 24
 
-const POPULAR_COUNTRIES = [
-  'US', 'GB', 'JP', 'FR', 'DE', 'KR', 'TH', 'IT', 'ES', 'AU',
-  'CA', 'SG', 'TR', 'AE', 'NL', 'CH',
-]
-
-// Resolve country name from ISO code using Intl API
-function resolveCountryName(isoCode: string, dbName: string | null): string {
-  if (dbName) return dbName
+// Resolve country name from ISO code
+function resolveCountryName(isoCode: string): string {
   try {
     const displayNames = new Intl.DisplayNames(['en'], { type: 'region' })
     return displayNames.of(isoCode) || isoCode
@@ -37,111 +28,61 @@ function resolveCountryName(isoCode: string, dbName: string | null): string {
 }
 
 export default function PhoneRefillsPage() {
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
-  const [countryPage, setCountryPage] = useState(1)
-  const [addingToCart, setAddingToCart] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [operatorPage, setOperatorPage] = useState(1)
+  const [selectedOperator, setSelectedOperator] = useState<TopupOperator | null>(null)
+  const [selectedOffer, setSelectedOffer] = useState<TopupOffer | null>(null)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [purchasing, setPurchasing] = useState(false)
+  const [purchaseError, setPurchaseError] = useState<string | null>(null)
+  const [purchaseSuccess, setPurchaseSuccess] = useState<{ transactionId: string } | null>(null)
 
-  // Wallet payment state
+  // Wallet/auth state
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [processingPayment, setProcessingPayment] = useState<string | null>(null)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
   const [showDepositModal, setShowDepositModal] = useState(false)
-  const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
-  const [pendingPlan, setPendingPlan] = useState<EsimPlan | null>(null)
+  const [pendingPurchase, setPendingPurchase] = useState(false)
 
-  const { addItem, showAddedToCartPopup } = useCart()
   const router = useRouter()
   const { isAuthenticated } = useAuth()
   const { formatPrice } = usePreferences()
 
-  // Fetch countries that have refillable eSIM plans
-  const { data: rawCountries = [] } = useQuery({
-    queryKey: ['esim-refill-countries'],
+  // Fetch all operators
+  const { data: operators = [], isLoading: loadingOperators } = useQuery({
+    queryKey: ['phone-refill-operators'],
     queryFn: async () => {
-      // Get all refillable plans to extract unique countries
-      const result = await esimApi.getRefillPlans()
-      if (result.success && result.data) {
-        // Extract unique country codes from refillable plans
-        const countrySet = new Map<string, string | null>()
-        for (const plan of result.data) {
-          for (const code of plan.countries) {
-            if (!countrySet.has(code)) {
-              countrySet.set(code, null)
-            }
-          }
-        }
-        return Array.from(countrySet.entries()).map(([isoCode, name]) => ({
-          isoCode,
-          name,
-        }))
-      }
-      return []
-    },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  })
-
-  // Resolve names and sort: popular first, then alphabetical
-  const sortedCountries = useMemo(() => {
-    const resolved = rawCountries.map((c) => ({
-      isoCode: c.isoCode,
-      name: resolveCountryName(c.isoCode, c.name),
-    }))
-
-    return resolved.sort((a, b) => {
-      const aPopIdx = POPULAR_COUNTRIES.indexOf(a.isoCode)
-      const bPopIdx = POPULAR_COUNTRIES.indexOf(b.isoCode)
-      if (aPopIdx !== -1 && bPopIdx !== -1) return aPopIdx - bPopIdx
-      if (aPopIdx !== -1) return -1
-      if (bPopIdx !== -1) return 1
-      return a.name.localeCompare(b.name)
-    })
-  }, [rawCountries])
-
-  // Pagination
-  const totalCountryPages = Math.ceil(sortedCountries.length / COUNTRIES_PER_PAGE)
-  const paginatedCountries = sortedCountries.slice(
-    (countryPage - 1) * COUNTRIES_PER_PAGE,
-    countryPage * COUNTRIES_PER_PAGE
-  )
-
-  // Fetch refillable plans (only when a country is selected)
-  const { data: plans = [], isLoading: loadingPlans } = useQuery({
-    queryKey: ['esim-refill-plans', selectedCountry],
-    queryFn: async () => {
-      const result = await esimApi.getRefillPlans({
-        countryCode: selectedCountry || undefined,
-      })
+      const result = await phoneRefillsApi.getOperators()
       if (result.success && result.data) return result.data
       return []
     },
-    enabled: !!selectedCountry,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   })
 
-  // Convert plan to Product format for cart
-  const planToProduct = (plan: EsimPlan): Product => ({
-    id: plan.id,
-    name: plan.name,
-    slug: plan.slug,
-    description: `${plan.dataAmountDisplay} data refill, valid for ${plan.validityDays} days. Coverage: ${plan.regionName}`,
-    price: plan.retailPrice,
-    rating: 5,
-    reviewCount: 0,
-    category: 'esim',
-    categoryId: 'esim',
-    icon: 'sim-card',
-    iconColor: '#43D678',
-    tags: ['esim', 'refill', plan.regionSlug || '', ...plan.countries.slice(0, 3)],
-    badge: plan.isFeatured ? 'Featured' : undefined,
-    metadata: {
-      productType: 'esim',
-      esim_plan_id: plan.id,
-      countryIsoCode: plan.countries.length === 1 ? plan.countries[0] : undefined,
-    },
-  })
+  // Filter operators by search
+  const filteredOperators = useMemo(() => {
+    if (!searchQuery) return operators
+    const q = searchQuery.toLowerCase()
+    return operators.filter(
+      (op) =>
+        op.name.toLowerCase().includes(q) ||
+        op.country.toLowerCase().includes(q) ||
+        resolveCountryName(op.country).toLowerCase().includes(q)
+    )
+  }, [operators, searchQuery])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredOperators.length / OPERATORS_PER_PAGE)
+  const paginatedOperators = filteredOperators.slice(
+    (operatorPage - 1) * OPERATORS_PER_PAGE,
+    operatorPage * OPERATORS_PER_PAGE
+  )
+
+  // Reset page when search changes
+  useEffect(() => {
+    setOperatorPage(1)
+  }, [searchQuery])
 
   // Fetch wallet balance
   const fetchWalletBalance = async () => {
@@ -161,32 +102,34 @@ export default function PhoneRefillsPage() {
     }
   }
 
-  // Fetch wallet balance when authenticated
   useEffect(() => {
     if (isAuthenticated && walletBalance === null) {
       fetchWalletBalance()
     }
   }, [isAuthenticated])
 
-  // Auto-continue purchase after login
+  // Auto-continue after login
   useEffect(() => {
-    if (pendingWalletCheckout && isAuthenticated && walletBalance !== null && pendingPlan) {
-      setPendingWalletCheckout(false)
-      const plan = pendingPlan
-
-      if (walletBalance >= plan.retailPrice) {
-        processWalletPayment(plan)
+    if (pendingPurchase && isAuthenticated && walletBalance !== null && selectedOffer) {
+      setPendingPurchase(false)
+      if (walletBalance >= selectedOffer.price) {
+        processPurchase()
       } else {
         setShowDepositModal(true)
       }
     }
-  }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingPlan])
+  }, [pendingPurchase, isAuthenticated, walletBalance, selectedOffer])
 
-  // Process wallet payment
-  const processWalletPayment = async (plan: EsimPlan) => {
-    setProcessingPayment(plan.id)
+  // Process purchase
+  const processPurchase = async () => {
+    if (!selectedOffer || !phoneNumber) return
+
+    setPurchasing(true)
+    setPurchaseError(null)
+
     try {
       const token = localStorage.getItem('auth_token')
+      // Use instant order endpoint (wallet payment)
       const response = await fetch('/api/orders/instant', {
         method: 'POST',
         headers: {
@@ -195,19 +138,23 @@ export default function PhoneRefillsPage() {
         },
         body: JSON.stringify({
           items: [{
-            productId: plan.id,
-            name: plan.name,
+            productId: selectedOffer.offerId,
+            name: `${selectedOperator?.name || 'Mobile'} Top-Up - ${selectedOffer.sendAmount} ${selectedOffer.sendCurrency}`,
             quantity: 1,
-            price: plan.retailPrice,
-            productType: 'esim',
+            price: selectedOffer.price,
+            productType: 'phone_refill',
             metadata: {
-              productType: 'esim',
-              esim_plan_id: plan.id,
-              countryIsoCode: plan.countries.length === 1 ? plan.countries[0] : undefined,
+              productType: 'phone_refill',
+              offerId: selectedOffer.offerId,
+              recipientPhone: phoneNumber.replace(/[^+\d]/g, ''),
+              operatorName: selectedOperator?.name,
+              country: selectedOperator?.country,
+              sendAmount: selectedOffer.sendAmount,
+              sendCurrency: selectedOffer.sendCurrency,
             },
           }],
           paymentMethod: 'wallet',
-          total: plan.retailPrice,
+          total: selectedOffer.price,
         }),
       })
 
@@ -215,25 +162,24 @@ export default function PhoneRefillsPage() {
 
       if (result.success) {
         await fetchWalletBalance()
-        setPendingPlan(null)
-        router.push('/profile/library?tab=esims&purchased=true')
+        setPurchaseSuccess({ transactionId: result.data?.orderId || 'completed' })
       } else {
-        if (result.data?.refunded) {
-          console.error('eSIM provisioning failed, wallet refunded:', result.error)
-        }
-        console.error('eSIM instant checkout failed:', result.error)
+        setPurchaseError(result.error || 'Failed to process top-up')
       }
-    } catch (error) {
-      console.error('Failed to process eSIM payment:', error)
+    } catch (error: any) {
+      setPurchaseError(error.message || 'Failed to process top-up')
     } finally {
-      setProcessingPayment(null)
+      setPurchasing(false)
     }
   }
 
-  // Pay with wallet handler
-  const handlePayWithWallet = async (plan: EsimPlan) => {
+  // Handle buy click
+  const handleBuy = async () => {
+    if (!selectedOffer || !phoneNumber) return
+
+    setPurchaseError(null)
+
     if (!isAuthenticated) {
-      setPendingPlan(plan)
       setShowLoginModal(true)
       return
     }
@@ -257,190 +203,49 @@ export default function PhoneRefillsPage() {
       setLoadingBalance(false)
     }
 
-    if (currentBalance === null || currentBalance < plan.retailPrice) {
-      setPendingPlan(plan)
+    if (currentBalance === null || currentBalance < selectedOffer.price) {
       setShowDepositModal(true)
       return
     }
 
-    await processWalletPayment(plan)
+    await processPurchase()
   }
 
-  // Add to Cart
-  const handleAddToCart = async (plan: EsimPlan) => {
-    const product = planToProduct(plan)
-    await addItem(product, 'standard', plan.retailPrice)
-    showAddedToCartPopup(product, plan.retailPrice)
-  }
-
-  // Get selected country name
-  const selectedCountryName = selectedCountry
-    ? sortedCountries.find((c) => c.isoCode === selectedCountry)?.name || selectedCountry
-    : null
-
-  // Render plan cards
-  const renderPlans = () => {
-    if (loadingPlans) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-6">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="bg-charcoal border border-border-dark rounded-2xl p-6 animate-pulse">
-              <div className="h-6 bg-slate-700 rounded w-3/4 mb-4" />
-              <div className="h-4 bg-slate-700 rounded w-1/2 mb-6" />
-              <div className="space-y-3 mb-6">
-                <div className="h-4 bg-slate-700 rounded" />
-                <div className="h-4 bg-slate-700 rounded w-2/3" />
-              </div>
-              <div className="h-10 bg-slate-700 rounded" />
-            </div>
-          ))}
-        </div>
-      )
-    }
-
-    if (plans.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <Icon name="sim-card" size={48} className="text-slate-600 mx-auto mb-4" />
-          <h3 className="text-white font-bold mb-2">No refill plans found</h3>
-          <p className="text-slate-500">No refillable eSIM plans available for this country.</p>
-        </div>
-      )
-    }
-
-    return (
-      <>
-        <div className="flex items-center justify-between mt-6 mb-4">
-          <h2 className="text-xl font-bold text-white">
-            {selectedCountryName ? `${selectedCountryName} Refill Plans` : 'Available Refill Plans'}
-          </h2>
-          <span className="text-slate-500 text-sm">{plans.length} plans</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`bg-charcoal border rounded-2xl p-6 hover:border-primary/50 transition-all relative ${
-                plan.isFeatured ? 'border-primary' : 'border-border-dark'
-              }`}
-            >
-              {plan.isFeatured && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-primary text-black text-xs font-bold px-3 py-1 rounded-full">
-                    POPULAR
-                  </span>
-                </div>
-              )}
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-white">{plan.name}</h3>
-                  <p className="text-sm text-slate-500">{selectedCountryName || plan.regionName}</p>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Icon name="refresh" size={20} className="text-primary" />
-                </div>
-              </div>
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-3">
-                  <Icon name="wifi" size={16} className="text-slate-500" />
-                  <span className="text-white font-bold">{plan.dataAmountDisplay}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Icon name="clock" size={16} className="text-slate-500" />
-                  <span className="text-slate-400">{plan.validityDays} days</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Icon name="globe" size={16} className="text-slate-500" />
-                  <span className="text-slate-400 text-sm">
-                    {plan.countries?.slice(0, 3).join(', ')}
-                    {plan.countries?.length > 3 && ` +${plan.countries.length - 3} more`}
-                  </span>
-                </div>
-                {plan.networkType && (
-                  <div className="flex items-center gap-3">
-                    <Icon name="wifi" size={16} className="text-slate-500" />
-                    <span className="text-slate-400 text-sm uppercase">{plan.networkType}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-3">
-                  <Icon name="check" size={16} className="text-green-400" />
-                  <span className="text-green-400 text-sm font-medium">Refillable</span>
-                </div>
-              </div>
-              <div className="flex items-end justify-between mb-4">
-                <span className="text-2xl font-extrabold text-white">
-                  {formatPrice(plan.retailPrice)}
-                </span>
-              </div>
-              <div className="space-y-2">
-                <button
-                  onClick={() => handlePayWithWallet(plan)}
-                  disabled={processingPayment === plan.id || loadingBalance}
-                  className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50"
-                >
-                  {processingPayment === plan.id ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
-                      <span>Processing...</span>
-                    </>
-                  ) : loadingBalance ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
-                      <span>Checking Balance...</span>
-                    </>
-                  ) : isAuthenticated ? (
-                    <>
-                      <Icon name="wallet" size={16} />
-                      <span>Pay {formatPrice(plan.retailPrice)} with Wallet</span>
-                    </>
-                  ) : (
-                    <>
-                      <Icon name="wallet" size={16} />
-                      <span>Pay with Wallet</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => handleAddToCart(plan)}
-                  className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
-                >
-                  <Icon name="cart" size={16} />
-                  <span>Add to Cart</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </>
-    )
+  // Reset flow
+  const handleReset = () => {
+    setSelectedOperator(null)
+    setSelectedOffer(null)
+    setPhoneNumber('')
+    setPurchaseError(null)
+    setPurchaseSuccess(null)
   }
 
   // Render pagination
   const renderPagination = () => {
-    if (totalCountryPages <= 1) return null
+    if (totalPages <= 1) return null
 
     const pages: (number | 'ellipsis')[] = []
-    if (totalCountryPages <= 5) {
-      for (let i = 1; i <= totalCountryPages; i++) pages.push(i)
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
     } else {
       pages.push(1)
-      if (countryPage > 3) pages.push('ellipsis')
-      for (let i = Math.max(2, countryPage - 1); i <= Math.min(totalCountryPages - 1, countryPage + 1); i++) {
+      if (operatorPage > 3) pages.push('ellipsis')
+      for (let i = Math.max(2, operatorPage - 1); i <= Math.min(totalPages - 1, operatorPage + 1); i++) {
         pages.push(i)
       }
-      if (countryPage < totalCountryPages - 2) pages.push('ellipsis')
-      pages.push(totalCountryPages)
+      if (operatorPage < totalPages - 2) pages.push('ellipsis')
+      pages.push(totalPages)
     }
 
     return (
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-slate-500">
-          Showing {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, sortedCountries.length)} of {sortedCountries.length} countries
+          Showing {((operatorPage - 1) * OPERATORS_PER_PAGE) + 1} - {Math.min(operatorPage * OPERATORS_PER_PAGE, filteredOperators.length)} of {filteredOperators.length} carriers
         </p>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setCountryPage((p) => Math.max(1, p - 1))}
-            disabled={countryPage === 1}
+            onClick={() => setOperatorPage((p) => Math.max(1, p - 1))}
+            disabled={operatorPage === 1}
             className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Icon name="chevron-left" size={16} />
@@ -453,9 +258,9 @@ export default function PhoneRefillsPage() {
               ) : (
                 <button
                   key={page}
-                  onClick={() => setCountryPage(page)}
+                  onClick={() => setOperatorPage(page)}
                   className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                    countryPage === page
+                    operatorPage === page
                       ? 'bg-primary text-black font-bold'
                       : 'bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626]'
                   }`}
@@ -466,8 +271,8 @@ export default function PhoneRefillsPage() {
             )}
           </div>
           <button
-            onClick={() => setCountryPage((p) => Math.min(totalCountryPages, p + 1))}
-            disabled={countryPage === totalCountryPages}
+            onClick={() => setOperatorPage((p) => Math.min(totalPages, p + 1))}
+            disabled={operatorPage === totalPages}
             className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="hidden md:inline">Next</span>
@@ -486,7 +291,7 @@ export default function PhoneRefillsPage() {
         onClose={() => setShowLoginModal(false)}
         onSuccess={() => {
           setShowLoginModal(false)
-          setPendingWalletCheckout(true)
+          setPendingPurchase(true)
           fetchWalletBalance()
         }}
         defaultTab="login"
@@ -498,8 +303,8 @@ export default function PhoneRefillsPage() {
         onClose={async () => {
           setShowDepositModal(false)
           const newBalance = await fetchWalletBalance()
-          if (pendingPlan && newBalance !== null && newBalance >= pendingPlan.retailPrice) {
-            processWalletPayment(pendingPlan)
+          if (selectedOffer && newBalance !== null && newBalance >= selectedOffer.price) {
+            processPurchase()
           }
         }}
       />
@@ -520,7 +325,7 @@ export default function PhoneRefillsPage() {
               Phone Refills
             </h1>
             <p className="text-slate-500 text-sm lg:text-base max-w-2xl">
-              Top up your existing eSIM with additional data. Choose refillable plans that you can extend anytime.
+              Top up any mobile phone instantly. Select a carrier, enter the phone number, and send airtime in seconds.
             </p>
           </div>
           <WalletDisplay variant="desktop" />
@@ -529,97 +334,242 @@ export default function PhoneRefillsPage() {
 
       <WalletDisplay variant="mobile" />
 
-      {/* Sandbox Mode Banner */}
-      <TestModeBanner />
+      {/* Success State */}
+      {purchaseSuccess && (
+        <div className="mb-8 bg-green-500/10 border border-green-500/20 rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+            <Icon name="check" size={32} className="text-green-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Top-Up Sent!</h2>
+          <p className="text-slate-400 mb-2">
+            {selectedOffer && `${selectedOffer.sendAmount} ${selectedOffer.sendCurrency}`} has been sent to {phoneNumber}
+          </p>
+          <p className="text-slate-500 text-sm mb-6">
+            {selectedOperator?.name} - {resolveCountryName(selectedOperator?.country || '')}
+          </p>
+          <button
+            onClick={handleReset}
+            className="px-6 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all"
+          >
+            Send Another Top-Up
+          </button>
+        </div>
+      )}
 
-      {/* Country Selection */}
-      <div className="mb-10">
-        {selectedCountry ? (
-          <>
-            {/* Locked-in country */}
-            <div className="bg-primary/10 border border-primary rounded-2xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <FlagIcon countryCode={selectedCountry} className="w-10 h-10 rounded" />
-                <div>
-                  <h3 className="font-bold text-white">{selectedCountryName}</h3>
-                  <p className="text-sm text-slate-400">{plans.length} refill plans available</p>
+      {/* Main Flow */}
+      {!purchaseSuccess && (
+        <>
+          {/* Step 1: Select Operator (or show selected) */}
+          {selectedOperator ? (
+            <div className="mb-8">
+              {/* Selected operator pill */}
+              <div className="bg-primary/10 border border-primary rounded-2xl p-4 flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <FlagIcon countryCode={selectedOperator.country} className="w-10 h-10 rounded" />
+                  <div>
+                    <h3 className="font-bold text-white">{selectedOperator.name}</h3>
+                    <p className="text-sm text-slate-400">{resolveCountryName(selectedOperator.country)}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleReset}
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                  aria-label="Change carrier"
+                >
+                  <Icon name="x" size={20} className="text-white" />
+                </button>
+              </div>
+
+              {/* Step 2: Enter phone number */}
+              <div className="mb-6">
+                <label className="block text-white font-bold mb-2">Recipient Phone Number</label>
+                <div className="relative">
+                  <Icon name="phone" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="tel"
+                    placeholder="e.g. +1 234 567 8900"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+                  />
+                </div>
+                <p className="text-slate-500 text-xs mt-1">Include country code (e.g. +1 for US, +44 for UK)</p>
+              </div>
+
+              {/* Step 3: Select amount */}
+              <div className="mb-6">
+                <h3 className="text-white font-bold mb-3">Select Amount</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {selectedOperator.offers.map((offer) => (
+                    <button
+                      key={offer.offerId}
+                      onClick={() => setSelectedOffer(offer)}
+                      className={`p-4 rounded-xl border transition-all text-left ${
+                        selectedOffer?.offerId === offer.offerId
+                          ? 'bg-primary/10 border-primary'
+                          : 'bg-charcoal border-border-dark hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="text-lg font-extrabold text-white">
+                        {offer.sendAmount} {offer.sendCurrency}
+                      </div>
+                      <div className="text-sm text-slate-400 mt-1">
+                        {formatPrice(offer.price)}
+                      </div>
+                      {offer.shortNotes && (
+                        <div className="text-xs text-slate-500 mt-1 truncate">{offer.shortNotes}</div>
+                      )}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedCountry(null)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                aria-label="Clear selection"
-              >
-                <Icon name="x" size={20} className="text-white" />
-              </button>
-            </div>
-            {renderPlans()}
-          </>
-        ) : (
-          <>
-            <h2 className="text-xl font-bold text-white mb-4">Select Country</h2>
-            {/* Country grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {paginatedCountries.map((country) => (
-                <button
-                  key={country.isoCode}
-                  onClick={() => setSelectedCountry(country.isoCode)}
-                  className="flex items-center gap-3 p-4 bg-charcoal border border-border-dark rounded-2xl hover:border-primary/50 transition-all text-left"
-                >
-                  <FlagIcon countryCode={country.isoCode} className="w-8 h-8 rounded flex-shrink-0" />
-                  <span className="text-white font-medium text-sm truncate">{country.name}</span>
-                </button>
-              ))}
-            </div>
-            {sortedCountries.length === 0 && (
-              <div className="text-center py-12">
-                <Icon name="sim-card" size={48} className="text-slate-600 mx-auto mb-4" />
-                <h3 className="text-white font-bold mb-2">No refillable plans available</h3>
-                <p className="text-slate-500">Refillable eSIM plans will appear here once synced.</p>
-              </div>
-            )}
-            {renderPagination()}
-          </>
-        )}
-      </div>
 
-      {/* Features Section */}
+              {/* Error */}
+              {purchaseError && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-red-400 text-sm">{purchaseError}</p>
+                </div>
+              )}
+
+              {/* Step 4: Buy button */}
+              <button
+                onClick={handleBuy}
+                disabled={!selectedOffer || !phoneNumber || phoneNumber.replace(/[^+\d]/g, '').length < 8 || purchasing || loadingBalance}
+                className="w-full py-4 rounded-xl bg-primary text-black font-bold hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {purchasing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent"></div>
+                    Processing...
+                  </>
+                ) : loadingBalance ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent"></div>
+                    Checking Balance...
+                  </>
+                ) : selectedOffer && isAuthenticated ? (
+                  <>
+                    <Icon name="wallet" size={18} />
+                    Pay {formatPrice(selectedOffer.price)} with Wallet
+                  </>
+                ) : (
+                  <>
+                    <Icon name="wallet" size={18} />
+                    Pay with Wallet
+                  </>
+                )}
+              </button>
+              <p className="text-slate-500 text-xs text-center mt-3">
+                Airtime delivered instantly after payment
+              </p>
+            </div>
+          ) : (
+            /* Operator Selection Grid */
+            <div className="mb-10">
+              {/* Search */}
+              <div className="mb-6">
+                <div className="relative">
+                  <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search carriers (AT&T, Vodafone, MTN, etc.)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Operators Grid */}
+              {loadingOperators ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {[...Array(24)].map((_, i) => (
+                    <div key={i} className="bg-charcoal border border-border-dark rounded-2xl p-4 animate-pulse">
+                      <div className="w-8 h-8 bg-slate-700 rounded mb-3" />
+                      <div className="h-4 bg-slate-700 rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-slate-700 rounded w-1/2" />
+                    </div>
+                  ))}
+                </div>
+              ) : filteredOperators.length === 0 ? (
+                <div className="text-center py-12">
+                  <Icon name="phone" size={48} className="text-slate-600 mx-auto mb-4" />
+                  <h3 className="text-white font-bold mb-2">
+                    {searchQuery ? 'No carriers found' : 'No carriers available'}
+                  </h3>
+                  <p className="text-slate-500">
+                    {searchQuery ? 'Try a different search term' : 'Phone refill carriers will appear here once configured.'}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {paginatedOperators.map((operator) => (
+                      <button
+                        key={`${operator.id}-${operator.country}`}
+                        onClick={() => {
+                          setSelectedOperator(operator)
+                          setSelectedOffer(null)
+                          setPhoneNumber('')
+                          setPurchaseError(null)
+                        }}
+                        className="flex items-center gap-3 p-4 bg-charcoal border border-border-dark rounded-2xl hover:border-primary/50 transition-all text-left"
+                      >
+                        <FlagIcon countryCode={operator.country} className="w-8 h-8 rounded flex-shrink-0" />
+                        <div className="min-w-0">
+                          <h3 className="font-medium text-white text-sm truncate">{operator.name}</h3>
+                          <p className="text-xs text-slate-500">{resolveCountryName(operator.country)}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {renderPagination()}
+                </>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* How It Works */}
       <div className="bg-charcoal border border-border-dark rounded-2xl lg:rounded-3xl p-4 lg:p-12">
-        <h2 className="text-2xl font-bold text-white mb-8 text-center">Why Refill Your eSIM?</h2>
+        <h2 className="text-2xl font-bold text-white mb-8 text-center">How Phone Refills Work</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="text-center">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="flash" size={24} className="text-primary" />
+              <Icon name="search" size={24} className="text-primary" />
             </div>
-            <h3 className="font-bold text-white mb-2">Instant Top-Up</h3>
+            <h3 className="font-bold text-white mb-2">Find Carrier</h3>
             <p className="text-slate-500 text-sm">
-              Add data to your existing eSIM instantly. No need to install a new profile.
+              Search for the mobile carrier you want to top up.
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Icon name="phone" size={24} className="text-primary" />
+            </div>
+            <h3 className="font-bold text-white mb-2">Enter Number</h3>
+            <p className="text-slate-500 text-sm">
+              Enter the phone number you want to recharge.
             </p>
           </div>
           <div className="text-center">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Icon name="wallet" size={24} className="text-primary" />
             </div>
-            <h3 className="font-bold text-white mb-2">Save Money</h3>
+            <h3 className="font-bold text-white mb-2">Pay Instantly</h3>
             <p className="text-slate-500 text-sm">
-              Only pay for the data you need. Top up as often as you like.
+              Pay with your wallet balance. No extra fees.
             </p>
           </div>
           <div className="text-center">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="sim-card" size={24} className="text-primary" />
+              <Icon name="flash" size={24} className="text-primary" />
             </div>
-            <h3 className="font-bold text-white mb-2">Keep Your Number</h3>
+            <h3 className="font-bold text-white mb-2">Instant Delivery</h3>
             <p className="text-slate-500 text-sm">
-              Refill your existing eSIM plan without changing your configuration.
+              Airtime is delivered to the phone within seconds.
             </p>
-          </div>
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="headphones" size={24} className="text-primary" />
-            </div>
-            <h3 className="font-bold text-white mb-2">24/7 Support</h3>
-            <p className="text-slate-500 text-sm">Our support team is always here to help you.</p>
           </div>
         </div>
       </div>
