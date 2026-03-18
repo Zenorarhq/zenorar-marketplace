@@ -230,13 +230,13 @@ export default function AdminVendorsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl p-1 mb-6 overflow-x-auto">
+        <div className="flex gap-2 mb-6 overflow-x-auto max-w-full">
           {tabs.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                tab === t.id ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                tab === t.id ? 'bg-primary text-black' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-slate-400 hover:text-white'
               }`}
             >
               <Icon name={t.icon} size={14} />
