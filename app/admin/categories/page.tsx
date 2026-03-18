@@ -80,7 +80,11 @@ export default function CategoriesPage() {
     return flattened
   }
 
-  const categories = flattenCategories(categoriesTree)
+  const allCategories = flattenCategories(categoriesTree)
+  const categories = allCategories.filter((item: any) => {
+    if (item.level === 0) return true
+    return item.parentId && expandedCategories.has(item.parentId)
+  })
 
   const error = categoryError ? String(categoryError) : ''
 
@@ -210,14 +214,7 @@ export default function CategoriesPage() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedCategories
-                  .filter((item: any) => {
-                    // Always show main categories (level 0)
-                    if (item.level === 0) return true
-                    // Show subcategories only if parent is expanded
-                    return item.parentId && expandedCategories.has(item.parentId)
-                  })
-                  .map((category: any) => {
+                {paginatedCategories.map((category: any) => {
                   const icon = category.icon || getCategoryIcon(category.name)
                   const color = getCategoryColor(category.name)
                   const isSubcategory = category.level === 1

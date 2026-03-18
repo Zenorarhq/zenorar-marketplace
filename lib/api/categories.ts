@@ -39,7 +39,7 @@ export const categoriesApi = {
   },
 
   async getMainCategories() {
-    const result = await apiFetch<CategoryWithChildren[]>('/categories/public')
+    const result = await apiFetch<CategoryWithChildren[]>('/categories')
     if (result.success && result.data) {
       // Filter to get only main categories (no parent)
       return {

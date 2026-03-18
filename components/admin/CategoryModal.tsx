@@ -194,7 +194,7 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
               type="text"
               name="slug"
               value={formData.slug}
-              onChange={handleChange}
+              onChange={(e) => setFormData(prev => ({ ...prev, slug: generateSlug(e.target.value) }))}
               className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="e.g., scripts"
             />
