@@ -46,6 +46,7 @@ function WalletPageContent() {
   const [depositPage, setDepositPage] = useState(1)
   const [depositFilter, setDepositFilter] = useState<DepositStatus | 'all'>('all')
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [, setTick] = useState(0)
   const [resumeDeposit, setResumeDeposit] = useState<{
     depositId: string; network: string; amount: number; timeRemaining: number; cryptoAddress: string
   } | null>(null)
@@ -121,6 +122,13 @@ function WalletPageContent() {
 
     handlePayPalCapture()
   }, [searchParams, queryClient])
+
+  // Tick every second while deposits tab is open so crypto countdowns update live
+  useEffect(() => {
+    if (activeTab !== 'deposits') return
+    const id = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [activeTab])
 
   // Fetch wallet balance
   const { data: walletData, isLoading: walletLoading, isError: walletError } = useQuery({
