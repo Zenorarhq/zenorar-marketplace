@@ -101,6 +101,7 @@ export default function Header() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const mobileUserMenuRef = useRef<HTMLDivElement>(null)
+  const preferencesButtonRef = useRef<HTMLButtonElement>(null)
 
 
   // Close mobile menu on route change
@@ -470,6 +471,7 @@ export default function Header() {
               {/* Language & Currency */}
               <div className="relative">
                 <button
+                  ref={preferencesButtonRef}
                   type="button"
                   onClick={() => setShowPreferences(!showPreferences)}
                   aria-label="Change language and currency"
@@ -490,6 +492,7 @@ export default function Header() {
                 <PreferencesDialog
                   isOpen={showPreferences}
                   onClose={() => setShowPreferences(false)}
+                  triggerRef={preferencesButtonRef}
                 />
               </div>
 
