@@ -475,7 +475,12 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
           currency: paystackCurrency,
           ref: depositRef,
           callback: (response: any) => {
-            // Verify payment and credit wallet via local route
+            // Paystack confirmed payment — show success immediately
+            queryClient.invalidateQueries({ queryKey: ['wallet'] })
+            queryClient.invalidateQueries({ queryKey: ['deposits'] })
+            setStep('success')
+            setLoading(false)
+            // Sync wallet credit with backend in the background
             fetch('/api/deposits/paystack/verify', {
               method: 'POST',
               headers: {
@@ -483,22 +488,7 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet }: Deposi
                 ...(authToken && { Authorization: `Bearer ${authToken}` }),
               },
               body: JSON.stringify({ depositId: paystackDepositId, reference: response.reference }),
-            })
-              .then(res => res.json())
-              .then(result => {
-                if (result.success) {
-                  queryClient.invalidateQueries({ queryKey: ['wallet'] })
-                  queryClient.invalidateQueries({ queryKey: ['deposits'] })
-                  setStep('success')
-                } else {
-                  setError(result.error || 'Payment verification failed. Please contact support.')
-                }
-                setLoading(false)
-              })
-              .catch(() => {
-                setError('Payment verification failed. Please contact support.')
-                setLoading(false)
-              })
+            }).catch(err => console.error('Paystack background verify failed:', err))
           },
           onClose: () => setLoading(false),
         })
