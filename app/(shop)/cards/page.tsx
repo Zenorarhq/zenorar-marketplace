@@ -70,7 +70,6 @@ export default function CardsPage() {
   // Selected card state
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null)
   const [selectedDenomination, setSelectedDenomination] = useState<number | null>(null)
-  const [selectedBrand, setSelectedBrand] = useState<'visa' | 'mastercard'>('visa')
 
   // Payment state
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -161,7 +160,7 @@ export default function CardsPage() {
           provider,
           cardType: denomination ? 'instant' : 'virtual',
           denomination,
-          cardBrand: cardBrand || selectedBrand,
+          cardBrand: cardBrand || 'visa',
           paymentMethod: 'wallet'
         })
       })
@@ -182,7 +181,7 @@ export default function CardsPage() {
       setProcessingPayment(null)
       setPendingCheckout(null)
     }
-  }, [selectedBrand, router])
+  }, [router])
 
   // Handle pay with wallet click
   const handlePayWithWallet = async (provider: string, denomination: number | undefined, totalCost: number, cardBrand?: 'visa' | 'mastercard') => {
@@ -548,7 +547,7 @@ function VirtualCardOption({
       {/* Card Visual */}
       <div className="flex justify-center mb-4">
         <CardVisualPreview
-          brand="visa"
+          brand={(provider.cardBrand as 'visa' | 'mastercard') || 'visa'}
           type="virtual"
           isPremium={isPremium}
         />

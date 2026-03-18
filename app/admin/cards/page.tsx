@@ -129,6 +129,7 @@ function AdminCardsPageContent() {
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab)
+    if (tab === 'overview') setCardsPage(1)
     const params = new URLSearchParams(searchParams.toString())
     params.set('tab', tab)
     router.push(`/admin/cards?${params.toString()}`, { scroll: false })
@@ -141,7 +142,7 @@ function AdminCardsPageContent() {
   }, [tabParam])
 
   // Fetch cards overview (stats + paginated cards)
-  const { data: cardsData, isLoading: loadingCards } = useQuery({
+  const { data: cardsData, isLoading: loadingCards, isError: cardsError } = useQuery({
     queryKey: ['admin-cards', cardsPage, statusFilter, providerFilter],
     queryFn: async () => {
       const token = localStorage.getItem('admin_auth_token')
@@ -158,7 +159,7 @@ function AdminCardsPageContent() {
   })
 
   // Fetch providers
-  const { data: providers = [], isLoading: loadingProviders } = useQuery({
+  const { data: providers = [], isLoading: loadingProviders, isError: providersError } = useQuery({
     queryKey: ['admin-card-providers'],
     queryFn: async () => {
       const token = localStorage.getItem('admin_auth_token')
@@ -169,11 +170,11 @@ function AdminCardsPageContent() {
       if (!data.success) throw new Error(data.error)
       return data.data as ProviderConfig[]
     },
-    enabled: activeTab === 'providers' || activeTab === 'overview',
+    enabled: activeTab === 'providers' || activeTab === 'overview' || activeTab === 'issued' || activeTab === 'transactions',
   })
 
   // Fetch transactions
-  const { data: txData, isLoading: loadingTx } = useQuery({
+  const { data: txData, isLoading: loadingTx, isError: txError } = useQuery({
     queryKey: ['admin-card-transactions', txPage, txTypeFilter, txProviderFilter],
     queryFn: async () => {
       const token = localStorage.getItem('admin_auth_token')
@@ -418,6 +419,8 @@ function AdminCardsPageContent() {
                   <tbody>
                     {loadingCards ? (
                       <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td></tr>
+                    ) : cardsError ? (
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-red-400">Failed to load cards</td></tr>
                     ) : cards.length === 0 ? (
                       <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No cards issued yet</td></tr>
                     ) : (
@@ -469,6 +472,8 @@ function AdminCardsPageContent() {
           <div className="space-y-4">
             {loadingProviders ? (
               <div className="text-center py-8 text-slate-400">Loading providers...</div>
+            ) : providersError ? (
+              <div className="text-center py-8 text-red-400">Failed to load providers</div>
             ) : providers.length === 0 ? (
               <div className="bg-[#121212] border border-border-dark rounded-xl p-8 text-center">
                 <Icon name="credit-card" size={48} className="text-slate-600 mx-auto mb-4" />
@@ -561,9 +566,9 @@ function AdminCardsPageContent() {
                 className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
               >
                 <option value="">All Providers</option>
-                <option value="sudo">Sudo</option>
-                <option value="lithic">Lithic</option>
-                <option value="reloadly">Reloadly</option>
+                {providers.map(p => (
+                  <option key={p.provider} value={p.provider}>{p.display_name}</option>
+                ))}
               </select>
             </div>
 
@@ -585,6 +590,8 @@ function AdminCardsPageContent() {
                   <tbody>
                     {loadingCards ? (
                       <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">Loading...</td></tr>
+                    ) : cardsError ? (
+                      <tr><td colSpan={8} className="px-4 py-8 text-center text-red-400">Failed to load cards</td></tr>
                     ) : cards.length === 0 ? (
                       <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No cards found</td></tr>
                     ) : (
@@ -656,9 +663,9 @@ function AdminCardsPageContent() {
                 className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
               >
                 <option value="">All Providers</option>
-                <option value="sudo">Sudo</option>
-                <option value="lithic">Lithic</option>
-                <option value="reloadly">Reloadly</option>
+                {providers.map(p => (
+                  <option key={p.provider} value={p.provider}>{p.display_name}</option>
+                ))}
               </select>
             </div>
 
@@ -680,6 +687,8 @@ function AdminCardsPageContent() {
                   <tbody>
                     {loadingTx ? (
                       <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">Loading...</td></tr>
+                    ) : txError ? (
+                      <tr><td colSpan={8} className="px-4 py-8 text-center text-red-400">Failed to load transactions</td></tr>
                     ) : !txData?.transactions?.length ? (
                       <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No transactions found</td></tr>
                     ) : (
