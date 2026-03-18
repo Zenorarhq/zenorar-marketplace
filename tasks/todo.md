@@ -1,32 +1,20 @@
-# Page Builder Fixes — Todo
+# Finance Page Fixes — Todo
 
 ## Checklist
 
-- [x] 1. CRITICAL — Implement section delete / duplicate / move handlers (`[id]/page.tsx`)
-- [x] 2. HIGH — Fix Ctrl+S bypassing save indicator (`[id]/page.tsx`)
-- [x] 3. HIGH — Fix Undo/Redo hammering API (`[id]/page.tsx`)
-- [x] 4. HIGH — Set `NEXT_PUBLIC_SITE_URL` on Railway (deploy config, no code change)
-- [x] 5. MEDIUM — Fix tab counts resetting when filtered (`frontend/page.tsx`)
-- [x] 6. MEDIUM — Show error feedback on list page action failures (`frontend/page.tsx`)
-- [x] 7. LOW — Fix stale `index` closure in `useEditorHistory` (`useEditorHistory.ts`)
-- [x] 8. LOW — Fix missing `useCallback` deps on `handleUpdateSection` (`[id]/page.tsx`)
+- [x] 1. LOW — Delete dead Next.js `/api/finance/overview/route.ts` (conflicts with Express backend)
+- [x] 2. MEDIUM — Clear expense validation error at start of form submit (`finance/page.tsx`)
+- [x] 3. MEDIUM — Show error feedback when `saveEdit` validation fails (`finance/page.tsx`)
+- [x] 4. MEDIUM — Fix global `isPending` on delete mutation — track per-row with `deletingId` (`finance/page.tsx`)
 
 ## Review
 
 ### What changed and why
 
-1. **Section delete/duplicate/move** (`[id]/page.tsx`): Implemented `handleDeleteSection`, `handleDuplicateSection`, `handleMoveSection` as `useCallback` functions. All three reorder content, call `updateContent` + `scheduleSave`, and are wired to `EditorCanvas` and `PropertiesPanel`. Previously they were `() => {}` no-ops so the Navigator delete button did nothing.
+1. **Dead API route** (`app/api/finance/overview/route.ts`): Deleted. This Next.js route queried `orders` with raw SQL and returned a different data shape than the Express `/payments/finance/overview` endpoint. The frontend calls Express, so this was dead code that could return wrong numbers if accidentally hit.
 
-2. **Ctrl+S save indicator** (`[id]/page.tsx` line 102): Changed `savePage(page).catch(() => {})` to `scheduleSave(async () => savePage(page))` so the save flows through `useAutoSave` and the "Saved" indicator updates correctly.
+2. **Expense error on resubmit** (`finance/page.tsx` line 194): Added `setExpenseError('')` at the start of `onSubmit`. Previously, stale validation errors stayed visible during a valid resubmit until `onSuccess` fired.
 
-3. **Undo/Redo API hammering** (`[id]/page.tsx` lines 71–87): Changed both `handleUndo` and `handleRedo` to use `scheduleSave` instead of calling `savePage` directly. Rapid Ctrl+Z now batches into one API call after 3 seconds.
+3. **Silent saveEdit failure** (`finance/page.tsx` lines 101-103): Added `setExpenseError(...)` calls before early returns in `saveEdit()`. Previously clicking Save with invalid data did nothing — no feedback.
 
-4. **Deploy config**: No code change. Set `NEXT_PUBLIC_SITE_URL=https://yourdomain.com` on Railway to fix public pages 404 risk.
-
-5. **Tab counts** (`frontend/page.tsx`): Added `allPages` state. `loadPages` now does a parallel fetch of the unfiltered list alongside the filtered one. Tab badges and Quick Stats always read from `allPages`.
-
-6. **Silent action failures** (`frontend/page.tsx`): Added `actionError` state. All four action handlers (`handleDelete`, `handlePublish`, `handleUnpublish`, `handleDuplicate`) now call `setActionError` on failure. A dismissible red banner renders above the page list.
-
-7. **Stale history closure** (`useEditorHistory.ts`): Replaced two separate `useState` atoms with a single `{ stack, index }` state object. All three functions (`pushState`, `undo`, `redo`) use functional `setState(prev => ...)` — no stale closure is possible.
-
-8. **Missing useCallback deps** (`[id]/page.tsx`): Added `updateContent` and `scheduleSave` to `handleUpdateSection` deps array (fixed as part of item 1 — same location).
+4. **Per-row delete pending** (`finance/page.tsx` lines 19, 87-88, 344-349): Added `deletingId` state. Delete button now checks `deletingId === exp.id` instead of `deleteExpenseMutation.isPending`. Only the row being deleted is disabled, not all rows. Update mutation left as-is — only one edit row is visible at a time so global `isPending` is correct there.

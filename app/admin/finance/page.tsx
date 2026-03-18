@@ -16,6 +16,7 @@ export default function FinancePage() {
   const [expenseError, setExpenseError] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ amount: '', description: '', category: '' })
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Fetch finance overview
   const { data: overview = null } = useQuery({
@@ -83,6 +84,10 @@ export default function FinancePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-expenses'] })
       queryClient.invalidateQueries({ queryKey: ['finance-overview'] })
+      setDeletingId(null)
+    },
+    onError: () => {
+      setDeletingId(null)
     },
   })
 
@@ -98,8 +103,9 @@ export default function FinancePage() {
   const saveEdit = () => {
     if (!editingId) return
     const amount = parseFloat(editForm.amount)
-    if (!amount || amount <= 0) return
-    if (!editForm.description.trim()) return
+    if (!amount || amount <= 0) { setExpenseError('Enter a valid amount'); return }
+    if (!editForm.description.trim()) { setExpenseError('Enter a description'); return }
+    setExpenseError('')
     updateExpenseMutation.mutate({
       id: editingId,
       data: {
@@ -191,6 +197,7 @@ export default function FinancePage() {
         <form
           onSubmit={(e) => {
             e.preventDefault()
+            setExpenseError('')
             const amount = parseFloat(expenseForm.amount)
             if (!amount || amount <= 0) { setExpenseError('Enter a valid amount'); return }
             if (!expenseForm.description.trim()) { setExpenseError('Enter a description'); return }
@@ -334,10 +341,11 @@ export default function FinancePage() {
                             <button
                               onClick={() => {
                                 if (confirm('Delete this expense?')) {
+                                  setDeletingId(exp.id)
                                   deleteExpenseMutation.mutate(exp.id)
                                 }
                               }}
-                              disabled={deleteExpenseMutation.isPending}
+                              disabled={deletingId === exp.id}
                               className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-500 hover:text-red-400 disabled:opacity-50"
                               title="Delete"
                             >
