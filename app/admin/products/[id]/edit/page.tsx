@@ -9,7 +9,7 @@ import { productsApi, Product } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
 import MediaPickerModal from '@/components/admin/MediaPickerModal'
 import UploadProgressModal from '@/components/admin/UploadProgressModal'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, getAccessToken } from '@/lib/api/client'
 import { downloadsApi, ProductFile } from '@/lib/api/downloads'
 
 export default function EditProductPage() {
@@ -169,6 +169,18 @@ export default function EditProductPage() {
     setError('')
 
     try {
+      if (formData.extendedPrice && parseFloat(formData.extendedPrice) < 0) {
+        setError('Extended price cannot be negative')
+        setSaving(false)
+        return
+      }
+
+      if (formData.proPrice && parseFloat(formData.proPrice) < 0) {
+        setError('Pro price cannot be negative')
+        setSaving(false)
+        return
+      }
+
       const productData = {
         name: formData.name,
         slug: formData.slug,
@@ -200,9 +212,10 @@ export default function EditProductPage() {
           body: JSON.stringify({ value: formData.isStaffPick }),
         }).catch(() => {})
         // Save video URL
+        const token = getAccessToken()
         await fetch(`/api/products/${productId}/video`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ videoUrl: formData.videoUrl.trim() || null }),
         }).catch(() => {})
         router.push('/admin/products')

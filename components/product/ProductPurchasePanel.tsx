@@ -111,13 +111,19 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
           <div className="space-y-6 pt-6 border-t border-border-dark">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-border-dark overflow-hidden">
-                <Image
-                  src={product.seller.avatar}
-                  alt={product.seller.name}
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover"
-                />
+                {product.seller.avatar ? (
+                  <Image
+                    src={product.seller.avatar}
+                    alt={product.seller.name}
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-slate-400 text-sm font-bold">
+                    {product.seller.name?.charAt(0)?.toUpperCase() || '?'}
+                  </span>
+                )}
               </div>
               <div>
                 <div className="text-sm font-bold text-white flex items-center gap-1">
@@ -148,13 +154,6 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
               >
                 <Icon name="support-agent" size={14} />
                 Technical Support
-              </Link>
-              <Link
-                href={`/products/${product.slug}/docs`}
-                className="flex items-center gap-2 text-xs text-slate-400 hover:text-primary transition-colors"
-              >
-                <Icon name="description" size={14} />
-                Documentation
               </Link>
             </div>
           </div>

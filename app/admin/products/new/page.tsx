@@ -7,7 +7,7 @@ import Icon from '@/components/ui/Icon'
 import MediaPickerModal from '@/components/admin/MediaPickerModal'
 import { productsApi } from '@/lib/api/products'
 import { categoriesApi, Category } from '@/lib/api/categories'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, getAccessToken } from '@/lib/api/client'
 
 export default function NewProductPage() {
   const router = useRouter()
@@ -93,6 +93,18 @@ export default function NewProductPage() {
         return
       }
 
+      if (formData.extendedPrice && parseFloat(formData.extendedPrice) < 0) {
+        setError('Extended price cannot be negative')
+        setLoading(false)
+        return
+      }
+
+      if (formData.proPrice && parseFloat(formData.proPrice) < 0) {
+        setError('Pro price cannot be negative')
+        setLoading(false)
+        return
+      }
+
       const productData = {
         name: formData.name.trim(),
         slug: formData.slug || generateSlug(formData.name),
@@ -127,9 +139,10 @@ export default function NewProductPage() {
 
         // Save video URL if provided
         if (formData.videoUrl && formData.videoUrl.trim()) {
+          const token = getAccessToken()
           await fetch(`/api/products/${result.data.id}/video`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
             body: JSON.stringify({ videoUrl: formData.videoUrl.trim() }),
           }).catch(() => {})
         }
@@ -139,10 +152,10 @@ export default function NewProductPage() {
           await apiFetch(`/products/${result.data.id}/staff-pick`, {
             method: 'PATCH',
             body: JSON.stringify({ value: true }),
-          }).catch(() => {})
+          }).catch((e) => console.error('Staff pick save failed:', e))
         }
 
-        router.push('/admin/products')
+        router.push(`/admin/products/${result.data.id}/upload`)
       } else {
         const errorMsg = result.error || 'Failed to create product'
         console.error('Product creation failed:', errorMsg)

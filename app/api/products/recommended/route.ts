@@ -9,9 +9,9 @@ export async function GET() {
         p.id, p.name, p.slug, p.description, p.price, p."isFeatured" as is_featured,
         c.name as category_name,
         COALESCE(AVG(r.rating), 0) as average_rating,
-        COUNT(r.id) as review_count,
+        COUNT(DISTINCT r.id) as review_count,
         (
-          SELECT json_agg(json_build_object('url', pi.url, 'isPrimary', pi."isPrimary"))
+          SELECT json_agg(json_build_object('url', pi.url, 'isPrimary', pi."isPrimary") ORDER BY pi."isPrimary" DESC, pi."order")
           FROM product_images pi WHERE pi."productId" = p.id
         ) as images
       FROM products p

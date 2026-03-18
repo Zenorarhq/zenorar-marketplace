@@ -345,9 +345,9 @@ export default function AdminDashboard() {
 
           {/* Revenue Chart */}
           <div className="h-48 flex items-end gap-[2px]">
-            {chartData.length > 0 ? (
-              chartData.map((day: any, i: number) => {
-                const maxRevenue = Math.max(...chartData.map((d: any) => d.amount || d.revenue || 0), 1)
+            {chartData.length > 0 ? (() => {
+              const maxRevenue = Math.max(...chartData.map((d: any) => d.amount || d.revenue || 0), 1)
+              return chartData.map((day: any, i: number) => {
                 const dayAmount = day.amount || day.revenue || 0
                 const height = maxRevenue > 0 ? (dayAmount / maxRevenue) * 100 : 0
                 const barLabel = getChartLabel(day.date || day.month || '', period)
@@ -366,7 +366,7 @@ export default function AdminDashboard() {
                   </div>
                 )
               })
-            ) : (
+            })() : (
               <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
                 No revenue data available
               </div>

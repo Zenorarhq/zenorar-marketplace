@@ -195,27 +195,6 @@ export default function ProductTabs({ product }: ProductTabsProps) {
               </div>
             )}
 
-            {/* Documentation Link Card */}
-            {product.demoUrl && (
-              <div className="bg-surface-dark/50 border border-border-dark rounded-xl p-5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <Icon name="document" size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-white font-bold text-sm">Documentation Available</h4>
-                    <p className="text-slate-500 text-xs">View setup guides, API reference, and more</p>
-                  </div>
-                </div>
-                <a
-                  href={`/products/${product.slug}/docs`}
-                  className="px-4 py-2 rounded-lg border border-border-dark text-slate-300 hover:text-white hover:bg-surface-dark transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                  View Docs
-                  <Icon name="arrow-right" size={16} />
-                </a>
-              </div>
-            )}
           </div>
         )}
 

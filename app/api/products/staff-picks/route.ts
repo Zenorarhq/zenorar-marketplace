@@ -23,8 +23,8 @@ export async function GET(request: Request) {
       WHERE p.status = 'ACTIVE' AND p."isStaffPick" = true
       GROUP BY p.id, c.name
       ORDER BY p."createdAt" DESC
-      LIMIT ${limit}
-    `)
+      LIMIT $1
+    `, [limit])
 
     return NextResponse.json({ success: true, data: result.rows })
   } catch (error) {
