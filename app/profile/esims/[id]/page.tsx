@@ -7,6 +7,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import ProfileLayout from '@/components/profile/ProfileLayout'
 import Icon from '@/components/ui/Icon'
 import { getUserEsim, syncUsage, getTopupOptions, UserEsim } from '@/lib/api/esim'
+import { useCart } from '@/lib/cart-context'
 
 export default function EsimDetailPage() {
   const params = useParams()
@@ -17,6 +18,7 @@ export default function EsimDetailPage() {
   const [activeTab, setActiveTab] = useState<'details' | 'install' | 'topup'>('details')
   const [installPlatform, setInstallPlatform] = useState<'ios' | 'android'>('ios')
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const { addItem, showAddedToCartPopup } = useCart()
 
   // Fetch eSIM details
   const {
@@ -36,7 +38,7 @@ export default function EsimDetailPage() {
   })
 
   // Fetch top-up options
-  const { data: topupData } = useQuery({
+  const { data: topupData, isLoading: topupLoading, isError: topupError } = useQuery({
     queryKey: ['esim-topup-options', esimId],
     queryFn: async () => {
       const result = await getTopupOptions(esimId)
@@ -57,10 +59,11 @@ export default function EsimDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-esim', esimId] })
     },
+    onError: () => {},
   })
 
-  const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text)
+  const copyToClipboard = async (text: string, field: string) => {
+    await navigator.clipboard.writeText(text)
     setCopiedField(field)
     setTimeout(() => setCopiedField(null), 2000)
   }
@@ -141,14 +144,19 @@ export default function EsimDetailPage() {
             </p>
           </div>
 
-          <button
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white transition-all disabled:opacity-50"
-          >
-            <Icon name="refresh" size={18} className={syncMutation.isPending ? 'animate-spin' : ''} />
-            {syncMutation.isPending ? 'Syncing...' : 'Sync Usage'}
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-slate-300 hover:text-white transition-all disabled:opacity-50"
+            >
+              <Icon name="refresh" size={18} className={syncMutation.isPending ? 'animate-spin' : ''} />
+              {syncMutation.isPending ? 'Syncing...' : 'Sync Usage'}
+            </button>
+            {syncMutation.isError && (
+              <p className="text-red-400 text-xs">Sync failed. Please try again.</p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -348,7 +356,7 @@ export default function EsimDetailPage() {
                   Automatic (Scan QR Code)
                 </h4>
                 <ol className="space-y-2">
-                  {esimData.installationManual[installPlatform]?.automatic.map((step, idx) => (
+                  {esimData.installationManual[installPlatform]?.automatic?.map((step, idx) => (
                     <li key={idx} className="flex gap-3 text-slate-300">
                       <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-sm flex items-center justify-center">
                         {idx + 1}
@@ -366,7 +374,7 @@ export default function EsimDetailPage() {
                   Manual Installation
                 </h4>
                 <ol className="space-y-2">
-                  {esimData.installationManual[installPlatform]?.manual.map((step, idx) => (
+                  {esimData.installationManual[installPlatform]?.manual?.map((step, idx) => (
                     <li key={idx} className="flex gap-3 text-slate-300">
                       <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-700 text-slate-400 text-sm flex items-center justify-center">
                         {idx + 1}
@@ -394,7 +402,16 @@ export default function EsimDetailPage() {
         <div className="bg-[#121212] border border-border-dark rounded-xl p-6">
           <h3 className="text-lg font-bold text-white mb-4">Add More Data</h3>
 
-          {topupData && topupData.length > 0 ? (
+          {topupLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : topupError ? (
+            <div className="text-center py-8">
+              <Icon name="alert-circle" size={48} className="text-red-500 mx-auto mb-4" />
+              <p className="text-slate-400">Failed to load top-up options. Please try again.</p>
+            </div>
+          ) : topupData && topupData.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {topupData.map((option) => (
                 <div
@@ -411,7 +428,28 @@ export default function EsimDetailPage() {
                     <span className="text-xl font-bold text-white">
                       ${option.price.toFixed(2)}
                     </span>
-                    <button className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all text-sm">
+                    <button
+                      onClick={() => {
+                        const product = {
+                          id: option.id,
+                          name: `${esimData.planName} — ${option.dataAmountDisplay} Top-up`,
+                          slug: option.id,
+                          description: `${option.dataAmountDisplay} top-up, valid for ${option.validityDays} days`,
+                          price: option.price,
+                          rating: 5,
+                          reviewCount: 0,
+                          category: 'esim',
+                          categoryId: 'esim',
+                          icon: 'sim-card',
+                          iconColor: '#43D678',
+                          tags: ['esim', 'topup'],
+                          metadata: { productType: 'esim', esim_plan_id: option.id },
+                        }
+                        addItem(product, 'standard', option.price)
+                        showAddedToCartPopup(product, option.price)
+                      }}
+                      className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all text-sm"
+                    >
                       Add to Cart
                     </button>
                   </div>

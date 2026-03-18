@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic'
 
+const LOW_STOCK_THRESHOLD = 10
+
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { query } from '@/lib/db'
@@ -12,7 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await authenticateRequest(request)
 
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+    if (!user || !['ADMIN', 'SUPER_ADMIN', 'EDITOR'].includes(user.role)) {
       return NextResponse.json(
         { success: false, error: 'Admin access required' },
         { status: 403 }
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN esim_plans ep ON ei.plan_id = ep.id
       LEFT JOIN users u ON ei.sold_to_user_id = u.id
       ORDER BY COALESCE(ei.sold_at, ei.created_at) DESC
-      LIMIT 10
+      LIMIT 20
     `)
 
     // Get low stock alerts (plans with < 10 available)
@@ -79,9 +81,9 @@ export async function GET(request: NextRequest) {
       LEFT JOIN esim_inventory ei ON ep.id = ei.plan_id
       WHERE ep.is_active = true
       GROUP BY ep.id, ep.name, er.name
-      HAVING COUNT(*) FILTER (WHERE ei.status = 'available') < 10
+      HAVING COUNT(*) FILTER (WHERE ei.status = 'available') < $1
       ORDER BY COUNT(*) FILTER (WHERE ei.status = 'available') ASC
-    `)
+    `, [LOW_STOCK_THRESHOLD])
 
     return NextResponse.json({
       success: true,

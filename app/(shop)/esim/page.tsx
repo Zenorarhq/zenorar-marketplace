@@ -81,7 +81,7 @@ export default function EsimPage() {
   const { formatPrice } = usePreferences()
 
   // Fetch countries that have eSIM plans
-  const { data: rawCountries = [] } = useQuery({
+  const { data: rawCountries = [], isError: countriesError } = useQuery({
     queryKey: ['esim-plan-countries'],
     queryFn: async () => {
       const result = await esimApi.getPlanCountries()
@@ -117,7 +117,7 @@ export default function EsimPage() {
   )
 
   // Fetch regions
-  const { data: regions = [] } = useQuery({
+  const { data: regions = [], isError: regionsError } = useQuery({
     queryKey: ['esim-regions'],
     queryFn: async () => {
       const result = await esimApi.getRegions()
@@ -129,7 +129,7 @@ export default function EsimPage() {
   })
 
   // Fetch plans (only when a country or region is selected)
-  const { data: plans = [], isLoading: loadingPlans } = useQuery({
+  const { data: plans = [], isLoading: loadingPlans, isError: plansError } = useQuery({
     queryKey: ['esim-plans', selectedCountry, selectedRegion],
     queryFn: async () => {
       const result = await esimApi.getPlans({
@@ -291,6 +291,7 @@ export default function EsimPage() {
     }
 
     // Process payment
+    if (!window.confirm(`Pay ${formatPrice(plan.retailPrice)} for ${plan.name} using your wallet?`)) return
     await processWalletPayment(plan)
   }
 
@@ -327,6 +328,16 @@ export default function EsimPage() {
               <div className="h-10 bg-slate-700 rounded" />
             </div>
           ))}
+        </div>
+      )
+    }
+
+    if (plansError) {
+      return (
+        <div className="text-center py-12">
+          <Icon name="alert-circle" size={48} className="text-red-500 mx-auto mb-4" />
+          <h3 className="text-white font-bold mb-2">Failed to load plans</h3>
+          <p className="text-slate-500">Something went wrong. Please try again.</p>
         </div>
       )
     }
@@ -516,7 +527,7 @@ export default function EsimPage() {
       {/* Auth Dialog */}
       <AuthDialog
         isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
+        onClose={() => { setShowLoginModal(false); setPendingPlan(null) }}
         onSuccess={() => {
           setShowLoginModal(false)
           setPendingWalletCheckout(true)
@@ -622,6 +633,11 @@ export default function EsimPage() {
               </div>
               {renderPlans()}
             </>
+          ) : countriesError ? (
+            <div className="text-center py-12">
+              <Icon name="alert-circle" size={48} className="text-red-500 mx-auto mb-4" />
+              <p className="text-slate-400">Failed to load countries. Please refresh.</p>
+            </div>
           ) : (
             <>
               {/* Country grid */}
@@ -669,6 +685,11 @@ export default function EsimPage() {
               </div>
               {renderPlans()}
             </>
+          ) : regionsError ? (
+            <div className="text-center py-12">
+              <Icon name="alert-circle" size={48} className="text-red-500 mx-auto mb-4" />
+              <p className="text-slate-400">Failed to load regions. Please refresh.</p>
+            </div>
           ) : (
             /* Region cards with images */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

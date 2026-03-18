@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await authenticateRequest(request)
 
-    if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+    if (!user || !['ADMIN', 'SUPER_ADMIN', 'EDITOR'].includes(user.role)) {
       return NextResponse.json(
         { success: false, error: 'Admin access required' },
         { status: 403 }

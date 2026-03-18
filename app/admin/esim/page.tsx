@@ -103,6 +103,10 @@ function AdminEsimPageContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 50
 
+  // Inventory pagination (separate from overview pagination)
+  const [inventoryPage, setInventoryPage] = useState(1)
+  const inventoryPageSize = 50
+
   // Filters
   const [selectedPlan, setSelectedPlan] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -112,6 +116,15 @@ function AdminEsimPageContent() {
   const [importPlanId, setImportPlanId] = useState('')
   const [importData, setImportData] = useState('')
   const [importError, setImportError] = useState('')
+  const [importSuccess, setImportSuccess] = useState('')
+
+  const closeImportModal = () => {
+    setShowImportModal(false)
+    setImportPlanId('')
+    setImportData('')
+    setImportError('')
+    setImportSuccess('')
+  }
 
   // Sync results modal
   const [lastSyncResults, setLastSyncResults] = useState<SyncResult[] | null>(null)
@@ -159,7 +172,7 @@ function AdminEsimPageContent() {
   })
 
   // Fetch plans
-  const { data: plansData, isLoading: loadingPlans } = useQuery({
+  const { data: plansData, isLoading: loadingPlans, isError: plansError } = useQuery({
     queryKey: ['admin-esim-plans'],
     queryFn: async () => {
       const token = localStorage.getItem('admin_auth_token')
@@ -194,13 +207,15 @@ function AdminEsimPageContent() {
   })
 
   // Fetch inventory items
-  const { data: inventoryData, isLoading: loadingInventory } = useQuery({
-    queryKey: ['esim-inventory', selectedPlan, statusFilter],
+  const { data: inventoryData, isLoading: loadingInventory, isError: inventoryError } = useQuery({
+    queryKey: ['esim-inventory', selectedPlan, statusFilter, inventoryPage],
     queryFn: async () => {
       const token = localStorage.getItem('admin_auth_token')
       const params = new URLSearchParams()
       if (selectedPlan) params.append('planId', selectedPlan)
       if (statusFilter) params.append('status', statusFilter)
+      params.append('page', String(inventoryPage))
+      params.append('limit', String(inventoryPageSize))
       const res = await fetch(`/api/admin/esim/inventory?${params}`, {
         headers: {
           'Content-Type': 'application/json',
@@ -267,13 +282,13 @@ function AdminEsimPageContent() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['esim-inventory'] })
       queryClient.invalidateQueries({ queryKey: ['esim-inventory-stats'] })
-      setShowImportModal(false)
-      setImportData('')
       setImportPlanId('')
-      alert(`Import complete: ${data.imported} imported, ${data.duplicates} duplicates skipped`)
+      setImportData('')
+      setImportError('')
+      setImportSuccess(`Import complete: ${data.imported} imported, ${data.duplicates} duplicates skipped`)
     },
     onError: (error: any) => {
-      setImportError(error.message)
+      setImportError(error.message || 'Import failed')
     }
   })
 
@@ -369,7 +384,11 @@ function AdminEsimPageContent() {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => syncMutation.mutate()}
+              onClick={() => {
+                if (window.confirm('Sync all eSIM providers? This will fetch and update plans from all configured providers.')) {
+                  syncMutation.mutate()
+                }
+              }}
               disabled={syncMutation.isPending}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
@@ -496,6 +515,10 @@ function AdminEsimPageContent() {
                   {loadingPlans ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
+                    </tr>
+                  ) : plansError ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-red-400">Failed to load plans</td>
                     </tr>
                   ) : plans.length === 0 ? (
                     <tr>
@@ -659,7 +682,7 @@ function AdminEsimPageContent() {
             <div className="flex flex-wrap gap-3 mb-4">
               <select
                 value={selectedPlan}
-                onChange={(e) => setSelectedPlan(e.target.value)}
+                onChange={(e) => { setSelectedPlan(e.target.value); setInventoryPage(1) }}
                 className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
               >
                 <option value="">All Plans</option>
@@ -669,7 +692,7 @@ function AdminEsimPageContent() {
               </select>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => { setStatusFilter(e.target.value); setInventoryPage(1) }}
                 className="px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-white text-sm"
               >
                 <option value="">All Statuses</option>
@@ -699,6 +722,10 @@ function AdminEsimPageContent() {
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
                       </tr>
+                    ) : inventoryError ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 text-center text-red-400">Failed to load inventory</td>
+                      </tr>
                     ) : !inventoryData?.items?.length ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
@@ -725,11 +752,32 @@ function AdminEsimPageContent() {
                   </tbody>
                 </table>
               </div>
-              {inventoryData?.pagination && (
-                <div className="p-4 border-t border-border-dark">
-                  <p className="text-sm text-slate-400">
-                    Showing {inventoryData.items?.length || 0} of {inventoryData.pagination.total} items
-                  </p>
+              {inventoryData?.pagination && inventoryData.pagination.total > inventoryPageSize && (
+                <div className="border-t border-[#1f1f1f] px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-slate-400 text-sm">
+                      Showing {((inventoryPage - 1) * inventoryPageSize) + 1}–{Math.min(inventoryPage * inventoryPageSize, inventoryData.pagination.total)} of {inventoryData.pagination.total} items
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
+                        disabled={inventoryPage === 1}
+                        className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-slate-400 text-sm">
+                        Page {inventoryPage} of {Math.ceil(inventoryData.pagination.total / inventoryPageSize)}
+                      </span>
+                      <button
+                        onClick={() => setInventoryPage(p => Math.min(Math.ceil(inventoryData.pagination.total / inventoryPageSize), p + 1))}
+                        disabled={inventoryPage >= Math.ceil(inventoryData.pagination.total / inventoryPageSize)}
+                        className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -739,12 +787,12 @@ function AdminEsimPageContent() {
         {/* Import Modal */}
         {showImportModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowImportModal(false)} />
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeImportModal} />
             <div className="relative bg-[#121212] border border-border-dark rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
               <div className="flex items-center justify-between p-6 border-b border-border-dark">
                 <h2 className="text-xl font-bold text-white">Import Bulk eSIMs</h2>
                 <button
-                  onClick={() => setShowImportModal(false)}
+                  onClick={closeImportModal}
                   className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
                 >
                   <Icon name="x" size={20} />
@@ -808,10 +856,15 @@ function AdminEsimPageContent() {
                     {importError}
                   </div>
                 )}
+                {importSuccess && (
+                  <div className="p-3 bg-green-900/30 border border-green-500/20 rounded-lg text-green-400 text-sm">
+                    {importSuccess}
+                  </div>
+                )}
               </div>
               <div className="p-6 border-t border-border-dark flex gap-3 justify-end">
                 <button
-                  onClick={() => setShowImportModal(false)}
+                  onClick={closeImportModal}
                   className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-[#262626] transition-colors"
                 >
                   Cancel
