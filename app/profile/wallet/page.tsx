@@ -551,7 +551,10 @@ function WalletPageContent() {
           ) : depositsData?.deposits && depositsData.deposits.length > 0 ? (
             <div className="space-y-3">
               {depositsData.deposits.map((deposit: Deposit) => {
-                const statusConfig = depositStatusConfig[deposit.status] || depositStatusConfig.PENDING
+                const isCryptoWindowExpired = deposit.status === 'PENDING'
+                  && deposit.paymentMethod.startsWith('CRYPTO')
+                  && Date.now() > new Date(deposit.createdAt).getTime() + 45 * 60 * 1000
+                const statusConfig = depositStatusConfig[isCryptoWindowExpired ? 'EXPIRED' : deposit.status] || depositStatusConfig.PENDING
                 const methodLabel = depositMethodLabels[deposit.paymentMethod] || deposit.paymentMethod
 
                 return (
