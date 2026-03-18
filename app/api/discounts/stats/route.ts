@@ -10,7 +10,7 @@ export const GET = requireAdmin(async (request: NextRequest) => {
     const result = await executeQuery(`
       SELECT
         COUNT(*)::int AS "totalCodes",
-        COUNT(*) FILTER (WHERE "isActive" = true AND ("expiresAt" IS NULL OR "expiresAt" > NOW()))::int AS "activeCodes",
+        COUNT(*) FILTER (WHERE "isActive" = true AND ("expiresAt" IS NULL OR "expiresAt" > NOW()) AND ("startsAt" IS NULL OR "startsAt" <= NOW()))::int AS "activeCodes",
         COALESCE(SUM("usageCount"), 0)::int AS "totalUsage"
       FROM discounts
     `)

@@ -133,7 +133,7 @@ export default function DiscountsPage() {
       usageLimit: discount.usageLimit?.toString() || '',
       minOrderValue: discount.minOrderValue?.toString() || '',
       maxDiscountValue: discount.maxDiscountValue?.toString() || '',
-      startsAt: (discount as any).startsAt ? new Date((discount as any).startsAt).toISOString().split('T')[0] : '',
+      startsAt: discount.startsAt ? new Date(discount.startsAt).toISOString().split('T')[0] : '',
       expiresAt: discount.expiresAt ? new Date(discount.expiresAt).toISOString().split('T')[0] : '',
       isActive: discount.isActive,
     })
@@ -287,6 +287,7 @@ export default function DiscountsPage() {
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Type</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Value</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Usage</th>
+                <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Starts</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Expires</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Status</th>
                 <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Actions</th>
@@ -295,7 +296,8 @@ export default function DiscountsPage() {
             <tbody>
               {discounts.map((discount) => {
                 const expired = isExpired(discount.expiresAt)
-                const status = !discount.isActive || expired ? 'inactive' : 'active'
+                const notStarted = !!(discount.startsAt && new Date(discount.startsAt) > new Date())
+                const status = !discount.isActive || expired ? 'inactive' : notStarted ? 'scheduled' : 'active'
 
                 return (
                   <tr
@@ -319,6 +321,11 @@ export default function DiscountsPage() {
                       {discount.usageLimit ? ` / ${discount.usageLimit}` : ''}
                     </td>
                     <td className="px-5 py-3 text-slate-400 text-sm">
+                      {discount.startsAt
+                        ? formatDateShort(discount.startsAt, tz)
+                        : 'Now'}
+                    </td>
+                    <td className="px-5 py-3 text-slate-400 text-sm">
                       {discount.expiresAt
                         ? formatDateShort(discount.expiresAt, tz)
                         : 'Never'}
@@ -328,10 +335,12 @@ export default function DiscountsPage() {
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                           status === 'active'
                             ? 'bg-primary/10 text-primary'
+                            : status === 'scheduled'
+                            ? 'bg-blue-500/10 text-blue-400'
                             : 'bg-red-500/10 text-red-400'
                         }`}
                       >
-                        {status === 'active' ? 'Active' : expired ? 'Expired' : 'Inactive'}
+                        {status === 'active' ? 'Active' : status === 'scheduled' ? 'Scheduled' : expired ? 'Expired' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-5 py-3">

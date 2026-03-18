@@ -9,6 +9,7 @@ export interface Discount {
   minOrderValue: number | null
   maxDiscountValue: number | null
   isActive: boolean
+  startsAt: string | null
   expiresAt: string | null
   usageCount?: number
   createdAt: string
@@ -35,6 +36,7 @@ export interface CreateDiscountData {
   usageLimit?: number
   minOrderValue?: number
   maxDiscountValue?: number
+  startsAt?: string
   expiresAt?: string
   isActive?: boolean
 }

@@ -118,7 +118,7 @@ export default function CheckoutPage() {
     setDiscountError('')
 
     try {
-      const res = await discountsApi.validate(discountInput.trim(), total)
+      const res = await discountsApi.validate(discountInput.trim(), excludeVirtualNumbers ? displayTotal : total)
 
       if (res.success && res.data) {
         setDiscountCode(res.data.code)
