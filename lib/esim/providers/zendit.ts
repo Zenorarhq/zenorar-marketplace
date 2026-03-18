@@ -220,7 +220,7 @@ export class ZenditProvider implements EsimProviderInterface {
           costPrice,
           currency: priceObj?.currency || offer.currency || 'USD',
           networkType: offer.dataSpeeds?.join('/') || '4g/lte',
-          supportsTopup: offer.topupSupported || false,
+          supportsTopup: offer.topupSupported !== false,
         }
       })
 
