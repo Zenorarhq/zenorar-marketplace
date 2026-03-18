@@ -171,32 +171,6 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 pt-6 border-t border-[#1f1f1f]">
-            <p className="text-slate-500 text-xs text-center mb-3">Demo Credentials</p>
-            <div className="bg-[#1a1a1a] rounded-lg p-3 text-sm space-y-1">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Email:</span>
-                <button
-                  type="button"
-                  onClick={() => setEmail('admin@zenorar.com')}
-                  className="text-primary hover:underline"
-                >
-                  admin@zenorar.com
-                </button>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Password:</span>
-                <button
-                  type="button"
-                  onClick={() => setPassword('admin123')}
-                  className="text-primary hover:underline"
-                >
-                  admin123
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Back to Site */}
