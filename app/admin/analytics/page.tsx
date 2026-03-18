@@ -196,6 +196,13 @@ export default function AnalyticsPage() {
   const maxCategoryRevenue = Math.max(...revenueByCategory.map((d: any) => d.revenue || 0), 1)
 
   // CSV Export
+  function csvEscape(val: string) {
+    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+      return `"${val.replace(/"/g, '""')}"`
+    }
+    return val
+  }
+
   function handleExport() {
     let csv = ''
     let filename = 'analytics'
@@ -212,13 +219,13 @@ export default function AnalyticsPage() {
     } else if (activeTab === 'products') {
       csv = 'Product,Price,Stock,Status\n'
       productsList.forEach((p: any) => {
-        csv += `"${p.name}",${p.price},${p.stock},${p.stock > 0 ? 'In Stock' : 'Out of Stock'}\n`
+        csv += `${csvEscape(p.name)},${p.price},${p.stock},${p.stock > 0 ? 'In Stock' : 'Out of Stock'}\n`
       })
       filename = 'analytics-products'
     } else if (activeTab === 'customers') {
       csv = 'Customer,Order,Amount,Date\n'
       recentOrders.forEach((o: any) => {
-        csv += `"${o.email || 'Guest'}",${o.orderNumber},${o.total},${new Date(o.createdAt).toLocaleDateString()}\n`
+        csv += `${csvEscape(o.email || 'Guest')},${o.orderNumber},${o.total},${new Date(o.createdAt).toLocaleDateString()}\n`
       })
       filename = 'analytics-customers'
     } else if (activeTab === 'transactions') {
@@ -240,6 +247,9 @@ export default function AnalyticsPage() {
 
   const handleTabClick = (tabId: TabType, index: number) => {
     setActiveTab(tabId)
+    setProductsPage(1)
+    setCustomersPage(1)
+    setTransactionsPage(1)
     if (tabsRef.current) {
       const container = tabsRef.current
       const tabs = container.children
@@ -274,7 +284,7 @@ export default function AnalyticsPage() {
                   {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
                     <button
                       key={p}
-                      onClick={() => { setPeriod(p); setShowPeriodMenu(false) }}
+                      onClick={() => { setPeriod(p); setShowPeriodMenu(false); setProductsPage(1); setCustomersPage(1); setTransactionsPage(1) }}
                       className={`block w-full text-left px-3 py-2 text-sm transition-colors ${
                         period === p ? 'bg-primary/10 text-primary' : 'text-slate-300 hover:bg-white/5'
                       }`}
@@ -465,8 +475,8 @@ export default function AnalyticsPage() {
                     <div className="space-y-3">
                       {topProducts.length > 0 ? (
                         topProducts.map((product: any) => {
-                          const salesCount = product._count?.orderItems || 0
-                          const maxSales = Math.max(...topProducts.map((p: any) => p._count?.orderItems || 0))
+                          const salesCount = product.sales || 0
+                          const maxSales = Math.max(...topProducts.map((p: any) => p.sales || 0))
                           const percentage = maxSales > 0 ? (salesCount / maxSales) * 100 : 0
                           return (
                             <div key={product.id}>
@@ -892,7 +902,7 @@ export default function AnalyticsPage() {
                 </div>
                 <p className="text-white text-lg lg:text-2xl font-bold mb-1">{recentOrders.length}</p>
                 <p className="text-xs">
-                  <span className="text-slate-500">last 10 orders</span>
+                  <span className="text-slate-500">recent orders</span>
                 </p>
               </div>
 
