@@ -58,7 +58,7 @@ export default function Header() {
   const { user, isAuthenticated, logout } = useAuth()
   const { preferences, formatPrice } = usePreferences()
   const { unreadCount } = useNotifications()
-  const { siteName, logoUrl, rawSettings, isLoaded } = useSiteSettings()
+  const { siteName, logoUrl, faviconUrl, rawSettings, isLoaded } = useSiteSettings()
 
   // Fetch wallet balance when authenticated
   const { data: walletData } = useQuery({
@@ -244,8 +244,10 @@ export default function Header() {
             >
               {isLoaded && (logoUrl ? (
                 <>
-                  <img src={logoUrl} alt={siteName} className={`${logoHeightClass} w-auto object-contain`} />
-                  {showSiteName && <span>{siteName}</span>}
+                  {/* Mobile: favicon only. Desktop: full logo */}
+                  {faviconUrl && <img src={faviconUrl} alt={siteName} className="h-8 w-8 object-contain md:hidden" />}
+                  <img src={logoUrl} alt={siteName} className={`${logoHeightClass} w-auto object-contain hidden md:block`} />
+                  {showSiteName && <span className="hidden md:inline">{siteName}</span>}
                 </>
               ) : siteName ? (
                 <span>{siteName}</span>
