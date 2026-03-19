@@ -15,6 +15,7 @@ interface VendorBalance {
   available: number
   lifetimeEarned: number
   minPayoutAmount: number
+  suspended: boolean
 }
 
 interface Commission {
@@ -386,6 +387,19 @@ export default function CommissionsPage() {
   return (
     <ProfileLayout>
       <div className="space-y-6">
+        {/* Suspension banner */}
+        {balance?.suspended && (
+          <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-xl px-5 py-4">
+            <Icon name="ban" size={20} className="text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-red-400 font-semibold text-sm">Your vendor account is suspended</p>
+              <p className="text-red-400/70 text-xs mt-0.5">
+                Commission earnings are paused. New orders will not generate commissions. Your existing balance is preserved. Contact support to resolve this.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
