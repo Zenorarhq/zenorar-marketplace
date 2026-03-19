@@ -2245,6 +2245,8 @@ export default function AdminSettingsPage() {
                   </div>
                 )}
               </div>
+              {/* Script Protection Levels */}
+              <ProtectionLevelsSection />
             </div>
           )}
 
@@ -6107,8 +6109,6 @@ export default function AdminSettingsPage() {
                   </div>
                 </div>
               </div>
-              {/* Script Protection Levels */}
-              <ProtectionLevelsSection />
               {/* Script Commission Tiers */}
               <ScriptCommissionTiersSection />
             </div>
