@@ -139,7 +139,7 @@ export default function NotificationsDropdown({ isOpen, onClose, variant = 'drop
       </div>
 
       {/* Notifications List */}
-      <div className="max-h-[360px] overflow-y-auto">
+      <div className="max-h-[360px] overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {isLoading && notifications.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <Icon name="loading" size={24} className="text-primary animate-spin" />
