@@ -459,12 +459,33 @@ export default function OrdersPage() {
                         }
 
                         const isPhoneRefill = productType === 'phone_refill'
+                        const isCarrierEsim = productType === 'carrier_esim'
                         const operatorName = mergedMeta?.operatorName
+                        const carrierName = mergedMeta?.carrierName
 
                         if (isPhoneRefill && operatorName) {
                           return (
                             <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
                               <ServiceLogo name={operatorName} size={40} />
+                            </div>
+                          )
+                        }
+
+                        if (isCarrierEsim && carrierName) {
+                          return (
+                            <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              <ServiceLogo name={carrierName} size={40} />
+                            </div>
+                          )
+                        }
+
+                        const isOtpNumber = productType === 'otp_number'
+                        const otpServiceId = mergedMeta?.service_id
+
+                        if (isOtpNumber && otpServiceId) {
+                          return (
+                            <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              <ServiceLogo name={otpServiceId} size={40} />
                             </div>
                           )
                         }
@@ -483,7 +504,7 @@ export default function OrdersPage() {
                               />
                             ) : null}
                             <div className={`${imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
-                              <Icon name={isGiftCard ? 'gift' : isEsim ? 'sim-card' : isPhoneRefill ? 'phone' : 'box'} size={36} className="text-slate-500" />
+                              <Icon name={isGiftCard ? 'gift' : isEsim || isCarrierEsim ? 'sim-card' : isVirtualNumber || isPhoneRefill || isOtpNumber ? 'phone' : 'box'} size={36} className="text-slate-500" />
                             </div>
                           </div>
                         )
