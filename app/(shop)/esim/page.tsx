@@ -874,15 +874,21 @@ export default function EsimPage() {
           ) : (
             <>
               {/* Country grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {paginatedCountries.map((country) => (
                   <button
                     key={country.isoCode}
                     onClick={() => setSelectedCountry(country.isoCode)}
-                    className="flex items-center gap-3 p-4 bg-charcoal border border-border-dark rounded-2xl hover:border-primary/50 transition-all text-left"
+                    className="flex flex-col items-center p-2 sm:p-3 bg-charcoal border border-border-dark hover:border-primary/50 transition-all text-center rounded-lg"
                   >
-                    <FlagIcon countryCode={country.isoCode} className="w-8 h-8 rounded flex-shrink-0" />
-                    <span className="text-white font-medium text-sm truncate">{country.name}</span>
+                    {/* Flag shaped as SIM card — notch at bottom-right */}
+                    <div
+                      className="w-4/5 mx-auto aspect-[4/3] overflow-hidden mb-2 [&>svg]:block [&>svg]:w-full"
+                      style={{ clipPath: 'polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%)' }}
+                    >
+                      <FlagIcon countryCode={country.isoCode} className="w-full block" />
+                    </div>
+                    <span className="font-medium text-white text-[10px] sm:text-xs truncate w-full">{country.name}</span>
                   </button>
                 ))}
               </div>
