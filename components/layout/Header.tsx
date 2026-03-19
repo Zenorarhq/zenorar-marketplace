@@ -125,13 +125,12 @@ export default function Header() {
     }
   }, [mobileMenuOpen])
 
-  // Map current pathname to a shop category page for context-aware search
-  const getContextPage = (): string | null => {
-    if (pathname.startsWith('/esim')) return '/esim'
-    if (pathname.startsWith('/gift-cards')) return '/gift-cards'
-    if (pathname.startsWith('/virtual-numbers')) return '/virtual-numbers'
-    if (pathname.startsWith('/phone-refills')) return '/phone-refills'
-    if (pathname.startsWith('/scripts')) return '/scripts'
+  // Map current pathname to a universal search category for context-aware search
+  const getContextCategory = (): string | null => {
+    if (pathname.startsWith('/esim')) return 'esims'
+    if (pathname.startsWith('/gift-cards')) return 'gift_cards'
+    if (pathname.startsWith('/virtual-numbers')) return 'virtual_numbers'
+    if (pathname.startsWith('/scripts')) return 'scripts'
     return null
   }
 
@@ -141,19 +140,12 @@ export default function Header() {
     if (!q) return
     setShowSearchDropdown(false)
 
-    const contextPage = getContextPage()
-    if (contextPage) {
-      // On a shop page — navigate with search param to filter in-page
-      const url = new URL(contextPage, window.location.origin)
-      url.searchParams.set('search', q)
-      // Preserve existing params like tab
-      const currentParams = new URLSearchParams(window.location.search)
-      currentParams.forEach((value, key) => {
-        if (key !== 'search') url.searchParams.set(key, value)
-      })
-      router.push(url.pathname + url.search)
+    const contextCategory = getContextCategory()
+    if (contextCategory) {
+      // On a shop page — go to universal search with that category pre-selected
+      router.push(`/search?q=${encodeURIComponent(q)}&category=${contextCategory}`)
     } else {
-      // Not on a shop page — go to universal search
+      // Not on a shop page — go to universal search (all categories)
       router.push(`/search?q=${encodeURIComponent(q)}`)
     }
   }

@@ -116,23 +116,6 @@ export default function EsimPage() {
     })
   }, [rawCountries])
 
-  // Context-aware search: auto-select country from URL search param
-  const urlSearch = searchParams.get('search')
-  useEffect(() => {
-    if (urlSearch && sortedCountries.length > 0 && !selectedCountry) {
-      const q = urlSearch.toLowerCase()
-      const match = sortedCountries.find(
-        c => c.name.toLowerCase().includes(q) || c.isoCode.toLowerCase() === q
-      )
-      if (match) {
-        setSelectedCountry(match.isoCode)
-        setTimeout(() => {
-          document.getElementById('esim-plans-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }, 300)
-      }
-    }
-  }, [urlSearch, sortedCountries, selectedCountry])
-
   // Pagination
   const totalCountryPages = Math.ceil(sortedCountries.length / COUNTRIES_PER_PAGE)
   const paginatedCountries = sortedCountries.slice(

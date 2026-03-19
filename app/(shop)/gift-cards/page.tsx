@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
@@ -61,7 +61,6 @@ const categoryGradients: Record<string, string> = {
 
 export default function GiftCardsPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { isAuthenticated } = useAuth()
   const { addItem, showAddedToCartPopup } = useCart()
   const { formatPrice, preferences } = usePreferences()
@@ -70,7 +69,7 @@ export default function GiftCardsPage() {
   const currencySymbol = preferences?.currency?.symbol || '$'
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
+  const [searchQuery, setSearchQuery] = useState('')
 
 
   // Fetch gift cards from API with React Query caching

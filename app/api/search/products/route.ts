@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '12')))
     const offset = (page - 1) * limit
 
-    const conditions: string[] = ['p.status = \'ACTIVE\'']
+    const conditions: string[] = ['p.status = \'ACTIVE\'', 'p.price > 0']
     const values: any[] = []
     let paramIndex = 1
 

@@ -21,12 +21,12 @@ export async function GET(request: NextRequest) {
 
     const pattern = `%${query}%`
 
-    // Matching products
+    // Matching products (exclude $0 placeholders)
     const productsSql = `
       SELECT p.id, p.name, p.slug, p.price,
         (SELECT pi.url FROM product_images pi WHERE pi."productId" = p.id ORDER BY pi."isPrimary" DESC, pi."order" ASC LIMIT 1) as image
       FROM products p
-      WHERE p.status = 'ACTIVE' AND (p.name ILIKE $1 OR p.description ILIKE $1)
+      WHERE p.status = 'ACTIVE' AND p.price > 0 AND (p.name ILIKE $1 OR p.description ILIKE $1)
       ORDER BY p."isFeatured" DESC, p.name ASC
       LIMIT $2
     `
@@ -41,11 +41,11 @@ export async function GET(request: NextRequest) {
       LIMIT $2
     `
 
-    // Suggestions (distinct product names that match)
+    // Suggestions (distinct product names that match, exclude $0 placeholders)
     const suggestionsSql = `
       SELECT DISTINCT p.name
       FROM products p
-      WHERE p.status = 'ACTIVE' AND p.name ILIKE $1
+      WHERE p.status = 'ACTIVE' AND p.price > 0 AND p.name ILIKE $1
       ORDER BY p.name ASC
       LIMIT $2
     `
@@ -77,13 +77,23 @@ export async function GET(request: NextRequest) {
       LIMIT $2
     `
 
-    const [productsResult, categoriesResult, suggestionsResult, esimsResult, giftCardsResult, virtualNumbersResult] = await Promise.all([
+    // Carrier eSIM plans
+    const carrierEsimsSql = `
+      SELECT id, carrier_name, carrier_slug, plan_name, retail_price, data_amount_display
+      FROM carrier_esim_plans
+      WHERE is_active = true AND (carrier_name ILIKE $1 OR plan_name ILIKE $1)
+      ORDER BY is_featured DESC, carrier_name ASC
+      LIMIT $2
+    `
+
+    const [productsResult, categoriesResult, suggestionsResult, esimsResult, giftCardsResult, virtualNumbersResult, carrierEsimsResult] = await Promise.all([
       executeQuery(productsSql, [pattern, limit]),
       executeQuery(categoriesSql, [pattern, limit, VERIFIED_CATEGORY_SLUGS]),
       executeQuery(suggestionsSql, [pattern, limit]),
       executeQuery(esimsSql, [pattern, 3]),
       executeQuery(giftCardsSql, [pattern, 3]),
       executeQuery(virtualNumbersSql, [pattern, 3]),
+      executeQuery(carrierEsimsSql, [pattern, 3]),
     ])
 
     const products = productsResult.rows.map(row => ({
@@ -128,9 +138,18 @@ export async function GET(request: NextRequest) {
       retailMonthly: Number(row.retail_monthly),
     }))
 
+    const carrierEsims = carrierEsimsResult.rows.map(row => ({
+      id: row.id,
+      carrierName: row.carrier_name,
+      carrierSlug: row.carrier_slug,
+      planName: row.plan_name,
+      retailPrice: Number(row.retail_price),
+      dataAmountDisplay: row.data_amount_display,
+    }))
+
     return NextResponse.json({
       success: true,
-      data: { products, categories, suggestions, esims, giftCards, virtualNumbers },
+      data: { products, categories, suggestions, esims, giftCards, virtualNumbers, carrierEsims },
     })
   } catch (error) {
     console.error('Autocomplete error:', error)

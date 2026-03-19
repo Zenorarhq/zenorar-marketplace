@@ -6,7 +6,7 @@ import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import ServiceLogo from '@/components/ui/ServiceLogo'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { useCart } from '@/lib/cart-context'
@@ -19,28 +19,42 @@ import type { TopupOperator, TopupOffer } from '@/lib/api/phone-refills'
 
 const OPERATORS_PER_PAGE = 24
 
-// Specific popular brand+country combos to feature at the top
-const FEATURED_CARRIERS: { brand: string; country: string }[] = [
-  { brand: 'at&t', country: 'US' },
-  { brand: 'verizon', country: 'US' },
-  { brand: 't-mobile', country: 'US' },
-  { brand: 'vodafone', country: 'GB' },
-  { brand: 'ee', country: 'GB' },
-  { brand: 'three', country: 'GB' },
-  { brand: 'orange', country: 'FR' },
-  { brand: 'airtel', country: 'IN' },
-  { brand: 'jio', country: 'IN' },
-  { brand: 'mtn', country: 'NG' },
-  { brand: 'claro', country: 'BR' },
-  { brand: 'telcel', country: 'MX' },
-]
+// Region priority: US → UK → Canada → Europe → North America → South America → Asia → Middle East → Others → Africa last
+const REGION_PRIORITY: Record<string, number> = (() => {
+  const US = ['US']
+  const UK = ['GB']
+  const CANADA = ['CA']
+  const EUROPE = [
+    'AL','AD','AT','BY','BE','BA','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IS',
+    'IE','IT','XK','LV','LI','LT','LU','MT','MD','MC','ME','NL','MK','NO','PL','PT','RO','RU',
+    'SM','RS','SK','SI','ES','SE','CH','UA','VA',
+  ]
+  const NORTH_AMERICA = ['MX','GT','BZ','SV','HN','NI','CR','PA','CU','JM','HT','DO','TT','BS','BB','AG','DM','GD','KN','LC','VC']
+  const SOUTH_AMERICA = ['BR','AR','CL','CO','PE','VE','EC','BO','PY','UY','GY','SR']
+  const ASIA = [
+    'AF','AM','AZ','BD','BT','BN','KH','CN','GE','IN','ID','JP','KZ',
+    'KG','LA','MY','MV','MN','MM','NP','KP','PK','PH','SG','KR','LK',
+    'TW','TJ','TH','TL','TR','TM','UZ','VN',
+  ]
+  const MIDDLE_EAST = ['AE','SA','QA','KW','BH','OM','JO','LB','IQ','IR','IL','YE','SY']
+  const AFRICA = [
+    'DZ','AO','BJ','BW','BF','BI','CV','CM','CF','TD','KM','CD','CG','CI','DJ','EG','GQ','ER',
+    'SZ','ET','GA','GM','GH','GN','GW','KE','LS','LR','LY','MG','MW','ML','MR','MU','MA','MZ',
+    'NA','NE','NG','RW','ST','SN','SC','SL','SO','ZA','SS','SD','TZ','TG','TN','UG','ZM','ZW',
+  ]
 
-function isFeatured(op: TopupOperator): boolean {
-  const lower = op.name.toLowerCase()
-  return FEATURED_CARRIERS.some(
-    (fc) => lower.includes(fc.brand) && op.country.toUpperCase() === fc.country
-  )
-}
+  const map: Record<string, number> = {}
+  US.forEach((c) => (map[c] = 0))
+  UK.forEach((c) => (map[c] = 1))
+  CANADA.forEach((c) => (map[c] = 2))
+  EUROPE.forEach((c) => { if (!(c in map)) map[c] = 3 })
+  NORTH_AMERICA.forEach((c) => { if (!(c in map)) map[c] = 4 })
+  SOUTH_AMERICA.forEach((c) => { if (!(c in map)) map[c] = 5 })
+  ASIA.forEach((c) => { if (!(c in map)) map[c] = 6 })
+  MIDDLE_EAST.forEach((c) => (map[c] = 7))
+  AFRICA.forEach((c) => (map[c] = 9))
+  return map
+})()
 
 function resolveCountryName(isoCode: string): string {
   try {
@@ -52,8 +66,7 @@ function resolveCountryName(isoCode: string): string {
 }
 
 export default function PhoneRefillsPage() {
-  const searchParams = useSearchParams()
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
+  const [searchQuery, setSearchQuery] = useState('')
   const [operatorPage, setOperatorPage] = useState(1)
 
   // The currently expanded operator card (only one at a time)
@@ -95,8 +108,8 @@ export default function PhoneRefillsPage() {
     gcTime: 10 * 60 * 1000,
   })
 
-  // Split into featured + rest, filter by search
-  const { featured, allFiltered } = useMemo(() => {
+  // Filter by search and sort by region priority
+  const allFiltered = useMemo(() => {
     let list = operators
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
@@ -108,17 +121,13 @@ export default function PhoneRefillsPage() {
       )
     }
 
-    const feat: TopupOperator[] = []
-    const rest: TopupOperator[] = []
-    for (const op of list) {
-      if (isFeatured(op)) feat.push(op)
-      else rest.push(op)
-    }
-
-    // Sort rest alphabetically
-    rest.sort((a, b) => a.name.localeCompare(b.name))
-
-    return { featured: feat, allFiltered: [...feat, ...rest] }
+    // Sort by region priority, then alphabetically within each region
+    return [...list].sort((a, b) => {
+      const pa = REGION_PRIORITY[a.country.toUpperCase()] ?? 8
+      const pb = REGION_PRIORITY[b.country.toUpperCase()] ?? 8
+      if (pa !== pb) return pa - pb
+      return a.name.localeCompare(b.name)
+    })
   }, [operators, searchQuery])
 
   // Pagination (over allFiltered for the main grid)
@@ -365,15 +374,12 @@ export default function PhoneRefillsPage() {
     return picks.sort((a, b) => a.price - b.price)
   }
 
-  // Render a single operator row
-  const renderOperatorRow = (operator: TopupOperator) => {
+  // Render a single operator card
+  const renderOperatorCard = (operator: TopupOperator) => {
     const key = opKey(operator)
     const isExpanded = expandedKey === key
     const isProcessing = processingCard === key
-    const priceRange =
-      operator.offers.length > 0
-        ? `${formatPrice(Math.min(...operator.offers.map((o) => o.price)))} - ${formatPrice(Math.max(...operator.offers.map((o) => o.price)))}`
-        : ''
+    const minPrice = operator.offers.length > 0 ? Math.min(...operator.offers.map((o) => o.price)) : 0
     const quickPicks = getQuickPicks(operator.offers)
     const hasMore = operator.offers.length > quickPicks.length
 
@@ -381,32 +387,38 @@ export default function PhoneRefillsPage() {
       <div
         key={key}
         className={`rounded-2xl border transition-all ${
-          isExpanded ? 'border-primary bg-charcoal' : 'border-border-dark bg-charcoal hover:border-slate-600'
+          isExpanded
+            ? 'border-primary bg-charcoal col-span-1 sm:col-span-2 lg:col-span-3'
+            : 'border-border-dark bg-charcoal hover:border-slate-600'
         }`}
       >
-        {/* Collapsed Row - clickable */}
+        {/* Card Face - clickable */}
         <button
           onClick={() => handleToggle(operator)}
-          className="w-full flex items-center gap-4 p-4 text-left"
+          className={`w-full text-left transition-all ${
+            isExpanded ? 'flex items-center gap-4 p-4' : 'flex flex-col items-center p-5'
+          }`}
         >
-          <ServiceLogo name={operator.name} size={44} className="flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-white text-base truncate">{operator.name}</h3>
+          <ServiceLogo
+            name={operator.name}
+            size={isExpanded ? 44 : 56}
+            className="flex-shrink-0"
+          />
+          <div className={isExpanded ? 'flex-1 min-w-0' : 'mt-3 text-center w-full'}>
+            <div className={`flex items-center gap-2 ${isExpanded ? '' : 'justify-center'}`}>
+              <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
               <FlagIcon countryCode={operator.country} className="w-5 h-4 rounded-sm flex-shrink-0" />
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              {resolveCountryName(operator.country)} &middot; {operator.offers.length} plan{operator.offers.length !== 1 ? 's' : ''}
+              {resolveCountryName(operator.country)}
+              {!isExpanded && (
+                <span className="text-primary font-medium ml-1.5">from {formatPrice(minPrice)}</span>
+              )}
             </p>
           </div>
-          <div className="hidden sm:block text-right flex-shrink-0">
-            <p className="text-sm font-medium text-primary">{priceRange}</p>
-          </div>
-          <Icon
-            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            className="text-slate-500 flex-shrink-0"
-          />
+          {isExpanded && (
+            <Icon name="x" size={18} className="text-slate-500 flex-shrink-0" />
+          )}
         </button>
 
         {/* Expanded Panel */}
@@ -690,15 +702,12 @@ export default function PhoneRefillsPage() {
 
       {/* Loading */}
       {loadingOperators && (
-        <div className="space-y-3">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="bg-charcoal border border-border-dark rounded-2xl p-4 animate-pulse flex items-center gap-4">
-              <div className="w-11 h-11 bg-slate-700 rounded-lg flex-shrink-0" />
-              <div className="flex-1">
-                <div className="h-4 bg-slate-700 rounded w-40 mb-2" />
-                <div className="h-3 bg-slate-700 rounded w-24" />
-              </div>
-              <div className="h-4 bg-slate-700 rounded w-28 hidden sm:block" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {[...Array(15)].map((_, i) => (
+            <div key={i} className="bg-charcoal border border-border-dark rounded-2xl p-5 animate-pulse flex flex-col items-center">
+              <div className="w-14 h-14 bg-slate-700 rounded-xl" />
+              <div className="h-4 bg-slate-700 rounded w-20 mt-3 mb-1.5" />
+              <div className="h-3 bg-slate-700 rounded w-16" />
             </div>
           ))}
         </div>
@@ -717,36 +726,7 @@ export default function PhoneRefillsPage() {
         </div>
       )}
 
-      {/* Featured Carriers (only when not searching) */}
-      {!loadingOperators && !searchQuery && featured.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-white mb-4">Popular Carriers</h2>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {featured.map((op) => {
-              const key = opKey(op)
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleToggle(op)}
-                  className={`flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
-                    expandedKey === key
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border-dark bg-charcoal hover:border-slate-600'
-                  }`}
-                >
-                  <ServiceLogo name={op.name} size={32} />
-                  <div className="text-left">
-                    <p className="text-sm font-bold text-white">{op.name}</p>
-                    <p className="text-[10px] text-slate-500">{resolveCountryName(op.country)}</p>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Main Carrier List */}
+      {/* Main Carrier Grid */}
       {!loadingOperators && allFiltered.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-4">
@@ -756,8 +736,8 @@ export default function PhoneRefillsPage() {
             <span className="text-slate-500 text-sm">{allFiltered.length} carriers</span>
           </div>
 
-          <div className="space-y-2">
-            {paginatedOperators.map((op) => renderOperatorRow(op))}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {paginatedOperators.map((op) => renderOperatorCard(op))}
           </div>
 
           {renderPagination()}

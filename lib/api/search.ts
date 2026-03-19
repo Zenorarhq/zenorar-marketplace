@@ -81,6 +81,14 @@ export interface AutocompleteResult {
     flagEmoji: string
     retailMonthly: number
   }>
+  carrierEsims?: Array<{
+    id: string
+    carrierName: string
+    carrierSlug: string
+    planName: string
+    retailPrice: number
+    dataAmountDisplay: string
+  }>
 }
 
 export interface TrendingProduct {
@@ -204,11 +212,11 @@ export const searchApi = {
   },
 
   async getTrending(limit = 10) {
-    return apiFetch<TrendingProduct[]>(`/search/trending?limit=${limit}`)
+    return localApiFetch<TrendingProduct[]>(`/search/trending?limit=${limit}`)
   },
 
   async getPopularCategories(limit = 6) {
-    return apiFetch<PopularCategory[]>(`/search/popular-categories?limit=${limit}`)
+    return localApiFetch<PopularCategory[]>(`/search/popular-categories?limit=${limit}`)
   },
 
   async getCategorySuggestions(categorySlug: string, limit = 10) {

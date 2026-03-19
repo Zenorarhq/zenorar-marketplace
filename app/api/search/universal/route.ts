@@ -49,14 +49,14 @@ export async function GET(request: NextRequest) {
           (SELECT pi.url FROM product_images pi WHERE pi."productId" = p.id ORDER BY pi."isPrimary" DESC, pi."order" ASC LIMIT 1) as image
         FROM products p
         LEFT JOIN categories c ON p."categoryId" = c.id
-        WHERE p.status = 'ACTIVE' AND (p.name ILIKE $1 OR p.description ILIKE $1)
+        WHERE p.status = 'ACTIVE' AND p.price > 0 AND (p.name ILIKE $1 OR p.description ILIKE $1)
         ORDER BY p."isFeatured" DESC, p.name ASC
         LIMIT $2 OFFSET $3`,
         [pattern, perCategoryLimit, perCategoryOffset]
       ),
       executeQuery(
         `SELECT COUNT(*) as total FROM products p
-        WHERE p.status = 'ACTIVE' AND (p.name ILIKE $1 OR p.description ILIKE $1)`,
+        WHERE p.status = 'ACTIVE' AND p.price > 0 AND (p.name ILIKE $1 OR p.description ILIKE $1)`,
         [pattern]
       ),
     ]) : Promise.resolve([{ rows: [] }, { rows: [{ total: '0' }] }])
