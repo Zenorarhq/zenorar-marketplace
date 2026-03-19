@@ -8,7 +8,6 @@ import FlagIcon from '@/components/ui/FlagIcon'
 import ServiceLogo from '@/components/ui/ServiceLogo'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { getBalance } from '@/lib/api/wallet'
@@ -78,7 +77,6 @@ export default function EsimPage() {
   const [pendingCarrierPlan, setPendingCarrierPlan] = useState<CarrierEsimPlan | null>(null)
 
   const { addItem, showAddedToCartPopup } = useCart()
-  const router = useRouter()
   const { isAuthenticated, user } = useAuth()
   const { formatPrice } = usePreferences()
 
