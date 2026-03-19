@@ -462,14 +462,8 @@ export default function GiftCardsPage() {
           {/* Wallet Balance - Desktop */}
           <WalletDisplay variant="desktop" />
         </header>
-      </div>
-
-      {/* Wallet Balance - Mobile */}
-      <WalletDisplay variant="mobile" />
-
-      {/* Search */}
-      <div className="mb-6">
-        <div className="relative">
+        {/* Search */}
+        <div className="mt-6 relative max-w-xl">
           <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
@@ -480,6 +474,9 @@ export default function GiftCardsPage() {
           />
         </div>
       </div>
+
+      {/* Wallet Balance - Mobile */}
+      <WalletDisplay variant="mobile" />
 
       {/* Loading State */}
       {loading && (

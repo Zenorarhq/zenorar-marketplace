@@ -132,8 +132,8 @@ export default function Header() {
     if (pathname.startsWith('/phone-refills')) return `/phone-refills?search=${encoded}`
     if (pathname.startsWith('/gift-cards')) return `/gift-cards?search=${encoded}`
     if (pathname.startsWith('/virtual-numbers')) return `/virtual-numbers?search=${encoded}`
-    if (pathname.startsWith('/esim')) return `/search?q=${encoded}&category=esims`
-    if (pathname.startsWith('/scripts')) return `/search?q=${encoded}&category=scripts`
+    if (pathname.startsWith('/esim')) return `/esim?search=${encoded}`
+    if (pathname.startsWith('/scripts')) return `/scripts?search=${encoded}`
     return null
   }
 

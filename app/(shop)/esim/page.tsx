@@ -46,6 +46,7 @@ export default function EsimPage() {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab)
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const [countryPage, setCountryPage] = useState(1)
+  const [esimSearchQuery, setEsimSearchQuery] = useState(searchParams.get('search') || '')
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
 
   // Carrier eSIM form state
@@ -116,9 +117,19 @@ export default function EsimPage() {
     })
   }, [rawCountries])
 
+  // Filter countries by search
+  const filteredCountries = useMemo(() => {
+    if (!esimSearchQuery) return sortedCountries
+    const q = esimSearchQuery.toLowerCase()
+    return sortedCountries.filter(c => c.name.toLowerCase().includes(q) || c.isoCode.toLowerCase().includes(q))
+  }, [sortedCountries, esimSearchQuery])
+
+  // Reset page on search change
+  useEffect(() => { setCountryPage(1) }, [esimSearchQuery])
+
   // Pagination
-  const totalCountryPages = Math.ceil(sortedCountries.length / COUNTRIES_PER_PAGE)
-  const paginatedCountries = sortedCountries.slice(
+  const totalCountryPages = Math.ceil(filteredCountries.length / COUNTRIES_PER_PAGE)
+  const paginatedCountries = filteredCountries.slice(
     (countryPage - 1) * COUNTRIES_PER_PAGE,
     countryPage * COUNTRIES_PER_PAGE
   )
@@ -605,7 +616,7 @@ export default function EsimPage() {
     return (
       <div className="mt-4 flex items-center justify-between">
         <p className="text-xs text-slate-500">
-          {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, sortedCountries.length)} of {sortedCountries.length}
+          {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, filteredCountries.length)} of {filteredCountries.length}
         </p>
         <div className="flex items-center gap-1">
           <button
@@ -850,6 +861,17 @@ export default function EsimPage() {
           </div>
           <WalletDisplay variant="desktop" />
         </header>
+        {/* Search */}
+        <div className="mt-6 relative max-w-xl">
+          <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search countries..."
+            value={esimSearchQuery}
+            onChange={(e) => setEsimSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+          />
+        </div>
       </div>
 
       <WalletDisplay variant="mobile" />

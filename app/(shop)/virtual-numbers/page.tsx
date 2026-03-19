@@ -232,6 +232,9 @@ export default function VirtualNumbersPage() {
   const prevCountryIdRef = useRef<string | null>(null)
   const [countryPage, setCountryPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
+
+  // Reset pagination when search changes
+  useEffect(() => { setCountryPage(1) }, [searchQuery])
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null)
@@ -811,6 +814,17 @@ export default function VirtualNumbersPage() {
           {/* Wallet Balance - Desktop */}
           <WalletDisplay variant="desktop" />
         </header>
+        {/* Search */}
+        <div className="mt-6 relative max-w-xl">
+          <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            placeholder={activeTab === 'monthly' ? 'Search countries...' : 'Search services (WhatsApp, Google, etc.)...'}
+            value={activeTab === 'monthly' ? searchQuery : otpSearchQuery}
+            onChange={(e) => activeTab === 'monthly' ? setSearchQuery(e.target.value) : setOtpSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+          />
+        </div>
       </div>
 
       {/* Wallet Balance - Mobile */}
@@ -886,8 +900,15 @@ export default function VirtualNumbersPage() {
                 </button>
               </div>
             ) : (() => {
-              const totalCountryPages = Math.ceil(countries.length / COUNTRIES_PER_PAGE)
-              const paginatedCountries = countries.slice(
+              const filteredCountries = searchQuery
+                ? countries.filter(c =>
+                    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    c.isoCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    c.dialCode.includes(searchQuery)
+                  )
+                : countries
+              const totalCountryPages = Math.ceil(filteredCountries.length / COUNTRIES_PER_PAGE)
+              const paginatedCountries = filteredCountries.slice(
                 (countryPage - 1) * COUNTRIES_PER_PAGE,
                 countryPage * COUNTRIES_PER_PAGE
               )
@@ -911,7 +932,7 @@ export default function VirtualNumbersPage() {
                   {totalCountryPages > 1 && (
                     <div className="mt-4 flex items-center justify-between">
                       <p className="text-xs text-slate-500">
-                        {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, countries.length)} of {countries.length}
+                        {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, filteredCountries.length)} of {filteredCountries.length}
                       </p>
                       <div className="flex items-center gap-1">
                         <button
