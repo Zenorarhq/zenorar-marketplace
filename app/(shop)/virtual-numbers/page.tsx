@@ -925,10 +925,10 @@ export default function VirtualNumbersPage() {
                       >
                         {/* Flag shaped as SIM card — notch at bottom-right */}
                         <div
-                          className="w-full aspect-square overflow-hidden mb-2"
+                          className="w-full aspect-square overflow-hidden mb-2 [&>svg]:block [&>svg]:w-full [&>svg]:h-full"
                           style={{ clipPath: 'polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%)' }}
                         >
-                          <FlagIcon countryCode={country.isoCode} className="w-full h-full object-cover" />
+                          <FlagIcon countryCode={country.isoCode} className="w-full h-full block" />
                         </div>
                         <h3 className="font-medium text-white text-[10px] sm:text-xs truncate w-full">{resolveCountryName(country.isoCode, country.name)}</h3>
                         <p className="text-[9px] sm:text-[10px] text-slate-500">From {formatPrice(country.retailMonthly)}</p>
