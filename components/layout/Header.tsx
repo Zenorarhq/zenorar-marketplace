@@ -424,6 +424,16 @@ export default function Header() {
                       <Icon name="phone" size={16} />
                       Numbers
                     </Link>
+                    {user?.isVendor && (
+                      <Link
+                        href="/profile/commissions"
+                        onClick={() => setShowMobileUserMenu(false)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                      >
+                        <Icon name="trending-up" size={16} />
+                        Commissions
+                      </Link>
+                    )}
                     <Link
                       href="/profile"
                       onClick={() => setShowMobileUserMenu(false)}
@@ -629,6 +639,16 @@ export default function Header() {
                         <Icon name="phone" size={16} />
                         Numbers
                       </Link>
+                      {user?.isVendor && (
+                        <Link
+                          href="/profile/commissions"
+                          onClick={() => setShowUserMenu(false)}
+                          className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-white/5 transition-colors"
+                        >
+                          <Icon name="trending-up" size={16} />
+                          Commissions
+                        </Link>
+                      )}
                       <Link
                         href="/profile"
                         onClick={() => setShowUserMenu(false)}
