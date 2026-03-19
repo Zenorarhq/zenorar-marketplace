@@ -67,6 +67,13 @@ export default function AdminVendorsPage() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>('overview')
 
+  // Overview tab state
+  const [overviewSearch, setOverviewSearch] = useState('')
+  const [overviewStatus, setOverviewStatus] = useState('ALL')
+  const [overviewPage, setOverviewPage] = useState(1)
+  const [overviewDetail, setOverviewDetail] = useState<any>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
   // Application tab state
   const [appStatusFilter, setAppStatusFilter] = useState('PENDING')
   const [appPage, setAppPage] = useState(1)
@@ -93,6 +100,20 @@ export default function AdminVendorsPage() {
     queryKey: ['vendor-admin-stats'],
     queryFn: () => vendorFetch<any>('/admin/stats'),
     refetchInterval: 30000,
+  })
+
+  const { data: overviewData, isLoading: overviewLoading } = useQuery({
+    queryKey: ['vendor-overview', overviewSearch, overviewStatus, overviewPage],
+    queryFn: () => vendorFetch<any>(
+      `/admin/vendors?search=${encodeURIComponent(overviewSearch)}&page=${overviewPage}&limit=20${overviewStatus !== 'ALL' ? `&status=${overviewStatus}` : ''}`
+    ),
+    enabled: tab === 'overview',
+  })
+
+  const { data: overviewDetailData, isLoading: overviewDetailLoading } = useQuery({
+    queryKey: ['vendor-overview-detail', overviewDetail?.id],
+    queryFn: () => vendorFetch<any>(`/admin/vendors/${overviewDetail.id}`),
+    enabled: !!overviewDetail?.id,
   })
 
   const { data: applicationsData, isLoading: appsLoading } = useQuery({
@@ -145,6 +166,27 @@ export default function AdminVendorsPage() {
   const reinstateMutation = useMutation({
     mutationFn: (id: string) => apiFetch(`/vendor/admin/vendors/${id}/reinstate`, { method: 'POST' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vendor-list'] }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/vendor/admin/vendors/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendor-overview'] })
+      queryClient.invalidateQueries({ queryKey: ['vendor-list'] })
+      queryClient.invalidateQueries({ queryKey: ['vendor-admin-stats'] })
+      setConfirmDeleteId(null)
+      setOverviewDetail(null)
+    },
+  })
+
+  const overviewSuspendMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/vendor/admin/vendors/${id}/suspend`, { method: 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vendor-overview'] }),
+  })
+
+  const overviewReinstateMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/vendor/admin/vendors/${id}/reinstate`, { method: 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vendor-overview'] }),
   })
 
   const markPaidMutation = useMutation({
@@ -227,6 +269,7 @@ export default function AdminVendorsPage() {
         {/* ── OVERVIEW ─────────────────────────────────────────────────── */}
         {tab === 'overview' && (
           <div className="space-y-6">
+            {/* Stat cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <StatCard label="Total Vendors" value={stats?.totalVendors ?? '—'} icon="users" color="primary" />
               <StatCard label="Pending Applications" value={stats?.pendingApplications ?? '—'} icon="document" color="yellow" />
@@ -234,19 +277,221 @@ export default function AdminVendorsPage() {
               <StatCard label="Pending Payouts" value={stats?.pendingPayouts ?? '—'} icon="wallet" color="red" />
               <StatCard label="Pending Amount" value={stats ? `$${Number(stats.pendingPayoutAmount).toFixed(2)}` : '—'} icon="dollar" color="blue" />
             </div>
-            <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-6">
-              <h3 className="text-white font-semibold mb-4">Quick Actions</h3>
-              <div className="flex flex-wrap gap-3">
-                <button onClick={() => setTab('applications')} className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 text-yellow-400 rounded-lg text-sm hover:bg-yellow-500/20 transition-colors">
-                  <Icon name="document" size={14} />
-                  Review Applications ({stats?.pendingApplications ?? 0})
-                </button>
-                <button onClick={() => setTab('payouts')} className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 rounded-lg text-sm hover:bg-red-500/20 transition-colors">
-                  <Icon name="wallet" size={14} />
-                  Process Payouts ({stats?.pendingPayouts ?? 0})
-                </button>
+
+            {/* Search + filter bar */}
+            <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search vendors by name or email..."
+                    value={overviewSearch}
+                    onChange={e => { setOverviewSearch(e.target.value); setOverviewPage(1) }}
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg py-2 pl-9 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  {['ALL', 'ACTIVE', 'SUSPENDED'].map(s => (
+                    <button
+                      key={s}
+                      onClick={() => { setOverviewStatus(s); setOverviewPage(1) }}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${overviewStatus === s ? 'bg-primary text-black' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-slate-400 hover:text-white'}`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
+
+            {/* Vendor table */}
+            <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl overflow-hidden">
+              {overviewLoading ? (
+                <div className="text-center py-12 text-slate-400">Loading...</div>
+              ) : !overviewData?.length ? (
+                <div className="text-center py-12 text-slate-500">No vendors found</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-[#0a0a0a] border-b border-[#1f1f1f]">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Vendor</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase hidden md:table-cell">Business</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase hidden lg:table-cell">Joined</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Earned</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase hidden sm:table-cell">Available</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Status</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1f1f1f]">
+                    {overviewData.map((v: any) => (
+                      <tr key={v.id} className={`hover:bg-[#1a1a1a] transition-colors ${overviewDetail?.id === v.id ? 'bg-primary/5' : ''}`}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-300 shrink-0">
+                              {v.name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                            <div>
+                              <div className="text-white font-medium text-sm">{v.name}</div>
+                              <div className="text-slate-500 text-xs">{v.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-300 text-sm hidden md:table-cell">{v.business_name || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500 text-xs hidden lg:table-cell">
+                          {v.vendor_approved_at ? new Date(v.vendor_approved_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-white font-medium">${Number(v.total_earned).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-green-400 hidden sm:table-cell">${Number(v.available_balance).toFixed(2)}</td>
+                        <td className="px-4 py-3">
+                          {v.vendor_suspended_at
+                            ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">Suspended</span>
+                            : <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">Active</span>
+                          }
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* View detail */}
+                            <button
+                              onClick={() => setOverviewDetail(overviewDetail?.id === v.id ? null : v)}
+                              title="View details"
+                              className={`p-1.5 rounded hover:bg-blue-500/10 transition-colors ${overviewDetail?.id === v.id ? 'text-blue-400' : 'text-slate-400 hover:text-blue-400'}`}
+                            >
+                              <Icon name="eye" size={15} />
+                            </button>
+                            {/* Suspend / Reinstate */}
+                            {v.vendor_suspended_at ? (
+                              <button
+                                onClick={() => overviewReinstateMutation.mutate(v.id)}
+                                disabled={overviewReinstateMutation.isPending}
+                                title="Reinstate vendor"
+                                className="p-1.5 rounded text-slate-400 hover:text-green-400 hover:bg-green-500/10 transition-colors disabled:opacity-40"
+                              >
+                                <Icon name="check" size={15} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => overviewSuspendMutation.mutate(v.id)}
+                                disabled={overviewSuspendMutation.isPending}
+                                title="Suspend vendor"
+                                className="p-1.5 rounded text-slate-400 hover:text-orange-400 hover:bg-orange-500/10 transition-colors disabled:opacity-40"
+                              >
+                                <Icon name="ban" size={15} />
+                              </button>
+                            )}
+                            {/* Delete */}
+                            <button
+                              onClick={() => setConfirmDeleteId(v.id)}
+                              title="Remove vendor status"
+                              className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            >
+                              <Icon name="trash" size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* Pagination */}
+              {overviewData?.pagination && overviewData.pagination.total > 20 && (
+                <div className="px-4 py-3 border-t border-[#1f1f1f] flex items-center justify-between text-sm text-slate-400">
+                  <span>Page {overviewPage} of {Math.ceil(overviewData.pagination.total / 20)}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setOverviewPage(p => Math.max(1, p - 1))} disabled={overviewPage === 1} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40">Previous</button>
+                    <button onClick={() => setOverviewPage(p => p + 1)} disabled={overviewPage >= Math.ceil(overviewData.pagination.total / 20)} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40">Next</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Vendor detail panel */}
+            {overviewDetail && (
+              <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-5">
+                {overviewDetailLoading ? (
+                  <div className="text-center py-8 text-slate-400 text-sm">Loading...</div>
+                ) : overviewDetailData ? (
+                  <div className="space-y-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-white font-semibold text-base">{overviewDetailData.user?.name}</h3>
+                        <p className="text-slate-500 text-xs">{overviewDetailData.user?.email}</p>
+                        {overviewDetailData.application && (
+                          <p className="text-slate-400 text-xs mt-1">{overviewDetailData.application.business_name} · {overviewDetailData.application.country}</p>
+                        )}
+                      </div>
+                      <button onClick={() => setOverviewDetail(null)} className="text-slate-500 hover:text-white p-1">
+                        <Icon name="x" size={16} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Available', value: `$${overviewDetailData.balance?.available?.toFixed(2) ?? '0.00'}`, color: 'text-green-400' },
+                        { label: 'Locked', value: `$${overviewDetailData.balance?.locked?.toFixed(2) ?? '0.00'}`, color: 'text-yellow-400' },
+                        { label: 'Lifetime Earned', value: `$${overviewDetailData.balance?.lifetimeEarned?.toFixed(2) ?? '0.00'}`, color: 'text-white' },
+                        { label: 'Total Paid', value: `$${overviewDetailData.balance?.totalPaid?.toFixed(2) ?? '0.00'}`, color: 'text-slate-300' },
+                      ].map(item => (
+                        <div key={item.label} className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg p-3">
+                          <p className="text-xs text-slate-500 mb-1">{item.label}</p>
+                          <p className={`font-semibold text-sm ${item.color}`}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Recent commissions */}
+                    {overviewDetailData.recentCommissions?.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-400 font-medium uppercase mb-2">Recent Commissions</p>
+                        <div className="space-y-1">
+                          {overviewDetailData.recentCommissions.slice(0, 5).map((c: any) => (
+                            <div key={c.id} className="flex items-center justify-between text-xs py-1.5 border-b border-[#1f1f1f] last:border-0">
+                              <span className="text-slate-500 font-mono truncate max-w-[160px]">{c.order_id}</span>
+                              <span className="text-white font-medium">${Number(c.commission_amount).toFixed(2)}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                c.status === 'AVAILABLE' ? 'bg-green-500/15 text-green-400' :
+                                c.status === 'PAID' ? 'bg-primary/15 text-primary' :
+                                'bg-yellow-500/15 text-yellow-400'
+                              }`}>{c.status}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* Delete confirmation modal */}
+            {confirmDeleteId && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 max-w-sm w-full">
+                  <h3 className="text-white font-semibold text-lg mb-2">Remove Vendor Status?</h3>
+                  <p className="text-slate-400 text-sm mb-6">
+                    This will revoke vendor access for this user. Their commission history is preserved but they will no longer earn commissions.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="flex-1 px-4 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-lg text-sm hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => deleteMutation.mutate(confirmDeleteId)}
+                      disabled={deleteMutation.isPending}
+                      className="flex-1 px-4 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-sm hover:bg-red-500/20 transition-colors disabled:opacity-40"
+                    >
+                      {deleteMutation.isPending ? 'Removing...' : 'Remove Vendor'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
