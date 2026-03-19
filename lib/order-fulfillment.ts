@@ -940,7 +940,7 @@ async function processVirtualNumberItem(
 
     const phoneNumber = metadata.phone_number || metadata.phoneNumber
     const countryId = metadata.country_id || metadata.countryId
-    const planId = metadata.plan_id || metadata.planId
+    const planId = metadata.plan_id || metadata.planId || metadata.planCategory
     const numberType = metadata.number_type || metadata.numberType || 'local'
     const durationDays = metadata.duration_days || metadata.durationDays
     const amountPaid = metadata.amount_paid || metadata.amountPaid || 0
