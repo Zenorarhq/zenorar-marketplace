@@ -6,7 +6,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { apiFetch } from '@/lib/api/client'
 
-type Tab = 'overview' | 'applications' | 'vendors' | 'payouts'
+type Tab = 'overview' | 'applications' | 'payouts'
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
@@ -79,13 +79,10 @@ export default function AdminVendorsPage() {
   const [appPage, setAppPage] = useState(1)
   const [expandedAppId, setExpandedAppId] = useState<string | null>(null)
 
-  // Vendors tab state
-  const [vendorSearch, setVendorSearch] = useState('')
-  const [vendorPage, setVendorPage] = useState(1)
-  const [selectedVendor, setSelectedVendor] = useState<any>(null)
-  const [adjustAmount, setAdjustAmount] = useState('')
-  const [adjustNote, setAdjustNote] = useState('')
-  const [adjusting, setAdjusting] = useState(false)
+  // Modal adjust state
+  const [modalAdjustAmount, setModalAdjustAmount] = useState('')
+  const [modalAdjustNote, setModalAdjustNote] = useState('')
+  const [modalAdjusting, setModalAdjusting] = useState(false)
 
   // Payouts tab state
   const [payoutStatusFilter, setPayoutStatusFilter] = useState('PENDING')
@@ -122,23 +119,12 @@ export default function AdminVendorsPage() {
     enabled: tab === 'applications',
   })
 
-  const { data: vendorsData, isLoading: vendorsLoading } = useQuery({
-    queryKey: ['vendor-list', vendorSearch, vendorPage],
-    queryFn: () => vendorFetch<any>(`/admin/vendors?search=${encodeURIComponent(vendorSearch)}&page=${vendorPage}&limit=20`),
-    enabled: tab === 'vendors',
-  })
-
   const { data: payoutsData, isLoading: payoutsLoading } = useQuery({
     queryKey: ['vendor-payouts-admin', payoutStatusFilter, payoutPage],
     queryFn: () => vendorFetch<any>(`/admin/payouts?status=${payoutStatusFilter}&page=${payoutPage}&limit=20`),
     enabled: tab === 'payouts',
   })
 
-  const { data: vendorDetail, isLoading: detailLoading } = useQuery({
-    queryKey: ['vendor-detail', selectedVendor?.id],
-    queryFn: () => vendorFetch<any>(`/admin/vendors/${selectedVendor.id}`),
-    enabled: !!selectedVendor?.id,
-  })
 
   // ── Mutations ────────────────────────────────────────────────────────────
 
@@ -158,16 +144,6 @@ export default function AdminVendorsPage() {
     },
   })
 
-  const suspendMutation = useMutation({
-    mutationFn: (id: string) => apiFetch(`/vendor/admin/vendors/${id}/suspend`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vendor-list'] }),
-  })
-
-  const reinstateMutation = useMutation({
-    mutationFn: (id: string) => apiFetch(`/vendor/admin/vendors/${id}/reinstate`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vendor-list'] }),
-  })
-
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiFetch(`/vendor/admin/vendors/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
@@ -181,12 +157,18 @@ export default function AdminVendorsPage() {
 
   const overviewSuspendMutation = useMutation({
     mutationFn: (id: string) => apiFetch(`/vendor/admin/vendors/${id}/suspend`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vendor-overview'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendor-overview'] })
+      queryClient.invalidateQueries({ queryKey: ['vendor-overview-detail'] })
+    },
   })
 
   const overviewReinstateMutation = useMutation({
     mutationFn: (id: string) => apiFetch(`/vendor/admin/vendors/${id}/reinstate`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vendor-overview'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendor-overview'] })
+      queryClient.invalidateQueries({ queryKey: ['vendor-overview-detail'] })
+    },
   })
 
   const markPaidMutation = useMutation({
@@ -206,18 +188,18 @@ export default function AdminVendorsPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  async function handleAdjustBalance() {
-    if (!selectedVendor || !adjustAmount) return
-    setAdjusting(true)
-    await apiFetch(`/vendor/admin/vendors/${selectedVendor.id}/adjust-balance`, {
+  async function handleModalAdjust() {
+    if (!overviewDetail || !modalAdjustAmount) return
+    setModalAdjusting(true)
+    await apiFetch(`/vendor/admin/vendors/${overviewDetail.id}/adjust-balance`, {
       method: 'POST',
-      body: JSON.stringify({ amount: Number(adjustAmount), note: adjustNote }),
+      body: JSON.stringify({ amount: Number(modalAdjustAmount), note: modalAdjustNote }),
     })
-    setAdjusting(false)
-    setAdjustAmount('')
-    setAdjustNote('')
-    queryClient.invalidateQueries({ queryKey: ['vendor-detail', selectedVendor.id] })
-    queryClient.invalidateQueries({ queryKey: ['vendor-list'] })
+    setModalAdjusting(false)
+    setModalAdjustAmount('')
+    setModalAdjustNote('')
+    queryClient.invalidateQueries({ queryKey: ['vendor-overview-detail', overviewDetail.id] })
+    queryClient.invalidateQueries({ queryKey: ['vendor-overview'] })
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -227,7 +209,6 @@ export default function AdminVendorsPage() {
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: 'chart' },
     { id: 'applications', label: 'Applications', icon: 'document' },
-    { id: 'vendors', label: 'Active Vendors', icon: 'users' },
     { id: 'payouts', label: 'Payouts', icon: 'wallet' },
   ]
 
@@ -354,7 +335,7 @@ export default function AdminVendorsPage() {
                           <div className="flex items-center justify-end gap-1">
                             {/* View detail */}
                             <button
-                              onClick={() => setOverviewDetail(overviewDetail?.id === v.id ? null : v)}
+                              onClick={() => setOverviewDetail(v)}
                               title="View details"
                               className={`p-1.5 rounded hover:bg-blue-500/10 transition-colors ${overviewDetail?.id === v.id ? 'text-blue-400' : 'text-slate-400 hover:text-blue-400'}`}
                             >
@@ -408,61 +389,137 @@ export default function AdminVendorsPage() {
               )}
             </div>
 
-            {/* Vendor detail panel */}
+            {/* Vendor detail modal */}
             {overviewDetail && (
-              <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-5">
-                {overviewDetailLoading ? (
-                  <div className="text-center py-8 text-slate-400 text-sm">Loading...</div>
-                ) : overviewDetailData ? (
-                  <div className="space-y-5">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-white font-semibold text-base">{overviewDetailData.user?.name}</h3>
-                        <p className="text-slate-500 text-xs">{overviewDetailData.user?.email}</p>
-                        {overviewDetailData.application && (
-                          <p className="text-slate-400 text-xs mt-1">{overviewDetailData.application.business_name} · {overviewDetailData.application.country}</p>
-                        )}
-                      </div>
-                      <button onClick={() => setOverviewDetail(null)} className="text-slate-500 hover:text-white p-1">
-                        <Icon name="x" size={16} />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {[
-                        { label: 'Available', value: `$${overviewDetailData.balance?.available?.toFixed(2) ?? '0.00'}`, color: 'text-green-400' },
-                        { label: 'Locked', value: `$${overviewDetailData.balance?.locked?.toFixed(2) ?? '0.00'}`, color: 'text-yellow-400' },
-                        { label: 'Lifetime Earned', value: `$${overviewDetailData.balance?.lifetimeEarned?.toFixed(2) ?? '0.00'}`, color: 'text-white' },
-                        { label: 'Total Paid', value: `$${overviewDetailData.balance?.totalPaid?.toFixed(2) ?? '0.00'}`, color: 'text-slate-300' },
-                      ].map(item => (
-                        <div key={item.label} className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg p-3">
-                          <p className="text-xs text-slate-500 mb-1">{item.label}</p>
-                          <p className={`font-semibold text-sm ${item.color}`}>{item.value}</p>
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setOverviewDetail(null)}>
+                <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                  {overviewDetailLoading ? (
+                    <div className="text-center py-16 text-slate-400">Loading...</div>
+                  ) : overviewDetailData ? (
+                    <>
+                      {/* Modal header */}
+                      <div className="flex items-center gap-4 p-6 border-b border-[#1f1f1f]">
+                        <div className="w-14 h-14 rounded-full bg-slate-700 flex items-center justify-center text-xl font-bold text-slate-300 shrink-0">
+                          {overviewDetailData.user?.name?.charAt(0)?.toUpperCase() || '?'}
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Recent commissions */}
-                    {overviewDetailData.recentCommissions?.length > 0 && (
-                      <div>
-                        <p className="text-xs text-slate-400 font-medium uppercase mb-2">Recent Commissions</p>
-                        <div className="space-y-1">
-                          {overviewDetailData.recentCommissions.slice(0, 5).map((c: any) => (
-                            <div key={c.id} className="flex items-center justify-between text-xs py-1.5 border-b border-[#1f1f1f] last:border-0">
-                              <span className="text-slate-500 font-mono truncate max-w-[160px]">{c.order_id}</span>
-                              <span className="text-white font-medium">${Number(c.commission_amount).toFixed(2)}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                                c.status === 'AVAILABLE' ? 'bg-green-500/15 text-green-400' :
-                                c.status === 'PAID' ? 'bg-primary/15 text-primary' :
-                                'bg-yellow-500/15 text-yellow-400'
-                              }`}>{c.status}</span>
-                            </div>
-                          ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-white font-semibold text-lg">{overviewDetailData.user?.name}</h3>
+                            {overviewDetail.vendor_suspended_at
+                              ? <span className="px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">Suspended</span>
+                              : <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">Active</span>
+                            }
+                          </div>
+                          <p className="text-slate-500 text-sm">{overviewDetailData.user?.email}</p>
+                          {overviewDetailData.application && (
+                            <p className="text-slate-400 text-xs mt-0.5">{overviewDetailData.application.business_name} · {overviewDetailData.application.country}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {overviewDetail.vendor_suspended_at ? (
+                            <button
+                              onClick={() => overviewReinstateMutation.mutate(overviewDetail.id)}
+                              disabled={overviewReinstateMutation.isPending}
+                              className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-colors disabled:opacity-40"
+                            >
+                              Reinstate
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => overviewSuspendMutation.mutate(overviewDetail.id)}
+                              disabled={overviewSuspendMutation.isPending}
+                              className="px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-medium hover:bg-orange-500/20 transition-colors disabled:opacity-40"
+                            >
+                              Suspend
+                            </button>
+                          )}
+                          <button onClick={() => setOverviewDetail(null)} className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-colors">
+                            <Icon name="x" size={18} />
+                          </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-                ) : null}
+
+                      {/* Balance cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-6 border-b border-[#1f1f1f]">
+                        {[
+                          { label: 'Available', value: `$${overviewDetailData.balance?.available?.toFixed(2) ?? '0.00'}`, color: 'text-green-400' },
+                          { label: 'Locked', value: `$${overviewDetailData.balance?.locked?.toFixed(2) ?? '0.00'}`, color: 'text-yellow-400' },
+                          { label: 'Lifetime Earned', value: `$${overviewDetailData.balance?.lifetimeEarned?.toFixed(2) ?? '0.00'}`, color: 'text-white' },
+                          { label: 'Total Paid', value: `$${overviewDetailData.balance?.totalPaid?.toFixed(2) ?? '0.00'}`, color: 'text-slate-300' },
+                        ].map(item => (
+                          <div key={item.label} className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg p-3">
+                            <p className="text-xs text-slate-500 mb-1">{item.label}</p>
+                            <p className={`font-semibold text-sm ${item.color}`}>{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Recent commissions */}
+                      {overviewDetailData.recentCommissions?.length > 0 && (
+                        <div className="p-6 border-b border-[#1f1f1f]">
+                          <p className="text-xs text-slate-400 font-medium uppercase mb-3">Recent Commissions</p>
+                          <div className="space-y-1">
+                            {overviewDetailData.recentCommissions.slice(0, 5).map((c: any) => (
+                              <div key={c.id} className="flex items-center justify-between text-xs py-1.5 border-b border-[#1f1f1f] last:border-0">
+                                <span className="text-slate-500 font-mono truncate max-w-[160px]">{c.order_id}</span>
+                                <span className="text-white font-medium">${Number(c.commission_amount).toFixed(2)}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                  c.status === 'AVAILABLE' ? 'bg-green-500/15 text-green-400' :
+                                  c.status === 'PAID' ? 'bg-primary/15 text-primary' :
+                                  'bg-yellow-500/15 text-yellow-400'
+                                }`}>{c.status}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Manual balance adjustment */}
+                      <div className="p-6 border-b border-[#1f1f1f]">
+                        <p className="text-xs text-slate-400 font-medium uppercase mb-3">Manual Balance Adjustment</p>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            value={modalAdjustAmount}
+                            onChange={e => setModalAdjustAmount(e.target.value)}
+                            placeholder="Amount (use - to deduct)"
+                            className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary/50"
+                          />
+                          <input
+                            type="text"
+                            value={modalAdjustNote}
+                            onChange={e => setModalAdjustNote(e.target.value)}
+                            placeholder="Note (reason)"
+                            className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary/50"
+                          />
+                          <button
+                            onClick={handleModalAdjust}
+                            disabled={!modalAdjustAmount || modalAdjusting}
+                            className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-40 whitespace-nowrap"
+                          >
+                            {modalAdjusting ? 'Saving...' : 'Apply'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="flex items-center justify-between p-6">
+                        <button
+                          onClick={() => { setConfirmDeleteId(overviewDetail.id); setOverviewDetail(null) }}
+                          className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-sm hover:bg-red-500/20 transition-colors"
+                        >
+                          Remove Vendor
+                        </button>
+                        <button
+                          onClick={() => setOverviewDetail(null)}
+                          className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-lg text-sm hover:text-white transition-colors"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
               </div>
             )}
 
@@ -608,155 +665,6 @@ export default function AdminVendorsPage() {
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* ── ACTIVE VENDORS ────────────────────────────────────────────── */}
-        {tab === 'vendors' && (
-          <div className="space-y-4">
-            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
-              <div className="relative w-full md:w-80">
-                <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search vendors by name or email..."
-                  value={vendorSearch}
-                  onChange={e => { setVendorSearch(e.target.value); setVendorPage(1) }}
-                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-9 pr-4 py-2 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Vendors table */}
-              <div className="lg:col-span-2 bg-[#111] border border-[#1f1f1f] rounded-xl overflow-hidden">
-                {vendorsLoading ? (
-                  <div className="text-center py-12 text-slate-400">Loading...</div>
-                ) : !vendorsData?.length ? (
-                  <div className="text-center py-12 text-slate-500">No active vendors</div>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[#1f1f1f] text-left">
-                        <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Vendor</th>
-                        <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Total Earned</th>
-                        <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Available</th>
-                        <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#1a1a1a]">
-                      {vendorsData.map((v: any) => (
-                        <tr
-                          key={v.id}
-                          onClick={() => setSelectedVendor(v)}
-                          className={`cursor-pointer hover:bg-white/[0.03] transition-colors ${selectedVendor?.id === v.id ? 'bg-primary/5' : ''}`}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-300 shrink-0">
-                                {v.name?.charAt(0)?.toUpperCase() || '?'}
-                              </div>
-                              <div>
-                                <div className="text-white text-sm">{v.name}</div>
-                                <div className="text-slate-500 text-xs">{v.email}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-300">${Number(v.total_earned).toFixed(2)}</td>
-                          <td className="px-4 py-3 text-green-400">${Number(v.available_balance).toFixed(2)}</td>
-                          <td className="px-4 py-3">
-                            {v.vendor_suspended_at
-                              ? <span className="px-2 py-0.5 rounded-full text-xs bg-red-500/15 text-red-400">Suspended</span>
-                              : <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/15 text-green-400">Active</span>
-                            }
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
-              {/* Vendor detail panel */}
-              <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-4">
-                {!selectedVendor ? (
-                  <div className="text-center py-12 text-slate-500 text-sm">Select a vendor to view details</div>
-                ) : detailLoading ? (
-                  <div className="text-center py-8 text-slate-400 text-sm">Loading...</div>
-                ) : vendorDetail ? (
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-white font-semibold">{vendorDetail.user?.name}</h3>
-                      <p className="text-slate-500 text-xs">{vendorDetail.user?.email}</p>
-                      {vendorDetail.application && (
-                        <p className="text-slate-400 text-xs mt-1">{vendorDetail.application.business_name} · {vendorDetail.application.country}</p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { label: 'Available', value: `$${vendorDetail.balance?.available?.toFixed(2) ?? '0.00'}`, color: 'text-green-400' },
-                        { label: 'Locked', value: `$${vendorDetail.balance?.locked?.toFixed(2) ?? '0.00'}`, color: 'text-yellow-400' },
-                        { label: 'Total Earned', value: `$${vendorDetail.balance?.lifetimeEarned?.toFixed(2) ?? '0.00'}`, color: 'text-white' },
-                        { label: 'Total Paid', value: `$${vendorDetail.balance?.totalPaid?.toFixed(2) ?? '0.00'}`, color: 'text-slate-300' },
-                      ].map(item => (
-                        <div key={item.label} className="bg-[#0a0a0a] rounded-lg p-3">
-                          <p className="text-xs text-slate-500">{item.label}</p>
-                          <p className={`font-semibold text-sm ${item.color}`}>{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Manual adjust */}
-                    <div className="border-t border-[#1f1f1f] pt-4">
-                      <p className="text-xs text-slate-400 mb-2 font-medium">Manual Balance Adjustment</p>
-                      <input
-                        type="number"
-                        value={adjustAmount}
-                        onChange={e => setAdjustAmount(e.target.value)}
-                        placeholder="Amount (use - to deduct)"
-                        className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs mb-2 focus:outline-none focus:border-primary/50"
-                      />
-                      <input
-                        type="text"
-                        value={adjustNote}
-                        onChange={e => setAdjustNote(e.target.value)}
-                        placeholder="Note (reason)"
-                        className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs mb-2 focus:outline-none focus:border-primary/50"
-                      />
-                      <button
-                        onClick={handleAdjustBalance}
-                        disabled={!adjustAmount || adjusting}
-                        className="w-full bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium py-2 rounded-lg transition-colors disabled:opacity-40"
-                      >
-                        {adjusting ? 'Adjusting...' : 'Apply Adjustment'}
-                      </button>
-                    </div>
-
-                    {/* Suspend / Reinstate */}
-                    <div className="border-t border-[#1f1f1f] pt-4 flex gap-2">
-                      {selectedVendor.vendor_suspended_at ? (
-                        <button
-                          onClick={() => reinstateMutation.mutate(selectedVendor.id)}
-                          disabled={reinstateMutation.isPending}
-                          className="flex-1 py-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-medium rounded-lg transition-colors disabled:opacity-40"
-                        >
-                          Reinstate Vendor
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => suspendMutation.mutate(selectedVendor.id)}
-                          disabled={suspendMutation.isPending}
-                          className="flex-1 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-medium rounded-lg transition-colors disabled:opacity-40"
-                        >
-                          Suspend Vendor
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
           </div>
         )}
 
