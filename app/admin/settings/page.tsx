@@ -319,6 +319,7 @@ export default function AdminSettingsPage() {
     otpProviders: false,
     esimMarkup: false,
     giftCardMarkup: false,
+    phoneRefillMarkup: false,
     virtualCardsMarkup: false,
     virtualNumberMarkup: false,
     cloudflareR2: false,
@@ -425,6 +426,11 @@ export default function AdminSettingsPage() {
 
   // Virtual Number Pricing State (for markup tab)
   const [virtualNumberPricing, setVirtualNumberPricing] = useState<VirtualNumberPricingSettings>(defaultVirtualNumberPricing)
+
+  // Phone Refill Markup Settings State
+  const [phoneRefillSettings, setPhoneRefillSettings] = useState({
+    phoneRefillMarkupPercent: 10, // Markup percentage on phone refills
+  })
 
   // Gift Card Providers Settings State
   const [giftCardSettings, setGiftCardSettings] = useState({
@@ -919,6 +925,13 @@ export default function AdminSettingsPage() {
     settingsApi.getSettingsByGroup('markup').then((res) => {
       if (res.success && res.data) {
         const d = res.data
+        // Phone Refill Markup
+        if (d.phoneRefillMarkupPercent !== undefined) {
+          setPhoneRefillSettings((prev) => ({
+            ...prev,
+            phoneRefillMarkupPercent: d.phoneRefillMarkupPercent,
+          }))
+        }
         // Gift Card Markup
         if (d.giftCardMarkupPercent !== undefined) {
           setGiftCardSettings((prev) => ({
@@ -1671,6 +1684,8 @@ export default function AdminSettingsPage() {
       // Gift Card Providers
       { key: 'giftCardDefaultProvider', value: giftCardSettings.giftCardDefaultProvider, group: 'api', isPublic: false },
       { key: 'giftCardMarkupPercent', value: giftCardSettings.giftCardMarkupPercent, group: 'markup', isPublic: true },
+      // Phone Refill Markup
+      { key: 'phoneRefillMarkupPercent', value: phoneRefillSettings.phoneRefillMarkupPercent, group: 'markup', isPublic: true },
       // Reloadly
       { key: 'reloadlyEnabled', value: giftCardSettings.reloadlyEnabled, group: 'api', isPublic: true },
       { key: 'reloadlyMode', value: giftCardSettings.reloadlyMode, group: 'api', isPublic: false },

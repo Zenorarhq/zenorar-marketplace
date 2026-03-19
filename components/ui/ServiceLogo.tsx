@@ -1127,34 +1127,27 @@ export default function ServiceLogo({ name, size = 32, className = '' }: Service
     setLoadAttempt(0)
 
     if (domain) {
-      // Start with Clearbit
-      setImgSrc(`https://logo.clearbit.com/${domain}`)
+      // Start with Clearbit at high resolution
+      setImgSrc(`https://logo.clearbit.com/${domain}?size=256`)
     } else {
       // No known domain, use letter avatar
       setLoadFailed(true)
     }
   }, [name, domain])
 
-  // Fallback chain: Clearbit -> Google -> DuckDuckGo -> Favicon.ico direct -> Gradient
+  // Fallback chain: Clearbit 256px -> Clearbit default -> Google 256px -> Letter avatar
+  // Skip DuckDuckGo/Yandex/direct favicon — they return tiny blurry icons
   const handleError = () => {
     if (loadAttempt === 0 && domain) {
-      // Clearbit failed, try Google Favicons
+      // Clearbit with size param failed, try without
       setLoadAttempt(1)
-      setImgSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`)
+      setImgSrc(`https://logo.clearbit.com/${domain}`)
     } else if (loadAttempt === 1 && domain) {
-      // Google failed or generic, try DuckDuckGo
+      // Clearbit failed entirely, try Google at max size
       setLoadAttempt(2)
-      setImgSrc(`https://icons.duckduckgo.com/ip3/${domain}.ico`)
-    } else if (loadAttempt === 2 && domain) {
-      // DuckDuckGo failed or generic, try direct favicon.ico
-      setLoadAttempt(3)
-      setImgSrc(`https://${domain}/favicon.ico`)
-    } else if (loadAttempt === 3 && domain) {
-      // Direct favicon failed, try Yandex (good for international sites)
-      setLoadAttempt(4)
-      setImgSrc(`https://favicon.yandex.net/favicon/${domain}`)
+      setImgSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=256`)
     } else {
-      // All sources failed, use gradient letter avatar
+      // All high-res sources failed, use gradient letter avatar
       setLoadFailed(true)
     }
   }

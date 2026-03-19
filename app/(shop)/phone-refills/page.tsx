@@ -6,7 +6,7 @@ import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import ServiceLogo from '@/components/ui/ServiceLogo'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { useCart } from '@/lib/cart-context'
@@ -66,7 +66,8 @@ function resolveCountryName(isoCode: string): string {
 }
 
 export default function PhoneRefillsPage() {
-  const [searchQuery, setSearchQuery] = useState('')
+  const searchParams = useSearchParams()
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
   const [operatorPage, setOperatorPage] = useState(1)
 
   // The currently expanded operator card (only one at a time)
@@ -384,67 +385,49 @@ export default function PhoneRefillsPage() {
     const hasMore = operator.offers.length > quickPicks.length
 
     return (
-      <div
-        key={key}
-        className={`rounded-2xl border transition-all group ${
-          isExpanded
-            ? 'border-primary bg-charcoal col-span-full'
-            : 'border-border-dark bg-charcoal hover:border-slate-600'
-        }`}
-      >
-        {/* Card Face - clickable */}
+      <div key={key} className="relative">
+        {/* Card */}
         <button
           onClick={() => handleToggle(operator)}
-          className={`w-full text-left transition-all ${
-            isExpanded ? 'flex items-center gap-4 p-4' : 'flex flex-col items-center p-4'
+          className={`w-full rounded-2xl border overflow-hidden transition-all group relative ${
+            isExpanded
+              ? 'border-primary ring-1 ring-primary/30'
+              : 'border-border-dark hover:border-slate-600'
           }`}
         >
-          {isExpanded ? (
-            <>
-              <ServiceLogo name={operator.name} size={44} className="flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
-                  <FlagIcon countryCode={operator.country} className="w-5 h-4 rounded-sm flex-shrink-0" />
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">{resolveCountryName(operator.country)}</p>
-              </div>
-              <Icon name="x" size={18} className="text-slate-500 flex-shrink-0" />
-            </>
-          ) : (
-            <>
-              {/* Large logo area — 70-80% of card height */}
-              <div className="w-full flex items-center justify-center py-4 sm:py-5">
-                <ServiceLogo name={operator.name} size={72} className="rounded-xl" />
-              </div>
-              {/* Name + flag */}
-              <div className="flex items-center gap-1.5 justify-center w-full">
-                <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
-                <FlagIcon countryCode={operator.country} className="w-4 h-3 rounded-sm flex-shrink-0" />
-              </div>
-              {/* From price */}
-              <p className="text-xs text-slate-500 mt-0.5">
-                from <span className="text-primary font-semibold">{formatPrice(minPrice)}</span>
-              </p>
-              {/* Select Amount button */}
-              <span className="mt-3 w-full py-2 rounded-lg bg-surface-dark border border-border-dark text-xs font-bold text-slate-300 text-center group-hover:border-primary/50 group-hover:text-white transition-colors">
-                Select Amount
-              </span>
-            </>
-          )}
+          {/* Full-bleed logo background */}
+          <div className="aspect-square w-full bg-charcoal flex items-center justify-center p-6">
+            <ServiceLogo name={operator.name} size={120} className="rounded-2xl" />
+          </div>
+          {/* Dark gradient overlay at bottom with metadata */}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent pt-12 pb-3 px-3 rounded-b-2xl">
+            <div className="flex items-center gap-1.5 justify-center">
+              <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
+              <FlagIcon countryCode={operator.country} className="w-4 h-3 rounded-sm flex-shrink-0" />
+            </div>
+            <p className="text-xs text-slate-400 text-center mt-0.5">
+              from <span className="text-primary font-semibold">{formatPrice(minPrice)}</span>
+            </p>
+          </div>
         </button>
 
-        {/* Expanded Panel */}
+        {/* Expanded dropdown overlay — stays on the card, doesn't span full width */}
         {isExpanded && (
-          <div className="px-4 pb-5 border-t border-border-dark pt-4">
+          <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-[#1a1a1a] border border-primary rounded-2xl shadow-2xl shadow-black/50 p-4">
+            {/* Close */}
+            <button
+              onClick={() => handleToggle(operator)}
+              className="absolute top-3 right-3 text-slate-500 hover:text-white"
+            >
+              <Icon name="x" size={16} />
+            </button>
+
             {/* Amount Selection */}
-            <div className="mb-4">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+            <div className="mb-3">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
                 Select Amount
               </label>
-
-              {/* Quick-pick pills */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {quickPicks.map((offer) => (
                   <button
                     key={offer.offerId}
@@ -452,7 +435,7 @@ export default function PhoneRefillsPage() {
                       setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer)
                       setPaymentError(null)
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       selectedOffer?.offerId === offer.offerId
                         ? 'bg-primary text-black'
                         : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
@@ -461,12 +444,10 @@ export default function PhoneRefillsPage() {
                     {formatPrice(offer.price)}
                   </button>
                 ))}
-
-                {/* "More" dropdown for remaining amounts */}
                 {hasMore && (
-                  <div className="relative group">
+                  <div className="relative group/more">
                     <button
-                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                         selectedOffer && !quickPicks.some((qp) => qp.offerId === selectedOffer.offerId)
                           ? 'bg-primary text-black'
                           : 'bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:border-primary/50'
@@ -474,12 +455,11 @@ export default function PhoneRefillsPage() {
                     >
                       {selectedOffer && !quickPicks.some((qp) => qp.offerId === selectedOffer.offerId)
                         ? formatPrice(selectedOffer.price)
-                        : `+${operator.offers.length - quickPicks.length} more`}
-                      <Icon name="chevron-down" size={14} className="inline ml-1" />
+                        : `+${operator.offers.length - quickPicks.length}`}
+                      <Icon name="chevron-down" size={12} className="inline ml-0.5" />
                     </button>
-                    {/* Dropdown */}
-                    <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block group-focus-within:block">
-                      <div className="bg-[#1a1a1a] border border-border-dark rounded-xl shadow-2xl py-1 max-h-60 overflow-y-auto w-48 custom-scrollbar">
+                    <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/more:block group-focus-within/more:block">
+                      <div className="bg-[#111] border border-border-dark rounded-xl shadow-2xl py-1 max-h-48 overflow-y-auto w-44 custom-scrollbar">
                         {[...operator.offers]
                           .sort((a, b) => a.price - b.price)
                           .map((offer) => (
@@ -489,7 +469,7 @@ export default function PhoneRefillsPage() {
                                 setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer)
                                 setPaymentError(null)
                               }}
-                              className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${
+                              className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between ${
                                 selectedOffer?.offerId === offer.offerId
                                   ? 'bg-primary/10 text-primary font-bold'
                                   : 'text-slate-300 hover:bg-white/5 hover:text-white'
@@ -497,7 +477,7 @@ export default function PhoneRefillsPage() {
                             >
                               <span>{formatPrice(offer.price)}</span>
                               {offer.sendCurrency !== 'USD' && offer.sendAmount !== offer.price && (
-                                <span className="text-xs text-slate-500">
+                                <span className="text-[10px] text-slate-500">
                                   {offer.sendAmount} {offer.sendCurrency}
                                 </span>
                               )}
@@ -512,86 +492,52 @@ export default function PhoneRefillsPage() {
 
             {/* Phone Input + Actions (visible when amount selected) */}
             {selectedOffer && (
-              <div className="space-y-3">
-                {/* Phone Number */}
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">
-                    Phone Number
-                  </label>
-                  <div className="relative max-w-md">
-                    <Icon
-                      name="phone"
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                    />
-                    <input
-                      type="tel"
-                      placeholder="+1 234 567 8900"
-                      value={phoneNumber}
-                      onChange={(e) => {
-                        setPhoneNumber(e.target.value)
-                        setPaymentError(null)
-                      }}
-                      className="w-full pl-9 pr-4 py-2.5 bg-surface-dark border border-border-dark rounded-xl text-white text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">Include country code (e.g. +1 for US)</p>
+              <div className="space-y-2.5">
+                <div className="relative">
+                  <Icon name="phone" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="tel"
+                    placeholder="+1 234 567 8900"
+                    value={phoneNumber}
+                    onChange={(e) => { setPhoneNumber(e.target.value); setPaymentError(null) }}
+                    className="w-full pl-8 pr-3 py-2 bg-surface-dark border border-border-dark rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+                  />
                 </div>
 
-                {/* Summary + Action Row */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
-                  {/* Summary */}
-                  <div className="flex-1 flex items-center gap-4 text-sm">
-                    <div>
-                      <span className="text-slate-500">Receives: </span>
-                      <span className="text-white font-bold">
-                        {selectedOffer.sendAmount} {selectedOffer.sendCurrency}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">You pay: </span>
-                      <span className="text-primary font-extrabold">{formatPrice(selectedOffer.price)}</span>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={() => handlePayWithWallet(operator)}
-                      disabled={!isReady || isProcessing || loadingBalance}
-                      className="flex-1 sm:flex-none font-bold py-2.5 px-5 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" />
-                          Processing...
-                        </>
-                      ) : loadingBalance ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" />
-                          Checking...
-                        </>
-                      ) : (
-                        <>
-                          <Icon name="wallet" size={16} />
-                          Pay with Wallet
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleAddToCart(operator)}
-                      disabled={!isReady}
-                      className="flex-1 sm:flex-none font-bold py-2.5 px-5 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      <Icon name="cart" size={16} />
-                      Add to Cart
-                    </button>
-                  </div>
+                {/* Summary */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500">
+                    Receives <span className="text-white font-bold">{selectedOffer.sendAmount} {selectedOffer.sendCurrency}</span>
+                  </span>
+                  <span className="text-primary font-extrabold">{formatPrice(selectedOffer.price)}</span>
                 </div>
 
-                {/* Error */}
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePayWithWallet(operator)}
+                    disabled={!isReady || isProcessing || loadingBalance}
+                    className="flex-1 font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 bg-primary text-black hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                  >
+                    {isProcessing ? (
+                      <><div className="animate-spin rounded-full h-3 w-3 border-2 border-black border-t-transparent" /> Processing...</>
+                    ) : loadingBalance ? (
+                      <><div className="animate-spin rounded-full h-3 w-3 border-2 border-black border-t-transparent" /> Checking...</>
+                    ) : (
+                      <><Icon name="wallet" size={14} /> Pay</>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleAddToCart(operator)}
+                    disabled={!isReady}
+                    className="flex-1 font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 bg-surface-dark border border-border-dark text-white hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                  >
+                    <Icon name="cart" size={14} /> Cart
+                  </button>
+                </div>
+
                 {paymentError && !isProcessing && (
-                  <p className="text-xs text-red-400">{paymentError}</p>
+                  <p className="text-[10px] text-red-400">{paymentError}</p>
                 )}
               </div>
             )}
@@ -717,11 +663,8 @@ export default function PhoneRefillsPage() {
       {loadingOperators && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {[...Array(12)].map((_, i) => (
-            <div key={i} className="bg-charcoal border border-border-dark rounded-2xl p-4 animate-pulse flex flex-col items-center">
-              <div className="w-[72px] h-[72px] bg-slate-700 rounded-xl my-4 sm:my-5" />
-              <div className="h-4 bg-slate-700 rounded w-24 mb-1.5" />
-              <div className="h-3 bg-slate-700 rounded w-16 mb-3" />
-              <div className="h-8 bg-slate-700 rounded-lg w-full" />
+            <div key={i} className="bg-charcoal border border-border-dark rounded-2xl overflow-hidden animate-pulse">
+              <div className="aspect-square w-full bg-slate-800" />
             </div>
           ))}
         </div>
