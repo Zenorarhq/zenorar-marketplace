@@ -938,16 +938,24 @@ export default function AdminSettingsPage() {
           lithicTopUpFeePercent: d.lithicTopUpFeePercent ?? prev.lithicTopUpFeePercent,
           reloadlyInstantMarkupPercent: d.reloadlyInstantMarkupPercent ?? prev.reloadlyInstantMarkupPercent,
         }))
-        // Vendor Settings
-        setVendorSettings((prev) => ({
-          vendorCommissionPercent: d.vendorCommissionPercent !== undefined ? Number(d.vendorCommissionPercent) : prev.vendorCommissionPercent,
-          vendorMinPayoutAmount: d.vendorMinPayoutAmount !== undefined ? Number(d.vendorMinPayoutAmount) : prev.vendorMinPayoutAmount,
-        }))
       }
       setLoadedGroups(prev => new Set(prev).add('markup'))
     }).catch(() => {
       setLoadedGroups(prev => new Set(prev).add('markup'))
     })
+  }, [])
+
+  // Load vendor commission settings on mount
+  useEffect(() => {
+    settingsApi.getSettingsByGroup('vendor').then((res) => {
+      if (res.success && res.data) {
+        const d = res.data
+        setVendorSettings((prev) => ({
+          vendorCommissionPercent: d.vendorCommissionPercent !== undefined ? Number(d.vendorCommissionPercent) : prev.vendorCommissionPercent,
+          vendorMinPayoutAmount: d.vendorMinPayoutAmount !== undefined ? Number(d.vendorMinPayoutAmount) : prev.vendorMinPayoutAmount,
+        }))
+      }
+    }).catch(() => {})
   }, [])
 
   // Load R2 settings on mount

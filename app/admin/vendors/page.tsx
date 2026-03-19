@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { apiFetch } from '@/lib/api/client'
 
-type Tab = 'overview' | 'applications' | 'vendors' | 'payouts' | 'settings'
+type Tab = 'overview' | 'applications' | 'vendors' | 'payouts'
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
@@ -87,12 +87,6 @@ export default function AdminVendorsPage() {
   const [txHashInput, setTxHashInput] = useState<Record<string, string>>({})
   const [rejectNote, setRejectNote] = useState<Record<string, string>>({})
 
-  // Settings state
-  const [commissionPercent, setCommissionPercent] = useState('')
-  const [minPayout, setMinPayout] = useState('')
-  const [settingsSaved, setSettingsSaved] = useState(false)
-  const [settingsSaving, setSettingsSaving] = useState(false)
-
   // ── Queries ──────────────────────────────────────────────────────────────
 
   const { data: stats } = useQuery({
@@ -124,19 +118,6 @@ export default function AdminVendorsPage() {
     queryFn: () => vendorFetch<any>(`/admin/vendors/${selectedVendor.id}`),
     enabled: !!selectedVendor?.id,
   })
-
-  // ── Load settings ────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (tab === 'settings') {
-      apiFetch<any>('/settings/vendor').then(res => {
-        if (res.success && res.data) {
-          setCommissionPercent(res.data.vendorCommissionPercent ?? '10')
-          setMinPayout(res.data.vendorMinPayoutAmount ?? '50')
-        }
-      }).catch(() => {})
-    }
-  }, [tab])
 
   // ── Mutations ────────────────────────────────────────────────────────────
 
@@ -197,17 +178,6 @@ export default function AdminVendorsPage() {
     queryClient.invalidateQueries({ queryKey: ['vendor-list'] })
   }
 
-  async function handleSaveSettings() {
-    setSettingsSaving(true)
-    await Promise.all([
-      apiFetch('/settings', { method: 'PUT', body: JSON.stringify({ key: 'vendorCommissionPercent', value: commissionPercent, group: 'vendor', isPublic: false }) }),
-      apiFetch('/settings', { method: 'PUT', body: JSON.stringify({ key: 'vendorMinPayoutAmount', value: minPayout, group: 'vendor', isPublic: false }) }),
-    ])
-    setSettingsSaving(false)
-    setSettingsSaved(true)
-    setTimeout(() => setSettingsSaved(false), 2000)
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────────────────────
@@ -217,7 +187,6 @@ export default function AdminVendorsPage() {
     { id: 'applications', label: 'Applications', icon: 'document' },
     { id: 'vendors', label: 'Active Vendors', icon: 'users' },
     { id: 'payouts', label: 'Payouts', icon: 'wallet' },
-    { id: 'settings', label: 'Settings', icon: 'settings' },
   ]
 
   return (
@@ -671,69 +640,6 @@ export default function AdminVendorsPage() {
           </div>
         )}
 
-        {/* ── SETTINGS ──────────────────────────────────────────────────── */}
-        {tab === 'settings' && (
-          <div className="max-w-lg space-y-6">
-            <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-6">
-              <h3 className="text-white font-semibold mb-1">Commission Settings</h3>
-              <p className="text-slate-500 text-sm mb-5">Set the percentage vendors earn from your markup profit on each purchase.</p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-1">Commission Percentage (%)</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={0.5}
-                      value={commissionPercent}
-                      onChange={e => setCommissionPercent(e.target.value)}
-                      className="w-32 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary/50"
-                    />
-                    <span className="text-slate-400 text-sm">% of markup profit per order item</span>
-                  </div>
-                  <p className="text-xs text-slate-600 mt-1">Example: if markup profit = $2.00 and commission = {commissionPercent || 10}%, vendor earns ${((2 * Number(commissionPercent || 10)) / 100).toFixed(2)}</p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-1">Minimum Payout Amount ($)</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      min={1}
-                      step={5}
-                      value={minPayout}
-                      onChange={e => setMinPayout(e.target.value)}
-                      className="w-32 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary/50"
-                    />
-                    <span className="text-slate-400 text-sm">minimum balance to request payout</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handleSaveSettings}
-                disabled={settingsSaving}
-                className="mt-6 px-6 py-2 bg-primary hover:bg-primary/90 text-black font-semibold text-sm rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                <Icon name={settingsSaved ? 'check' : 'save'} size={14} />
-                {settingsSaved ? 'Saved!' : settingsSaving ? 'Saving...' : 'Save Settings'}
-              </button>
-            </div>
-
-            <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-6">
-              <h3 className="text-white font-semibold mb-1">How Commission Works</h3>
-              <ul className="text-slate-400 text-sm space-y-2 mt-3">
-                <li className="flex items-start gap-2"><span className="text-primary mt-0.5">→</span> Commission is calculated from <strong className="text-white">markup profit only</strong>, not the total product price.</li>
-                <li className="flex items-start gap-2"><span className="text-primary mt-0.5">→</span> API products (eSIM, gift cards etc): markup extracted from your markup % settings.</li>
-                <li className="flex items-start gap-2"><span className="text-primary mt-0.5">→</span> Scripts: markup = sale price minus cost price. Set cost price on each product.</li>
-                <li className="flex items-start gap-2"><span className="text-primary mt-0.5">→</span> Commission is <strong className="text-white">locked for 7 days</strong> after purchase to cover the refund window.</li>
-                <li className="flex items-start gap-2"><span className="text-primary mt-0.5">→</span> If an order is refunded within 7 days, the commission is reversed before it unlocks.</li>
-              </ul>
-            </div>
-          </div>
-        )}
       </div>
     </AdminLayout>
   )
