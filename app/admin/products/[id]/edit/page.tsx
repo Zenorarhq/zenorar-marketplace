@@ -520,6 +520,9 @@ export default function EditProductPage() {
                   min="0"
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+                {['digital', 'script', 'tool'].includes((product?.productType || '').toLowerCase()) && !formData.costPrice && (
+                  <p className="text-xs text-amber-400 mt-1">Cost price required for vendor commission calculation. Without it, no commission will be recorded on sales of this product.</p>
+                )}
               </div>
 
               <div>

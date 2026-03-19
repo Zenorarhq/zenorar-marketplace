@@ -13,6 +13,7 @@ import EmailConfigSection from '@/components/admin/EmailConfigSection'
 import ProtectionLevelsSection from '@/components/admin/ProtectionLevelsSection'
 import PinSetupForm from '@/components/admin/PinSetupForm'
 import VirtualNumberPricingSection, { VirtualNumberPricingSettings, defaultVirtualNumberPricing } from '@/components/admin/VirtualNumberPricingSection'
+import ScriptCommissionTiersSection from '@/components/admin/ScriptCommissionTiersSection'
 
 type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'markup' | 'email' | 'marketing' | 'seo' | 'activity'
 
@@ -481,12 +482,6 @@ export default function AdminSettingsPage() {
   })
 
   // Script Commission Tiers State
-  const [scriptTiers, setScriptTiers] = useState({
-    tier1: { min: 0, max: 0, commission: 0 },
-    tier2: { min: 0, max: 0, commission: 0 },
-    tier3: { min: 0, max: 0, commission: 0 },
-  })
-
   // OTP Providers Settings State
   const [otpSettings, setOtpSettings] = useState({
     otpDefaultProvider: 'smspool' as 'smspool' | '5sim',
@@ -963,11 +958,6 @@ export default function AdminSettingsPage() {
           vendorCommissionPercent: d.vendorCommissionPercent !== undefined ? Number(d.vendorCommissionPercent) : prev.vendorCommissionPercent,
           vendorMinPayoutAmount: d.vendorMinPayoutAmount !== undefined ? Number(d.vendorMinPayoutAmount) : prev.vendorMinPayoutAmount,
         }))
-        setScriptTiers({
-          tier1: { min: Number(d.scriptCommTier1Min ?? 0), max: Number(d.scriptCommTier1Max ?? 0), commission: Number(d.scriptCommTier1Pct ?? 0) },
-          tier2: { min: Number(d.scriptCommTier2Min ?? 0), max: Number(d.scriptCommTier2Max ?? 0), commission: Number(d.scriptCommTier2Pct ?? 0) },
-          tier3: { min: Number(d.scriptCommTier3Min ?? 0), max: Number(d.scriptCommTier3Max ?? 0), commission: Number(d.scriptCommTier3Pct ?? 0) },
-        })
       }
     }).catch(() => {})
   }, [])
@@ -1721,16 +1711,6 @@ export default function AdminSettingsPage() {
       // Vendor Commission Settings
       { key: 'vendorCommissionPercent', value: vendorSettings.vendorCommissionPercent, group: 'vendor', isPublic: false },
       { key: 'vendorMinPayoutAmount', value: vendorSettings.vendorMinPayoutAmount, group: 'vendor', isPublic: false },
-      // Script Commission Tiers
-      { key: 'scriptCommTier1Min', value: scriptTiers.tier1.min, group: 'vendor', isPublic: false },
-      { key: 'scriptCommTier1Max', value: scriptTiers.tier1.max, group: 'vendor', isPublic: false },
-      { key: 'scriptCommTier1Pct', value: scriptTiers.tier1.commission, group: 'vendor', isPublic: false },
-      { key: 'scriptCommTier2Min', value: scriptTiers.tier2.min, group: 'vendor', isPublic: false },
-      { key: 'scriptCommTier2Max', value: scriptTiers.tier2.max, group: 'vendor', isPublic: false },
-      { key: 'scriptCommTier2Pct', value: scriptTiers.tier2.commission, group: 'vendor', isPublic: false },
-      { key: 'scriptCommTier3Min', value: scriptTiers.tier3.min, group: 'vendor', isPublic: false },
-      { key: 'scriptCommTier3Max', value: scriptTiers.tier3.max, group: 'vendor', isPublic: false },
-      { key: 'scriptCommTier3Pct', value: scriptTiers.tier3.commission, group: 'vendor', isPublic: false },
       // OTP Providers (stored in 'api' group for consistency)
       { key: 'otpDefaultProvider', value: otpSettings.otpDefaultProvider, group: 'api', isPublic: false },
       { key: 'smspoolEnabled', value: otpSettings.smspoolEnabled, group: 'api', isPublic: true },
@@ -6146,67 +6126,7 @@ export default function AdminSettingsPage() {
               </div>
 
               {/* Script Commission Tiers */}
-              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
-                <button onClick={() => toggleSection('scriptCommissionTiers')} className="w-full flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                      <Icon name="layers" size={24} className="text-orange-400" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-white font-semibold text-lg">Script Commission Tiers</p>
-                      <p className="text-slate-500 text-sm">Vendor commission % based on script sale price range</p>
-                    </div>
-                  </div>
-                  <Icon name={expandedSections.scriptCommissionTiers ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
-                </button>
-                {expandedSections.scriptCommissionTiers && (
-                  <div className="mt-6 pt-6 border-t border-[#1f1f1f] space-y-3">
-                    <p className="text-sm text-slate-500 mb-4">Commission is calculated from markup profit (sale price − cost price). If no tier matches, commission is 0%.</p>
-                    {(['tier1', 'tier2', 'tier3'] as const).map((key, idx) => (
-                      <div key={key} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-                        <p className="text-sm font-semibold text-white mb-3">Tier {idx + 1}</p>
-                        <div className="flex flex-wrap items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-slate-500 whitespace-nowrap">Min Price $</label>
-                            <input
-                              type="number"
-                              value={scriptTiers[key].min || ''}
-                              onChange={e => setScriptTiers(prev => ({ ...prev, [key]: { ...prev[key], min: Number(e.target.value) || 0 } }))}
-                              placeholder="0"
-                              className="w-24 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
-                              min={0}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-slate-500 whitespace-nowrap">Max Price $</label>
-                            <input
-                              type="number"
-                              value={scriptTiers[key].max || ''}
-                              onChange={e => setScriptTiers(prev => ({ ...prev, [key]: { ...prev[key], max: Number(e.target.value) || 0 } }))}
-                              placeholder="∞"
-                              className="w-24 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50"
-                              min={0}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-slate-500 whitespace-nowrap">Commission %</label>
-                            <input
-                              type="number"
-                              value={scriptTiers[key].commission || ''}
-                              onChange={e => setScriptTiers(prev => ({ ...prev, [key]: { ...prev[key], commission: Number(e.target.value) || 0 } }))}
-                              placeholder="0"
-                              className="w-20 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
-                              min={0}
-                              max={100}
-                              step={0.1}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ScriptCommissionTiersSection />
             </div>
           )}
 

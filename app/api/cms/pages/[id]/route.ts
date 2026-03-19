@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { executeQuery } from '@/lib/db-helpers'
 import { authenticateRequest } from '@/lib/auth-middleware'
 
@@ -86,11 +87,18 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     const { id } = await params
-    const result = await executeQuery(`DELETE FROM cms_pages WHERE id = $1 RETURNING id`, [id])
 
-    if (result.rows.length === 0) {
+    // Fetch slug before deleting so we can revalidate the cached public route
+    const existing = await executeQuery(`SELECT slug FROM cms_pages WHERE id = $1`, [id])
+    if (existing.rows.length === 0) {
       return NextResponse.json({ success: false, error: 'Page not found' }, { status: 404 })
     }
+    const slug = existing.rows[0].slug
+
+    await executeQuery(`DELETE FROM cms_pages WHERE id = $1`, [id])
+
+    // Purge the Next.js cache for this page so it 404s immediately
+    revalidatePath(`/p/${slug}`)
 
     return NextResponse.json({ success: true, data: { id } })
   } catch (error) {

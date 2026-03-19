@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { executeQuery } from '@/lib/db-helpers'
 import { authenticateRequest } from '@/lib/auth-middleware'
 
@@ -19,6 +20,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (result.rows.length === 0) {
       return NextResponse.json({ success: false, error: 'Page not found' }, { status: 404 })
     }
+
+    revalidatePath(`/p/${result.rows[0].slug}`)
 
     return NextResponse.json({ success: true, data: result.rows[0] })
   } catch (error) {
