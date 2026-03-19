@@ -453,58 +453,28 @@ export default function TicketsPage() {
         </div>
 
         {/* Pagination */}
-        {filteredTickets.length > 0 && (
+        {filteredTickets.length > 0 && totalPages > 1 && (
           <div className="px-6 py-4 bg-charcoal border-t border-border-dark flex items-center justify-between">
             <p className="text-xs text-slate-500">
-              Showing <span className="font-bold">{startIndex + 1}-{Math.min(endIndex, filteredTickets.length)}</span> of{' '}
-              <span className="font-bold">{filteredTickets.length}</span> tickets
+              {startIndex + 1} - {Math.min(endIndex, filteredTickets.length)} of {filteredTickets.length}
             </p>
-            {totalPages > 1 && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded bg-charcoal border border-border-dark text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Icon name="chevron-left" size={18} />
-                </button>
-
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum
-                  if (totalPages <= 5) {
-                    pageNum = i + 1
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i
-                  } else {
-                    pageNum = currentPage - 2 + i
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-1 rounded text-xs font-bold ${
-                        currentPage === pageNum
-                          ? 'bg-primary text-background-dark'
-                          : 'bg-charcoal border border-border-dark text-white hover:bg-slate-700'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                })}
-
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded bg-charcoal border border-border-dark text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Icon name="chevron-right" size={18} />
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon name="chevron-left" size={14} />
+              </button>
+              <span className="text-xs text-slate-400 px-2">{currentPage} / {totalPages}</span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon name="chevron-right" size={14} />
+              </button>
+            </div>
           </div>
         )}
       </div>

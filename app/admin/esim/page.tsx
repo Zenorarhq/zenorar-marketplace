@@ -681,45 +681,24 @@ function AdminEsimPageContent() {
             {totalPlans > pageSize && (
               <div className="border-t border-[#1f1f1f] px-5 py-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-slate-400 text-sm">
-                    Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalPlans)} of {formatNumber(totalPlans)}
+                  <p className="text-xs text-slate-500">
+                    {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalPlans)} of {formatNumber(totalPlans)}
                   </p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Previous
+                      <Icon name="chevron-left" size={14} />
                     </button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum: number
-                        if (totalPages <= 5) pageNum = i + 1
-                        else if (currentPage <= 3) pageNum = i + 1
-                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
-                        else pageNum = currentPage - 2 + i
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`w-8 h-8 rounded-lg text-sm transition-colors ${
-                              currentPage === pageNum
-                                ? 'bg-primary text-black font-semibold'
-                                : 'bg-[#1a1a1a] hover:bg-white/10 text-slate-400'
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        )
-                      })}
-                    </div>
+                    <span className="text-xs text-slate-400 px-2">{currentPage} / {totalPages}</span>
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Next
+                      <Icon name="chevron-right" size={14} />
                     </button>
                   </div>
                 </div>
@@ -875,26 +854,24 @@ function AdminEsimPageContent() {
               {inventoryData?.pagination && inventoryData.pagination.total > inventoryPageSize && (
                 <div className="border-t border-[#1f1f1f] px-5 py-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-slate-400 text-sm">
-                      Showing {((inventoryPage - 1) * inventoryPageSize) + 1}–{Math.min(inventoryPage * inventoryPageSize, inventoryData.pagination.total)} of {inventoryData.pagination.total} items
+                    <p className="text-xs text-slate-500">
+                      {((inventoryPage - 1) * inventoryPageSize) + 1} - {Math.min(inventoryPage * inventoryPageSize, inventoryData.pagination.total)} of {inventoryData.pagination.total}
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
                         disabled={inventoryPage === 1}
-                        className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Previous
+                        <Icon name="chevron-left" size={14} />
                       </button>
-                      <span className="text-slate-400 text-sm">
-                        Page {inventoryPage} of {Math.ceil(inventoryData.pagination.total / inventoryPageSize)}
-                      </span>
+                      <span className="text-xs text-slate-400 px-2">{inventoryPage} / {Math.ceil(inventoryData.pagination.total / inventoryPageSize)}</span>
                       <button
                         onClick={() => setInventoryPage(p => Math.min(Math.ceil(inventoryData.pagination.total / inventoryPageSize), p + 1))}
                         disabled={inventoryPage >= Math.ceil(inventoryData.pagination.total / inventoryPageSize)}
-                        className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Next
+                        <Icon name="chevron-right" size={14} />
                       </button>
                     </div>
                   </div>
@@ -1040,26 +1017,28 @@ function AdminEsimPageContent() {
                 </table>
               </div>
               {carrierOrdersData?.total > 50 && (
-                <div className="border-t border-[#1f1f1f] px-5 py-4 flex items-center justify-between">
-                  <p className="text-slate-400 text-sm">
-                    Showing {((carrierPage - 1) * 50) + 1}–{Math.min(carrierPage * 50, carrierOrdersData.total)} of {carrierOrdersData.total}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCarrierPage(p => Math.max(1, p - 1))}
-                      disabled={carrierPage === 1}
-                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-slate-400 text-sm">Page {carrierPage}</span>
-                    <button
-                      onClick={() => setCarrierPage(p => p + 1)}
-                      disabled={carrierPage * 50 >= carrierOrdersData.total}
-                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
+                <div className="border-t border-[#1f1f1f] px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-slate-500">
+                      {((carrierPage - 1) * 50) + 1} - {Math.min(carrierPage * 50, carrierOrdersData.total)} of {carrierOrdersData.total}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setCarrierPage(p => Math.max(1, p - 1))}
+                        disabled={carrierPage === 1}
+                        className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Icon name="chevron-left" size={14} />
+                      </button>
+                      <span className="text-xs text-slate-400 px-2">{carrierPage} / {Math.ceil(carrierOrdersData.total / 50)}</span>
+                      <button
+                        onClick={() => setCarrierPage(p => Math.min(Math.ceil(carrierOrdersData.total / 50), p + 1))}
+                        disabled={carrierPage * 50 >= carrierOrdersData.total}
+                        className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Icon name="chevron-right" size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

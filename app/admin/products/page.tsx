@@ -456,53 +456,24 @@ export default function ProductsPage() {
         {filteredProducts.length > 0 && totalPages > 1 && (
           <div className="border-t border-[#1f1f1f] px-5 py-4">
             <div className="flex items-center justify-between">
-              <p className="text-slate-400 text-sm">
-                Showing {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length}
+              <p className="text-xs text-slate-500">
+                {startIndex + 1} - {Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Previous
+                  <Icon name="chevron-left" size={14} />
                 </button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum
-                    if (totalPages <= 5) {
-                      pageNum = i + 1
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i
-                    } else {
-                      pageNum = currentPage - 2 + i
-                    }
-
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`w-8 h-8 rounded-lg text-sm transition-colors ${
-                          currentPage === pageNum
-                            ? 'bg-primary text-black font-semibold'
-                            : 'bg-[#1a1a1a] hover:bg-white/10 text-slate-400'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    )
-                  })}
-                </div>
-
+                <span className="text-xs text-slate-400 px-2">{currentPage} / {totalPages}</span>
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
+                  <Icon name="chevron-right" size={14} />
                 </button>
               </div>
             </div>

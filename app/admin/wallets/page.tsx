@@ -535,14 +535,25 @@ export default function AdminWalletsPage() {
               </div>
 
               {walletsData.pagination.totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-between">
-                  <p className="text-slate-400 text-sm">Page {walletPage} of {walletsData.pagination.totalPages} ({walletsData.pagination.total} wallets)</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setWalletPage(p => Math.max(1, p - 1))} disabled={walletPage === 1} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
-                      <Icon name="arrow-left" size={16} />
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
+                    Page {walletPage} of {walletsData.pagination.totalPages} ({walletsData.pagination.total} wallets)
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setWalletPage(p => Math.max(1, p - 1))}
+                      disabled={walletPage === 1}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-left" size={14} />
                     </button>
-                    <button onClick={() => setWalletPage(p => Math.min(walletsData.pagination.totalPages, p + 1))} disabled={walletPage === walletsData.pagination.totalPages} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
-                      <Icon name="arrow-right" size={16} />
+                    <span className="text-xs text-slate-400 px-2">{walletPage} / {walletsData.pagination.totalPages}</span>
+                    <button
+                      onClick={() => setWalletPage(p => Math.min(walletsData.pagination.totalPages, p + 1))}
+                      disabled={walletPage === walletsData.pagination.totalPages}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-right" size={14} />
                     </button>
                   </div>
                 </div>
@@ -682,14 +693,25 @@ export default function AdminWalletsPage() {
               })()}
 
               {depositsData.pagination.totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-between">
-                  <p className="text-slate-400 text-sm">Page {depositPage} of {depositsData.pagination.totalPages} ({depositsData.pagination.total} deposits)</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setDepositPage(p => Math.max(1, p - 1))} disabled={depositPage === 1} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
-                      <Icon name="arrow-left" size={16} />
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
+                    Page {depositPage} of {depositsData.pagination.totalPages} ({depositsData.pagination.total} deposits)
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setDepositPage(p => Math.max(1, p - 1))}
+                      disabled={depositPage === 1}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-left" size={14} />
                     </button>
-                    <button onClick={() => setDepositPage(p => Math.min(depositsData.pagination.totalPages, p + 1))} disabled={depositPage === depositsData.pagination.totalPages} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
-                      <Icon name="arrow-right" size={16} />
+                    <span className="text-xs text-slate-400 px-2">{depositPage} / {depositsData.pagination.totalPages}</span>
+                    <button
+                      onClick={() => setDepositPage(p => Math.min(depositsData.pagination.totalPages, p + 1))}
+                      disabled={depositPage === depositsData.pagination.totalPages}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-right" size={14} />
                     </button>
                   </div>
                 </div>
@@ -773,14 +795,25 @@ export default function AdminWalletsPage() {
               </div>
 
               {txData.pagination.totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-between">
-                  <p className="text-slate-400 text-sm">Page {txPage} of {txData.pagination.totalPages} ({txData.pagination.total} transactions)</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setTxPage(p => Math.max(1, p - 1))} disabled={txPage === 1} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
-                      <Icon name="arrow-left" size={16} />
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
+                    Page {txPage} of {txData.pagination.totalPages} ({txData.pagination.total} transactions)
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setTxPage(p => Math.max(1, p - 1))}
+                      disabled={txPage === 1}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-left" size={14} />
                     </button>
-                    <button onClick={() => setTxPage(p => Math.min(txData.pagination.totalPages, p + 1))} disabled={txPage === txData.pagination.totalPages} className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-border-dark transition-colors disabled:opacity-50">
-                      <Icon name="arrow-right" size={16} />
+                    <span className="text-xs text-slate-400 px-2">{txPage} / {txData.pagination.totalPages}</span>
+                    <button
+                      onClick={() => setTxPage(p => Math.min(txData.pagination.totalPages, p + 1))}
+                      disabled={txPage === txData.pagination.totalPages}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-right" size={14} />
                     </button>
                   </div>
                 </div>

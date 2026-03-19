@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { executeQuery } from '@/lib/db-helpers'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
+import Icon from '@/components/ui/Icon'
 
 export const dynamic = 'force-dynamic'
 
@@ -193,38 +194,37 @@ export default async function BlogListPage({ searchParams }: BlogListPageProps) 
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-10">
-            {page > 1 && (
-              <Link
-                href={`/blog?page=${page - 1}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}${search ? `&search=${search}` : ''}`}
-                className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded-lg text-sm hover:bg-[#2a2a2a]"
-              >
-                Previous
-              </Link>
-            )}
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const start = Math.max(1, Math.min(page - 2, totalPages - 4))
-              const p = start + i
-              return (
+          <div className="mt-6 flex items-center justify-between">
+            <p className="text-xs text-slate-500">
+              Page {page} of {totalPages}
+            </p>
+            <div className="flex items-center gap-1">
+              {page > 1 ? (
                 <Link
-                  key={p}
-                  href={`/blog?page=${p}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}${search ? `&search=${search}` : ''}`}
-                  className={`px-3 py-2 rounded-lg text-sm ${
-                    p === page ? 'bg-primary text-black font-medium' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a]'
-                  }`}
+                  href={`/blog?page=${page - 1}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}${search ? `&search=${search}` : ''}`}
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors"
                 >
-                  {p}
+                  <Icon name="chevron-left" size={14} />
                 </Link>
-              )
-            })}
-            {page < totalPages && (
-              <Link
-                href={`/blog?page=${page + 1}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}${search ? `&search=${search}` : ''}`}
-                className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded-lg text-sm hover:bg-[#2a2a2a]"
-              >
-                Next
-              </Link>
-            )}
+              ) : (
+                <span className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 opacity-50 cursor-not-allowed">
+                  <Icon name="chevron-left" size={14} />
+                </span>
+              )}
+              <span className="text-xs text-slate-400 px-2">{page} / {totalPages}</span>
+              {page < totalPages ? (
+                <Link
+                  href={`/blog?page=${page + 1}${category ? `&category=${category}` : ''}${tag ? `&tag=${tag}` : ''}${search ? `&search=${search}` : ''}`}
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors"
+                >
+                  <Icon name="chevron-right" size={14} />
+                </Link>
+              ) : (
+                <span className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 opacity-50 cursor-not-allowed">
+                  <Icon name="chevron-right" size={14} />
+                </span>
+              )}
+            </div>
           </div>
         )}
       </div>

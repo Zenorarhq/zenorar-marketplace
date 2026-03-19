@@ -422,23 +422,24 @@ function AllLicensesTab({ queryClient }: { queryClient: ReturnType<typeof useQue
           {/* Pagination */}
           {data?.pagination && data.pagination.totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-[#2a2a2a]">
-              <p className="text-gray-400 text-xs">
+              <p className="text-xs text-slate-500">
                 Page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total} total)
               </p>
-              <div className="flex gap-1">
+              <div className="flex items-center gap-1">
                 <button
                   disabled={data.pagination.page <= 1}
-                  onClick={() => setFilters((f) => ({ ...f, page: (f.page || 1) - 1 }))}
-                  className="px-3 py-1 text-xs bg-[#222] text-gray-300 rounded disabled:opacity-30 hover:bg-[#333] transition-colors"
+                  onClick={() => setFilters(f => ({ ...f, page: (f.page || 1) - 1 }))}
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Prev
+                  <Icon name="chevron-left" size={14} />
                 </button>
+                <span className="text-xs text-slate-400 px-2">{data.pagination.page} / {data.pagination.totalPages}</span>
                 <button
                   disabled={data.pagination.page >= data.pagination.totalPages}
-                  onClick={() => setFilters((f) => ({ ...f, page: (f.page || 1) + 1 }))}
-                  className="px-3 py-1 text-xs bg-[#222] text-gray-300 rounded disabled:opacity-30 hover:bg-[#333] transition-colors"
+                  onClick={() => setFilters(f => ({ ...f, page: (f.page || 1) + 1 }))}
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
+                  <Icon name="chevron-right" size={14} />
                 </button>
               </div>
             </div>

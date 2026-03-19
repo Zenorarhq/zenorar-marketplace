@@ -421,29 +421,26 @@ export default function AdminLibraryPage() {
           </div>
 
           {/* Pagination */}
-          {filteredUploads.length > 0 && pagination && (
+          {filteredUploads.length > 0 && pagination && pagination.totalPages > 1 && (
             <div className="px-6 py-4 bg-charcoal border-t border-[#1f1f1f] flex items-center justify-between">
               <p className="text-xs text-slate-500">
-                Showing <span className="font-bold">{(currentPage - 1) * pagination.limit + 1}-{Math.min(currentPage * pagination.limit, pagination.total)}</span> of{' '}
-                <span className="font-bold">{pagination.total}</span> files
+                {(currentPage - 1) * pagination.limit + 1} - {Math.min(currentPage * pagination.limit, pagination.total)} of {pagination.total}
               </p>
-              <div className="flex gap-2 items-center">
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="p-2 rounded bg-charcoal border border-border-dark text-white hover:bg-slate-700 disabled:opacity-50"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage <= 1}
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Icon name="chevron-left" size={18} />
+                  <Icon name="chevron-left" size={14} />
                 </button>
-                <span className="px-3 py-1 text-white text-xs font-bold">
-                  {currentPage} / {pagination.totalPages}
-                </span>
+                <span className="text-xs text-slate-400 px-2">{currentPage} / {pagination.totalPages}</span>
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
-                  className="p-2 rounded bg-charcoal border border-border-dark text-white hover:bg-slate-700 disabled:opacity-50"
+                  onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
                   disabled={currentPage >= pagination.totalPages}
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Icon name="chevron-right" size={18} />
+                  <Icon name="chevron-right" size={14} />
                 </button>
               </div>
             </div>

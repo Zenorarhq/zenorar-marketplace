@@ -328,13 +328,15 @@ export default function LibraryPage() {
   useEffect(() => {
     if (activeFilterRef.current && filterScrollRef.current) {
       const container = filterScrollRef.current
-      const activeTab = activeFilterRef.current
-      const containerRect = container.getBoundingClientRect()
-      const tabRect = activeTab.getBoundingClientRect()
-
-      // Calculate scroll position to center the active tab
-      const scrollLeft = activeTab.offsetLeft - (containerRect.width / 2) + (tabRect.width / 2)
-      container.scrollTo({ left: scrollLeft, behavior: 'smooth' })
+      if (activeFilter === 'all') {
+        container.scrollTo({ left: 0, behavior: 'smooth' })
+      } else {
+        const activeTab = activeFilterRef.current
+        const containerRect = container.getBoundingClientRect()
+        const tabRect = activeTab.getBoundingClientRect()
+        const scrollLeft = activeTab.offsetLeft - (containerRect.width / 2) + (tabRect.width / 2)
+        container.scrollTo({ left: scrollLeft, behavior: 'smooth' })
+      }
     }
   }, [activeFilter])
 
@@ -694,7 +696,17 @@ export default function LibraryPage() {
                             Manage Domains
                           </button>
                         )}
-                        {item.category === 'esims' && (
+                        {item.category === 'esims' && item.isCarrierEsim && (item.status === 'pending' || item.status === 'failed') && (
+                          <div className={`flex items-center gap-2 px-4 py-2 ${
+                            item.status === 'failed'
+                              ? 'bg-red-900/30 border border-red-500/20 text-red-500'
+                              : 'bg-yellow-900/30 border border-yellow-500/20 text-yellow-500'
+                          } font-medium rounded-lg text-sm`}>
+                            <Icon name={item.status === 'failed' ? 'alert-circle' : 'clock'} size={16} />
+                            {item.status === 'failed' ? 'Cancelled — Refunded' : 'Awaiting Fulfillment'}
+                          </div>
+                        )}
+                        {item.category === 'esims' && !(item.isCarrierEsim && (item.status === 'pending' || item.status === 'failed')) && (
                           <button
                             onClick={() => handleViewQR(item.id)}
                             className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all"
@@ -835,58 +847,24 @@ export default function LibraryPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-6 flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} of {filteredItems.length} items
+          <p className="text-xs text-slate-500">
+            {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)} of {filteredItems.length}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Icon name="chevron-left" size={16} />
-              Previous
+              <Icon name="chevron-left" size={14} />
             </button>
-            <div className="flex items-center gap-1">
-              {(() => {
-                const pages: (number | 'ellipsis')[] = []
-                if (totalPages <= 5) {
-                  for (let i = 1; i <= totalPages; i++) pages.push(i)
-                } else {
-                  pages.push(1)
-                  if (currentPage > 3) pages.push('ellipsis')
-                  for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
-                    pages.push(i)
-                  }
-                  if (currentPage < totalPages - 2) pages.push('ellipsis')
-                  pages.push(totalPages)
-                }
-                return pages.map((page, idx) =>
-                  page === 'ellipsis' ? (
-                    <span key={`ellipsis-${idx}`} className="px-2 text-slate-500">...</span>
-                  ) : (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === page
-                          ? 'bg-primary text-black font-bold'
-                          : 'bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626]'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  )
-                )
-              })()}
-            </div>
+            <span className="text-xs text-slate-400 px-2">{currentPage} / {totalPages}</span>
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Next
-              <Icon name="chevron-right" size={16} />
+              <Icon name="chevron-right" size={14} />
             </button>
           </div>
         </div>

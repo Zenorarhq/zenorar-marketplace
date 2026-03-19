@@ -604,60 +604,26 @@ export default function EsimPage() {
   // Render pagination
   const renderPagination = () => {
     if (totalCountryPages <= 1) return null
-
-    const pages: (number | 'ellipsis')[] = []
-    if (totalCountryPages <= 5) {
-      for (let i = 1; i <= totalCountryPages; i++) pages.push(i)
-    } else {
-      pages.push(1)
-      if (countryPage > 3) pages.push('ellipsis')
-      for (let i = Math.max(2, countryPage - 1); i <= Math.min(totalCountryPages - 1, countryPage + 1); i++) {
-        pages.push(i)
-      }
-      if (countryPage < totalCountryPages - 2) pages.push('ellipsis')
-      pages.push(totalCountryPages)
-    }
-
     return (
-      <div className="mt-6 flex items-center justify-between">
-        <p className="text-sm text-slate-500">
-          Showing {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, sortedCountries.length)} of {sortedCountries.length} countries
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-xs text-slate-500">
+          {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, filteredCountries.length)} of {filteredCountries.length}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => setCountryPage((p) => Math.max(1, p - 1))}
+            onClick={() => setCountryPage(Math.max(1, countryPage - 1))}
             disabled={countryPage === 1}
-            className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Icon name="chevron-left" size={16} />
-            <span className="hidden md:inline">Previous</span>
+            <Icon name="chevron-left" size={14} />
           </button>
-          <div className="flex items-center gap-1">
-            {pages.map((page, idx) =>
-              page === 'ellipsis' ? (
-                <span key={`ellipsis-${idx}`} className="px-2 text-slate-500">...</span>
-              ) : (
-                <button
-                  key={page}
-                  onClick={() => setCountryPage(page)}
-                  className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                    countryPage === page
-                      ? 'bg-primary text-black font-bold'
-                      : 'bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626]'
-                  }`}
-                >
-                  {page}
-                </button>
-              )
-            )}
-          </div>
+          <span className="text-xs text-slate-400 px-2">{countryPage} / {totalCountryPages}</span>
           <button
-            onClick={() => setCountryPage((p) => Math.min(totalCountryPages, p + 1))}
+            onClick={() => setCountryPage(Math.min(totalCountryPages, countryPage + 1))}
             disabled={countryPage === totalCountryPages}
-            className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="hidden md:inline">Next</span>
-            <Icon name="chevron-right" size={16} />
+            <Icon name="chevron-right" size={14} />
           </button>
         </div>
       </div>

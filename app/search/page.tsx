@@ -281,37 +281,27 @@ function SearchContent() {
 
           {/* Pagination */}
           {!isLoading && products.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center mt-12 gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark hover:border-primary transition-colors disabled:opacity-50"
-              >
-                <Icon name="chevron-left" size={18} />
-              </button>
-              {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                const pageNum = i + 1
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setPage(pageNum)}
-                    className={`w-10 h-10 flex items-center justify-center rounded-lg ${
-                      page === pageNum
-                        ? 'bg-primary text-black font-bold'
-                        : 'border border-border-dark hover:border-primary transition-colors'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                )
-              })}
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="w-10 h-10 flex items-center justify-center rounded-lg border border-border-dark hover:border-primary transition-colors disabled:opacity-50"
-              >
-                <Icon name="chevron-right" size={18} />
-              </button>
+            <div className="mt-6 flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Icon name="chevron-left" size={14} />
+                </button>
+                <span className="text-xs text-slate-400 px-2">{page} / {totalPages}</span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Icon name="chevron-right" size={14} />
+                </button>
+              </div>
             </div>
           )}
         </section>

@@ -174,23 +174,24 @@ export default function AdminBlogPage() {
           {/* Pagination */}
           {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-border-dark">
-              <p className="text-slate-400 text-sm">
-                Showing {(page - 1) * 20 + 1}-{Math.min(page * 20, pagination.total)} of {pagination.total}
+              <p className="text-xs text-slate-500">
+                {(page - 1) * 20 + 1} - {Math.min(page * 20, pagination.total)} of {pagination.total}
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1 bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded text-sm disabled:opacity-50"
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Previous
+                  <Icon name="chevron-left" size={14} />
                 </button>
+                <span className="text-xs text-slate-400 px-2">{page} / {pagination.totalPages}</span>
                 <button
                   onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
                   disabled={page === pagination.totalPages}
-                  className="px-3 py-1 bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded text-sm disabled:opacity-50"
+                  className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
+                  <Icon name="chevron-right" size={14} />
                 </button>
               </div>
             </div>

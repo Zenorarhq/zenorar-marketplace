@@ -642,34 +642,25 @@ export default function OrdersPage() {
 
       {/* Pagination */}
       {!isLoading && !error && totalPages > 1 && (
-        <div className="mt-10 flex justify-center">
-          <div className="flex items-center gap-2">
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-xs text-slate-500">
+            {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredOrders.length)} of {filteredOrders.length}
+          </p>
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-border-dark text-slate-500 hover:text-white hover:border-slate-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Icon name="chevron-left" size={18} />
+              <Icon name="chevron-left" size={14} />
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
-                  currentPage === page
-                    ? 'bg-primary text-black font-bold'
-                    : 'border border-border-dark text-slate-500 hover:text-white hover:border-slate-500'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
+            <span className="text-xs text-slate-400 px-2">{currentPage} / {totalPages}</span>
             <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-border-dark text-slate-500 hover:text-white hover:border-slate-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Icon name="chevron-right" size={18} />
+              <Icon name="chevron-right" size={14} />
             </button>
           </div>
         </div>

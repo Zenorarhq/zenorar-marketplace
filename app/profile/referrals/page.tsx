@@ -427,24 +427,27 @@ export default function ReferralsPage() {
 
             {/* Pagination */}
             {historyData?.pagination && historyData.pagination.totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-6">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="px-4 py-2 rounded-lg border border-border-dark text-slate-300 font-medium hover:bg-surface-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-                >
-                  Previous
-                </button>
-                <span className="text-slate-400 text-sm">
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-xs text-slate-500">
                   Page {page} of {historyData.pagination.totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(historyData.pagination.totalPages, p + 1))}
-                  disabled={page >= historyData.pagination.totalPages}
-                  className="px-4 py-2 rounded-lg border border-border-dark text-slate-300 font-medium hover:bg-surface-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-                >
-                  Next
-                </button>
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Icon name="chevron-left" size={14} />
+                  </button>
+                  <span className="text-xs text-slate-400 px-2">{page} / {historyData.pagination.totalPages}</span>
+                  <button
+                    onClick={() => setPage(p => Math.min(historyData.pagination.totalPages, p + 1))}
+                    disabled={page >= historyData.pagination.totalPages}
+                    className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Icon name="chevron-right" size={14} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
