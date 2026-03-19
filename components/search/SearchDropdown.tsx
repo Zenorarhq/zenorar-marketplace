@@ -70,9 +70,15 @@ export default function SearchDropdown({
     }
 
     setIsLoading(true)
-    const result = await searchApi.autocomplete(query)
-    if (result.success && result.data) {
-      setAutocompleteResults(result.data)
+    try {
+      const result = await searchApi.autocomplete(query)
+      if (result.success && result.data) {
+        setAutocompleteResults(result.data)
+      } else {
+        setAutocompleteResults(null)
+      }
+    } catch {
+      setAutocompleteResults(null)
     }
     setIsLoading(false)
   }, [])
@@ -138,6 +144,18 @@ export default function SearchDropdown({
       saveRecentSearch(searchQuery.trim())
     }
     onViewAllResults()
+  }
+
+  // Map category slugs to universal search category keys
+  const categorySlugToSearchKey = (slug: string): string => {
+    const map: Record<string, string> = {
+      'gift-cards': 'gift_cards',
+      'esim': 'esims',
+      'virtual-numbers': 'virtual_numbers',
+      'scripts': 'scripts',
+      'cards': 'scripts',
+    }
+    return map[slug] || slug
   }
 
   if (!isOpen) return null
@@ -218,7 +236,7 @@ export default function SearchDropdown({
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
-                        router.push(`/search?category=${category.slug}`)
+                        router.push(`/search?q=${encodeURIComponent(searchQuery)}&category=${categorySlugToSearchKey(category.slug)}`)
                       }}
                       className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
                     >
@@ -243,7 +261,7 @@ export default function SearchDropdown({
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
-                        router.push(`/esim`)
+                        router.push(`/search?q=${encodeURIComponent(esim.name)}&category=esims`)
                       }}
                       className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
@@ -272,7 +290,7 @@ export default function SearchDropdown({
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
-                        router.push(`/gift-cards/${card.slug}`)
+                        router.push(`/search?q=${encodeURIComponent(card.brand)}&category=gift_cards`)
                       }}
                       className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
@@ -300,7 +318,7 @@ export default function SearchDropdown({
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
-                        router.push(`/virtual-numbers`)
+                        router.push(`/search?q=${encodeURIComponent(vn.name)}&category=virtual_numbers`)
                       }}
                       className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
@@ -329,7 +347,7 @@ export default function SearchDropdown({
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
-                        router.push(`/esim?tab=carrier`)
+                        router.push(`/search?q=${encodeURIComponent(carrier.carrierName)}&category=carrier_esims`)
                       }}
                       className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
@@ -441,7 +459,7 @@ export default function SearchDropdown({
                       type="button"
                       onClick={() => {
                         onClose()
-                        router.push(`/search?category=${category.slug}`)
+                        router.push(`/search?category=${categorySlugToSearchKey(category.slug)}`)
                       }}
                       className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
                     >

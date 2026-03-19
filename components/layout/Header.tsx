@@ -152,6 +152,9 @@ export default function Header() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
+    if (!showSearchDropdown) {
+      setShowSearchDropdown(true)
+    }
   }
 
   const handleInputFocus = () => {
