@@ -457,7 +457,7 @@ function EsimCard({ esim }: { esim: EsimSearchResult }) {
 
 function GiftCardCard({ card }: { card: GiftCardSearchResult }) {
   return (
-    <Link href={`/gift-cards/${card.slug}`} className="block group">
+    <Link href="/gift-cards" className="block group">
       <div className="bg-charcoal rounded-xl border border-border-dark overflow-hidden hover:border-primary/50 transition-all h-full">
         {card.imageUrl ? (
           <div className="aspect-video bg-surface-dark overflow-hidden">
