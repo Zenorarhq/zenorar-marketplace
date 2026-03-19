@@ -384,23 +384,22 @@ export default function PhoneRefillsPage() {
       <button
         key={key}
         onClick={() => handleToggle(operator)}
-        className="group rounded-2xl border border-border-dark hover:border-slate-600 overflow-hidden transition-all relative text-left"
+        className="group rounded-2xl border border-border-dark hover:border-slate-600 overflow-hidden transition-all relative text-left aspect-square"
       >
-        {/* Full-bleed logo fills entire card */}
-        <div className="aspect-[3/4] w-full bg-charcoal flex items-center justify-center">
-          <ServiceLogo name={operator.name} size={140} className="rounded-2xl" />
+        {/* Logo fills entire card via CSS scaling */}
+        <div className="absolute inset-0 flex items-center justify-center bg-white p-4 [&>div]:!w-full [&>div]:!h-full [&>div>img]:!w-full [&>div>img]:!h-full [&>div>img]:!max-w-full [&>div>img]:!max-h-full [&>div>img]:!object-contain">
+          <ServiceLogo name={operator.name} size={200} className="!rounded-none" />
         </div>
         {/* Dark gradient at bottom — text + button */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent pt-16 pb-4 px-3">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-10 pb-3 px-3">
           <div className="flex items-center gap-1.5 justify-center">
             <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
             <FlagIcon countryCode={operator.country} className="w-4 h-3 rounded-sm flex-shrink-0" />
           </div>
-          <p className="text-xs text-slate-400 text-center mt-0.5 mb-3">
+          <p className="text-xs text-slate-400 text-center mt-0.5 mb-2">
             from <span className="text-primary font-semibold">{formatPrice(minPrice)}</span>
           </p>
-          {/* Visual button cue (non-interactive, parent handles click) */}
-          <div className="w-full py-2 rounded-xl bg-primary text-black font-bold text-xs text-center group-hover:brightness-105 transition-all">
+          <div className="w-full py-1.5 rounded-lg bg-primary text-black font-bold text-xs text-center group-hover:brightness-105 transition-all">
             Select Amount
           </div>
         </div>
