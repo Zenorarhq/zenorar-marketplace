@@ -18,6 +18,11 @@ export interface TopupOffer {
   cost: number | null  // Zendit wholesale cost (null for range-priced offers)
   sendAmount: number
   sendCurrency: string
+  // Range bounds (only for RANGE priceType)
+  priceMin?: number
+  priceMax?: number
+  sendMin?: number
+  sendMax?: number
   notes: string
   shortNotes: string
 }

@@ -74,6 +74,7 @@ export default function PhoneRefillsPage() {
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [selectedOffer, setSelectedOffer] = useState<TopupOffer | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [customAmount, setCustomAmount] = useState('')
   const [processingCard, setProcessingCard] = useState<string | null>(null)
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [purchaseSuccess, setPurchaseSuccess] = useState<{
@@ -186,11 +187,13 @@ export default function PhoneRefillsPage() {
       setExpandedKey(null)
       setSelectedOffer(null)
       setPhoneNumber('')
+      setCustomAmount('')
       setPaymentError(null)
     } else {
       setExpandedKey(key)
       setSelectedOffer(null)
       setPhoneNumber('')
+      setCustomAmount('')
       setPaymentError(null)
     }
   }
@@ -226,6 +229,7 @@ export default function PhoneRefillsPage() {
                 sendAmount: offer.sendAmount,
                 sendCurrency: offer.sendCurrency,
                 providerCost: offer.cost,
+                ...(offer.priceType?.toUpperCase() === 'RANGE' && { value: offer.price }),
               },
             },
           ],
@@ -325,6 +329,7 @@ export default function PhoneRefillsPage() {
         country: operator.country,
         sendAmount: selectedOffer.sendAmount,
         sendCurrency: selectedOffer.sendCurrency,
+        ...(selectedOffer.priceType?.toUpperCase() === 'RANGE' && { value: selectedOffer.price }),
       },
     }
 
@@ -563,8 +568,24 @@ export default function PhoneRefillsPage() {
         const operator = allFiltered.find((op) => opKey(op) === expandedKey)
         if (!operator) return null
         const isProcessing = processingCard === expandedKey
-        const quickPicks = getQuickPicks(operator.offers)
-        const allOffers = [...operator.offers].sort((a, b) => a.price - b.price)
+
+        // Determine if this operator uses RANGE pricing
+        const rangeOffer = operator.offers.find((o) => o.priceType.toUpperCase() === 'RANGE')
+        const isRange = !!rangeOffer
+        const fixedOffers = operator.offers.filter((o) => o.priceType.toUpperCase() !== 'RANGE')
+        const sortedFixed = [...fixedOffers].sort((a, b) => a.price - b.price)
+
+        // For range offers: build a synthetic selectedOffer from the custom amount
+        const customAmountNum = parseFloat(customAmount)
+        const isCustomValid = isRange && rangeOffer && !isNaN(customAmountNum)
+          && customAmountNum >= (rangeOffer.priceMin || 0)
+          && customAmountNum <= (rangeOffer.priceMax || Infinity)
+
+        // Effective selected offer (real offer for FIXED, synthetic for RANGE)
+        const effectiveOffer = isRange
+          ? (isCustomValid ? { ...rangeOffer, price: customAmountNum, sendAmount: customAmountNum } : null)
+          : selectedOffer
+        const isReadyModal = !!effectiveOffer && phoneNumber.replace(/[^+\d]/g, '').length >= 8
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => handleToggle(operator)}>
@@ -586,40 +607,71 @@ export default function PhoneRefillsPage() {
                 </button>
               </div>
 
-              {/* Amount grid */}
+              {/* Amount selection */}
               <div className="p-5">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Select Amount</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {allOffers.map((offer) => (
-                    <button
-                      key={offer.offerId}
-                      onClick={() => { setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer); setPaymentError(null) }}
-                      className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${
-                        selectedOffer?.offerId === offer.offerId
-                          ? 'bg-primary text-black ring-2 ring-primary/30'
-                          : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
-                      }`}
-                    >
-                      <span className="block">{formatPrice(offer.price)}</span>
-                      {offer.sendCurrency !== 'USD' && offer.sendAmount !== offer.price && (
-                        <span className="block text-[10px] font-normal mt-0.5 opacity-60">
-                          {offer.sendAmount} {offer.sendCurrency}
-                        </span>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">
+                  {isRange ? 'Enter Amount' : 'Select Amount'}
+                </label>
+
+                {isRange && rangeOffer ? (
+                  /* RANGE: custom amount input */
+                  <div>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                      <input
+                        type="number"
+                        min={rangeOffer.priceMin}
+                        max={rangeOffer.priceMax}
+                        step="1"
+                        placeholder={`${rangeOffer.priceMin} – ${rangeOffer.priceMax}`}
+                        value={customAmount}
+                        onChange={(e) => { setCustomAmount(e.target.value); setPaymentError(null) }}
+                        className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white text-lg font-bold placeholder:text-slate-500 placeholder:font-normal placeholder:text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Min {formatPrice(rangeOffer.priceMin || 0)} · Max {formatPrice(rangeOffer.priceMax || 0)}
+                      {rangeOffer.sendCurrency !== 'USD' && (
+                        <> · Recipient gets {rangeOffer.sendCurrency}</>
                       )}
-                    </button>
-                  ))}
-                </div>
+                    </p>
+                  </div>
+                ) : (
+                  /* FIXED: amount grid */
+                  <div className="grid grid-cols-3 gap-2">
+                    {sortedFixed.map((offer) => (
+                      <button
+                        key={offer.offerId}
+                        onClick={() => { setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer); setPaymentError(null) }}
+                        className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${
+                          selectedOffer?.offerId === offer.offerId
+                            ? 'bg-primary text-black ring-2 ring-primary/30'
+                            : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
+                        }`}
+                      >
+                        <span className="block">{formatPrice(offer.price)}</span>
+                        {offer.sendCurrency !== 'USD' && offer.sendAmount !== offer.price && (
+                          <span className="block text-[10px] font-normal mt-0.5 opacity-60">
+                            {offer.sendAmount} {offer.sendCurrency}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Phone + Actions (visible when amount selected) */}
-              {selectedOffer && (
+              {/* Phone + Actions */}
+              {(isRange ? isCustomValid : !!selectedOffer) && (
                 <div className="px-5 pb-5 space-y-3 border-t border-border-dark pt-4">
                   {/* Summary */}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-400">
-                      Receives <span className="text-white font-bold">{selectedOffer.sendAmount} {selectedOffer.sendCurrency}</span>
+                      {isRange ? 'Amount' : (<>Receives <span className="text-white font-bold">{selectedOffer!.sendAmount} {selectedOffer!.sendCurrency}</span></>)}
                     </span>
-                    <span className="text-primary font-extrabold text-lg">{formatPrice(selectedOffer.price)}</span>
+                    <span className="text-primary font-extrabold text-lg">
+                      {formatPrice(effectiveOffer!.price)}
+                    </span>
                   </div>
 
                   {/* Phone input */}
@@ -637,8 +689,14 @@ export default function PhoneRefillsPage() {
                   {/* Actions */}
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handlePayWithWallet(operator)}
-                      disabled={!isReady || isProcessing || loadingBalance}
+                      onClick={() => {
+                        if (isRange && effectiveOffer) {
+                          // For range, use the synthetic offer
+                          setSelectedOffer(effectiveOffer)
+                        }
+                        handlePayWithWallet(operator)
+                      }}
+                      disabled={!isReadyModal || isProcessing || loadingBalance}
                       className="flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
                       {isProcessing ? (
@@ -650,8 +708,13 @@ export default function PhoneRefillsPage() {
                       )}
                     </button>
                     <button
-                      onClick={() => handleAddToCart(operator)}
-                      disabled={!isReady}
+                      onClick={() => {
+                        if (isRange && effectiveOffer) {
+                          setSelectedOffer(effectiveOffer)
+                        }
+                        handleAddToCart(operator)
+                      }}
+                      disabled={!isReadyModal}
                       className="flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
                       <Icon name="cart" size={16} /> Add to Cart
