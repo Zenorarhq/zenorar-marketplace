@@ -114,6 +114,7 @@ export default function LibraryPage() {
     data: libraryItems = [],
     isLoading,
     error,
+    refetch: refetchLibrary,
   } = useQuery({
     queryKey: ['user-library'],
     queryFn: async () => {
@@ -198,6 +199,33 @@ export default function LibraryPage() {
       }
     } catch (error: any) {
       alert(error.message || 'Failed to renew subscription')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  // Handler for renewing virtual numbers (calls VN-specific endpoint with wallet payment)
+  const handleRenewVirtualNumber = async (id: string) => {
+    try {
+      setLoadingAction(`renew-${id}`)
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch(`/api/virtual-numbers/my-numbers/${id}/renew`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ paymentMethod: 'wallet' }),
+      })
+      const result = await response.json()
+      if (result.success) {
+        showToast('Virtual number renewed successfully!', 'success', 4000)
+        refetchLibrary()
+      } else {
+        showToast(result.error || 'Failed to renew virtual number', 'error', 5000)
+      }
+    } catch (error: any) {
+      showToast(error.message || 'Failed to renew virtual number', 'error', 5000)
     } finally {
       setLoadingAction(null)
     }
@@ -611,7 +639,7 @@ export default function LibraryPage() {
                   <div className="flex flex-wrap gap-2 pt-4 border-t border-border-dark">
                     {item.status === 'expired' ? (
                       <button
-                        onClick={() => handleRenew(item.id, item.name, cardId)}
+                        onClick={() => item.category === 'virtual-numbers' ? handleRenewVirtualNumber(item.id) : handleRenew(item.id, item.name, cardId)}
                         disabled={loadingAction === `renew-${cardId}`}
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >

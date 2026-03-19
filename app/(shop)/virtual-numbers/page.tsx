@@ -2711,6 +2711,12 @@ function PlanSelectionModal({
   async function handleInstantCheckout() {
     setCheckoutError(null)
 
+    // Block wallet payment if provider is unavailable
+    if (providerAvailable === false) {
+      setCheckoutError('Virtual number service is currently unavailable. Please try again later or use the cart to pay when service is restored.')
+      return
+    }
+
     // If not authenticated, show auth dialog
     if (!isAuthenticated) {
       setShowAuthDialog(true)

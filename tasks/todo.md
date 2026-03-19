@@ -140,3 +140,50 @@ is saved, commission is 0%. Fully managed from Admin → Settings → Price Mark
 - `zenorar-marketplace/app/become-a-vendor/apply/page.tsx` — MISSING 1
 - `zenorar-marketplace/app/profile/commissions/page.tsx` — MISSING 2
 - `zenorar-marketplace/components/layout/Footer.tsx` — MISSING 5
+
+---
+
+# Virtual Numbers (Monthly + OTP) — Audit Fix Plan
+
+## Issues Found
+
+### Issue 1 (HIGH) — Monthly numbers have no wallet payment path
+- **Root cause:** Monthly number purchase only charges via Stripe. Wallet balance is never offered as a payment option, even though OTP numbers support wallet payment.
+- **Files:** `app/api/virtual-numbers/purchase/route.ts`, purchase UI page
+
+### Issue 2 (HIGH) — No renewal endpoint for monthly numbers
+- **Root cause:** No `POST /api/virtual-numbers/[id]/renew` endpoint exists. Users have no way to extend a monthly number before expiry. No renew button exists in UI either.
+- **Files:** New route `app/api/virtual-numbers/[id]/renew/route.ts`, backend service, UI library page
+
+### Issue 3 (MEDIUM) — SMS limit not persisted at provisioning time
+- **Root cause:** After provider confirms number allocation, the `sms_limit` from the product record is not written to the `virtual_numbers` row. Field is NULL, making enforcement impossible.
+- **Files:** Backend provisioning service (wherever provider response is saved to DB)
+
+### Issue 4 (MEDIUM) — No provider availability check before payment capture
+- **Root cause:** For monthly purchases, payment is captured first. If provider then rejects the allocation, user is already charged with no automatic refund issued.
+- **Fix:** Call provider availability check API before capturing payment. Return error if unavailable.
+- **Files:** Backend purchase service / purchase route handler
+
+### Issue 5 (LOW) — Inconsistent metadata field names across flows
+- **Root cause:** OTP and monthly flows write different keys into `metadata` JSON (`otp_number` vs `phone_number`, `provider_ref` vs `provider_id`). Code reading these fields is fragile and error-prone.
+- **Fix:** Standardise on one set of keys and update all read/write paths.
+- **Files:** Backend virtual numbers service, any route reading metadata
+
+### Issue 6 (LOW) — Test-mode OTP records never cleaned up
+- **Root cause:** In sandbox/test mode, OTP provisioning creates a DB row but TTL/cleanup cron only targets live-mode records. Stale test rows accumulate indefinitely.
+- **Fix:** Add `is_test` boolean to the row; include test rows in cleanup (delete after ~10 min).
+- **Files:** Backend OTP provisioning path, cleanup cron job
+
+---
+
+## Checklist
+
+- [x] 1. Add wallet payment path to monthly number purchase — already implemented; no change needed
+- [x] 2. Renewal: endpoint existed; fixed library Renew button for expired VNs to call correct endpoint
+- [ ] 3. Write `sms_limit` to virtual_numbers row at provisioning time
+- [x] 4. Add provider availability check before wallet payment — added guard to `handleInstantCheckout`
+- [ ] 5. Standardise metadata keys across OTP and monthly flows
+- [ ] 6. Add `is_test` flag and include test rows in TTL/cleanup cron
+
+## Review
+(added after completion)
