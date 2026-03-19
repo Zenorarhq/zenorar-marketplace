@@ -1141,52 +1141,6 @@ export default function VirtualNumbersPage() {
           </div>
           )}
 
-          {/* How it works */}
-          <div className="bg-surface-dark border border-border-dark rounded-2xl p-6 mb-8">
-            <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-              <Icon name="info" size={18} className="text-primary" />
-              How OTP Numbers Work
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary font-bold text-sm">1</span>
-                </div>
-                <div>
-                  <p className="text-white font-medium text-sm">Select Service</p>
-                  <p className="text-slate-500 text-xs">Choose or search for WhatsApp, Google, etc.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary font-bold text-sm">2</span>
-                </div>
-                <div>
-                  <p className="text-white font-medium text-sm">Pick Country</p>
-                  <p className="text-slate-500 text-xs">Choose or search for your preferred country</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary font-bold text-sm">3</span>
-                </div>
-                <div>
-                  <p className="text-white font-medium text-sm">Get Number</p>
-                  <p className="text-slate-500 text-xs">Pay with wallet balance</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary font-bold text-sm">4</span>
-                </div>
-                <div>
-                  <p className="text-white font-medium text-sm">Receive Code</p>
-                  <p className="text-slate-500 text-xs">SMS arrives in seconds</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Service & Country - Tab Based Selection */}
             <div className="lg:col-span-2">
