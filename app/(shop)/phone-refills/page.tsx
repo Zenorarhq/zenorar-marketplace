@@ -6,7 +6,7 @@ import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
 import ServiceLogo from '@/components/ui/ServiceLogo'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { useCart } from '@/lib/cart-context'
@@ -52,7 +52,8 @@ function resolveCountryName(isoCode: string): string {
 }
 
 export default function PhoneRefillsPage() {
-  const [searchQuery, setSearchQuery] = useState('')
+  const searchParams = useSearchParams()
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
   const [operatorPage, setOperatorPage] = useState(1)
 
   // The currently expanded operator card (only one at a time)

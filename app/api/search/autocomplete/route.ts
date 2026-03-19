@@ -50,10 +50,40 @@ export async function GET(request: NextRequest) {
       LIMIT $2
     `
 
-    const [productsResult, categoriesResult, suggestionsResult] = await Promise.all([
+    // eSIM plans
+    const esimsSql = `
+      SELECT id, name, slug, data_amount_display, validity_days, retail_price, coverage_type
+      FROM esim_plans
+      WHERE is_active = true AND (name ILIKE $1 OR data_amount_display ILIKE $1)
+      ORDER BY is_featured DESC, retail_price ASC
+      LIMIT $2
+    `
+
+    // Gift cards
+    const giftCardsSql = `
+      SELECT id, brand, slug, image_url
+      FROM gift_cards
+      WHERE is_active = true AND (brand ILIKE $1 OR category ILIKE $1)
+      ORDER BY is_featured DESC, brand ASC
+      LIMIT $2
+    `
+
+    // Virtual number countries
+    const virtualNumbersSql = `
+      SELECT id, name, iso_code, flag_emoji, retail_monthly
+      FROM virtual_number_countries
+      WHERE is_active = true AND (name ILIKE $1 OR iso_code ILIKE $1)
+      ORDER BY display_order ASC, name ASC
+      LIMIT $2
+    `
+
+    const [productsResult, categoriesResult, suggestionsResult, esimsResult, giftCardsResult, virtualNumbersResult] = await Promise.all([
       executeQuery(productsSql, [pattern, limit]),
       executeQuery(categoriesSql, [pattern, limit, VERIFIED_CATEGORY_SLUGS]),
       executeQuery(suggestionsSql, [pattern, limit]),
+      executeQuery(esimsSql, [pattern, 3]),
+      executeQuery(giftCardsSql, [pattern, 3]),
+      executeQuery(virtualNumbersSql, [pattern, 3]),
     ])
 
     const products = productsResult.rows.map(row => ({
@@ -73,9 +103,34 @@ export async function GET(request: NextRequest) {
 
     const suggestions = suggestionsResult.rows.map(row => row.name)
 
+    const esims = esimsResult.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      dataAmountDisplay: row.data_amount_display,
+      validityDays: row.validity_days,
+      retailPrice: Number(row.retail_price),
+      coverageType: row.coverage_type,
+    }))
+
+    const giftCards = giftCardsResult.rows.map(row => ({
+      id: row.id,
+      brand: row.brand,
+      slug: row.slug,
+      imageUrl: row.image_url,
+    }))
+
+    const virtualNumbers = virtualNumbersResult.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      isoCode: row.iso_code,
+      flagEmoji: row.flag_emoji,
+      retailMonthly: Number(row.retail_monthly),
+    }))
+
     return NextResponse.json({
       success: true,
-      data: { products, categories, suggestions },
+      data: { products, categories, suggestions, esims, giftCards, virtualNumbers },
     })
   } catch (error) {
     console.error('Autocomplete error:', error)

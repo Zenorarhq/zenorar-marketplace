@@ -125,11 +125,36 @@ export default function Header() {
     }
   }, [mobileMenuOpen])
 
+  // Map current pathname to a shop category page for context-aware search
+  const getContextPage = (): string | null => {
+    if (pathname.startsWith('/esim')) return '/esim'
+    if (pathname.startsWith('/gift-cards')) return '/gift-cards'
+    if (pathname.startsWith('/virtual-numbers')) return '/virtual-numbers'
+    if (pathname.startsWith('/phone-refills')) return '/phone-refills'
+    if (pathname.startsWith('/scripts')) return '/scripts'
+    return null
+  }
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (searchQuery.trim()) {
-      setShowSearchDropdown(false)
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+    const q = searchQuery.trim()
+    if (!q) return
+    setShowSearchDropdown(false)
+
+    const contextPage = getContextPage()
+    if (contextPage) {
+      // On a shop page — navigate with search param to filter in-page
+      const url = new URL(contextPage, window.location.origin)
+      url.searchParams.set('search', q)
+      // Preserve existing params like tab
+      const currentParams = new URLSearchParams(window.location.search)
+      currentParams.forEach((value, key) => {
+        if (key !== 'search') url.searchParams.set(key, value)
+      })
+      router.push(url.pathname + url.search)
+    } else {
+      // Not on a shop page — go to universal search
+      router.push(`/search?q=${encodeURIComponent(q)}`)
     }
   }
 
@@ -139,11 +164,17 @@ export default function Header() {
 
   const handleInputFocus = () => {
     setShowSearchDropdown(true)
+    // On mobile, scroll to top so the search dropdown (below sticky header)
+    // isn't obscured by the on-screen keyboard or hidden behind the banner
+    if (window.innerWidth < 768 && window.scrollY > 100) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   const handleViewAllResults = () => {
     if (searchQuery.trim()) {
       setShowSearchDropdown(false)
+      // "View all results" always goes to universal search page
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
     }
   }

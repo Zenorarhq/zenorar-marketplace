@@ -87,6 +87,24 @@ export default function EsimPage() {
     }
   }, [user?.email])
 
+  // Context-aware search: auto-select country from URL search param
+  const urlSearch = searchParams.get('search')
+  useEffect(() => {
+    if (urlSearch && sortedCountries.length > 0 && !selectedCountry) {
+      const q = urlSearch.toLowerCase()
+      const match = sortedCountries.find(
+        c => c.name.toLowerCase().includes(q) || c.isoCode.toLowerCase() === q
+      )
+      if (match) {
+        setSelectedCountry(match.isoCode)
+        // Scroll to plans section
+        setTimeout(() => {
+          document.getElementById('esim-plans-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 300)
+      }
+    }
+  }, [urlSearch, sortedCountries, selectedCountry])
+
   // Fetch countries that have eSIM plans
   const { data: rawCountries = [], isError: countriesError } = useQuery({
     queryKey: ['esim-plan-countries'],

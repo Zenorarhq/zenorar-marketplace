@@ -145,7 +145,10 @@ export default function SearchDropdown({
   const hasAutocomplete = autocompleteResults && (
     autocompleteResults.products.length > 0 ||
     autocompleteResults.categories.length > 0 ||
-    autocompleteResults.suggestions.length > 0
+    autocompleteResults.suggestions.length > 0 ||
+    (autocompleteResults.esims && autocompleteResults.esims.length > 0) ||
+    (autocompleteResults.giftCards && autocompleteResults.giftCards.length > 0) ||
+    (autocompleteResults.virtualNumbers && autocompleteResults.virtualNumbers.length > 0)
   )
 
   return (
@@ -219,6 +222,92 @@ export default function SearchDropdown({
                       className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-slate-400 hover:border-primary hover:text-primary transition-all"
                     >
                       {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* eSIM Suggestions */}
+            {autocompleteResults.esims && autocompleteResults.esims.length > 0 && (
+              <div className="p-4 border-b border-white/5">
+                <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                  eSIMs
+                </h5>
+                <div className="space-y-1">
+                  {autocompleteResults.esims.map((esim) => (
+                    <button
+                      key={esim.id}
+                      type="button"
+                      onClick={() => {
+                        saveRecentSearch(searchQuery)
+                        onClose()
+                        router.push(`/esim`)
+                      }}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
+                    >
+                      <Icon name="globe" size={18} className="text-slate-500 group-hover:text-primary" />
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate">{esim.name}</div>
+                        <div className="text-xs text-slate-500">{esim.dataAmountDisplay} &middot; {esim.validityDays} days &middot; {formatPrice(esim.retailPrice)}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Gift Card Suggestions */}
+            {autocompleteResults.giftCards && autocompleteResults.giftCards.length > 0 && (
+              <div className="p-4 border-b border-white/5">
+                <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                  Gift Cards
+                </h5>
+                <div className="space-y-1">
+                  {autocompleteResults.giftCards.map((card) => (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => {
+                        saveRecentSearch(searchQuery)
+                        onClose()
+                        router.push(`/gift-cards/${card.slug}`)
+                      }}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
+                    >
+                      <Icon name="gift" size={18} className="text-slate-500 group-hover:text-primary" />
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate">{card.brand}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Virtual Number Suggestions */}
+            {autocompleteResults.virtualNumbers && autocompleteResults.virtualNumbers.length > 0 && (
+              <div className="p-4 border-b border-white/5">
+                <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">
+                  Virtual Numbers
+                </h5>
+                <div className="space-y-1">
+                  {autocompleteResults.virtualNumbers.map((vn) => (
+                    <button
+                      key={vn.id}
+                      type="button"
+                      onClick={() => {
+                        saveRecentSearch(searchQuery)
+                        onClose()
+                        router.push(`/virtual-numbers`)
+                      }}
+                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
+                    >
+                      <span className="text-lg">{vn.flagEmoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate">{vn.name}</div>
+                        <div className="text-xs text-slate-500">{formatPrice(vn.retailMonthly)}/mo</div>
+                      </div>
                     </button>
                   ))}
                 </div>

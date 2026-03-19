@@ -231,10 +231,24 @@ export default function VirtualNumbersPage() {
   const [numberType, setNumberType] = useState<NumberType>('all')
   const prevCountryIdRef = useRef<string | null>(null)
   const [countryPage, setCountryPage] = useState(1)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null)
+
+  // Context-aware search: auto-select country from URL search param
+  const urlSearch = searchParams.get('search')
+  useEffect(() => {
+    if (urlSearch && countries.length > 0 && !selectedCountry) {
+      const q = urlSearch.toLowerCase()
+      const match = countries.find(
+        c => c.name.toLowerCase().includes(q) || c.isoCode.toLowerCase() === q
+      )
+      if (match) {
+        setSelectedCountry(match)
+      }
+    }
+  }, [urlSearch, countries, selectedCountry])
 
   // Monthly loading states
   const [loadingNumbers, setLoadingNumbers] = useState(false)

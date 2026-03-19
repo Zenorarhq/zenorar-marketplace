@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
@@ -23,8 +24,10 @@ function getSortParams(sortBy: SortOption) {
 }
 
 export default function ScriptsPage() {
+  const searchParams = useSearchParams()
   const [sortBy, setSortBy] = useState<SortOption>('popular')
   const [visibleCount, setVisibleCount] = useState(6)
+  const urlSearch = searchParams.get('search') || ''
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     categories: [],
     tags: [],
@@ -48,12 +51,16 @@ export default function ScriptsPage() {
 
   // Fetch products with filters
   const { data: products = [], isLoading, isError } = useQuery({
-    queryKey: ['scripts-products', sortParams.sortBy, sortParams.sortOrder, activeFilters],
+    queryKey: ['scripts-products', sortParams.sortBy, sortParams.sortOrder, activeFilters, urlSearch],
     queryFn: async () => {
       const filters: any = {
         sortBy: sortParams.sortBy,
         sortOrder: sortParams.sortOrder,
         limit: 50,
+      }
+
+      if (urlSearch) {
+        filters.search = urlSearch
       }
 
       if (activeFilters.priceRange < 1000) {
