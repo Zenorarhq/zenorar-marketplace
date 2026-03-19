@@ -103,9 +103,12 @@ export default function AdminVendorsPage() {
 
   const { data: overviewData, isLoading: overviewLoading } = useQuery({
     queryKey: ['vendor-overview', overviewSearch, overviewStatus, overviewPage],
-    queryFn: () => {
+    queryFn: async () => {
       const statusParam = overviewStatus !== 'ALL' ? '&status=' + overviewStatus : ''
-      return vendorFetch<any>('/admin/vendors?search=' + encodeURIComponent(overviewSearch) + '&page=' + overviewPage + '&limit=20' + statusParam)
+      const url = '/vendor/admin/vendors?search=' + encodeURIComponent(overviewSearch) + '&page=' + overviewPage + '&limit=20' + statusParam
+      const res = await apiFetch<any>(url)
+      if (!res.success) throw new Error((res as any).error || 'Failed')
+      return { items: (res as any).data || [], total: (res as any).pagination?.total ?? 0 }
     },
     enabled: tab === 'overview',
   })
@@ -118,13 +121,23 @@ export default function AdminVendorsPage() {
 
   const { data: applicationsData, isLoading: appsLoading } = useQuery({
     queryKey: ['vendor-applications', appStatusFilter, appPage],
-    queryFn: () => vendorFetch<any>('/admin/applications?status=' + appStatusFilter + '&page=' + appPage + '&limit=20'),
+    queryFn: async () => {
+      const url = '/vendor/admin/applications?status=' + appStatusFilter + '&page=' + appPage + '&limit=20'
+      const res = await apiFetch<any>(url)
+      if (!res.success) throw new Error((res as any).error || 'Failed')
+      return { items: (res as any).data || [], total: (res as any).pagination?.total ?? 0 }
+    },
     enabled: tab === 'applications',
   })
 
   const { data: payoutsData, isLoading: payoutsLoading } = useQuery({
     queryKey: ['vendor-payouts-admin', payoutStatusFilter, payoutPage],
-    queryFn: () => vendorFetch<any>('/admin/payouts?status=' + payoutStatusFilter + '&page=' + payoutPage + '&limit=20'),
+    queryFn: async () => {
+      const url = '/vendor/admin/payouts?status=' + payoutStatusFilter + '&page=' + payoutPage + '&limit=20'
+      const res = await apiFetch<any>(url)
+      if (!res.success) throw new Error((res as any).error || 'Failed')
+      return { items: (res as any).data || [], total: (res as any).pagination?.total ?? 0 }
+    },
     enabled: tab === 'payouts',
   })
 
