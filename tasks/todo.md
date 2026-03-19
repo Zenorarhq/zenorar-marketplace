@@ -84,6 +84,40 @@ cost and uses it for accurate commission calculation.
 
 ---
 
+# Script Commission Tiers — Task Plan
+
+## Goal
+Replace the flat global `vendorCommissionPercent` for scripts with price-range tiers.
+Each tier has editable min price, max price, and commission %. No defaults — if nothing
+is saved, commission is 0%. Fully managed from Admin → Settings → Price Markup tab.
+
+## Files (6 total, 2 new)
+
+### API (zenorar-api)
+1. `src/services/script-commission-tiers.service.ts` *(new)* — load/save 3 tiers from SiteSetting DB (keys: scriptCommTier1Min/Max/Pct, tier2, tier3). 5-min cache. No defaults.
+2. `src/controllers/settings.controller.ts` — add GET + PUT handlers for `/settings/script-commission-tiers`
+3. `src/routes/settings.routes.ts` — register 2 routes + Zod schema
+4. `src/services/vendor.service.ts` — for `script` type: load tiers, find matching tier by itemPrice, use that commission %; if no tier matches → 0%
+
+### Marketplace (zenorar-marketplace)
+5. `components/admin/ScriptCommissionTiersSection.tsx` *(new)* — mirror of ProtectionLevelsSection: 3 tiers, each with min/max/commission inputs
+6. `app/admin/settings/page.tsx` — import and render `<ScriptCommissionTiersSection />` in Price Markup tab
+
+## Order of work
+- [ ] 1. Create script-commission-tiers.service.ts
+- [ ] 2. Add controller handlers
+- [ ] 3. Register routes
+- [ ] 4. Update vendor.service.ts commission branch
+- [ ] 5. Create ScriptCommissionTiersSection.tsx component
+- [ ] 6. Add component to settings page
+- [ ] 7. Build (marketplace)
+- [ ] 8. Commit and push both repos
+
+## Review
+(added after completion)
+
+---
+
 # Vendor System Audit Fixes — Task Plan
 
 ## Issues Fixed (2026-03-19)

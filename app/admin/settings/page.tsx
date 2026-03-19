@@ -11,6 +11,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import EmailConfigSection from '@/components/admin/EmailConfigSection'
 import ProtectionLevelsSection from '@/components/admin/ProtectionLevelsSection'
+import ScriptCommissionTiersSection from '@/components/admin/ScriptCommissionTiersSection'
 import PinSetupForm from '@/components/admin/PinSetupForm'
 import VirtualNumberPricingSection, { VirtualNumberPricingSettings, defaultVirtualNumberPricing } from '@/components/admin/VirtualNumberPricingSection'
 
@@ -2246,6 +2247,8 @@ export default function AdminSettingsPage() {
               </div>
               {/* Script Protection Levels */}
               <ProtectionLevelsSection />
+              {/* Script Commission Tiers */}
+              <ScriptCommissionTiersSection />
             </div>
           )}
 
