@@ -225,7 +225,9 @@ export default function ProfileSettingsPage() {
           <div className="flex items-center gap-3 flex-wrap mb-1">
             <h1 className="text-2xl sm:text-3xl font-bold text-white">{formData.fullName}</h1>
             {user?.isVendor && (
-              <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">✦ Verified Vendor</span>
+              user?.vendorSuspendedAt
+                ? <span className="text-xs font-bold text-red-400 bg-red-400/10 border border-red-400/20 px-2.5 py-1 rounded-full">⊘ Suspended</span>
+                : <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">✦ Verified Vendor</span>
             )}
           </div>
           <p className="text-slate-400 mb-6 font-medium">{formData.email}</p>

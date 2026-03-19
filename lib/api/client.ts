@@ -25,6 +25,7 @@ export interface User {
   avatar: string | null
   isStaff: boolean
   isVendor?: boolean
+  vendorSuspendedAt?: string | null
   permissions?: string[]
   createdAt: string
 }

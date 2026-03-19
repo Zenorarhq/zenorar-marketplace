@@ -355,7 +355,10 @@ export default function Header() {
                   <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
                     {user?.isVendor && (
                       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-dark">
-                        <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full w-full text-center">✦ Verified Vendor</span>
+                        {user?.vendorSuspendedAt
+                          ? <span className="text-xs font-bold text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-0.5 rounded-full w-full text-center">⊘ Suspended</span>
+                          : <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full w-full text-center">✦ Verified Vendor</span>
+                        }
                       </div>
                     )}
                     {/* Wallet Balance */}
@@ -557,7 +560,10 @@ export default function Header() {
                     <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
                       {user?.isVendor && (
                         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-dark">
-                          <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full w-full text-center">✦ Verified Vendor</span>
+                          {user?.vendorSuspendedAt
+                            ? <span className="text-xs font-bold text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-0.5 rounded-full w-full text-center">⊘ Suspended</span>
+                            : <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full w-full text-center">✦ Verified Vendor</span>
+                          }
                         </div>
                       )}
                       {/* Wallet Balance */}

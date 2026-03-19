@@ -405,7 +405,10 @@ export default function CommissionsPage() {
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-white">Commissions</h1>
-              <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">✦ Verified Vendor</span>
+              {user?.vendorSuspendedAt
+                ? <span className="text-xs font-bold text-red-400 bg-red-400/10 border border-red-400/20 px-2.5 py-1 rounded-full">⊘ Suspended</span>
+                : <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">✦ Verified Vendor</span>
+              }
             </div>
             <p className="text-slate-400 text-sm mt-1">Track your earnings and manage payouts</p>
           </div>
