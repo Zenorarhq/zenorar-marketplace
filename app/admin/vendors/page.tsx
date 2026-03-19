@@ -83,6 +83,8 @@ export default function AdminVendorsPage() {
   const [modalAdjustAmount, setModalAdjustAmount] = useState('')
   const [modalAdjustNote, setModalAdjustNote] = useState('')
   const [modalAdjusting, setModalAdjusting] = useState(false)
+  const [modalAdjustDone, setModalAdjustDone] = useState(false)
+  const [modalAdjustError, setModalAdjustError] = useState('')
 
   // Payouts tab state
   const [payoutStatusFilter, setPayoutStatusFilter] = useState('PENDING')
@@ -101,9 +103,10 @@ export default function AdminVendorsPage() {
 
   const { data: overviewData, isLoading: overviewLoading } = useQuery({
     queryKey: ['vendor-overview', overviewSearch, overviewStatus, overviewPage],
-    queryFn: () => vendorFetch<any>(
-      `/admin/vendors?search=${encodeURIComponent(overviewSearch)}&page=${overviewPage}&limit=20${overviewStatus !== 'ALL' ? `&status=${overviewStatus}` : ''}`
-    ),
+    queryFn: () => {
+      const statusParam = overviewStatus !== 'ALL' ? '&status=' + overviewStatus : ''
+      return vendorFetch<any>('/admin/vendors?search=' + encodeURIComponent(overviewSearch) + '&page=' + overviewPage + '&limit=20' + statusParam)
+    },
     enabled: tab === 'overview',
   })
 
@@ -115,13 +118,13 @@ export default function AdminVendorsPage() {
 
   const { data: applicationsData, isLoading: appsLoading } = useQuery({
     queryKey: ['vendor-applications', appStatusFilter, appPage],
-    queryFn: () => vendorFetch<any>(`/admin/applications?status=${appStatusFilter}&page=${appPage}&limit=20`),
+    queryFn: () => vendorFetch<any>('/admin/applications?status=' + appStatusFilter + '&page=' + appPage + '&limit=20'),
     enabled: tab === 'applications',
   })
 
   const { data: payoutsData, isLoading: payoutsLoading } = useQuery({
     queryKey: ['vendor-payouts-admin', payoutStatusFilter, payoutPage],
-    queryFn: () => vendorFetch<any>(`/admin/payouts?status=${payoutStatusFilter}&page=${payoutPage}&limit=20`),
+    queryFn: () => vendorFetch<any>('/admin/payouts?status=' + payoutStatusFilter + '&page=' + payoutPage + '&limit=20'),
     enabled: tab === 'payouts',
   })
 
@@ -191,15 +194,24 @@ export default function AdminVendorsPage() {
   async function handleModalAdjust() {
     if (!overviewDetail || !modalAdjustAmount) return
     setModalAdjusting(true)
-    await apiFetch(`/vendor/admin/vendors/${overviewDetail.id}/adjust-balance`, {
-      method: 'POST',
-      body: JSON.stringify({ amount: Number(modalAdjustAmount), note: modalAdjustNote }),
-    })
-    setModalAdjusting(false)
-    setModalAdjustAmount('')
-    setModalAdjustNote('')
-    queryClient.invalidateQueries({ queryKey: ['vendor-overview-detail', overviewDetail.id] })
-    queryClient.invalidateQueries({ queryKey: ['vendor-overview'] })
+    setModalAdjustError('')
+    try {
+      const res = await apiFetch<any>(`/vendor/admin/vendors/${overviewDetail.id}/adjust-balance`, {
+        method: 'POST',
+        body: JSON.stringify({ amount: Number(modalAdjustAmount), note: modalAdjustNote }),
+      })
+      if (!res.success) throw new Error((res as any).error || 'Adjustment failed')
+      setModalAdjustAmount('')
+      setModalAdjustNote('')
+      setModalAdjustDone(true)
+      setTimeout(() => setModalAdjustDone(false), 2500)
+      queryClient.invalidateQueries({ queryKey: ['vendor-overview-detail', overviewDetail.id] })
+      queryClient.invalidateQueries({ queryKey: ['vendor-overview'] })
+    } catch (err: any) {
+      setModalAdjustError(err.message || 'Something went wrong')
+    } finally {
+      setModalAdjusting(false)
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -290,7 +302,7 @@ export default function AdminVendorsPage() {
             <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl overflow-hidden">
               {overviewLoading ? (
                 <div className="text-center py-12 text-slate-400">Loading...</div>
-              ) : !overviewData?.length ? (
+              ) : !overviewData?.items?.length ? (
                 <div className="text-center py-12 text-slate-500">No vendors found</div>
               ) : (
                 <table className="w-full text-sm">
@@ -306,7 +318,7 @@ export default function AdminVendorsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1f1f1f]">
-                    {overviewData.map((v: any) => (
+                    {overviewData.items.map((v: any) => (
                       <tr key={v.id} className={`hover:bg-[#1a1a1a] transition-colors ${overviewDetail?.id === v.id ? 'bg-primary/5' : ''}`}>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
@@ -378,12 +390,12 @@ export default function AdminVendorsPage() {
               )}
 
               {/* Pagination */}
-              {overviewData?.pagination && overviewData.pagination.total > 20 && (
+              {(overviewData?.total ?? 0) > 20 && (
                 <div className="px-4 py-3 border-t border-[#1f1f1f] flex items-center justify-between text-sm text-slate-400">
-                  <span>Page {overviewPage} of {Math.ceil(overviewData.pagination.total / 20)}</span>
+                  <span>Page {overviewPage} of {Math.ceil(overviewData!.total / 20)}</span>
                   <div className="flex gap-2">
                     <button onClick={() => setOverviewPage(p => Math.max(1, p - 1))} disabled={overviewPage === 1} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40">Previous</button>
-                    <button onClick={() => setOverviewPage(p => p + 1)} disabled={overviewPage >= Math.ceil(overviewData.pagination.total / 20)} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40">Next</button>
+                    <button onClick={() => setOverviewPage(p => p + 1)} disabled={overviewPage >= Math.ceil(overviewData!.total / 20)} className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40">Next</button>
                   </div>
                 </div>
               )}
@@ -494,12 +506,19 @@ export default function AdminVendorsPage() {
                           />
                           <button
                             onClick={handleModalAdjust}
-                            disabled={!modalAdjustAmount || modalAdjusting}
-                            className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-40 whitespace-nowrap"
+                            disabled={!modalAdjustAmount || modalAdjusting || modalAdjustDone}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-40 whitespace-nowrap ${
+                              modalAdjustDone
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                : 'bg-primary/10 hover:bg-primary/20 text-primary'
+                            }`}
                           >
-                            {modalAdjusting ? 'Saving...' : 'Apply'}
+                            {modalAdjusting ? 'Saving...' : modalAdjustDone ? 'Applied ✓' : 'Apply'}
                           </button>
                         </div>
+                        {modalAdjustError && (
+                          <p className="mt-2 text-xs text-red-400">{modalAdjustError}</p>
+                        )}
                       </div>
 
                       {/* Footer */}
@@ -570,7 +589,7 @@ export default function AdminVendorsPage() {
             <div className="bg-[#111] border border-[#1f1f1f] rounded-xl overflow-hidden">
               {appsLoading ? (
                 <div className="text-center py-12 text-slate-400">Loading...</div>
-              ) : !applicationsData?.length ? (
+              ) : !applicationsData?.items?.length ? (
                 <div className="text-center py-12 text-slate-500">No {appStatusFilter.toLowerCase()} applications</div>
               ) : (
                 <table className="w-full text-sm">
@@ -586,7 +605,7 @@ export default function AdminVendorsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1a1a1a]">
-                    {applicationsData.map((app: any) => (
+                    {applicationsData.items.map((app: any) => (
                       <Fragment key={app.id}>
                         <tr className="hover:bg-white/[0.02]">
                           <td className="px-4 py-3">
@@ -689,12 +708,12 @@ export default function AdminVendorsPage() {
               </div>
             )}
 
-            {applicationsData?.pagination && applicationsData.pagination.total > 20 && (
+            {(applicationsData?.total ?? 0) > 20 && (
               <div className="flex items-center justify-between text-sm text-slate-400">
-                <span>Page {appPage} of {Math.ceil(applicationsData.pagination.total / 20)}</span>
+                <span>Page {appPage} of {Math.ceil(applicationsData!.total / 20)}</span>
                 <div className="flex gap-2">
                   <button onClick={() => setAppPage(p => Math.max(1, p - 1))} disabled={appPage === 1} className="px-3 py-1 bg-[#111] border border-[#1f1f1f] rounded-lg disabled:opacity-40 hover:text-white">Previous</button>
-                  <button onClick={() => setAppPage(p => p + 1)} disabled={appPage >= Math.ceil(applicationsData.pagination.total / 20)} className="px-3 py-1 bg-[#111] border border-[#1f1f1f] rounded-lg disabled:opacity-40 hover:text-white">Next</button>
+                  <button onClick={() => setAppPage(p => p + 1)} disabled={appPage >= Math.ceil(applicationsData!.total / 20)} className="px-3 py-1 bg-[#111] border border-[#1f1f1f] rounded-lg disabled:opacity-40 hover:text-white">Next</button>
                 </div>
               </div>
             )}
@@ -719,7 +738,7 @@ export default function AdminVendorsPage() {
             <div className="bg-[#111] border border-[#1f1f1f] rounded-xl overflow-hidden">
               {payoutsLoading ? (
                 <div className="text-center py-12 text-slate-400">Loading...</div>
-              ) : !payoutsData?.length ? (
+              ) : !payoutsData?.items?.length ? (
                 <div className="text-center py-12 text-slate-500">No {payoutStatusFilter.toLowerCase()} payouts</div>
               ) : (
                 <table className="w-full text-sm">
@@ -734,9 +753,9 @@ export default function AdminVendorsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1a1a1a]">
-                    {payoutsData.map((p: any) => (
-                      <>
-                        <tr key={p.id} className="hover:bg-white/[0.02]">
+                    {payoutsData.items.map((p: any) => (
+                      <Fragment key={p.id}>
+                        <tr className="hover:bg-white/[0.02]">
                           <td className="px-4 py-3">
                             <div className="text-white">{p.vendor_name}</div>
                             <div className="text-slate-500 text-xs">{p.vendor_email}</div>
@@ -803,19 +822,19 @@ export default function AdminVendorsPage() {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
               )}
             </div>
 
-            {payoutsData?.pagination && payoutsData.pagination.total > 20 && (
+            {(payoutsData?.total ?? 0) > 20 && (
               <div className="flex items-center justify-between text-sm text-slate-400">
-                <span>Page {payoutPage} of {Math.ceil(payoutsData.pagination.total / 20)}</span>
+                <span>Page {payoutPage} of {Math.ceil(payoutsData!.total / 20)}</span>
                 <div className="flex gap-2">
                   <button onClick={() => setPayoutPage(p => Math.max(1, p - 1))} disabled={payoutPage === 1} className="px-3 py-1 bg-[#111] border border-[#1f1f1f] rounded-lg disabled:opacity-40 hover:text-white">Previous</button>
-                  <button onClick={() => setPayoutPage(p => p + 1)} disabled={payoutPage >= Math.ceil(payoutsData.pagination.total / 20)} className="px-3 py-1 bg-[#111] border border-[#1f1f1f] rounded-lg disabled:opacity-40 hover:text-white">Next</button>
+                  <button onClick={() => setPayoutPage(p => p + 1)} disabled={payoutPage >= Math.ceil(payoutsData!.total / 20)} className="px-3 py-1 bg-[#111] border border-[#1f1f1f] rounded-lg disabled:opacity-40 hover:text-white">Next</button>
                 </div>
               </div>
             )}
