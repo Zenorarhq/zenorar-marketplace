@@ -11,7 +11,6 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import EmailConfigSection from '@/components/admin/EmailConfigSection'
 import ProtectionLevelsSection from '@/components/admin/ProtectionLevelsSection'
-import ScriptCommissionTiersSection from '@/components/admin/ScriptCommissionTiersSection'
 import PinSetupForm from '@/components/admin/PinSetupForm'
 import VirtualNumberPricingSection, { VirtualNumberPricingSettings, defaultVirtualNumberPricing } from '@/components/admin/VirtualNumberPricingSection'
 
@@ -341,6 +340,8 @@ export default function AdminSettingsPage() {
     openGraph: false,
     structuredData: false,
     robotsTxt: false,
+    vendorCommission: false,
+    scriptCommissionTiers: false,
   })
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -477,6 +478,13 @@ export default function AdminSettingsPage() {
   const [vendorSettings, setVendorSettings] = useState({
     vendorCommissionPercent: 15,
     vendorMinPayoutAmount: 20,
+  })
+
+  // Script Commission Tiers State
+  const [scriptTiers, setScriptTiers] = useState({
+    tier1: { min: 0, max: 0, commission: 0 },
+    tier2: { min: 0, max: 0, commission: 0 },
+    tier3: { min: 0, max: 0, commission: 0 },
   })
 
   // OTP Providers Settings State
@@ -946,7 +954,7 @@ export default function AdminSettingsPage() {
     })
   }, [])
 
-  // Load vendor commission settings on mount
+  // Load vendor commission settings and script tiers on mount
   useEffect(() => {
     settingsApi.getSettingsByGroup('vendor').then((res) => {
       if (res.success && res.data) {
@@ -955,6 +963,11 @@ export default function AdminSettingsPage() {
           vendorCommissionPercent: d.vendorCommissionPercent !== undefined ? Number(d.vendorCommissionPercent) : prev.vendorCommissionPercent,
           vendorMinPayoutAmount: d.vendorMinPayoutAmount !== undefined ? Number(d.vendorMinPayoutAmount) : prev.vendorMinPayoutAmount,
         }))
+        setScriptTiers({
+          tier1: { min: Number(d.scriptCommTier1Min ?? 0), max: Number(d.scriptCommTier1Max ?? 0), commission: Number(d.scriptCommTier1Pct ?? 0) },
+          tier2: { min: Number(d.scriptCommTier2Min ?? 0), max: Number(d.scriptCommTier2Max ?? 0), commission: Number(d.scriptCommTier2Pct ?? 0) },
+          tier3: { min: Number(d.scriptCommTier3Min ?? 0), max: Number(d.scriptCommTier3Max ?? 0), commission: Number(d.scriptCommTier3Pct ?? 0) },
+        })
       }
     }).catch(() => {})
   }, [])
@@ -1708,6 +1721,16 @@ export default function AdminSettingsPage() {
       // Vendor Commission Settings
       { key: 'vendorCommissionPercent', value: vendorSettings.vendorCommissionPercent, group: 'vendor', isPublic: false },
       { key: 'vendorMinPayoutAmount', value: vendorSettings.vendorMinPayoutAmount, group: 'vendor', isPublic: false },
+      // Script Commission Tiers
+      { key: 'scriptCommTier1Min', value: scriptTiers.tier1.min, group: 'vendor', isPublic: false },
+      { key: 'scriptCommTier1Max', value: scriptTiers.tier1.max, group: 'vendor', isPublic: false },
+      { key: 'scriptCommTier1Pct', value: scriptTiers.tier1.commission, group: 'vendor', isPublic: false },
+      { key: 'scriptCommTier2Min', value: scriptTiers.tier2.min, group: 'vendor', isPublic: false },
+      { key: 'scriptCommTier2Max', value: scriptTiers.tier2.max, group: 'vendor', isPublic: false },
+      { key: 'scriptCommTier2Pct', value: scriptTiers.tier2.commission, group: 'vendor', isPublic: false },
+      { key: 'scriptCommTier3Min', value: scriptTiers.tier3.min, group: 'vendor', isPublic: false },
+      { key: 'scriptCommTier3Max', value: scriptTiers.tier3.max, group: 'vendor', isPublic: false },
+      { key: 'scriptCommTier3Pct', value: scriptTiers.tier3.commission, group: 'vendor', isPublic: false },
       // OTP Providers (stored in 'api' group for consistency)
       { key: 'otpDefaultProvider', value: otpSettings.otpDefaultProvider, group: 'api', isPublic: false },
       { key: 'smspoolEnabled', value: otpSettings.smspoolEnabled, group: 'api', isPublic: true },
@@ -6071,46 +6094,119 @@ export default function AdminSettingsPage() {
               />
 
               {/* Vendor Commission Settings */}
-              <div className="bg-surface-dark border border-border-dark rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border-dark">
-                  <div>
-                    <p className="text-white font-semibold text-lg">Vendor Commission</p>
-                    <p className="text-slate-500 text-sm mt-0.5">Settings for the vendor reseller programme</p>
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button onClick={() => toggleSection('vendorCommission')} className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                      <Icon name="percent" size={24} className="text-purple-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Vendor Commission</p>
+                      <p className="text-slate-500 text-sm">Settings for the vendor reseller programme</p>
+                    </div>
                   </div>
-                </div>
-                <div className="p-6 space-y-5">
-                  <div>
-                    <label className="text-sm font-medium text-slate-300 block mb-1.5">Commission Percentage (%)</label>
-                    <p className="text-slate-500 text-xs mb-2">Vendors earn this % of Zenorar&apos;s markup profit on every order they place.</p>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={0.5}
-                      value={vendorSettings.vendorCommissionPercent}
-                      onChange={(e) => setVendorSettings((prev) => ({ ...prev, vendorCommissionPercent: Number(e.target.value) }))}
-                      className="w-40 bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary"
-                    />
-                    <p className="text-slate-600 text-xs mt-1.5">
-                      Example: if markup profit on an order is $50 and commission is {vendorSettings.vendorCommissionPercent}%, vendor earns ${(50 * vendorSettings.vendorCommissionPercent / 100).toFixed(2)}.
-                    </p>
+                  <Icon name={expandedSections.vendorCommission ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
+                {expandedSections.vendorCommission && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-[#1f1f1f]">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Commission Percentage (%)</label>
+                      <p className="text-slate-500 text-xs">Vendors earn this % of Zenorar&apos;s markup profit on every order they place.</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.5}
+                          value={vendorSettings.vendorCommissionPercent}
+                          onChange={(e) => setVendorSettings((prev) => ({ ...prev, vendorCommissionPercent: Number(e.target.value) }))}
+                          className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                        />
+                        <span className="text-slate-400">%</span>
+                      </div>
+                      <p className="text-xs text-slate-600">Example: $50 profit at {vendorSettings.vendorCommissionPercent}% = {`${(50 * vendorSettings.vendorCommissionPercent / 100).toFixed(2)}`} commission</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-300">Minimum Payout Amount ($)</label>
+                      <p className="text-slate-500 text-xs">Vendors must reach this balance before requesting a payout.</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={vendorSettings.vendorMinPayoutAmount}
+                          onChange={(e) => setVendorSettings((prev) => ({ ...prev, vendorMinPayoutAmount: Number(e.target.value) }))}
+                          className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                        />
+                        <span className="text-slate-400">$</span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-300 block mb-1.5">Minimum Payout Amount ($)</label>
-                    <p className="text-slate-500 text-xs mb-2">Vendors must have at least this much available before they can request a payout.</p>
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={vendorSettings.vendorMinPayoutAmount}
-                      onChange={(e) => setVendorSettings((prev) => ({ ...prev, vendorMinPayoutAmount: Number(e.target.value) }))}
-                      className="w-40 bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
+
               {/* Script Commission Tiers */}
-              <ScriptCommissionTiersSection />
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button onClick={() => toggleSection('scriptCommissionTiers')} className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                      <Icon name="layers" size={24} className="text-orange-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Script Commission Tiers</p>
+                      <p className="text-slate-500 text-sm">Vendor commission % based on script sale price range</p>
+                    </div>
+                  </div>
+                  <Icon name={expandedSections.scriptCommissionTiers ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
+                </button>
+                {expandedSections.scriptCommissionTiers && (
+                  <div className="mt-6 pt-6 border-t border-[#1f1f1f] space-y-3">
+                    <p className="text-sm text-slate-500 mb-4">Commission is calculated from markup profit (sale price − cost price). If no tier matches, commission is 0%.</p>
+                    {(['tier1', 'tier2', 'tier3'] as const).map((key, idx) => (
+                      <div key={key} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+                        <p className="text-sm font-semibold text-white mb-3">Tier {idx + 1}</p>
+                        <div className="flex flex-wrap items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-slate-500 whitespace-nowrap">Min Price $</label>
+                            <input
+                              type="number"
+                              value={scriptTiers[key].min || ''}
+                              onChange={e => setScriptTiers(prev => ({ ...prev, [key]: { ...prev[key], min: Number(e.target.value) || 0 } }))}
+                              placeholder="0"
+                              className="w-24 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
+                              min={0}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-slate-500 whitespace-nowrap">Max Price $</label>
+                            <input
+                              type="number"
+                              value={scriptTiers[key].max || ''}
+                              onChange={e => setScriptTiers(prev => ({ ...prev, [key]: { ...prev[key], max: Number(e.target.value) || 0 } }))}
+                              placeholder="∞"
+                              className="w-24 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50"
+                              min={0}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-slate-500 whitespace-nowrap">Commission %</label>
+                            <input
+                              type="number"
+                              value={scriptTiers[key].commission || ''}
+                              onChange={e => setScriptTiers(prev => ({ ...prev, [key]: { ...prev[key], commission: Number(e.target.value) || 0 } }))}
+                              placeholder="0"
+                              className="w-20 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
+                              min={0}
+                              max={100}
+                              step={0.1}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
