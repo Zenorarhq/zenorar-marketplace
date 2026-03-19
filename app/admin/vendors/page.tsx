@@ -73,6 +73,8 @@ export default function AdminVendorsPage() {
   const [overviewPage, setOverviewPage] = useState(1)
   const [overviewDetail, setOverviewDetail] = useState<any>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [commHistoryVendor, setCommHistoryVendor] = useState<any>(null)
+  const [commHistoryPage, setCommHistoryPage] = useState(1)
 
   // Application tab state
   const [appStatusFilter, setAppStatusFilter] = useState('PENDING')
@@ -117,6 +119,16 @@ export default function AdminVendorsPage() {
     queryKey: ['vendor-overview-detail', overviewDetail?.id],
     queryFn: () => vendorFetch<any>(`/admin/vendors/${overviewDetail.id}`),
     enabled: !!overviewDetail?.id,
+  })
+
+  const { data: commHistoryData, isLoading: commHistoryLoading } = useQuery({
+    queryKey: ['vendor-comm-history', commHistoryVendor?.id, commHistoryPage],
+    queryFn: async () => {
+      const res = await apiFetch<any>(`/vendor/admin/vendors/${commHistoryVendor.id}/commissions?page=${commHistoryPage}&limit=20`)
+      if (!res.success) throw new Error((res as any).error || 'Failed')
+      return { items: (res as any).data || [], total: (res as any).pagination?.total ?? 0 }
+    },
+    enabled: !!commHistoryVendor?.id,
   })
 
   const { data: applicationsData, isLoading: appsLoading } = useQuery({
@@ -366,6 +378,14 @@ export default function AdminVendorsPage() {
                             >
                               <Icon name="eye" size={15} />
                             </button>
+                            {/* Commission history */}
+                            <button
+                              onClick={() => { setCommHistoryVendor(v); setCommHistoryPage(1) }}
+                              title="Commission history"
+                              className="p-1.5 rounded text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 transition-colors"
+                            >
+                              <Icon name="history" size={15} />
+                            </button>
                             {/* Suspend / Reinstate */}
                             {v.vendor_suspended_at ? (
                               <button
@@ -479,26 +499,6 @@ export default function AdminVendorsPage() {
                         ))}
                       </div>
 
-                      {/* Recent commissions */}
-                      {overviewDetailData.recentCommissions?.length > 0 && (
-                        <div className="p-6 border-b border-[#1f1f1f]">
-                          <p className="text-xs text-slate-400 font-medium uppercase mb-3">Recent Commissions</p>
-                          <div className="space-y-1">
-                            {overviewDetailData.recentCommissions.slice(0, 5).map((c: any) => (
-                              <div key={c.id} className="flex items-center justify-between text-xs py-1.5 border-b border-[#1f1f1f] last:border-0">
-                                <span className="text-slate-500 font-mono truncate max-w-[160px]">{c.order_id}</span>
-                                <span className="text-white font-medium">${Number(c.commission_amount).toFixed(2)}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                                  c.status === 'AVAILABLE' ? 'bg-green-500/15 text-green-400' :
-                                  c.status === 'PAID' ? 'bg-primary/15 text-primary' :
-                                  'bg-yellow-500/15 text-yellow-400'
-                                }`}>{c.status}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
                       {/* Manual balance adjustment */}
                       <div className="p-6 border-b border-[#1f1f1f]">
                         <p className="text-xs text-slate-400 font-medium uppercase mb-3">Manual Balance Adjustment</p>
@@ -581,6 +581,82 @@ export default function AdminVendorsPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── COMMISSION HISTORY MODAL ─────────────────────────────────── */}
+        {commHistoryVendor && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setCommHistoryVendor(null)}>
+            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#1f1f1f]">
+                <div>
+                  <h3 className="text-white font-semibold">Commission History</h3>
+                  <p className="text-slate-500 text-xs mt-0.5">{commHistoryVendor.name} · {commHistoryVendor.email}</p>
+                </div>
+                <button onClick={() => setCommHistoryVendor(null)} className="text-slate-400 hover:text-white transition-colors">
+                  <Icon name="x" size={18} />
+                </button>
+              </div>
+              {/* Table */}
+              <div className="overflow-y-auto flex-1">
+                {commHistoryLoading ? (
+                  <div className="flex items-center justify-center py-12 text-slate-500 text-sm">Loading...</div>
+                ) : !commHistoryData?.items?.length ? (
+                  <div className="flex items-center justify-center py-12 text-slate-500 text-sm">No commissions yet.</div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-[#141414]">
+                      <tr className="border-b border-[#1f1f1f]">
+                        <th className="px-6 py-3 text-left text-xs text-slate-500 font-medium uppercase">Date</th>
+                        <th className="px-6 py-3 text-left text-xs text-slate-500 font-medium uppercase">Product</th>
+                        <th className="px-6 py-3 text-left text-xs text-slate-500 font-medium uppercase">Order</th>
+                        <th className="px-6 py-3 text-right text-xs text-slate-500 font-medium uppercase">Amount</th>
+                        <th className="px-6 py-3 text-right text-xs text-slate-500 font-medium uppercase">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {commHistoryData.items.map((c: any) => (
+                        <tr key={c.id} className="border-b border-[#1f1f1f] hover:bg-white/[0.02] transition-colors">
+                          <td className="px-6 py-3 text-slate-400 text-xs whitespace-nowrap">
+                            {new Date(c.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-3 text-white text-xs max-w-[160px] truncate">{c.product_name || '—'}</td>
+                          <td className="px-6 py-3 text-slate-500 font-mono text-xs truncate max-w-[120px]">{c.order_id}</td>
+                          <td className="px-6 py-3 text-right text-white font-medium">${Number(c.commission_amount).toFixed(2)}</td>
+                          <td className="px-6 py-3 text-right">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                              c.status === 'AVAILABLE' ? 'bg-green-500/15 text-green-400' :
+                              c.status === 'PAID' ? 'bg-primary/15 text-primary' :
+                              'bg-yellow-500/15 text-yellow-400'
+                            }`}>{c.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              {/* Pagination */}
+              {commHistoryData && commHistoryData.total > 20 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-[#1f1f1f]">
+                  <span className="text-xs text-slate-500">{commHistoryData.total} total</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCommHistoryPage(p => Math.max(1, p - 1))}
+                      disabled={commHistoryPage === 1}
+                      className="px-3 py-1.5 text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-slate-400 hover:text-white disabled:opacity-40 transition-colors"
+                    >Prev</button>
+                    <span className="px-3 py-1.5 text-xs text-slate-400">Page {commHistoryPage} of {Math.ceil(commHistoryData.total / 20)}</span>
+                    <button
+                      onClick={() => setCommHistoryPage(p => p + 1)}
+                      disabled={commHistoryPage >= Math.ceil(commHistoryData.total / 20)}
+                      className="px-3 py-1.5 text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-slate-400 hover:text-white disabled:opacity-40 transition-colors"
+                    >Next</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

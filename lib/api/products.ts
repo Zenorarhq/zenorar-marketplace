@@ -55,6 +55,7 @@ export interface Product {
   averageRating?: number
   videoUrl: string | null
   licenseGate: boolean
+  productType: string | null
   createdAt: string
   updatedAt: string
 }
