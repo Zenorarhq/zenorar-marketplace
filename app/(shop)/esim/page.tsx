@@ -605,7 +605,7 @@ export default function EsimPage() {
     return (
       <div className="mt-4 flex items-center justify-between">
         <p className="text-xs text-slate-500">
-          {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, filteredCountries.length)} of {filteredCountries.length}
+          {((countryPage - 1) * COUNTRIES_PER_PAGE) + 1} - {Math.min(countryPage * COUNTRIES_PER_PAGE, sortedCountries.length)} of {sortedCountries.length}
         </p>
         <div className="flex items-center gap-1">
           <button
