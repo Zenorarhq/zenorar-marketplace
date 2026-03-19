@@ -6,8 +6,11 @@ CREATE TABLE IF NOT EXISTS chat_settings (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Insert default settings row
-INSERT INTO chat_settings (is_online) VALUES (TRUE) ON CONFLICT DO NOTHING;
+-- Insert default settings row if none exists
+-- Uses gen_random_uuid() for TEXT id (Prisma-created table) with fallback for SERIAL (migration-created table)
+INSERT INTO chat_settings (id, "isOnline")
+SELECT gen_random_uuid()::text, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM chat_settings LIMIT 1);
 
 -- Chat conversations
 CREATE TABLE IF NOT EXISTS chat_conversations (

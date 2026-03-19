@@ -48,14 +48,11 @@ CREATE TABLE IF NOT EXISTS deposits (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Indexes
+-- Indexes on base columns (gateway-specific column indexes are in 027_align_deposits_columns.sql)
 CREATE INDEX IF NOT EXISTS idx_deposits_user ON deposits(user_id);
 CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status);
 CREATE INDEX IF NOT EXISTS idx_deposits_method ON deposits(payment_method);
 CREATE INDEX IF NOT EXISTS idx_deposits_created ON deposits(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_deposits_stripe_intent ON deposits(stripe_payment_intent_id);
-CREATE INDEX IF NOT EXISTS idx_deposits_paystack_ref ON deposits(paystack_reference);
-CREATE INDEX IF NOT EXISTS idx_deposits_paypal_order ON deposits(paypal_order_id);
 
 -- Trigger for updated_at
 DROP TRIGGER IF EXISTS update_deposits_updated_at ON deposits;

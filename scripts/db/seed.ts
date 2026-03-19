@@ -21,11 +21,11 @@ async function seed() {
     console.log('Creating admin user...')
     const hashedPassword = await hashPassword('admin123')
     const adminResult = await client.query(`
-      INSERT INTO users (email, password_hash, name, role, is_email_verified, is_active)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO users (id, email, password, name, role, "createdAt", "updatedAt")
+      VALUES (gen_random_uuid()::text, $1, $2, $3, $4, NOW(), NOW())
       ON CONFLICT (email) DO NOTHING
       RETURNING id
-    `, ['admin@zenorar.com', hashedPassword, 'Admin User', 'ADMIN', true, true])
+    `, ['admin@zenorar.com', hashedPassword, 'Admin User', 'ADMIN'])
 
     if (adminResult.rows.length > 0) {
       console.log('✅ Admin user created (email: admin@zenorar.com, password: admin123)')
@@ -46,13 +46,13 @@ async function seed() {
     const categoryIds: Record<string, string> = {}
     for (const cat of categories) {
       const result = await client.query(`
-        INSERT INTO categories (name, slug, description, image, display_order, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO categories (id, name, slug, description, image, "order", "isActive", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NOW(), NOW())
         ON CONFLICT (slug) DO UPDATE SET
           name = EXCLUDED.name,
           description = EXCLUDED.description,
           image = EXCLUDED.image,
-          display_order = EXCLUDED.display_order
+          "order" = EXCLUDED."order"
         RETURNING id
       `, [cat.name, cat.slug, cat.description, cat.image, cat.order, true])
 
@@ -99,14 +99,14 @@ async function seed() {
 
       await client.query(`
         INSERT INTO products (
-          name, slug, description, short_description, sku, price, compare_price, stock,
-          status, is_featured, is_digital, category_id
+          id, name, slug, description, "shortDescription", sku, price, "comparePrice", stock,
+          status, "isFeatured", is_digital, "categoryId", "createdAt", "updatedAt"
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
         ON CONFLICT (slug) DO UPDATE SET
           price = EXCLUDED.price,
           stock = EXCLUDED.stock,
-          is_featured = EXCLUDED.is_featured
+          "isFeatured" = EXCLUDED."isFeatured"
       `, [
         product.name, slug, product.description, product.shortDesc, sku,
         product.price, product.comparePrice || null, product.stock,
@@ -126,8 +126,8 @@ async function seed() {
 
     for (const discount of discounts) {
       await client.query(`
-        INSERT INTO discounts (code, type, value, usage_limit, min_purchase_amount, expires_at, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO discounts (id, code, type, value, "usageLimit", "minOrderValue", "expiresAt", "isActive", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
         ON CONFLICT (code) DO NOTHING
       `, [
         discount.code,
