@@ -873,18 +873,26 @@ export default function EsimPage() {
             </div>
           ) : (
             <>
-              {/* Country grid */}
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+              {/* Country grid — SIM-card shaped */}
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
                 {paginatedCountries.map((country) => (
                   <button
                     key={country.isoCode}
                     onClick={() => setSelectedCountry(country.isoCode)}
-                    className="flex flex-col items-center p-3 pb-2 bg-charcoal border border-border-dark rounded-2xl hover:border-primary/50 transition-all"
+                    className="group relative flex flex-col items-center justify-center aspect-[3/4] bg-gradient-to-b from-charcoal to-[#1a1a2e] hover:from-primary/10 hover:to-primary/5 transition-all"
+                    style={{ clipPath: 'polygon(0 8%, 8% 0, 100% 0, 100% 100%, 0 100%)' }}
                   >
-                    <div className="w-16 h-12 rounded-lg overflow-hidden mb-2 shadow-md border border-white/10">
+                    {/* SIM chip detail */}
+                    <div className="absolute top-2 right-2 w-5 h-4 rounded-sm border border-white/10 bg-white/5" />
+                    {/* Outline overlay for SIM border */}
+                    <div
+                      className="absolute inset-0 border border-border-dark group-hover:border-primary/50 transition-colors pointer-events-none"
+                      style={{ clipPath: 'polygon(0 8%, 8% 0, 100% 0, 100% 100%, 0 100%)' }}
+                    />
+                    <div className="w-14 h-10 sm:w-16 sm:h-12 rounded-lg overflow-hidden mb-3 shadow-lg border border-white/10">
                       <FlagIcon countryCode={country.isoCode} className="w-full h-full object-cover" />
                     </div>
-                    <span className="text-white font-medium text-xs text-center truncate w-full">{country.name}</span>
+                    <span className="text-white font-medium text-xs text-center truncate w-full px-2">{country.name}</span>
                   </button>
                 ))}
               </div>
