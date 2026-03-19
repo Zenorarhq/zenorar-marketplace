@@ -290,7 +290,7 @@ export default function SearchDropdown({
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
-                        router.push(`/search?q=${encodeURIComponent(card.brand)}&category=gift_cards`)
+                        router.push(`/gift-cards?search=${encodeURIComponent(card.brand)}`)
                       }}
                       className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
@@ -318,7 +318,7 @@ export default function SearchDropdown({
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
-                        router.push(`/search?q=${encodeURIComponent(vn.name)}&category=virtual_numbers`)
+                        router.push(`/virtual-numbers?search=${encodeURIComponent(vn.name)}`)
                       }}
                       className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >

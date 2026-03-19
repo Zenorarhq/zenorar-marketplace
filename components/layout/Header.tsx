@@ -125,12 +125,15 @@ export default function Header() {
     }
   }, [mobileMenuOpen])
 
-  // Map current pathname to a universal search category for context-aware search
-  const getContextCategory = (): string | null => {
-    if (pathname.startsWith('/esim')) return 'esims'
-    if (pathname.startsWith('/gift-cards')) return 'gift_cards'
-    if (pathname.startsWith('/virtual-numbers')) return 'virtual_numbers'
-    if (pathname.startsWith('/scripts')) return 'scripts'
+  // Context-aware search: route to same shop page with ?search= so the page's own
+  // local search handles it. Pages without local search fall through to universal search.
+  const getShopPageRoute = (q: string): string | null => {
+    const encoded = encodeURIComponent(q)
+    if (pathname.startsWith('/phone-refills')) return `/phone-refills?search=${encoded}`
+    if (pathname.startsWith('/gift-cards')) return `/gift-cards?search=${encoded}`
+    if (pathname.startsWith('/virtual-numbers')) return `/virtual-numbers?search=${encoded}`
+    if (pathname.startsWith('/esim')) return `/search?q=${encoded}&category=esims`
+    if (pathname.startsWith('/scripts')) return `/search?q=${encoded}&category=scripts`
     return null
   }
 
@@ -140,12 +143,10 @@ export default function Header() {
     if (!q) return
     setShowSearchDropdown(false)
 
-    const contextCategory = getContextCategory()
-    if (contextCategory) {
-      // On a shop page — go to universal search with that category pre-selected
-      router.push(`/search?q=${encodeURIComponent(q)}&category=${contextCategory}`)
+    const shopRoute = getShopPageRoute(q)
+    if (shopRoute) {
+      router.push(shopRoute)
     } else {
-      // Not on a shop page — go to universal search (all categories)
       router.push(`/search?q=${encodeURIComponent(q)}`)
     }
   }

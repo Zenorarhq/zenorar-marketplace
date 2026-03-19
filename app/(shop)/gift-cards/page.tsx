@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
@@ -61,6 +61,7 @@ const categoryGradients: Record<string, string> = {
 
 export default function GiftCardsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { isAuthenticated } = useAuth()
   const { addItem, showAddedToCartPopup } = useCart()
   const { formatPrice, preferences } = usePreferences()
@@ -69,7 +70,7 @@ export default function GiftCardsPage() {
   const currencySymbol = preferences?.currency?.symbol || '$'
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
 
 
   // Fetch gift cards from API with React Query caching
@@ -465,6 +466,20 @@ export default function GiftCardsPage() {
 
       {/* Wallet Balance - Mobile */}
       <WalletDisplay variant="mobile" />
+
+      {/* Search */}
+      <div className="mb-6">
+        <div className="relative">
+          <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search gift cards (Amazon, Steam, iTunes...)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+          />
+        </div>
+      </div>
 
       {/* Loading State */}
       {loading && (
