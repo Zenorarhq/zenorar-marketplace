@@ -150,11 +150,25 @@ export default function Footer() {
           </div>
 
           {/* Link Columns - each takes 1 col on mobile, 2 on desktop */}
-          {(config?.columns && config.columns.length > 0 ? config.columns : [
-            { title: 'Products', links: [{ label: 'Premium Scripts', url: '/scripts' }, { label: 'Global eSIMs', url: '/esim' }, { label: 'Virtual Numbers', url: '/virtual-numbers' }, { label: 'Gift Cards', url: '/gift-cards' }] },
-            { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }, { label: 'Product Request', url: '/product-request' }, { label: 'My Account', url: '/profile' }, { label: 'Terms of Service', url: '/terms' }, { label: 'Privacy Policy', url: '/privacy' }] },
-            { title: 'Company', links: [{ label: 'About Us', url: '/about' }, { label: 'Blog', url: '/blog' }, { label: 'Careers', url: '/careers' }, { label: 'Become a Vendor', url: '/become-a-vendor' }] },
-          ]).map((col, i) => (
+          {(() => {
+            const vendorLink = { label: 'Become a Vendor', url: '/become-a-vendor' }
+            let cols = config?.columns && config.columns.length > 0 ? config.columns : [
+              { title: 'Products', links: [{ label: 'Premium Scripts', url: '/scripts' }, { label: 'Global eSIMs', url: '/esim' }, { label: 'Virtual Numbers', url: '/virtual-numbers' }, { label: 'Gift Cards', url: '/gift-cards' }] },
+              { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }, { label: 'Product Request', url: '/product-request' }, { label: 'My Account', url: '/profile' }, { label: 'Terms of Service', url: '/terms' }, { label: 'Privacy Policy', url: '/privacy' }] },
+              { title: 'Company', links: [{ label: 'About Us', url: '/about' }, { label: 'Blog', url: '/blog' }, { label: 'Careers', url: '/careers' }, { label: 'Become a Vendor', url: '/become-a-vendor' }] },
+            ]
+            // Ensure "Become a Vendor" always appears — inject if missing from all columns
+            const hasVendorLink = cols.some((c) => c.links.some((l) => l.url === '/become-a-vendor'))
+            if (!hasVendorLink) {
+              const companyCol = cols.find((c) => c.title.toLowerCase() === 'company')
+              if (companyCol) {
+                cols = cols.map((c) => c === companyCol ? { ...c, links: [...c.links, vendorLink] } : c)
+              } else {
+                cols = [...cols.slice(0, -1), { ...cols[cols.length - 1], links: [...cols[cols.length - 1].links, vendorLink] }]
+              }
+            }
+            return cols
+          })().map((col, i) => (
             <div key={i} className="col-span-1 md:col-span-2">
               <h4 className="font-bold mb-4 sm:mb-6 text-white text-sm sm:text-base">{col.title}</h4>
               <ul className="space-y-3 sm:space-y-4 text-xs sm:text-sm text-slate-500">

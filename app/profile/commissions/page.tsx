@@ -295,11 +295,14 @@ function RequestPayoutModal({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 type Tab = 'commissions' | 'payouts' | 'methods'
+const PAGE_SIZE = 20
 
 export default function CommissionsPage() {
   const { user } = useAuth()
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('commissions')
+  const [commPage, setCommPage] = useState(1)
+  const [payoutPage, setPayoutPage] = useState(1)
   const [showAddMethod, setShowAddMethod] = useState(false)
   const [showRequestPayout, setShowRequestPayout] = useState(false)
 
@@ -313,23 +316,27 @@ export default function CommissionsPage() {
     enabled: !!user?.isVendor,
   })
 
-  const { data: commissions, isLoading: commLoading } = useQuery({
-    queryKey: ['vendor-commissions'],
+  const { data: commData, isLoading: commLoading } = useQuery({
+    queryKey: ['vendor-commissions', commPage],
     queryFn: async () => {
-      const res = await vFetch<Commission[]>('/commissions?limit=50')
-      return res.success ? (res.data || []) : []
+      const res = await vFetch<Commission[]>(`/commissions?page=${commPage}&limit=${PAGE_SIZE}`)
+      return res.success ? { items: res.data || [], total: (res as any).pagination?.total ?? 0 } : { items: [], total: 0 }
     },
     enabled: tab === 'commissions' && !!user?.isVendor,
   })
+  const commissions = commData?.items ?? []
+  const commTotal = commData?.total ?? 0
 
-  const { data: payouts, isLoading: payoutsLoading } = useQuery({
-    queryKey: ['vendor-payouts'],
+  const { data: payoutData, isLoading: payoutsLoading } = useQuery({
+    queryKey: ['vendor-payouts', payoutPage],
     queryFn: async () => {
-      const res = await vFetch<Payout[]>('/payouts?limit=50')
-      return res.success ? (res.data || []) : []
+      const res = await vFetch<Payout[]>(`/payouts?page=${payoutPage}&limit=${PAGE_SIZE}`)
+      return res.success ? { items: res.data || [], total: (res as any).pagination?.total ?? 0 } : { items: [], total: 0 }
     },
     enabled: tab === 'payouts' && !!user?.isVendor,
   })
+  const payouts = payoutData?.items ?? []
+  const payoutTotal = payoutData?.total ?? 0
 
   const { data: methods, isLoading: methodsLoading } = useQuery({
     queryKey: ['vendor-payout-methods'],
@@ -478,6 +485,21 @@ export default function CommissionsPage() {
                   ))}
                 </tbody>
               </table>
+              {commTotal > PAGE_SIZE && (
+                <div className="flex items-center justify-between pt-4 text-sm">
+                  <span className="text-slate-500 text-xs">Page {commPage} of {Math.ceil(commTotal / PAGE_SIZE)}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setCommPage((p) => p - 1)} disabled={commPage <= 1}
+                      className="px-3 py-1.5 rounded-lg border border-border-dark text-slate-400 hover:text-white disabled:opacity-40 text-xs transition-colors">
+                      Prev
+                    </button>
+                    <button onClick={() => setCommPage((p) => p + 1)} disabled={commPage >= Math.ceil(commTotal / PAGE_SIZE)}
+                      className="px-3 py-1.5 rounded-lg border border-border-dark text-slate-400 hover:text-white disabled:opacity-40 text-xs transition-colors">
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )
         )}
@@ -532,6 +554,21 @@ export default function CommissionsPage() {
                   ))}
                 </tbody>
               </table>
+              {payoutTotal > PAGE_SIZE && (
+                <div className="flex items-center justify-between pt-4 text-sm">
+                  <span className="text-slate-500 text-xs">Page {payoutPage} of {Math.ceil(payoutTotal / PAGE_SIZE)}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setPayoutPage((p) => p - 1)} disabled={payoutPage <= 1}
+                      className="px-3 py-1.5 rounded-lg border border-border-dark text-slate-400 hover:text-white disabled:opacity-40 text-xs transition-colors">
+                      Prev
+                    </button>
+                    <button onClick={() => setPayoutPage((p) => p + 1)} disabled={payoutPage >= Math.ceil(payoutTotal / PAGE_SIZE)}
+                      className="px-3 py-1.5 rounded-lg border border-border-dark text-slate-400 hover:text-white disabled:opacity-40 text-xs transition-colors">
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )
         )}

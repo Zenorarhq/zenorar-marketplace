@@ -39,3 +39,28 @@ cost and uses it for accurate commission calculation.
 
 ## Review
 (added after completion)
+
+---
+
+# Vendor System Audit Fixes — Task Plan
+
+## Issues Fixed (2026-03-19)
+
+- [x] BUG 3: `getPayoutHistory`, `adminGetVendorDetail`, `adminListPayouts` used INNER JOIN on `vendor_payout_methods` — changed to LEFT JOIN so payouts with deleted methods still appear
+- [x] BUG 4: `adminMarkPayoutPaid` marked ALL AVAILABLE commissions as PAID regardless of payout amount — replaced with CTE (oldest-first, up to payout amount)
+- [x] BUG 5: `getCommissionHistory` aliased `order_id AS "orderNumber"` — LEFT JOIN `orders` table added, `COALESCE(o.order_number, vc.order_id)` used
+- [x] BUG 6: React Fragment in applications table map had no `key` — replaced `<>` with `<Fragment key={app.id}>` in `admin/vendors/page.tsx`
+- [x] MISSING 1: `become-a-vendor/apply/page.tsx` showed form unconditionally — added `useEffect` to check existing application on mount; shows status screen for PENDING/APPROVED/REJECTED
+- [x] MISSING 3: `orders.service.ts cancel()` didn't call `reverseCommissions()` — added non-blocking call after the cancel transaction
+- [x] MISSING 4: `recordCommissions()` checked `is_vendor` but not suspension — added `vendor_suspended_at` check
+- [x] MISSING 5: Footer "Become a Vendor" link missing when CMS columns configured — added IIFE to inject link into Company column (or last column) if not already present
+- [x] ISSUE 1: `adminAdjustCommissionBalance` with negative amount inserted negative AVAILABLE row corrupting `lifetimeEarned` — credits now insert AVAILABLE row, debits use CTE to mark existing AVAILABLE commissions as PAID
+- [x] MISSING 2: Commission/payout history had no pagination (fixed limit=50) — added `commPage`/`payoutPage` state and Prev/Next controls; backend capped at 20/page
+
+## Files Changed
+- `zenorar-api/src/services/vendor.service.ts` — BUG 3, 4, 5, MISSING 4, ISSUE 1
+- `zenorar-api/src/services/orders.service.ts` — MISSING 3
+- `zenorar-marketplace/app/admin/vendors/page.tsx` — BUG 6
+- `zenorar-marketplace/app/become-a-vendor/apply/page.tsx` — MISSING 1
+- `zenorar-marketplace/app/profile/commissions/page.tsx` — MISSING 2
+- `zenorar-marketplace/components/layout/Footer.tsx` — MISSING 5
