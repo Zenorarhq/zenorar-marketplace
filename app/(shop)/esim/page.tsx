@@ -1061,46 +1061,6 @@ export default function EsimPage() {
         </div>
       )}
 
-      {/* Features Section */}
-      <div className="bg-charcoal border border-border-dark rounded-2xl lg:rounded-3xl p-4 lg:p-12">
-        <h2 className="text-2xl font-bold text-white mb-8 text-center">Why Choose Our eSIMs?</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="flash" size={24} className="text-primary" />
-            </div>
-            <h3 className="font-bold text-white mb-2">Instant Activation</h3>
-            <p className="text-slate-500 text-sm">
-              Get connected within minutes of purchase. No waiting for delivery.
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="globe" size={24} className="text-primary" />
-            </div>
-            <h3 className="font-bold text-white mb-2">Global Coverage</h3>
-            <p className="text-slate-500 text-sm">
-              Stay connected in 100+ countries with reliable network coverage.
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="shield" size={24} className="text-primary" />
-            </div>
-            <h3 className="font-bold text-white mb-2">Secure & Private</h3>
-            <p className="text-slate-500 text-sm">
-              Your data is encrypted and your privacy is protected.
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="headphones" size={24} className="text-primary" />
-            </div>
-            <h3 className="font-bold text-white mb-2">24/7 Support</h3>
-            <p className="text-slate-500 text-sm">Our support team is always here to help you.</p>
-          </div>
-        </div>
-      </div>
     </main>
   )
 }
