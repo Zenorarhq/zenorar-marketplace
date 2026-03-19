@@ -245,10 +245,6 @@ export default function AdminVendorsPage() {
                   <Icon name="wallet" size={14} />
                   Process Payouts ({stats?.pendingPayouts ?? 0})
                 </button>
-                <button onClick={() => setTab('settings')} className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm hover:bg-primary/20 transition-colors">
-                  <Icon name="settings" size={14} />
-                  Commission Settings
-                </button>
               </div>
             </div>
           </div>
