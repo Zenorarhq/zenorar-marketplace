@@ -403,7 +403,10 @@ export default function CommissionsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Commissions</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold text-white">Commissions</h1>
+              <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">✦ Verified Vendor</span>
+            </div>
             <p className="text-slate-400 text-sm mt-1">Track your earnings and manage payouts</p>
           </div>
           <button

@@ -311,9 +311,14 @@ export default function Header() {
                   aria-label="User menu"
                 >
                   {user?.avatar ? (
+                    <div className="relative">
                     <div className="w-6 h-6 rounded-full overflow-hidden relative ring-2 ring-transparent hover:ring-primary/50 transition-all">
                       <Image src={user.avatar} alt={user.name || 'Profile'} fill className="object-cover" />
                     </div>
+                    {user?.isVendor && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-primary rounded-full border-2 border-charcoal" />
+                    )}
+                  </div>
                   ) : (
                     <Icon name="user-circle" size={22} />
                   )}
@@ -325,6 +330,11 @@ export default function Header() {
                 )}
                 {showMobileUserMenu && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
+                    {user?.isVendor && (
+                      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-dark">
+                        <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full w-full text-center">✦ Verified Vendor</span>
+                      </div>
+                    )}
                     {/* Wallet Balance */}
                     <Link
                       href="/profile/wallet"
@@ -506,9 +516,14 @@ export default function Header() {
                     aria-label="User menu"
                   >
                     {user?.avatar ? (
+                      <div className="relative">
                       <div className="w-6 h-6 rounded-full overflow-hidden relative ring-2 ring-transparent hover:ring-primary/50 transition-all">
                         <Image src={user.avatar} alt={user.name || 'Profile'} fill className="object-cover" />
                       </div>
+                      {user?.isVendor && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-primary rounded-full border-2 border-charcoal" />
+                      )}
+                    </div>
                     ) : (
                       <Icon name="user-circle" size={20} />
                     )}
@@ -517,6 +532,11 @@ export default function Header() {
 
                   {showUserMenu && (
                     <div className="absolute right-0 top-full mt-2 w-48 bg-charcoal border border-border-dark rounded-lg shadow-xl overflow-hidden z-[70]">
+                      {user?.isVendor && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-dark">
+                          <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full w-full text-center">✦ Verified Vendor</span>
+                        </div>
+                      )}
                       {/* Wallet Balance */}
                       <Link
                         href="/profile/wallet"

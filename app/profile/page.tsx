@@ -222,7 +222,12 @@ export default function ProfileSettingsPage() {
           />
         </div>
         <div className="flex-1 text-center md:text-left mt-2">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">{formData.fullName}</h1>
+          <div className="flex items-center gap-3 flex-wrap mb-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">{formData.fullName}</h1>
+            {user?.isVendor && (
+              <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">✦ Verified Vendor</span>
+            )}
+          </div>
           <p className="text-slate-400 mb-6 font-medium">{formData.email}</p>
           <div className="flex flex-wrap gap-3 justify-center md:justify-start">
             <button

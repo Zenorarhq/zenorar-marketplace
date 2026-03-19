@@ -1,3 +1,45 @@
+# Vendor Badge — Task Plan
+
+## Goal
+Show a "Verified Vendor" badge in 4 places for users where `user.isVendor === true`.
+
+## Locations
+
+### 1. `/profile` page — next to user name (profile/page.tsx)
+- After `<h1>` name line, add a green pill badge: `✦ Verified Vendor`
+- Renders only when `user?.isVendor`
+
+### 2. Header desktop dropdown — top of menu (Header.tsx)
+- Above the wallet balance `<Link>`, add a non-clickable vendor pill row
+- Renders only when `user?.isVendor`
+
+### 3. Header avatar button — vendor dot overlay (Header.tsx, both desktop + mobile avatar)
+- Add a small green dot (absolute positioned) on bottom-right of avatar circle when `user?.isVendor`
+- Applies to both the desktop button (line ~508) and mobile button (line ~313)
+
+### 4. `/profile/commissions` page header (commissions/page.tsx)
+- Next to "Commissions" h1, add the same green pill badge
+
+## Rules
+- No new components — inline JSX only
+- Conditional on `user?.isVendor` every time
+- Badge style: `text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full`
+
+## Order of work
+- [ ] 1. profile/page.tsx — badge next to name
+- [ ] 2. Header.tsx — vendor dot on desktop avatar
+- [ ] 3. Header.tsx — vendor dot on mobile avatar
+- [ ] 4. Header.tsx — vendor pill in desktop dropdown
+- [ ] 5. Header.tsx — vendor pill in mobile dropdown
+- [ ] 6. commissions/page.tsx — badge next to h1
+- [ ] 7. Build check
+- [ ] 8. Commit and push
+
+## Review
+(added after completion)
+
+---
+
 # Phone Refill Commission Fix — Task Plan
 
 ## Problem
