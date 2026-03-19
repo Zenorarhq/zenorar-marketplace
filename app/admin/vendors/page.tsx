@@ -507,7 +507,7 @@ export default function AdminVendorsPage() {
                             type="number"
                             value={modalAdjustAmount}
                             onChange={e => setModalAdjustAmount(e.target.value)}
-                            placeholder="Amount (use - to deduct)"
+                            placeholder="e.g. 10 to add, -10 to deduct"
                             className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary/50"
                           />
                           <input
