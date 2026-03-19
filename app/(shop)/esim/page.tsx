@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
@@ -40,7 +41,10 @@ function resolveCountryName(isoCode: string, dbName: string | null): string {
 }
 
 export default function EsimPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('data')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const initialTab = (searchParams.get('tab') === 'carrier' ? 'carrier' : 'data') as TabType
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab)
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const [countryPage, setCountryPage] = useState(1)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
@@ -892,6 +896,7 @@ export default function EsimPage() {
           onClick={() => {
             setActiveTab('data')
             setSelectedCarrierPlan(null)
+            router.replace('/esim?tab=data', { scroll: false })
           }}
           className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
             activeTab === 'data'
@@ -907,6 +912,7 @@ export default function EsimPage() {
             setActiveTab('carrier')
             setSelectedCountry(null)
             setCountryPage(1)
+            router.replace('/esim?tab=carrier', { scroll: false })
           }}
           className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
             activeTab === 'carrier'
