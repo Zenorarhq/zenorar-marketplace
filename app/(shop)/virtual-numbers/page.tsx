@@ -925,7 +925,7 @@ export default function VirtualNumbersPage() {
                       >
                         {/* Flag shaped as SIM card — notch at bottom-right */}
                         <div
-                          className="w-full aspect-[3/2] overflow-hidden mb-2"
+                          className="w-full aspect-square overflow-hidden mb-2"
                           style={{ clipPath: 'polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%)' }}
                         >
                           <FlagIcon countryCode={country.isoCode} className="w-full h-full object-cover" />
