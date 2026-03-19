@@ -419,19 +419,19 @@ export default function CommissionsPage() {
         ) : null}
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-border-dark pb-0">
+        <div className="flex gap-1 bg-surface-dark rounded-xl p-1 overflow-x-auto">
           {([
-            { key: 'commissions', label: 'Commission History' },
-            { key: 'payouts', label: 'Payout History' },
-            { key: 'methods', label: 'Payout Methods' },
+            { key: 'commissions', label: 'Earnings' },
+            { key: 'payouts', label: 'Payouts' },
+            { key: 'methods', label: 'Methods' },
           ] as { key: Tab; label: string }[]).map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-all -mb-px ${
+              className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 tab === t.key
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-slate-400 hover:text-white'
+                  ? 'bg-primary text-black'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               {t.label}
