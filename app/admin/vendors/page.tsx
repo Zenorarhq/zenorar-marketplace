@@ -630,7 +630,7 @@ export default function AdminVendorsPage() {
                             </div>
                           </td>
                         </tr>
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

@@ -214,6 +214,7 @@ export default function PhoneRefillsPage() {
                 country: operator.country,
                 sendAmount: offer.sendAmount,
                 sendCurrency: offer.sendCurrency,
+                providerCost: offer.cost,
               },
             },
           ],

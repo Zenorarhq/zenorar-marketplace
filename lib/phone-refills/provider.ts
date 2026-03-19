@@ -39,6 +39,7 @@ export interface TopupOfferSummary {
   // Amounts in real currency (already divided by currencyDivisor)
   price: number
   priceCurrency: string
+  cost: number | null  // Zendit wholesale cost (null for range-priced offers)
   sendAmount: number
   sendCurrency: string
   notes: string
@@ -195,9 +196,12 @@ class ZenditTopupProvider {
       }
 
       const priceObj = offer.price || {}
+      const costObj = offer.cost || {}
       const sendObj = offer.send || {}
 
       const price = (priceObj.fixed || priceObj.min || 0) / (priceObj.currencyDivisor || 100)
+      const costRaw = costObj.fixed ?? costObj.min ?? null
+      const cost = costRaw !== null ? costRaw / (costObj.currencyDivisor || 100) : null
       const sendAmount = (sendObj.fixed || sendObj.min || 0) / (sendObj.currencyDivisor || 100)
 
       operatorMap.get(key)!.offers.push({
@@ -205,6 +209,7 @@ class ZenditTopupProvider {
         priceType: offer.priceType || 'FIXED',
         price,
         priceCurrency: priceObj.currency || 'USD',
+        cost,
         sendAmount,
         sendCurrency: sendObj.currency || 'USD',
         notes: offer.notes || '',

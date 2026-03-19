@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
@@ -34,6 +34,14 @@ export default function VendorApplyPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [existingStatus, setExistingStatus] = useState<string | null>(null)
+  const [checkingStatus, setCheckingStatus] = useState(true)
+
+  useEffect(() => {
+    apiFetch<any>('/vendor/application').then((res) => {
+      if (res.success && res.data) setExistingStatus(res.data.status)
+    }).catch(() => {}).finally(() => setCheckingStatus(false))
+  }, [])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -96,6 +104,54 @@ export default function VendorApplyPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (checkingStatus) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-background-dark flex flex-col">
+          <Header />
+          <CategoryNav />
+          <main className="flex-grow flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </main>
+          <Footer />
+        </div>
+      </ProtectedRoute>
+    )
+  }
+
+  if (existingStatus) {
+    const messages: Record<string, { icon: string; title: string; body: string }> = {
+      PENDING:  { icon: 'clock',  title: 'Application Under Review',  body: 'Your application has been submitted and is awaiting review. We\'ll email you within 1–3 business days.' },
+      APPROVED: { icon: 'check',  title: 'You\'re Already a Vendor!', body: 'Your application was approved. Head to your commissions dashboard to get started.' },
+      REJECTED: { icon: 'x-circle', title: 'Application Not Approved', body: 'Your previous application was not approved. Please contact support if you believe this is an error.' },
+    }
+    const m = messages[existingStatus] || messages.PENDING
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-background-dark flex flex-col">
+          <Header />
+          <CategoryNav />
+          <main className="flex-grow flex items-center justify-center px-4 py-20">
+            <div className="bg-surface-dark border border-border-dark rounded-2xl p-10 text-center max-w-md w-full">
+              <div className="w-16 h-16 rounded-full bg-primary/15 text-primary flex items-center justify-center mx-auto mb-6">
+                <Icon name={m.icon} size={32} />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-3">{m.title}</h2>
+              <p className="text-slate-400 mb-8 leading-relaxed">{m.body}</p>
+              <Link
+                href={existingStatus === 'APPROVED' ? '/profile/commissions' : '/profile'}
+                className="bg-primary text-black px-6 py-3 rounded-xl font-bold hover:brightness-110 transition-all"
+              >
+                {existingStatus === 'APPROVED' ? 'Go to Commissions' : 'Back to Profile'}
+              </Link>
+            </div>
+          </main>
+          <Footer />
+        </div>
+      </ProtectedRoute>
+    )
   }
 
   if (success) {
