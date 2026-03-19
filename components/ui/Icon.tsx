@@ -341,6 +341,7 @@ const iconMap = {
   bitcoin: Bitcoin01Icon,
   'money-receive': MoneyReceive01Icon,
   'money-send': MoneySend01Icon,
+  percent: PercentIcon,
 
   // Rating & Favorites
   star: StarIcon,
