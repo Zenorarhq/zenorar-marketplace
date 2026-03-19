@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
@@ -77,7 +77,7 @@ export default function AdminVendorsPage() {
   // Application tab state
   const [appStatusFilter, setAppStatusFilter] = useState('PENDING')
   const [appPage, setAppPage] = useState(1)
-  const [expandedAppId, setExpandedAppId] = useState<string | null>(null)
+  const [viewIdApp, setViewIdApp] = useState<any>(null)
 
   // Modal adjust state
   const [modalAdjustAmount, setModalAdjustAmount] = useState('')
@@ -208,7 +208,7 @@ export default function AdminVendorsPage() {
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: 'chart' },
-    { id: 'applications', label: 'Applications', icon: 'document' },
+    { id: 'applications', label: 'Applications', icon: 'file' },
     { id: 'payouts', label: 'Payouts', icon: 'wallet' },
   ]
 
@@ -587,8 +587,8 @@ export default function AdminVendorsPage() {
                   </thead>
                   <tbody className="divide-y divide-[#1a1a1a]">
                     {applicationsData.map((app: any) => (
-                      <>
-                        <tr key={app.id} className="hover:bg-white/[0.02]">
+                      <Fragment key={app.id}>
+                        <tr className="hover:bg-white/[0.02]">
                           <td className="px-4 py-3">
                             <div>
                               <div className="text-white font-medium">{app.full_name}</div>
@@ -603,10 +603,11 @@ export default function AdminVendorsPage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() => setExpandedAppId(expandedAppId === app.id ? null : app.id)}
-                                className="text-xs text-slate-400 hover:text-white transition-colors"
+                                onClick={() => setViewIdApp(app)}
+                                className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
                               >
-                                {expandedAppId === app.id ? 'Hide' : 'View ID'}
+                                <Icon name="eye" size={12} />
+                                View ID
                               </button>
                               {app.status === 'PENDING' && (
                                 <>
@@ -629,32 +630,64 @@ export default function AdminVendorsPage() {
                             </div>
                           </td>
                         </tr>
-                        {expandedAppId === app.id && (
-                          <tr key={`${app.id}-expanded`}>
-                            <td colSpan={7} className="px-4 py-4 bg-[#0a0a0a]">
-                              <div className="flex gap-6 items-start">
-                                <div>
-                                  <p className="text-xs text-slate-500 mb-2">ID Document</p>
-                                  <a href={app.id_document_url} target="_blank" rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-primary text-sm hover:underline">
-                                    <Icon name="document" size={14} />
-                                    View Document
-                                  </a>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-slate-500 mb-1">User ID</p>
-                                  <p className="text-xs text-slate-400 font-mono">{app.user_id}</p>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
                       </>
                     ))}
                   </tbody>
                 </table>
               )}
             </div>
+
+            {/* ID Document modal */}
+            {viewIdApp && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setViewIdApp(null)}>
+                <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between p-5 border-b border-[#1f1f1f]">
+                    <div>
+                      <h3 className="text-white font-semibold">{viewIdApp.full_name}</h3>
+                      <p className="text-slate-500 text-xs">{viewIdApp.business_name} · {viewIdApp.country}</p>
+                    </div>
+                    <button onClick={() => setViewIdApp(null)} className="p-1.5 rounded text-slate-500 hover:text-white hover:bg-white/5 transition-colors">
+                      <Icon name="x" size={18} />
+                    </button>
+                  </div>
+                  <div className="p-5">
+                    <p className="text-xs text-slate-400 font-medium uppercase mb-3">ID Document</p>
+                    {/\.(jpg|jpeg|png|gif|webp|heic)$/i.test(viewIdApp.id_document_url) ? (
+                      <img
+                        src={viewIdApp.id_document_url}
+                        alt="ID Document"
+                        className="w-full rounded-lg border border-[#2a2a2a] max-h-80 object-contain bg-black"
+                      />
+                    ) : (
+                      <a
+                        href={viewIdApp.id_document_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-primary hover:underline text-sm"
+                      >
+                        <Icon name="file" size={16} />
+                        Open Document (new tab)
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between p-5 border-t border-[#1f1f1f]">
+                    <button
+                      onClick={() => { rejectMutation.mutate(viewIdApp.id); setViewIdApp(null) }}
+                      disabled={rejectMutation.isPending || viewIdApp.status !== 'PENDING'}
+                      className="px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg text-sm hover:bg-red-500/20 transition-colors disabled:opacity-40"
+                    >
+                      Reject & Request Re-upload
+                    </button>
+                    <button
+                      onClick={() => setViewIdApp(null)}
+                      className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-lg text-sm hover:text-white transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {applicationsData?.pagination && applicationsData.pagination.total > 20 && (
               <div className="flex items-center justify-between text-sm text-slate-400">
