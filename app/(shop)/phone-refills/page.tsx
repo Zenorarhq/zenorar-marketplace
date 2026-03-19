@@ -386,9 +386,9 @@ export default function PhoneRefillsPage() {
     return (
       <div
         key={key}
-        className={`rounded-2xl border transition-all ${
+        className={`rounded-2xl border transition-all group ${
           isExpanded
-            ? 'border-primary bg-charcoal col-span-1 sm:col-span-2 lg:col-span-3'
+            ? 'border-primary bg-charcoal col-span-full'
             : 'border-border-dark bg-charcoal hover:border-slate-600'
         }`}
       >
@@ -396,28 +396,41 @@ export default function PhoneRefillsPage() {
         <button
           onClick={() => handleToggle(operator)}
           className={`w-full text-left transition-all ${
-            isExpanded ? 'flex items-center gap-4 p-4' : 'flex flex-col items-center p-5'
+            isExpanded ? 'flex items-center gap-4 p-4' : 'flex flex-col items-center p-4'
           }`}
         >
-          <ServiceLogo
-            name={operator.name}
-            size={isExpanded ? 44 : 56}
-            className="flex-shrink-0"
-          />
-          <div className={isExpanded ? 'flex-1 min-w-0' : 'mt-3 text-center w-full'}>
-            <div className={`flex items-center gap-2 ${isExpanded ? '' : 'justify-center'}`}>
-              <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
-              <FlagIcon countryCode={operator.country} className="w-5 h-4 rounded-sm flex-shrink-0" />
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {resolveCountryName(operator.country)}
-              {!isExpanded && (
-                <span className="text-primary font-medium ml-1.5">from {formatPrice(minPrice)}</span>
-              )}
-            </p>
-          </div>
-          {isExpanded && (
-            <Icon name="x" size={18} className="text-slate-500 flex-shrink-0" />
+          {isExpanded ? (
+            <>
+              <ServiceLogo name={operator.name} size={44} className="flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
+                  <FlagIcon countryCode={operator.country} className="w-5 h-4 rounded-sm flex-shrink-0" />
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">{resolveCountryName(operator.country)}</p>
+              </div>
+              <Icon name="x" size={18} className="text-slate-500 flex-shrink-0" />
+            </>
+          ) : (
+            <>
+              {/* Large logo area — 70-80% of card height */}
+              <div className="w-full flex items-center justify-center py-4 sm:py-5">
+                <ServiceLogo name={operator.name} size={72} className="rounded-xl" />
+              </div>
+              {/* Name + flag */}
+              <div className="flex items-center gap-1.5 justify-center w-full">
+                <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
+                <FlagIcon countryCode={operator.country} className="w-4 h-3 rounded-sm flex-shrink-0" />
+              </div>
+              {/* From price */}
+              <p className="text-xs text-slate-500 mt-0.5">
+                from <span className="text-primary font-semibold">{formatPrice(minPrice)}</span>
+              </p>
+              {/* Select Amount button */}
+              <span className="mt-3 w-full py-2 rounded-lg bg-surface-dark border border-border-dark text-xs font-bold text-slate-300 text-center group-hover:border-primary/50 group-hover:text-white transition-colors">
+                Select Amount
+              </span>
+            </>
           )}
         </button>
 
@@ -702,12 +715,13 @@ export default function PhoneRefillsPage() {
 
       {/* Loading */}
       {loadingOperators && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {[...Array(15)].map((_, i) => (
-            <div key={i} className="bg-charcoal border border-border-dark rounded-2xl p-5 animate-pulse flex flex-col items-center">
-              <div className="w-14 h-14 bg-slate-700 rounded-xl" />
-              <div className="h-4 bg-slate-700 rounded w-20 mt-3 mb-1.5" />
-              <div className="h-3 bg-slate-700 rounded w-16" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="bg-charcoal border border-border-dark rounded-2xl p-4 animate-pulse flex flex-col items-center">
+              <div className="w-[72px] h-[72px] bg-slate-700 rounded-xl my-4 sm:my-5" />
+              <div className="h-4 bg-slate-700 rounded w-24 mb-1.5" />
+              <div className="h-3 bg-slate-700 rounded w-16 mb-3" />
+              <div className="h-8 bg-slate-700 rounded-lg w-full" />
             </div>
           ))}
         </div>
@@ -736,7 +750,7 @@ export default function PhoneRefillsPage() {
             <span className="text-slate-500 text-sm">{allFiltered.length} carriers</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {paginatedOperators.map((op) => renderOperatorCard(op))}
           </div>
 
