@@ -375,175 +375,36 @@ export default function PhoneRefillsPage() {
     return picks.sort((a, b) => a.price - b.price)
   }
 
-  // Render a single operator card
+  // Render a single operator card (Netflix-style)
   const renderOperatorCard = (operator: TopupOperator) => {
     const key = opKey(operator)
-    const isExpanded = expandedKey === key
-    const isProcessing = processingCard === key
     const minPrice = operator.offers.length > 0 ? Math.min(...operator.offers.map((o) => o.price)) : 0
-    const quickPicks = getQuickPicks(operator.offers)
-    const hasMore = operator.offers.length > quickPicks.length
 
     return (
-      <div key={key} className="relative">
-        {/* Card */}
-        <button
-          onClick={() => handleToggle(operator)}
-          className={`w-full rounded-2xl border overflow-hidden transition-all group relative ${
-            isExpanded
-              ? 'border-primary ring-1 ring-primary/30'
-              : 'border-border-dark hover:border-slate-600'
-          }`}
-        >
-          {/* Full-bleed logo background */}
-          <div className="aspect-square w-full bg-charcoal flex items-center justify-center p-6">
-            <ServiceLogo name={operator.name} size={120} className="rounded-2xl" />
+      <button
+        key={key}
+        onClick={() => handleToggle(operator)}
+        className="group rounded-2xl border border-border-dark hover:border-slate-600 overflow-hidden transition-all relative text-left"
+      >
+        {/* Full-bleed logo fills entire card */}
+        <div className="aspect-[3/4] w-full bg-charcoal flex items-center justify-center">
+          <ServiceLogo name={operator.name} size={140} className="rounded-2xl" />
+        </div>
+        {/* Dark gradient at bottom — text + button */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent pt-16 pb-4 px-3">
+          <div className="flex items-center gap-1.5 justify-center">
+            <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
+            <FlagIcon countryCode={operator.country} className="w-4 h-3 rounded-sm flex-shrink-0" />
           </div>
-          {/* Dark gradient overlay at bottom with metadata */}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent pt-12 pb-3 px-3 rounded-b-2xl">
-            <div className="flex items-center gap-1.5 justify-center">
-              <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
-              <FlagIcon countryCode={operator.country} className="w-4 h-3 rounded-sm flex-shrink-0" />
-            </div>
-            <p className="text-xs text-slate-400 text-center mt-0.5">
-              from <span className="text-primary font-semibold">{formatPrice(minPrice)}</span>
-            </p>
+          <p className="text-xs text-slate-400 text-center mt-0.5 mb-3">
+            from <span className="text-primary font-semibold">{formatPrice(minPrice)}</span>
+          </p>
+          {/* Visual button cue (non-interactive, parent handles click) */}
+          <div className="w-full py-2 rounded-xl bg-primary text-black font-bold text-xs text-center group-hover:brightness-105 transition-all">
+            Select Amount
           </div>
-        </button>
-
-        {/* Expanded dropdown overlay — stays on the card, doesn't span full width */}
-        {isExpanded && (
-          <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-[#1a1a1a] border border-primary rounded-2xl shadow-2xl shadow-black/50 p-4">
-            {/* Close */}
-            <button
-              onClick={() => handleToggle(operator)}
-              className="absolute top-3 right-3 text-slate-500 hover:text-white"
-            >
-              <Icon name="x" size={16} />
-            </button>
-
-            {/* Amount Selection */}
-            <div className="mb-3">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
-                Select Amount
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {quickPicks.map((offer) => (
-                  <button
-                    key={offer.offerId}
-                    onClick={() => {
-                      setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer)
-                      setPaymentError(null)
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      selectedOffer?.offerId === offer.offerId
-                        ? 'bg-primary text-black'
-                        : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
-                    }`}
-                  >
-                    {formatPrice(offer.price)}
-                  </button>
-                ))}
-                {hasMore && (
-                  <div className="relative group/more">
-                    <button
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        selectedOffer && !quickPicks.some((qp) => qp.offerId === selectedOffer.offerId)
-                          ? 'bg-primary text-black'
-                          : 'bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:border-primary/50'
-                      }`}
-                    >
-                      {selectedOffer && !quickPicks.some((qp) => qp.offerId === selectedOffer.offerId)
-                        ? formatPrice(selectedOffer.price)
-                        : `+${operator.offers.length - quickPicks.length}`}
-                      <Icon name="chevron-down" size={12} className="inline ml-0.5" />
-                    </button>
-                    <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/more:block group-focus-within/more:block">
-                      <div className="bg-[#111] border border-border-dark rounded-xl shadow-2xl py-1 max-h-48 overflow-y-auto w-44 custom-scrollbar">
-                        {[...operator.offers]
-                          .sort((a, b) => a.price - b.price)
-                          .map((offer) => (
-                            <button
-                              key={offer.offerId}
-                              onClick={() => {
-                                setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer)
-                                setPaymentError(null)
-                              }}
-                              className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between ${
-                                selectedOffer?.offerId === offer.offerId
-                                  ? 'bg-primary/10 text-primary font-bold'
-                                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                              }`}
-                            >
-                              <span>{formatPrice(offer.price)}</span>
-                              {offer.sendCurrency !== 'USD' && offer.sendAmount !== offer.price && (
-                                <span className="text-[10px] text-slate-500">
-                                  {offer.sendAmount} {offer.sendCurrency}
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Phone Input + Actions (visible when amount selected) */}
-            {selectedOffer && (
-              <div className="space-y-2.5">
-                <div className="relative">
-                  <Icon name="phone" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="tel"
-                    placeholder="+1 234 567 8900"
-                    value={phoneNumber}
-                    onChange={(e) => { setPhoneNumber(e.target.value); setPaymentError(null) }}
-                    className="w-full pl-8 pr-3 py-2 bg-surface-dark border border-border-dark rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-                  />
-                </div>
-
-                {/* Summary */}
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">
-                    Receives <span className="text-white font-bold">{selectedOffer.sendAmount} {selectedOffer.sendCurrency}</span>
-                  </span>
-                  <span className="text-primary font-extrabold">{formatPrice(selectedOffer.price)}</span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handlePayWithWallet(operator)}
-                    disabled={!isReady || isProcessing || loadingBalance}
-                    className="flex-1 font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 bg-primary text-black hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                  >
-                    {isProcessing ? (
-                      <><div className="animate-spin rounded-full h-3 w-3 border-2 border-black border-t-transparent" /> Processing...</>
-                    ) : loadingBalance ? (
-                      <><div className="animate-spin rounded-full h-3 w-3 border-2 border-black border-t-transparent" /> Checking...</>
-                    ) : (
-                      <><Icon name="wallet" size={14} /> Pay</>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleAddToCart(operator)}
-                    disabled={!isReady}
-                    className="flex-1 font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 bg-surface-dark border border-border-dark text-white hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                  >
-                    <Icon name="cart" size={14} /> Cart
-                  </button>
-                </div>
-
-                {paymentError && !isProcessing && (
-                  <p className="text-[10px] text-red-400">{paymentError}</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      </button>
     )
   }
 
@@ -697,6 +558,116 @@ export default function PhoneRefillsPage() {
           {renderPagination()}
         </>
       )}
+
+      {/* Amount Selection Modal */}
+      {expandedKey && (() => {
+        const operator = allFiltered.find((op) => opKey(op) === expandedKey)
+        if (!operator) return null
+        const isProcessing = processingCard === expandedKey
+        const quickPicks = getQuickPicks(operator.offers)
+        const allOffers = [...operator.offers].sort((a, b) => a.price - b.price)
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => handleToggle(operator)}>
+            <div className="bg-[#1a1a1a] border border-border-dark rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              {/* Modal header */}
+              <div className="flex items-center justify-between p-5 border-b border-border-dark">
+                <div className="flex items-center gap-3">
+                  <ServiceLogo name={operator.name} size={40} className="rounded-lg" />
+                  <div>
+                    <h3 className="font-bold text-white">{operator.name}</h3>
+                    <div className="flex items-center gap-1.5">
+                      <FlagIcon countryCode={operator.country} className="w-4 h-3 rounded-sm" />
+                      <span className="text-xs text-slate-400">{resolveCountryName(operator.country)}</span>
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => handleToggle(operator)} className="p-2 text-slate-500 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
+                  <Icon name="x" size={18} />
+                </button>
+              </div>
+
+              {/* Amount grid */}
+              <div className="p-5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Select Amount</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {allOffers.map((offer) => (
+                    <button
+                      key={offer.offerId}
+                      onClick={() => { setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer); setPaymentError(null) }}
+                      className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${
+                        selectedOffer?.offerId === offer.offerId
+                          ? 'bg-primary text-black ring-2 ring-primary/30'
+                          : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
+                      }`}
+                    >
+                      <span className="block">{formatPrice(offer.price)}</span>
+                      {offer.sendCurrency !== 'USD' && offer.sendAmount !== offer.price && (
+                        <span className="block text-[10px] font-normal mt-0.5 opacity-60">
+                          {offer.sendAmount} {offer.sendCurrency}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Phone + Actions (visible when amount selected) */}
+              {selectedOffer && (
+                <div className="px-5 pb-5 space-y-3 border-t border-border-dark pt-4">
+                  {/* Summary */}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">
+                      Receives <span className="text-white font-bold">{selectedOffer.sendAmount} {selectedOffer.sendCurrency}</span>
+                    </span>
+                    <span className="text-primary font-extrabold text-lg">{formatPrice(selectedOffer.price)}</span>
+                  </div>
+
+                  {/* Phone input */}
+                  <div className="relative">
+                    <Icon name="phone" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="tel"
+                      placeholder="+1 234 567 8900"
+                      value={phoneNumber}
+                      onChange={(e) => { setPhoneNumber(e.target.value); setPaymentError(null) }}
+                      className="w-full pl-9 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handlePayWithWallet(operator)}
+                      disabled={!isReady || isProcessing || loadingBalance}
+                      className="flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      {isProcessing ? (
+                        <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /> Processing...</>
+                      ) : loadingBalance ? (
+                        <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /> Checking...</>
+                      ) : (
+                        <><Icon name="wallet" size={16} /> Pay with Wallet</>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleAddToCart(operator)}
+                      disabled={!isReady}
+                      className="flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      <Icon name="cart" size={16} /> Add to Cart
+                    </button>
+                  </div>
+
+                  {paymentError && !isProcessing && (
+                    <p className="text-xs text-red-400 text-center">{paymentError}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* How It Works */}
       <div className="mt-12 bg-charcoal border border-border-dark rounded-2xl lg:rounded-3xl p-4 lg:p-12">
