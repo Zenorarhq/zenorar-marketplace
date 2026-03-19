@@ -730,41 +730,6 @@ export default function PhoneRefillsPage() {
           </div>
         )
       })()}
-
-      {/* How It Works */}
-      <div className="mt-12 bg-charcoal border border-border-dark rounded-2xl lg:rounded-3xl p-4 lg:p-12">
-        <h2 className="text-2xl font-bold text-white mb-8 text-center">How Phone Refills Work</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
-              1
-            </div>
-            <h3 className="font-bold text-white mb-2">Find Carrier</h3>
-            <p className="text-slate-500 text-sm">Search for the mobile carrier you want to top up.</p>
-          </div>
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
-              2
-            </div>
-            <h3 className="font-bold text-white mb-2">Select Amount</h3>
-            <p className="text-slate-500 text-sm">Choose from available top-up denominations.</p>
-          </div>
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
-              3
-            </div>
-            <h3 className="font-bold text-white mb-2">Enter Number</h3>
-            <p className="text-slate-500 text-sm">Type the phone number to recharge with country code.</p>
-          </div>
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
-              4
-            </div>
-            <h3 className="font-bold text-white mb-2">Pay & Done</h3>
-            <p className="text-slate-500 text-sm">Pay with wallet or add to cart. Airtime delivered instantly.</p>
-          </div>
-        </div>
-      </div>
     </main>
   )
 }
