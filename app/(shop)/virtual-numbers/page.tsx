@@ -916,18 +916,22 @@ export default function VirtualNumbersPage() {
               )
               return (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-6 gap-3">
                     {paginatedCountries.map((country) => (
                       <button
                         key={country.id}
                         onClick={() => setSelectedCountry(country)}
-                        className="flex items-center gap-3 p-4 bg-charcoal border border-border-dark rounded-2xl hover:border-primary/50 transition-all text-left"
+                        className="flex flex-col items-center p-2 sm:p-3 bg-charcoal border border-border-dark hover:border-primary/50 transition-all text-center rounded-lg"
                       >
-                        <FlagIcon countryCode={country.isoCode} className="w-8 h-8 rounded flex-shrink-0" />
-                        <div className="min-w-0">
-                          <h3 className="font-medium text-white text-sm truncate">{resolveCountryName(country.isoCode, country.name)}</h3>
-                          <p className="text-xs text-slate-500">From {formatPrice(country.retailMonthly)}</p>
+                        {/* Flag shaped as SIM card — notch at bottom-right */}
+                        <div
+                          className="w-full aspect-[3/2] overflow-hidden mb-2"
+                          style={{ clipPath: 'polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%)' }}
+                        >
+                          <FlagIcon countryCode={country.isoCode} className="w-full h-full object-cover" />
                         </div>
+                        <h3 className="font-medium text-white text-[10px] sm:text-xs truncate w-full">{resolveCountryName(country.isoCode, country.name)}</h3>
+                        <p className="text-[9px] sm:text-[10px] text-slate-500">From {formatPrice(country.retailMonthly)}</p>
                       </button>
                     ))}
                   </div>
