@@ -497,6 +497,8 @@ export default function LibraryPage() {
                     <div className="h-14 w-14 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {item.category === 'phone-refills' && item.operatorName ? (
                         <ServiceLogo name={item.operatorName} size={36} />
+                      ) : item.category === 'esims' && item.isCarrierEsim && item.carrierSlug ? (
+                        <ServiceLogo name={item.carrierSlug} size={36} />
                       ) : item.category === 'esims' && item.countries?.[0] ? (
                         <FlagIcon countryCode={item.countries[0]} className="w-8 h-8 rounded" />
                       ) : item.category === 'gift-cards' && item.imageUrl ? (
@@ -564,6 +566,18 @@ export default function LibraryPage() {
                           <span className="flex items-center gap-1">
                             <Icon name="arrow-right" size={13} />
                             {item.sendAmount} {item.sendCurrency}
+                          </span>
+                        )}
+                        {item.isCarrierEsim && item.status === 'pending' && item.fulfillmentDeadline && (
+                          <span className="flex items-center gap-1 text-yellow-400">
+                            <Icon name="clock" size={13} />
+                            Preparing — delivered within 24h
+                          </span>
+                        )}
+                        {item.isCarrierEsim && item.carrierName && (
+                          <span className="flex items-center gap-1">
+                            <Icon name="phone" size={13} />
+                            {item.carrierName}
                           </span>
                         )}
                       </div>

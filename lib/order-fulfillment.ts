@@ -264,6 +264,9 @@ async function processOrderItem(
           status: 'success',
         }
 
+      case 'carrier_esim':
+        return await processCarrierEsimItem(orderId, userId, item)
+
       default:
         // Generic digital product - just grant access
         return await processDigitalDownload(orderId, userId, item)
@@ -1058,6 +1061,89 @@ async function processVirtualNumberItem(
       productType: 'virtual_number',
       status: 'failed',
       error: error.message
+    }
+  }
+}
+
+/**
+ * Process carrier eSIM order item — creates a pending fulfillment record for admin to fulfill manually
+ */
+async function processCarrierEsimItem(
+  orderId: string,
+  userId: string,
+  item: {
+    item_id: string
+    product_id: string
+    name: string
+  }
+): Promise<FulfillmentResult['details'][0]> {
+  try {
+    // Idempotency: check if carrier order already exists
+    const existing = await query(
+      `SELECT id FROM carrier_esim_orders WHERE order_id = $1 AND order_item_id = $2`,
+      [orderId, item.item_id]
+    )
+
+    if (existing.rows.length > 0) {
+      return {
+        itemId: item.item_id,
+        productType: 'carrier_esim',
+        status: 'success',
+        provisionedId: existing.rows[0].id,
+      }
+    }
+
+    // Get metadata from order item
+    const orderItemResult = await query(
+      `SELECT metadata FROM order_items WHERE id = $1`,
+      [item.item_id]
+    )
+
+    const metadata = orderItemResult.rows[0]?.metadata || {}
+
+    // Insert carrier eSIM order with 24h fulfillment deadline
+    const insertResult = await query(
+      `INSERT INTO carrier_esim_orders
+        (user_id, order_id, order_item_id, carrier_plan_id, status,
+         customer_name, customer_email, customer_phone,
+         device_imei, device_eid, device_model,
+         billing_address, special_instructions,
+         fulfillment_deadline)
+       VALUES ($1, $2, $3, $4::uuid, 'pending_fulfillment',
+               $5, $6, $7, $8, $9, $10, $11::jsonb, $12,
+               NOW() + INTERVAL '24 hours')
+       RETURNING id`,
+      [
+        userId, orderId, item.item_id, metadata.carrier_plan_id,
+        metadata.customer_name, metadata.customer_email, metadata.customer_phone,
+        metadata.device_imei, metadata.device_eid, metadata.device_model,
+        JSON.stringify(metadata.billing_address || {}), metadata.special_instructions,
+      ]
+    )
+
+    // Send in-app notification
+    query(
+      `INSERT INTO notifications (id, "userId", type, title, message, metadata)
+       VALUES (gen_random_uuid()::text, $1, 'ORDER_CONFIRMED'::"NotificationType",
+               'Carrier eSIM Order Received',
+               'Your carrier eSIM order is being prepared. We''ll deliver it within 24 hours.',
+               $2::jsonb)`,
+      [userId, JSON.stringify({ orderId, carrierOrderId: insertResult.rows[0].id })]
+    ).catch(err => console.error('Failed to send carrier eSIM notification:', err))
+
+    return {
+      itemId: item.item_id,
+      productType: 'carrier_esim',
+      status: 'success',
+      provisionedId: insertResult.rows[0].id,
+    }
+  } catch (error: any) {
+    console.error(`Carrier eSIM order creation failed for item ${item.item_id}:`, error)
+    return {
+      itemId: item.item_id,
+      productType: 'carrier_esim',
+      status: 'failed',
+      error: error.message,
     }
   }
 }

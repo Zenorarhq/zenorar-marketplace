@@ -445,6 +445,59 @@ export async function GET(request: Request) {
       }
     })
 
+    // Query user's carrier eSIM orders (pending/cancelled — fulfilled ones show via user_esims)
+    const carrierEsimOrdersResult = await query(
+      `
+      SELECT
+        ceo.id,
+        ceo.status,
+        ceo.fulfillment_deadline,
+        ceo.cancellation_reason,
+        ceo.created_at as purchase_date,
+        cep.carrier_name,
+        cep.carrier_slug,
+        cep.plan_name,
+        cep.data_amount_display,
+        cep.voice_display,
+        cep.sms_display,
+        cep.country,
+        cep.network_type
+      FROM carrier_esim_orders ceo
+      JOIN carrier_esim_plans cep ON ceo.carrier_plan_id = cep.id
+      WHERE ceo.user_id = $1 AND ceo.status IN ('pending_fulfillment', 'cancelled')
+      ORDER BY ceo.created_at DESC
+      `,
+      [userId]
+    ).catch(() => ({ rows: [] }))
+
+    // Transform carrier eSIM orders to library item format
+    const carrierEsimItems = carrierEsimOrdersResult.rows.map((row: any) => {
+      const isPending = row.status === 'pending_fulfillment'
+      const isCancelled = row.status === 'cancelled'
+      return {
+        id: row.id,
+        name: `${row.carrier_name} ${row.plan_name}`,
+        slug: `carrier-esim-${row.id}`,
+        description: isCancelled
+          ? `Cancelled — Refunded to wallet${row.cancellation_reason ? `: ${row.cancellation_reason}` : ''}`
+          : `${row.data_amount_display} · ${row.voice_display || 'Voice'} · ${row.sms_display || 'SMS'} · ${row.network_type?.toUpperCase()}`,
+        category: 'esims',
+        icon: 'sim-card',
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
+        purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        status: isPending ? 'pending' : 'failed',
+        carrierName: row.carrier_name,
+        carrierSlug: row.carrier_slug,
+        fulfillmentDeadline: row.fulfillment_deadline ? new Date(row.fulfillment_deadline).toISOString() : null,
+        isCarrierEsim: true,
+        countries: [row.country],
+      }
+    })
+
     // Query user's phone refill orders
     const phoneRefillsResult = await query(
       `
@@ -499,7 +552,7 @@ export async function GET(request: Request) {
     })
 
     // Combine all library items (include pending/failed virtual numbers and eSIMs)
-    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...pendingEsimItems, ...cardItems, ...phoneRefillItems]
+    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...pendingEsimItems, ...carrierEsimItems, ...cardItems, ...phoneRefillItems]
 
     // Sort all items by purchase date (newest first)
     libraryItems.sort((a, b) => {

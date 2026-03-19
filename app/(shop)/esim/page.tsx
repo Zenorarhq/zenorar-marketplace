@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import Image from 'next/image'
 import Icon from '@/components/ui/Icon'
 import FlagIcon from '@/components/ui/FlagIcon'
+import ServiceLogo from '@/components/ui/ServiceLogo'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useCart } from '@/lib/cart-context'
 import { useRouter } from 'next/navigation'
@@ -16,10 +16,10 @@ import DepositModal from '@/components/wallet/DepositModal'
 import TestModeBanner from '@/components/ui/TestModeBanner'
 import WalletDisplay from '@/components/ui/WalletDisplay'
 import * as esimApi from '@/lib/api/esim'
-import type { EsimRegion, EsimPlan } from '@/lib/api/esim'
+import type { EsimPlan, CarrierEsimPlan } from '@/lib/api/esim'
 import type { Product } from '@/lib/types'
 
-type TabType = 'local' | 'regional'
+type TabType = 'data' | 'carrier'
 
 const COUNTRIES_PER_PAGE = 16
 
@@ -27,26 +27,6 @@ const POPULAR_COUNTRIES = [
   'US', 'GB', 'JP', 'FR', 'DE', 'KR', 'TH', 'IT', 'ES', 'AU',
   'CA', 'SG', 'TR', 'AE', 'NL', 'CH',
 ]
-
-const REGION_IMAGES: Record<string, string> = {
-  'europe': '/images/esim/europe.jpg',
-  'north-america': '/images/esim/north-america.jpg',
-  'asia-pacific': '/images/esim/asia-pacific.jpg',
-  'middle-east': '/images/esim/middle-east.jpg',
-  'africa': '/images/esim/africa.jpg',
-  'south-america': '/images/esim/south-america.jpg',
-  'global': '/images/esim/global.jpg',
-}
-
-const REGION_SUBTITLES: Record<string, string> = {
-  'europe': 'Historic & Modern',
-  'north-america': 'Innovation Hub',
-  'asia-pacific': 'Tech & Tradition',
-  'middle-east': 'Business Centers',
-  'africa': 'Rising Markets',
-  'south-america': 'Vibrant Culture',
-  'global': 'Worldwide Coverage',
-}
 
 // Resolve country name from ISO code using Intl API
 function resolveCountryName(isoCode: string, dbName: string | null): string {
@@ -60,13 +40,30 @@ function resolveCountryName(isoCode: string, dbName: string | null): string {
 }
 
 export default function EsimPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('local')
+  const [activeTab, setActiveTab] = useState<TabType>('data')
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [countryPage, setCountryPage] = useState(1)
   const [addingToCart, setAddingToCart] = useState<string | null>(null)
 
-  // Wallet payment state (matching gift cards pattern)
+  // Carrier eSIM form state
+  const [selectedCarrierPlan, setSelectedCarrierPlan] = useState<CarrierEsimPlan | null>(null)
+  const [carrierForm, setCarrierForm] = useState({
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    deviceImei: '',
+    deviceEid: '',
+    deviceModel: '',
+    addressLine1: '',
+    addressCity: '',
+    addressState: '',
+    addressZip: '',
+    addressCountry: 'US',
+    specialInstructions: '',
+  })
+  const [carrierFormError, setCarrierFormError] = useState<string | null>(null)
+
+  // Wallet payment state
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [processingPayment, setProcessingPayment] = useState<string | null>(null)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
@@ -74,11 +71,19 @@ export default function EsimPage() {
   const [showDepositModal, setShowDepositModal] = useState(false)
   const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
   const [pendingPlan, setPendingPlan] = useState<EsimPlan | null>(null)
+  const [pendingCarrierPlan, setPendingCarrierPlan] = useState<CarrierEsimPlan | null>(null)
 
   const { addItem, showAddedToCartPopup } = useCart()
   const router = useRouter()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const { formatPrice } = usePreferences()
+
+  // Pre-fill email from auth
+  useEffect(() => {
+    if (user?.email && !carrierForm.customerEmail) {
+      setCarrierForm(f => ({ ...f, customerEmail: user.email }))
+    }
+  }, [user?.email])
 
   // Fetch countries that have eSIM plans
   const { data: rawCountries = [], isError: countriesError } = useQuery({
@@ -116,33 +121,50 @@ export default function EsimPage() {
     countryPage * COUNTRIES_PER_PAGE
   )
 
-  // Fetch regions
-  const { data: regions = [], isError: regionsError } = useQuery({
-    queryKey: ['esim-regions'],
-    queryFn: async () => {
-      const result = await esimApi.getRegions()
-      if (result.success && result.data) return result.data
-      return []
-    },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  })
-
-  // Fetch plans (only when a country or region is selected)
+  // Fetch plans (only when a country is selected)
   const { data: plans = [], isLoading: loadingPlans, isError: plansError } = useQuery({
-    queryKey: ['esim-plans', selectedCountry, selectedRegion],
+    queryKey: ['esim-plans', selectedCountry],
     queryFn: async () => {
       const result = await esimApi.getPlans({
         countryCode: selectedCountry || undefined,
-        regionSlug: selectedRegion || undefined,
       })
       if (result.success && result.data) return result.data
       return []
     },
-    enabled: !!selectedCountry || !!selectedRegion,
+    enabled: !!selectedCountry,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   })
+
+  // Fetch carrier plans
+  const { data: carrierPlans = [], isLoading: loadingCarrierPlans, isError: carrierPlansError } = useQuery({
+    queryKey: ['carrier-esim-plans'],
+    queryFn: async () => {
+      const result = await esimApi.getCarrierPlans()
+      if (result.success && result.data) return result.data
+      return []
+    },
+    enabled: activeTab === 'carrier',
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  })
+
+  // Group carrier plans by carrier
+  const carrierGroups = useMemo(() => {
+    const groups: Record<string, { carrierName: string; carrierSlug: string; country: string; plans: CarrierEsimPlan[] }> = {}
+    for (const plan of carrierPlans) {
+      if (!groups[plan.carrierSlug]) {
+        groups[plan.carrierSlug] = {
+          carrierName: plan.carrierName,
+          carrierSlug: plan.carrierSlug,
+          country: plan.country,
+          plans: [],
+        }
+      }
+      groups[plan.carrierSlug].plans.push(plan)
+    }
+    return Object.values(groups)
+  }, [carrierPlans])
 
   // Convert eSIM plan to Product format for cart
   const planToProduct = (plan: EsimPlan): Product => ({
@@ -191,7 +213,7 @@ export default function EsimPage() {
     }
   }, [isAuthenticated])
 
-  // Auto-continue purchase after login
+  // Auto-continue purchase after login (data eSIM)
   useEffect(() => {
     if (pendingWalletCheckout && isAuthenticated && walletBalance !== null && pendingPlan) {
       setPendingWalletCheckout(false)
@@ -205,7 +227,21 @@ export default function EsimPage() {
     }
   }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingPlan])
 
-  // Process wallet payment (instant checkout via API, matching gift cards pattern)
+  // Auto-continue carrier eSIM purchase after login
+  useEffect(() => {
+    if (pendingWalletCheckout && isAuthenticated && walletBalance !== null && pendingCarrierPlan) {
+      setPendingWalletCheckout(false)
+      const plan = pendingCarrierPlan
+
+      if (walletBalance >= plan.retailPrice) {
+        processCarrierPayment(plan)
+      } else {
+        setShowDepositModal(true)
+      }
+    }
+  }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingCarrierPlan])
+
+  // Process wallet payment for data eSIM
   const processWalletPayment = async (plan: EsimPlan) => {
     setProcessingPayment(plan.id)
     try {
@@ -237,7 +273,6 @@ export default function EsimPage() {
       const result = await response.json()
 
       if (result.success) {
-        // Refresh wallet balance and redirect to library
         await fetchWalletBalance()
         setPendingPlan(null)
         router.push('/profile/library?tab=esims&purchased=true')
@@ -254,16 +289,81 @@ export default function EsimPage() {
     }
   }
 
-  // Pay with wallet handler (matching gift cards pattern)
+  // Process wallet payment for carrier eSIM
+  const processCarrierPayment = async (plan: CarrierEsimPlan) => {
+    setProcessingPayment(plan.id)
+    setCarrierFormError(null)
+    try {
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch('/api/orders/instant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          items: [{
+            name: `${plan.carrierName} ${plan.planName}`,
+            quantity: 1,
+            price: plan.retailPrice,
+            productType: 'carrier_esim',
+            metadata: {
+              productType: 'carrier_esim',
+              carrier_plan_id: plan.id,
+              carrierName: plan.carrierName,
+              customer_name: carrierForm.customerName,
+              customer_email: carrierForm.customerEmail,
+              customer_phone: carrierForm.customerPhone,
+              device_imei: carrierForm.deviceImei,
+              device_eid: carrierForm.deviceEid,
+              device_model: carrierForm.deviceModel,
+              billing_address: {
+                line1: carrierForm.addressLine1,
+                city: carrierForm.addressCity,
+                state: carrierForm.addressState,
+                zip: carrierForm.addressZip,
+                country: carrierForm.addressCountry,
+              },
+              special_instructions: carrierForm.specialInstructions,
+            },
+          }],
+          paymentMethod: 'wallet',
+          total: plan.retailPrice,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        await fetchWalletBalance()
+        setPendingCarrierPlan(null)
+        setSelectedCarrierPlan(null)
+        setCarrierForm({
+          customerName: '', customerEmail: user?.email || '', customerPhone: '',
+          deviceImei: '', deviceEid: '', deviceModel: '',
+          addressLine1: '', addressCity: '', addressState: '', addressZip: '', addressCountry: 'US',
+          specialInstructions: '',
+        })
+        router.push('/profile/library?tab=esims&purchased=true')
+      } else {
+        setCarrierFormError(result.error || 'Failed to process order')
+      }
+    } catch (error) {
+      console.error('Failed to process carrier eSIM payment:', error)
+      setCarrierFormError('Something went wrong. Please try again.')
+    } finally {
+      setProcessingPayment(null)
+    }
+  }
+
+  // Pay with wallet handler for data eSIM
   const handlePayWithWallet = async (plan: EsimPlan) => {
-    // If not authenticated, show auth dialog
     if (!isAuthenticated) {
       setPendingPlan(plan)
       setShowLoginModal(true)
       return
     }
 
-    // Check wallet balance - fetch if null
     let currentBalance = walletBalance
     if (currentBalance === null) {
       setLoadingBalance(true)
@@ -283,16 +383,63 @@ export default function EsimPage() {
       setLoadingBalance(false)
     }
 
-    // If insufficient balance, show deposit modal
     if (currentBalance === null || currentBalance < plan.retailPrice) {
       setPendingPlan(plan)
       setShowDepositModal(true)
       return
     }
 
-    // Process payment
     if (!window.confirm(`Pay ${formatPrice(plan.retailPrice)} for ${plan.name} using your wallet?`)) return
     await processWalletPayment(plan)
+  }
+
+  // Pay with wallet handler for carrier eSIM
+  const handleCarrierPayWithWallet = async (plan: CarrierEsimPlan) => {
+    setCarrierFormError(null)
+
+    // Validate required fields
+    if (!carrierForm.customerName.trim()) {
+      setCarrierFormError('Full name is required')
+      return
+    }
+    if (!carrierForm.customerEmail.trim()) {
+      setCarrierFormError('Email is required')
+      return
+    }
+
+    if (!isAuthenticated) {
+      setPendingCarrierPlan(plan)
+      setShowLoginModal(true)
+      return
+    }
+
+    let currentBalance = walletBalance
+    if (currentBalance === null) {
+      setLoadingBalance(true)
+      try {
+        const result = await getBalance()
+        if (result.success && result.data) {
+          currentBalance = result.data.balance || 0
+          setWalletBalance(currentBalance)
+        } else {
+          setLoadingBalance(false)
+          return
+        }
+      } catch {
+        setLoadingBalance(false)
+        return
+      }
+      setLoadingBalance(false)
+    }
+
+    if (currentBalance === null || currentBalance < plan.retailPrice) {
+      setPendingCarrierPlan(plan)
+      setShowDepositModal(true)
+      return
+    }
+
+    if (!window.confirm(`Pay ${formatPrice(plan.retailPrice)} for ${plan.carrierName} ${plan.planName} using your wallet? Your eSIM will be delivered within 24 hours.`)) return
+    await processCarrierPayment(plan)
   }
 
   // Add to Cart: add and stay on page
@@ -307,12 +454,7 @@ export default function EsimPage() {
     ? sortedCountries.find((c) => c.isoCode === selectedCountry)?.name || selectedCountry
     : null
 
-  // Get selected region data
-  const selectedRegionData = selectedRegion
-    ? regions.find((r) => r.slug === selectedRegion)
-    : null
-
-  // Render plan cards
+  // Render plan cards for data eSIMs
   const renderPlans = () => {
     if (loadingPlans) {
       return (
@@ -356,11 +498,7 @@ export default function EsimPage() {
       <>
         <div className="flex items-center justify-between mt-6 mb-4">
           <h2 className="text-xl font-bold text-white">
-            {selectedCountryName
-              ? `${selectedCountryName} Plans`
-              : selectedRegionData
-                ? `${selectedRegionData.name} Plans`
-                : 'Available Plans'}
+            {selectedCountryName ? `${selectedCountryName} Plans` : 'Available Plans'}
           </h2>
           <span className="text-slate-500 text-sm">{plans.length} plans</span>
         </div>
@@ -522,12 +660,184 @@ export default function EsimPage() {
     )
   }
 
+  // Render carrier eSIM form (inline, appears when a plan is selected)
+  const renderCarrierForm = (plan: CarrierEsimPlan) => (
+    <div className="mt-4 bg-surface-dark border border-border-dark rounded-2xl p-6 space-y-4">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="font-bold text-white">Complete Your Order</h4>
+        <button
+          onClick={() => { setSelectedCarrierPlan(null); setCarrierFormError(null) }}
+          className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+        >
+          <Icon name="x" size={18} className="text-slate-400" />
+        </button>
+      </div>
+
+      <p className="text-sm text-slate-400">
+        Your eSIM will be delivered within 24 hours. We&apos;ll send setup instructions to your email.
+      </p>
+
+      {carrierFormError && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">
+          {carrierFormError}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">Full Name *</label>
+          <input
+            type="text"
+            value={carrierForm.customerName}
+            onChange={e => setCarrierForm(f => ({ ...f, customerName: e.target.value }))}
+            placeholder="John Doe"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">Email *</label>
+          <input
+            type="email"
+            value={carrierForm.customerEmail}
+            onChange={e => setCarrierForm(f => ({ ...f, customerEmail: e.target.value }))}
+            placeholder="john@example.com"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">Phone</label>
+          <input
+            type="tel"
+            value={carrierForm.customerPhone}
+            onChange={e => setCarrierForm(f => ({ ...f, customerPhone: e.target.value }))}
+            placeholder="+1 (555) 000-0000"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">Device Model</label>
+          <input
+            type="text"
+            value={carrierForm.deviceModel}
+            onChange={e => setCarrierForm(f => ({ ...f, deviceModel: e.target.value }))}
+            placeholder="iPhone 15 Pro"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">Device IMEI</label>
+          <input
+            type="text"
+            value={carrierForm.deviceImei}
+            onChange={e => setCarrierForm(f => ({ ...f, deviceImei: e.target.value }))}
+            placeholder="Dial *#06# to find"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">Device EID</label>
+          <input
+            type="text"
+            value={carrierForm.deviceEid}
+            onChange={e => setCarrierForm(f => ({ ...f, deviceEid: e.target.value }))}
+            placeholder="Settings → General → About"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+        </div>
+      </div>
+
+      {/* Billing Address */}
+      <div>
+        <h5 className="text-sm font-medium text-slate-300 mb-3">Billing Address</h5>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <input
+              type="text"
+              value={carrierForm.addressLine1}
+              onChange={e => setCarrierForm(f => ({ ...f, addressLine1: e.target.value }))}
+              placeholder="Street address"
+              className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+            />
+          </div>
+          <input
+            type="text"
+            value={carrierForm.addressCity}
+            onChange={e => setCarrierForm(f => ({ ...f, addressCity: e.target.value }))}
+            placeholder="City"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+          <input
+            type="text"
+            value={carrierForm.addressState}
+            onChange={e => setCarrierForm(f => ({ ...f, addressState: e.target.value }))}
+            placeholder="State / Province"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+          <input
+            type="text"
+            value={carrierForm.addressZip}
+            onChange={e => setCarrierForm(f => ({ ...f, addressZip: e.target.value }))}
+            placeholder="ZIP / Postal code"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+          <input
+            type="text"
+            value={carrierForm.addressCountry}
+            onChange={e => setCarrierForm(f => ({ ...f, addressCountry: e.target.value }))}
+            placeholder="Country"
+            className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+          />
+        </div>
+      </div>
+
+      {/* Special Instructions */}
+      <div>
+        <label className="block text-sm font-medium text-slate-300 mb-1">Special Instructions</label>
+        <textarea
+          value={carrierForm.specialInstructions}
+          onChange={e => setCarrierForm(f => ({ ...f, specialInstructions: e.target.value }))}
+          placeholder="Any special requirements..."
+          rows={2}
+          className="w-full bg-charcoal border border-border-dark rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:border-primary focus:outline-none resize-none"
+        />
+      </div>
+
+      {/* Pay Button */}
+      <button
+        onClick={() => handleCarrierPayWithWallet(plan)}
+        disabled={processingPayment === plan.id || loadingBalance}
+        className="w-full font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50 text-lg"
+      >
+        {processingPayment === plan.id ? (
+          <>
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent"></div>
+            <span>Processing...</span>
+          </>
+        ) : loadingBalance ? (
+          <>
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent"></div>
+            <span>Checking Balance...</span>
+          </>
+        ) : (
+          <>
+            <Icon name="wallet" size={20} />
+            <span>Pay {formatPrice(plan.retailPrice)} with Wallet</span>
+          </>
+        )}
+      </button>
+
+      <p className="text-xs text-slate-500 text-center">
+        Delivered within 24 hours. Auto-refund if not fulfilled.
+      </p>
+    </div>
+  )
+
   return (
     <main className="max-w-container mx-auto px-4 lg:px-12 pb-24">
       {/* Auth Dialog */}
       <AuthDialog
         isOpen={showLoginModal}
-        onClose={() => { setShowLoginModal(false); setPendingPlan(null) }}
+        onClose={() => { setShowLoginModal(false); setPendingPlan(null); setPendingCarrierPlan(null) }}
         onSuccess={() => {
           setShowLoginModal(false)
           setPendingWalletCheckout(true)
@@ -544,6 +854,9 @@ export default function EsimPage() {
           const newBalance = await fetchWalletBalance()
           if (pendingPlan && newBalance !== null && newBalance >= pendingPlan.retailPrice) {
             processWalletPayment(pendingPlan)
+          }
+          if (pendingCarrierPlan && newBalance !== null && newBalance >= pendingCarrierPlan.retailPrice) {
+            processCarrierPayment(pendingCarrierPlan)
           }
         }}
       />
@@ -577,40 +890,40 @@ export default function EsimPage() {
       <div className="flex gap-2 p-1 bg-surface-dark rounded-xl border border-border-dark w-fit mb-8">
         <button
           onClick={() => {
-            setActiveTab('local')
-            setSelectedRegion(null)
+            setActiveTab('data')
+            setSelectedCarrierPlan(null)
           }}
           className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
-            activeTab === 'local'
+            activeTab === 'data'
               ? 'bg-primary text-black'
               : 'text-slate-400 hover:text-white'
           }`}
         >
           <Icon name="sim-card" size={18} />
-          Local eSIMs
+          Data eSIMs
         </button>
         <button
           onClick={() => {
-            setActiveTab('regional')
+            setActiveTab('carrier')
             setSelectedCountry(null)
             setCountryPage(1)
           }}
           className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
-            activeTab === 'regional'
+            activeTab === 'carrier'
               ? 'bg-primary text-black'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Icon name="globe" size={18} />
-          Regional eSIMs
+          <Icon name="phone" size={18} />
+          Call + SMS + Data eSIMs
         </button>
       </div>
 
       {/* Sandbox Mode Banner */}
       <TestModeBanner />
 
-      {/* Local eSIMs Tab */}
-      {activeTab === 'local' && (
+      {/* Data eSIMs Tab */}
+      {activeTab === 'data' && (
         <div className="mb-10">
           {selectedCountry ? (
             <>
@@ -659,71 +972,129 @@ export default function EsimPage() {
         </div>
       )}
 
-      {/* Regional eSIMs Tab */}
-      {activeTab === 'regional' && (
+      {/* Call + SMS + Data eSIMs Tab */}
+      {activeTab === 'carrier' && (
         <div className="mb-10">
-          {selectedRegion && selectedRegionData ? (
-            <>
-              {/* Locked-in region */}
-              <div className="bg-primary/10 border border-primary rounded-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                    <Icon name="globe" size={24} className="text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white">{selectedRegionData.name}</h3>
-                    <p className="text-sm text-slate-400">{plans.length} plans available</p>
+          {/* Info banner */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-4 mb-6 flex items-start gap-3">
+            <Icon name="info" size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-300">
+              <strong>Carrier eSIMs</strong> include voice calls, SMS, and data — just like a regular phone plan.
+              Orders are fulfilled within 24 hours. You&apos;ll receive a QR code and setup instructions via email.
+            </div>
+          </div>
+
+          {loadingCarrierPlans ? (
+            <div className="space-y-8">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-8 bg-slate-700 rounded w-48 mb-4" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(3)].map((_, j) => (
+                      <div key={j} className="bg-charcoal border border-border-dark rounded-2xl p-6">
+                        <div className="h-5 bg-slate-700 rounded w-2/3 mb-3" />
+                        <div className="h-4 bg-slate-700 rounded w-1/2 mb-4" />
+                        <div className="h-8 bg-slate-700 rounded w-1/3" />
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <button
-                  onClick={() => setSelectedRegion(null)}
-                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                  aria-label="Clear selection"
-                >
-                  <Icon name="x" size={20} className="text-white" />
-                </button>
-              </div>
-              {renderPlans()}
-            </>
-          ) : regionsError ? (
+              ))}
+            </div>
+          ) : carrierPlansError ? (
             <div className="text-center py-12">
               <Icon name="alert-circle" size={48} className="text-red-500 mx-auto mb-4" />
-              <p className="text-slate-400">Failed to load regions. Please refresh.</p>
+              <h3 className="text-white font-bold mb-2">Failed to load carrier plans</h3>
+              <p className="text-slate-500">Something went wrong. Please try again.</p>
+            </div>
+          ) : carrierGroups.length === 0 ? (
+            <div className="text-center py-12">
+              <Icon name="phone" size={48} className="text-slate-600 mx-auto mb-4" />
+              <h3 className="text-white font-bold mb-2">No carrier plans available</h3>
+              <p className="text-slate-500">Check back soon for carrier eSIM plans.</p>
             </div>
           ) : (
-            /* Region cards with images */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {regions.filter((r) => r.slug !== 'global').map((region) => (
-                <button
-                  key={region.id}
-                  onClick={() => setSelectedRegion(region.slug)}
-                  className="relative overflow-hidden rounded-2xl h-48 group text-left"
-                >
-                  {REGION_IMAGES[region.slug] ? (
-                    <Image
-                      src={REGION_IMAGES[region.slug]}
-                      alt={region.name}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary/10" />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="font-bold text-white text-lg">{region.name}</h3>
-                    <p className="text-slate-300 text-sm">{REGION_SUBTITLES[region.slug] || ''}</p>
-                    <div className="flex gap-2 mt-2">
-                      <span className="px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded text-xs text-white font-medium">
-                        {region.countryCount} Countries
-                      </span>
-                      <span className="px-2 py-0.5 bg-primary/30 backdrop-blur-sm rounded text-xs text-primary font-medium">
-                        eSIM Ready
-                      </span>
+            <div className="space-y-10">
+              {carrierGroups.map((group) => (
+                <div key={group.carrierSlug}>
+                  {/* Carrier header */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <ServiceLogo name={group.carrierSlug} size={36} />
+                    <div>
+                      <h2 className="text-lg font-bold text-white">{group.carrierName}</h2>
+                      <p className="text-xs text-slate-500">
+                        <FlagIcon countryCode={group.country} className="w-4 h-3 inline mr-1" />
+                        {resolveCountryName(group.country, null)}
+                      </p>
                     </div>
                   </div>
-                </button>
+
+                  {/* Plans grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {group.plans.map((plan) => (
+                      <div key={plan.id}>
+                        <div
+                          className={`bg-charcoal border rounded-2xl p-5 transition-all ${
+                            selectedCarrierPlan?.id === plan.id
+                              ? 'border-primary'
+                              : plan.isFeatured
+                                ? 'border-primary/50'
+                                : 'border-border-dark hover:border-primary/30'
+                          } ${selectedCarrierPlan?.id === plan.id ? '' : 'cursor-pointer'}`}
+                          onClick={() => {
+                            if (selectedCarrierPlan?.id !== plan.id) {
+                              setSelectedCarrierPlan(plan)
+                              setCarrierFormError(null)
+                            }
+                          }}
+                        >
+                          {plan.isFeatured && (
+                            <span className="inline-block bg-primary/20 text-primary text-xs font-bold px-2 py-0.5 rounded-full mb-3">
+                              POPULAR
+                            </span>
+                          )}
+                          <h3 className="font-bold text-white mb-2">{plan.planName}</h3>
+                          {plan.description && (
+                            <p className="text-sm text-slate-500 mb-3">{plan.description}</p>
+                          )}
+
+                          {/* Feature badges */}
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            <span className="inline-flex items-center gap-1 text-xs bg-blue-500/10 text-blue-400 px-2 py-1 rounded-lg">
+                              <Icon name="wifi" size={12} />
+                              {plan.dataAmountDisplay}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-xs bg-green-500/10 text-green-400 px-2 py-1 rounded-lg">
+                              <Icon name="phone" size={12} />
+                              {plan.voiceDisplay || 'Voice'}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-xs bg-purple-500/10 text-purple-400 px-2 py-1 rounded-lg">
+                              <Icon name="message-square" size={12} />
+                              {plan.smsDisplay || 'SMS'}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-xs bg-slate-500/10 text-slate-400 px-2 py-1 rounded-lg uppercase">
+                              {plan.networkType}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-2xl font-extrabold text-white">
+                              ${plan.retailPrice.toFixed(2)}
+                            </span>
+                            {selectedCarrierPlan?.id === plan.id ? (
+                              <span className="text-xs text-primary font-medium">Selected</span>
+                            ) : (
+                              <span className="text-xs text-slate-500">Click to select</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Inline form when selected */}
+                        {selectedCarrierPlan?.id === plan.id && renderCarrierForm(plan)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}

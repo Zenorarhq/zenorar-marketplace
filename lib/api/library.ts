@@ -62,6 +62,11 @@ export interface LibraryItem {
   recipientPhone?: string
   sendAmount?: number
   sendCurrency?: string
+  // Carrier eSIM specific fields
+  carrierName?: string
+  carrierSlug?: string
+  fulfillmentDeadline?: string
+  isCarrierEsim?: boolean
   // Card specific fields
   cardBrand?: string
   cardType?: string

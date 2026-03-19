@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
+import ServiceLogo from '@/components/ui/ServiceLogo'
 import { formatNumber } from '@/lib/formatNumber'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDateShort } from '@/lib/date-utils'
@@ -86,7 +87,36 @@ interface ProviderConnection {
   hasCredentials: boolean
 }
 
-type TabType = 'overview' | 'providers' | 'inventory'
+interface CarrierOrder {
+  id: string
+  user_id: string
+  order_id: string
+  carrier_plan_id: string
+  status: string
+  customer_name: string
+  customer_email: string
+  customer_phone: string
+  device_imei: string
+  device_eid: string
+  device_model: string
+  billing_address: any
+  special_instructions: string
+  fulfillment_deadline: string
+  fulfilled_at: string | null
+  cancelled_at: string | null
+  cancellation_reason: string | null
+  created_at: string
+  carrier_name: string
+  carrier_slug: string
+  plan_name: string
+  data_amount_display: string
+  network_type: string
+  retail_price: number
+  user_name: string
+  user_email: string
+}
+
+type TabType = 'overview' | 'providers' | 'inventory' | 'carrier-orders'
 
 function AdminEsimPageContent() {
   const queryClient = useQueryClient()
@@ -126,6 +156,17 @@ function AdminEsimPageContent() {
     setImportSuccess('')
   }
 
+  // Carrier orders state
+  const [carrierStatusFilter, setCarrierStatusFilter] = useState<string>('')
+  const [carrierPage, setCarrierPage] = useState(1)
+  const [showFulfillModal, setShowFulfillModal] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<CarrierOrder | null>(null)
+  const [fulfillData, setFulfillData] = useState({ iccid: '', smdpAddress: '', qrCodeData: '', activationCode: '', adminNotes: '' })
+  const [cancelReason, setCancelReason] = useState('')
+  const [fulfillError, setFulfillError] = useState('')
+  const [cancelError, setCancelError] = useState('')
+
   // Sync results modal
   const [lastSyncResults, setLastSyncResults] = useState<SyncResult[] | null>(null)
   const [showSyncDetails, setShowSyncDetails] = useState(false)
@@ -141,7 +182,7 @@ function AdminEsimPageContent() {
 
   // Sync tab from URL on mount
   useEffect(() => {
-    if (tabParam && ['overview', 'providers', 'inventory'].includes(tabParam)) {
+    if (tabParam && ['overview', 'providers', 'inventory', 'carrier-orders'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [tabParam])
@@ -228,6 +269,84 @@ function AdminEsimPageContent() {
     },
     enabled: activeTab === 'inventory'
   })
+
+  // Fetch carrier orders
+  const { data: carrierOrdersData, isLoading: loadingCarrierOrders } = useQuery({
+    queryKey: ['carrier-esim-orders', carrierStatusFilter, carrierPage],
+    queryFn: async () => {
+      const token = localStorage.getItem('admin_auth_token')
+      const params = new URLSearchParams()
+      if (carrierStatusFilter) params.append('status', carrierStatusFilter)
+      params.append('page', String(carrierPage))
+      params.append('limit', '50')
+      const res = await fetch(`/api/admin/esim/carrier-orders?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (!data.success) return { orders: [], total: 0, pendingCount: 0 }
+      return data.data
+    },
+    enabled: activeTab === 'carrier-orders',
+    refetchInterval: activeTab === 'carrier-orders' ? 30000 : false,
+  })
+
+  // Fulfill carrier order mutation
+  const fulfillMutation = useMutation({
+    mutationFn: async ({ orderId, data }: { orderId: string; data: any }) => {
+      const token = localStorage.getItem('admin_auth_token')
+      const res = await fetch(`/api/admin/esim/carrier-orders/${orderId}/fulfill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(data),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['carrier-esim-orders'] })
+      setShowFulfillModal(false)
+      setSelectedOrder(null)
+      setFulfillData({ iccid: '', smdpAddress: '', qrCodeData: '', activationCode: '', adminNotes: '' })
+      setFulfillError('')
+    },
+    onError: (err: any) => setFulfillError(err.message),
+  })
+
+  // Cancel carrier order mutation
+  const cancelMutation = useMutation({
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
+      const token = localStorage.getItem('admin_auth_token')
+      const res = await fetch(`/api/admin/esim/carrier-orders/${orderId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ reason }),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['carrier-esim-orders'] })
+      setShowCancelModal(false)
+      setSelectedOrder(null)
+      setCancelReason('')
+      setCancelError('')
+    },
+    onError: (err: any) => setCancelError(err.message),
+  })
+
+  // Countdown helper
+  const getCountdown = (deadline: string) => {
+    const diff = new Date(deadline).getTime() - Date.now()
+    if (diff <= 0) return { text: 'Expired', urgent: true }
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    return {
+      text: `${hours}h ${minutes}m`,
+      urgent: hours < 2,
+    }
+  }
 
   // Sync mutation
   const syncMutation = useMutation({
@@ -439,6 +558,7 @@ function AdminEsimPageContent() {
             { id: 'overview' as TabType, label: 'Overview', icon: 'sim-card' },
             { id: 'providers' as TabType, label: 'Plans by Providers', icon: 'chart' },
             { id: 'inventory' as TabType, label: 'Inventory', icon: 'list' },
+            { id: 'carrier-orders' as TabType, label: `Carrier Orders${carrierOrdersData?.pendingCount ? ` (${carrierOrdersData.pendingCount})` : ''}`, icon: 'phone' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -782,6 +902,319 @@ function AdminEsimPageContent() {
               )}
             </div>
           </>
+        )}
+
+        {/* Carrier Orders Tab */}
+        {activeTab === 'carrier-orders' && (
+          <>
+            {/* Status Filters */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                { value: '', label: 'All' },
+                { value: 'pending_fulfillment', label: 'Pending' },
+                { value: 'fulfilled', label: 'Fulfilled' },
+                { value: 'cancelled', label: 'Cancelled' },
+              ].map(f => (
+                <button
+                  key={f.value}
+                  onClick={() => { setCarrierStatusFilter(f.value); setCarrierPage(1) }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    carrierStatusFilter === f.value
+                      ? 'bg-primary text-black'
+                      : 'bg-surface-dark text-slate-400 hover:text-white border border-border-dark'
+                  }`}
+                >
+                  {f.label}
+                  {f.value === 'pending_fulfillment' && carrierOrdersData?.pendingCount ? (
+                    <span className="ml-1.5 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                      {carrierOrdersData.pendingCount}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+
+            {/* Orders Table */}
+            <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border-dark text-left">
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Customer</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Carrier / Plan</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Device</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Countdown</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Created</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingCarrierOrders ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
+                      </tr>
+                    ) : !carrierOrdersData?.orders?.length ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                          No carrier orders found.
+                        </td>
+                      </tr>
+                    ) : (
+                      carrierOrdersData.orders.map((order: CarrierOrder) => {
+                        const countdown = order.status === 'pending_fulfillment' && order.fulfillment_deadline
+                          ? getCountdown(order.fulfillment_deadline)
+                          : null
+                        return (
+                          <tr key={order.id} className="border-b border-border-dark hover:bg-white/5">
+                            <td className="px-4 py-3">
+                              <div className="text-white font-medium text-sm">{order.customer_name || order.user_name}</div>
+                              <div className="text-slate-500 text-xs">{order.customer_email || order.user_email}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <ServiceLogo name={order.carrier_slug} size={24} />
+                                <div>
+                                  <div className="text-white text-sm">{order.carrier_name}</div>
+                                  <div className="text-slate-500 text-xs">{order.plan_name} · {order.data_amount_display}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-slate-400 text-sm">
+                              {order.device_model || order.device_imei || '-'}
+                            </td>
+                            <td className="px-4 py-3">
+                              {order.status === 'pending_fulfillment' && (
+                                <span className="px-2 py-1 text-xs rounded-full bg-yellow-900/30 text-yellow-400 border border-yellow-500/20">Pending</span>
+                              )}
+                              {order.status === 'fulfilled' && (
+                                <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 border border-green-500/20">Fulfilled</span>
+                              )}
+                              {order.status === 'cancelled' && (
+                                <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 border border-red-500/20">Cancelled</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              {countdown ? (
+                                <span className={`text-sm font-mono font-bold ${countdown.urgent ? 'text-red-400' : 'text-slate-300'}`}>
+                                  {countdown.text}
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 text-sm">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400 text-sm">
+                              {formatDateShort(order.created_at, tz)}
+                            </td>
+                            <td className="px-4 py-3">
+                              {order.status === 'pending_fulfillment' && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedOrder(order)
+                                      setShowFulfillModal(true)
+                                      setFulfillError('')
+                                    }}
+                                    className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors"
+                                  >
+                                    Fulfill
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedOrder(order)
+                                      setShowCancelModal(true)
+                                      setCancelError('')
+                                    }}
+                                    className="px-3 py-1.5 bg-red-600/20 text-red-400 text-xs font-medium rounded-lg hover:bg-red-600/30 transition-colors border border-red-500/20"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {carrierOrdersData?.total > 50 && (
+                <div className="border-t border-[#1f1f1f] px-5 py-4 flex items-center justify-between">
+                  <p className="text-slate-400 text-sm">
+                    Showing {((carrierPage - 1) * 50) + 1}–{Math.min(carrierPage * 50, carrierOrdersData.total)} of {carrierOrdersData.total}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCarrierPage(p => Math.max(1, p - 1))}
+                      disabled={carrierPage === 1}
+                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-slate-400 text-sm">Page {carrierPage}</span>
+                    <button
+                      onClick={() => setCarrierPage(p => p + 1)}
+                      disabled={carrierPage * 50 >= carrierOrdersData.total}
+                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Fulfill Modal */}
+        {showFulfillModal && selectedOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowFulfillModal(false)} />
+            <div className="relative bg-[#121212] border border-border-dark rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-border-dark">
+                <h2 className="text-xl font-bold text-white">Fulfill Carrier Order</h2>
+                <button onClick={() => setShowFulfillModal(false)} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5">
+                  <Icon name="x" size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-4 overflow-y-auto max-h-[60vh]">
+                <div className="bg-surface-dark rounded-xl p-4 text-sm space-y-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ServiceLogo name={selectedOrder.carrier_slug} size={24} />
+                    <span className="text-white font-bold">{selectedOrder.carrier_name} — {selectedOrder.plan_name}</span>
+                  </div>
+                  <p className="text-slate-400">Customer: {selectedOrder.customer_name || selectedOrder.user_name}</p>
+                  <p className="text-slate-400">Email: {selectedOrder.customer_email || selectedOrder.user_email}</p>
+                  {selectedOrder.device_model && <p className="text-slate-400">Device: {selectedOrder.device_model}</p>}
+                  {selectedOrder.device_imei && <p className="text-slate-400">IMEI: {selectedOrder.device_imei}</p>}
+                  {selectedOrder.device_eid && <p className="text-slate-400">EID: {selectedOrder.device_eid}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">ICCID</label>
+                  <input
+                    type="text"
+                    value={fulfillData.iccid}
+                    onChange={e => setFulfillData(d => ({ ...d, iccid: e.target.value }))}
+                    placeholder="89012345678901234567"
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">SM-DP+ Address</label>
+                  <input
+                    type="text"
+                    value={fulfillData.smdpAddress}
+                    onChange={e => setFulfillData(d => ({ ...d, smdpAddress: e.target.value }))}
+                    placeholder="smdp.example.com"
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">QR Code Data *</label>
+                  <textarea
+                    value={fulfillData.qrCodeData}
+                    onChange={e => setFulfillData(d => ({ ...d, qrCodeData: e.target.value }))}
+                    placeholder="LPA:1$smdp.example.com$ACTIVATION_CODE"
+                    rows={3}
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white font-mono text-sm placeholder:text-slate-600 focus:border-primary focus:outline-none resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Activation Code</label>
+                  <input
+                    type="text"
+                    value={fulfillData.activationCode}
+                    onChange={e => setFulfillData(d => ({ ...d, activationCode: e.target.value }))}
+                    placeholder="Matching ID / Activation Code"
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white placeholder:text-slate-600 focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Admin Notes</label>
+                  <textarea
+                    value={fulfillData.adminNotes}
+                    onChange={e => setFulfillData(d => ({ ...d, adminNotes: e.target.value }))}
+                    placeholder="Internal notes..."
+                    rows={2}
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white placeholder:text-slate-600 focus:border-primary focus:outline-none resize-none"
+                  />
+                </div>
+
+                {fulfillError && (
+                  <div className="p-3 bg-red-900/30 border border-red-500/20 rounded-lg text-red-400 text-sm">{fulfillError}</div>
+                )}
+              </div>
+              <div className="p-6 border-t border-border-dark flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowFulfillModal(false)}
+                  className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-[#262626]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!fulfillData.qrCodeData && !fulfillData.smdpAddress) {
+                      setFulfillError('QR code data or SMDP address is required')
+                      return
+                    }
+                    fulfillMutation.mutate({ orderId: selectedOrder.id, data: fulfillData })
+                  }}
+                  disabled={fulfillMutation.isPending}
+                  className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                >
+                  {fulfillMutation.isPending ? 'Fulfilling...' : 'Fulfill Order'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel Modal */}
+        {showCancelModal && selectedOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCancelModal(false)} />
+            <div className="relative bg-[#121212] border border-border-dark rounded-2xl w-full max-w-md">
+              <div className="p-6 border-b border-border-dark">
+                <h2 className="text-xl font-bold text-white">Cancel & Refund Order</h2>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-slate-300 text-sm">
+                  This will cancel the order for <strong className="text-white">{selectedOrder.carrier_name} {selectedOrder.plan_name}</strong> and
+                  refund <strong className="text-white">${selectedOrder.retail_price?.toFixed(2)}</strong> to the customer&apos;s wallet.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Reason</label>
+                  <textarea
+                    value={cancelReason}
+                    onChange={e => setCancelReason(e.target.value)}
+                    placeholder="Reason for cancellation..."
+                    rows={3}
+                    className="w-full px-4 py-3 bg-surface-dark border border-border-dark rounded-lg text-white placeholder:text-slate-600 focus:border-primary focus:outline-none resize-none"
+                  />
+                </div>
+                {cancelError && (
+                  <div className="p-3 bg-red-900/30 border border-red-500/20 rounded-lg text-red-400 text-sm">{cancelError}</div>
+                )}
+              </div>
+              <div className="p-6 border-t border-border-dark flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="px-4 py-2 bg-surface-dark border border-border-dark rounded-lg text-white hover:bg-[#262626]"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => cancelMutation.mutate({ orderId: selectedOrder.id, reason: cancelReason })}
+                  disabled={cancelMutation.isPending}
+                  className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {cancelMutation.isPending ? 'Cancelling...' : 'Cancel & Refund'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Import Modal */}

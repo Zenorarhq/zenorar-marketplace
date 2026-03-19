@@ -195,3 +195,41 @@ export async function checkAvailability(planId: string): Promise<{
 }> {
   return localApiFetch(`/esim/plans/${planId}/availability`)
 }
+
+// ==========================================
+// Carrier eSIM Plans (Call + SMS + Data)
+// ==========================================
+
+export interface CarrierEsimPlan {
+  id: string
+  carrierName: string
+  carrierSlug: string
+  planName: string
+  description?: string
+  country: string
+  dataAmountGb: number | null
+  dataAmountDisplay: string
+  isUnlimited: boolean
+  voiceMinutes: number
+  voiceDisplay?: string
+  smsCount: number
+  smsDisplay?: string
+  networkType: string
+  retailPrice: number
+  currency: string
+  isFeatured: boolean
+}
+
+/**
+ * Get all active carrier eSIM plans
+ */
+export async function getCarrierPlans(): Promise<{ success: boolean; data?: CarrierEsimPlan[]; error?: string }> {
+  return localApiFetch('/esim/carrier-plans')
+}
+
+/**
+ * Get single carrier eSIM plan
+ */
+export async function getCarrierPlan(id: string): Promise<{ success: boolean; data?: CarrierEsimPlan; error?: string }> {
+  return localApiFetch(`/esim/carrier-plans/${id}`)
+}

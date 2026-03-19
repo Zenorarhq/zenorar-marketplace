@@ -22,6 +22,11 @@ async function getOrCreateProduct(productType: string): Promise<string> {
       slug: 'esim-service',
       name: 'eSIM',
       description: 'Digital eSIM service'
+    },
+    carrier_esim: {
+      slug: 'carrier-esim-service',
+      name: 'Carrier eSIM',
+      description: 'Carrier-based eSIM with Call + SMS + Data'
     }
   }
 
@@ -216,13 +221,29 @@ export async function POST(req: NextRequest) {
           esim_plan_id: item.metadata?.esim_plan_id,
           countryIsoCode: item.metadata?.countryIsoCode,
         }
+      } else if (productType === 'carrier_esim') {
+        metadata = {
+          ...metadata,
+          carrier_plan_id: item.metadata?.carrier_plan_id,
+          carrierName: item.metadata?.carrierName,
+          customer_name: item.metadata?.customer_name,
+          customer_email: item.metadata?.customer_email,
+          customer_phone: item.metadata?.customer_phone,
+          device_imei: item.metadata?.device_imei,
+          device_eid: item.metadata?.device_eid,
+          device_model: item.metadata?.device_model,
+          billing_address: item.metadata?.billing_address,
+          special_instructions: item.metadata?.special_instructions,
+        }
       }
 
       const itemName = productType === 'virtual_number'
         ? (item.metadata?.friendlyName || 'Virtual Number')
         : productType === 'gift_card'
           ? `${item.metadata?.brand || 'Gift Card'} ($${item.metadata?.denomination || itemPrice})`
-          : (item.name || 'Digital Product')
+          : productType === 'carrier_esim'
+            ? (item.name || `${item.metadata?.carrierName || 'Carrier'} eSIM`)
+            : (item.name || 'Digital Product')
 
       await query(
         `INSERT INTO order_items (
@@ -336,11 +357,13 @@ export async function POST(req: NextRequest) {
     const hasGiftCards = items.some((item: any) => item.productType === 'gift_card')
     const hasEsims = items.some((item: any) => item.productType === 'esim')
     const hasCards = items.some((item: any) => item.productType === 'instant_card' || item.productType === 'virtual_card')
+    const hasCarrierEsims = items.some((item: any) => item.productType === 'carrier_esim')
 
-    // Cards send their own notification via fulfillment, so skip for card-only orders
-    const isCardOnlyOrder = hasCards && !hasVirtualNumbers && !hasGiftCards && !hasEsims
+    // Cards and carrier eSIMs send their own notification via fulfillment
+    const isCardOnlyOrder = hasCards && !hasVirtualNumbers && !hasGiftCards && !hasEsims && !hasCarrierEsims
+    const isCarrierEsimOnlyOrder = hasCarrierEsims && !hasVirtualNumbers && !hasGiftCards && !hasEsims && !hasCards
 
-    if (!isCardOnlyOrder) {
+    if (!isCardOnlyOrder && !isCarrierEsimOnlyOrder) {
       let notificationTitle = 'Order Confirmed'
       let notificationMessage = `Your order #${finalOrderNumber} has been confirmed.`
 
