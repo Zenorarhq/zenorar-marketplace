@@ -946,15 +946,17 @@ export default function EsimPage() {
           ) : (
             <>
               {/* Country grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
                 {paginatedCountries.map((country) => (
                   <button
                     key={country.isoCode}
                     onClick={() => setSelectedCountry(country.isoCode)}
-                    className="flex items-center gap-3 p-4 bg-charcoal border border-border-dark rounded-2xl hover:border-primary/50 transition-all text-left"
+                    className="flex flex-col items-center p-3 pb-2 bg-charcoal border border-border-dark rounded-2xl hover:border-primary/50 transition-all"
                   >
-                    <FlagIcon countryCode={country.isoCode} className="w-8 h-8 rounded flex-shrink-0" />
-                    <span className="text-white font-medium text-sm truncate">{country.name}</span>
+                    <div className="w-16 h-12 rounded-lg overflow-hidden mb-2 shadow-md border border-white/10">
+                      <FlagIcon countryCode={country.isoCode} className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-white font-medium text-xs text-center truncate w-full">{country.name}</span>
                   </button>
                 ))}
               </div>
