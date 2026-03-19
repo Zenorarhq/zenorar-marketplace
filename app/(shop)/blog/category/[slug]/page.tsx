@@ -116,13 +116,21 @@ export default async function BlogCategoryPage({ params, searchParams }: Categor
         )}
 
         {totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-10">
-            {page > 1 && (
-              <Link href={`/blog/category/${slug}?page=${page - 1}`} className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded-lg text-sm hover:bg-[#2a2a2a]">Previous</Link>
-            )}
-            {page < totalPages && (
-              <Link href={`/blog/category/${slug}?page=${page + 1}`} className="px-4 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-white rounded-lg text-sm hover:bg-[#2a2a2a]">Next</Link>
-            )}
+          <div className="mt-6 flex items-center justify-between">
+            <p className="text-xs text-slate-500">Page {page} of {totalPages}</p>
+            <div className="flex items-center gap-1">
+              {page > 1 ? (
+                <Link href={`/blog/category/${slug}?page=${page - 1}`} className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors">&#8249;</Link>
+              ) : (
+                <span className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 opacity-50 cursor-not-allowed">&#8249;</span>
+              )}
+              <span className="text-xs text-slate-400 px-2">{page} / {totalPages}</span>
+              {page < totalPages ? (
+                <Link href={`/blog/category/${slug}?page=${page + 1}`} className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors">&#8250;</Link>
+              ) : (
+                <span className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 opacity-50 cursor-not-allowed">&#8250;</span>
+              )}
+            </div>
           </div>
         )}
       </div>

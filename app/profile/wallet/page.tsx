@@ -479,24 +479,27 @@ function WalletPageContent() {
 
               {/* Pagination */}
               {transactionsData.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-center gap-4 mt-6">
-                  <button
-                    onClick={() => setTxPage(p => Math.max(1, p - 1))}
-                    disabled={txPage <= 1}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-surface-dark text-slate-400 hover:bg-border-dark disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-slate-400 text-sm">
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
                     Page {txPage} of {transactionsData.pagination.totalPages}
-                  </span>
-                  <button
-                    onClick={() => setTxPage(p => Math.min(transactionsData.pagination.totalPages, p + 1))}
-                    disabled={txPage >= transactionsData.pagination.totalPages}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-surface-dark text-slate-400 hover:bg-border-dark disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setTxPage(p => Math.max(1, p - 1))}
+                      disabled={txPage <= 1}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-left" size={14} />
+                    </button>
+                    <span className="text-xs text-slate-400 px-2">{txPage} / {transactionsData.pagination.totalPages}</span>
+                    <button
+                      onClick={() => setTxPage(p => Math.min(transactionsData.pagination.totalPages, p + 1))}
+                      disabled={txPage >= transactionsData.pagination.totalPages}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-right" size={14} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -648,24 +651,27 @@ function WalletPageContent() {
 
               {/* Pagination */}
               {depositsData.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-center gap-4 mt-6">
-                  <button
-                    onClick={() => setDepositPage(p => Math.max(1, p - 1))}
-                    disabled={depositPage <= 1}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-surface-dark text-slate-400 hover:bg-border-dark disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-slate-400 text-sm">
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
                     Page {depositPage} of {depositsData.pagination.totalPages}
-                  </span>
-                  <button
-                    onClick={() => setDepositPage(p => Math.min(depositsData.pagination.totalPages, p + 1))}
-                    disabled={depositPage >= depositsData.pagination.totalPages}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-surface-dark text-slate-400 hover:bg-border-dark disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setDepositPage(p => Math.max(1, p - 1))}
+                      disabled={depositPage <= 1}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-left" size={14} />
+                    </button>
+                    <span className="text-xs text-slate-400 px-2">{depositPage} / {depositsData.pagination.totalPages}</span>
+                    <button
+                      onClick={() => setDepositPage(p => Math.min(depositsData.pagination.totalPages, p + 1))}
+                      disabled={depositPage >= depositsData.pagination.totalPages}
+                      className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Icon name="chevron-right" size={14} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

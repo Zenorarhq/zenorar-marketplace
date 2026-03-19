@@ -578,63 +578,26 @@ export default function PhoneRefillsPage() {
   // Render pagination
   const renderPagination = () => {
     if (totalPages <= 1) return null
-
-    const pages: (number | 'ellipsis')[] = []
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i)
-    } else {
-      pages.push(1)
-      if (operatorPage > 3) pages.push('ellipsis')
-      for (let i = Math.max(2, operatorPage - 1); i <= Math.min(totalPages - 1, operatorPage + 1); i++) {
-        pages.push(i)
-      }
-      if (operatorPage < totalPages - 2) pages.push('ellipsis')
-      pages.push(totalPages)
-    }
-
     return (
-      <div className="mt-6 flex items-center justify-between">
-        <p className="text-sm text-slate-500">
-          Showing {(operatorPage - 1) * OPERATORS_PER_PAGE + 1} -{' '}
-          {Math.min(operatorPage * OPERATORS_PER_PAGE, allFiltered.length)} of {allFiltered.length} carriers
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-xs text-slate-500">
+          {(operatorPage - 1) * OPERATORS_PER_PAGE + 1} - {Math.min(operatorPage * OPERATORS_PER_PAGE, allFiltered.length)} of {allFiltered.length}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setOperatorPage((p) => Math.max(1, p - 1))}
             disabled={operatorPage === 1}
-            className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Icon name="chevron-left" size={16} />
-            <span className="hidden md:inline">Previous</span>
+            <Icon name="chevron-left" size={14} />
           </button>
-          <div className="flex items-center gap-1">
-            {pages.map((page, idx) =>
-              page === 'ellipsis' ? (
-                <span key={`ellipsis-${idx}`} className="px-2 text-slate-500">
-                  ...
-                </span>
-              ) : (
-                <button
-                  key={page}
-                  onClick={() => setOperatorPage(page)}
-                  className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                    operatorPage === page
-                      ? 'bg-primary text-black font-bold'
-                      : 'bg-surface-dark border border-border-dark text-slate-400 hover:text-white hover:bg-[#262626]'
-                  }`}
-                >
-                  {page}
-                </button>
-              )
-            )}
-          </div>
+          <span className="text-xs text-slate-400 px-2">{operatorPage} / {totalPages}</span>
           <button
             onClick={() => setOperatorPage((p) => Math.min(totalPages, p + 1))}
             disabled={operatorPage === totalPages}
-            className="flex items-center gap-1 px-3 py-2 bg-surface-dark border border-border-dark rounded-lg text-sm text-slate-300 hover:text-white hover:bg-[#262626] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="hidden md:inline">Next</span>
-            <Icon name="chevron-right" size={16} />
+            <Icon name="chevron-right" size={14} />
           </button>
         </div>
       </div>
