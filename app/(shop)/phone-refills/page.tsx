@@ -384,22 +384,22 @@ export default function PhoneRefillsPage() {
       <button
         key={key}
         onClick={() => handleToggle(operator)}
-        className="group rounded-2xl border border-border-dark hover:border-slate-600 overflow-hidden transition-all relative text-left aspect-square"
+        className="group rounded-xl border border-border-dark hover:border-slate-600 overflow-hidden transition-all relative text-left aspect-square"
       >
-        {/* Logo fills entire card via CSS scaling */}
-        <div className="absolute inset-0 flex items-center justify-center bg-white p-4 [&>div]:!w-full [&>div]:!h-full [&>div>img]:!w-full [&>div>img]:!h-full [&>div>img]:!max-w-full [&>div>img]:!max-h-full [&>div>img]:!object-contain">
-          <ServiceLogo name={operator.name} size={200} className="!rounded-none" />
+        {/* Logo fills entire card */}
+        <div className="absolute inset-0 flex items-center justify-center bg-white p-2 [&>div]:!w-full [&>div]:!h-full [&>div]:!rounded-none [&>div>img]:!w-full [&>div>img]:!h-full [&>div>img]:!max-w-full [&>div>img]:!max-h-full [&>div>img]:!object-contain">
+          <ServiceLogo name={operator.name} size={160} />
         </div>
-        {/* Dark gradient at bottom — text + button */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-10 pb-3 px-3">
-          <div className="flex items-center gap-1.5 justify-center">
-            <h3 className="font-bold text-white text-sm truncate">{operator.name}</h3>
-            <FlagIcon countryCode={operator.country} className="w-4 h-3 rounded-sm flex-shrink-0" />
+        {/* Dark gradient at bottom */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 pb-2 px-2">
+          <div className="flex items-center gap-1 justify-center">
+            <h3 className="font-bold text-white text-[11px] truncate">{operator.name}</h3>
+            <FlagIcon countryCode={operator.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
           </div>
-          <p className="text-xs text-slate-400 text-center mt-0.5 mb-2">
+          <p className="text-[10px] text-slate-400 text-center mt-0.5 mb-1.5">
             from <span className="text-primary font-semibold">{formatPrice(minPrice)}</span>
           </p>
-          <div className="w-full py-1.5 rounded-lg bg-primary text-black font-bold text-xs text-center group-hover:brightness-105 transition-all">
+          <div className="w-full py-1 rounded-md bg-primary text-black font-bold text-[10px] text-center group-hover:brightness-105 transition-all">
             Select Amount
           </div>
         </div>
@@ -518,9 +518,9 @@ export default function PhoneRefillsPage() {
 
       {/* Loading */}
       {loadingOperators && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="bg-charcoal border border-border-dark rounded-2xl overflow-hidden animate-pulse">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
+          {[...Array(18)].map((_, i) => (
+            <div key={i} className="bg-charcoal border border-border-dark rounded-xl overflow-hidden animate-pulse">
               <div className="aspect-square w-full bg-slate-800" />
             </div>
           ))}
@@ -550,7 +550,7 @@ export default function PhoneRefillsPage() {
             <span className="text-slate-500 text-sm">{allFiltered.length} carriers</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
             {paginatedOperators.map((op) => renderOperatorCard(op))}
           </div>
 
