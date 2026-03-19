@@ -883,10 +883,10 @@ export default function EsimPage() {
                   >
                     {/* Flag shaped as SIM card — notch at bottom-right */}
                     <div
-                      className="w-4/5 mx-auto aspect-[4/3] overflow-hidden mb-2 [&>svg]:block [&>svg]:w-full"
+                      className="relative w-4/5 mx-auto aspect-[4/3] overflow-hidden mb-2"
                       style={{ clipPath: 'polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%)' }}
                     >
-                      <FlagIcon countryCode={country.isoCode} className="w-full block" />
+                      <FlagIcon countryCode={country.isoCode} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full block" />
                     </div>
                     <span className="font-medium text-white text-[10px] sm:text-xs truncate w-full">{country.name}</span>
                   </button>
