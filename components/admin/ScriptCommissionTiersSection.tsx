@@ -71,68 +71,72 @@ export default function ScriptCommissionTiersSection() {
   }
 
   return (
-    <div className="bg-surface rounded-xl p-4 sm:p-6 border border-white/5">
+    <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
       <button onClick={() => setIsExpanded(prev => !prev)} className="w-full flex items-center justify-between">
-        <h3 className="text-base sm:text-lg font-semibold text-white">Script Commission Tiers</h3>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+            <Icon name="layers" size={24} className="text-orange-400" />
+          </div>
+          <div className="text-left">
+            <p className="text-white font-semibold text-lg">Script Commission Tiers</p>
+            <p className="text-slate-500 text-sm">Vendor commission % based on script sale price range</p>
+          </div>
+        </div>
         <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} className="text-slate-400 flex-shrink-0" />
       </button>
 
       {isExpanded && (
-        <div className="mt-4">
-          <p className="text-sm text-slate-400 mb-4">
-            Set vendor commission % per script price range. Commission is calculated from your markup profit (sale price − cost price). If no tier matches, commission is 0%.
-          </p>
+        <div className="mt-6 pt-6 border-t border-[#1f1f1f] space-y-3">
+          <p className="text-sm text-slate-500 mb-4">Commission is calculated from markup profit (sale price − cost price). If no tier matches, commission is 0%.</p>
 
-          <div className="space-y-3">
-            {TIERS.map(({ key, label, hint }) => (
-              <div key={key} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-white">{label}</span>
-                  <span className="text-xs text-slate-500">({hint})</span>
+          {TIERS.map(({ key, label, hint }) => (
+            <div key={key} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-semibold text-white">{label}</span>
+                <span className="text-xs text-slate-500">{hint}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500 whitespace-nowrap">Min Price $</label>
+                  <input
+                    type="number"
+                    value={tiers[key].min || ''}
+                    onChange={e => handleChange(key, 'min', e.target.value)}
+                    placeholder="0"
+                    className="w-24 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
+                    min={0}
+                  />
                 </div>
-                <div className="flex flex-wrap items-center gap-4 mt-3">
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-500 whitespace-nowrap">Min Price $</label>
-                    <input
-                      type="number"
-                      value={tiers[key].min || ''}
-                      onChange={e => handleChange(key, 'min', e.target.value)}
-                      placeholder="0"
-                      className="w-24 bg-[#111] border border-[#333] rounded px-2 py-1 text-sm text-white placeholder:text-slate-600"
-                      min={0}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-500 whitespace-nowrap">Max Price $</label>
-                    <input
-                      type="number"
-                      value={tiers[key].max || ''}
-                      onChange={e => handleChange(key, 'max', e.target.value)}
-                      placeholder="∞"
-                      className="w-24 bg-[#111] border border-[#333] rounded px-2 py-1 text-sm text-white placeholder:text-slate-600"
-                      min={0}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-500 whitespace-nowrap">Commission %</label>
-                    <input
-                      type="number"
-                      value={tiers[key].commission || ''}
-                      onChange={e => handleChange(key, 'commission', e.target.value)}
-                      placeholder="0"
-                      className="w-20 bg-[#111] border border-[#333] rounded px-2 py-1 text-sm text-white placeholder:text-slate-600"
-                      min={0}
-                      max={100}
-                      step={0.1}
-                    />
-                  </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500 whitespace-nowrap">Max Price $</label>
+                  <input
+                    type="number"
+                    value={tiers[key].max || ''}
+                    onChange={e => handleChange(key, 'max', e.target.value)}
+                    placeholder="∞"
+                    className="w-24 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-primary/50"
+                    min={0}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-slate-500 whitespace-nowrap">Commission %</label>
+                  <input
+                    type="number"
+                    value={tiers[key].commission || ''}
+                    onChange={e => handleChange(key, 'commission', e.target.value)}
+                    placeholder="0"
+                    className="w-20 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
 
           {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
-          {saved && <p className="text-green-400 text-sm mt-3">Settings saved!</p>}
+          {saved && <p className="text-green-400 text-sm mt-3">Saved successfully.</p>}
 
           <button
             onClick={handleSave}
