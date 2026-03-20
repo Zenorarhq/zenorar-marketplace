@@ -255,7 +255,173 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
 }
 
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
-  return card.imageUrl || null
+  // Only use Cloudinary URLs — Clearbit CDN is defunct, all other CDNs block hotlinks
+  if (card.imageUrl?.includes('res.cloudinary.com')) return card.imageUrl
+  return null
+}
+
+// Brand-specific gradient colors — matched to real gift card brand identity
+const BRAND_COLORS: Record<string, [string, string]> = {
+  // Gaming
+  'xbox':                   ['#107C10','#0a5a0a'],
+  'xbox live':              ['#107C10','#0a5a0a'],
+  'xbox game pass':         ['#107C10','#0a5a0a'],
+  'playstation':            ['#003087','#0059c2'],
+  'playstation store':      ['#003087','#0059c2'],
+  'psn':                    ['#003087','#0059c2'],
+  'ps plus':                ['#003087','#0059c2'],
+  'steam':                  ['#1b2838','#2a475e'],
+  'nintendo':               ['#E4000F','#9e0000'],
+  'nintendo eshop':         ['#E4000F','#9e0000'],
+  'roblox':                 ['#E8002B','#8b0000'],
+  'fortnite':               ['#1d1046','#9d4dca'],
+  'fortnite v-bucks':       ['#1d1046','#9d4dca'],
+  'minecraft':              ['#5c7a1f','#3a5012'],
+  'league of legends':      ['#C89B3C','#785a28'],
+  'valorant':               ['#FF4655','#8b0000'],
+  'twitch':                 ['#6441a5','#9146FF'],
+  'blizzard':               ['#148EFF','#0e6bbf'],
+  'epic games':             ['#2d2d2d','#000000'],
+  'razer gold':             ['#44D62C','#2a8a1a'],
+  'apex legends':           ['#CD3333','#6b0000'],
+  'call of duty':           ['#1a1a1a','#3d3d3d'],
+  'pubg':                   ['#F5A623','#c07c0e'],
+  'pubg mobile':            ['#F5A623','#c07c0e'],
+  'genshin impact':         ['#4a90d9','#1a3a6b'],
+  'mobile legends':         ['#1a1a2e','#c0392b'],
+  'free fire':              ['#ff6b00','#c04e00'],
+  'garena':                 ['#ff6b00','#c04e00'],
+  'square enix':            ['#1a1a1a','#3d3d3d'],
+  'runescape':              ['#8B4513','#5c2c0a'],
+  'gamestop':               ['#E31A22','#9e0000'],
+  'discord':                ['#5865F2','#404EED'],
+  // Mega brands
+  'amazon':                 ['#FF9900','#c97200'],
+  'amazon us':              ['#FF9900','#c97200'],
+  'apple':                  ['#555555','#1d1d1d'],
+  'app store & itunes':     ['#555555','#1d1d1d'],
+  'itunes':                 ['#555555','#1d1d1d'],
+  'google play':            ['#01875f','#34a853'],
+  'visa':                   ['#1A1F71','#0d1245'],
+  'mastercard':             ['#EB001B','#c00014'],
+  // Streaming
+  'netflix':                ['#E50914','#8B0000'],
+  'spotify':                ['#1DB954','#158a3e'],
+  'hulu':                   ['#1CE783','#0fa35c'],
+  'disney+':                ['#113CCF','#051a6e'],
+  'disney plus':            ['#113CCF','#051a6e'],
+  'crunchyroll':            ['#F47521','#c45810'],
+  'paramount plus':         ['#0064FF','#0041a8'],
+  'cbsi paramount plus':    ['#0064FF','#0041a8'],
+  'tidal':                  ['#111111','#333333'],
+  'showtime':               ['#CC0000','#8b0000'],
+  'sling tv':               ['#1d6fe8','#0d4db5'],
+  // Shopping
+  'walmart':                ['#0071CE','#004f94'],
+  'target':                 ['#CC0000','#8b0000'],
+  'best buy':               ['#0046BE','#003494'],
+  'ebay':                   ['#E53238','#0064D2'],
+  'nike':                   ['#111111','#333333'],
+  'nordstrom':              ['#1a1a1a','#3d3d3d'],
+  'sephora':                ['#111111','#333333'],
+  'home depot':             ['#F96302','#c24c00'],
+  'the home depot':         ['#F96302','#c24c00'],
+  'gap':                    ['#0C4DA2','#083580'],
+  'old navy':               ['#0C4DA2','#083580'],
+  'banana republic':        ['#2d2d2d','#1a1a1a'],
+  'macy\'s':                ['#E21A1A','#9e0000'],
+  'kohl\'s':                ['#6b1a1a','#3d0a0a'],
+  'tjx':                    ['#CC0000','#8b0000'],
+  'marshalls':              ['#CC0000','#8b0000'],
+  'wayfair':                ['#7B2D8B','#4a1a57'],
+  'etsy':                   ['#F45800','#b83f00'],
+  'sam\'s club':            ['#0071CE','#004f94'],
+  // Food
+  'starbucks':              ['#00704A','#004d33'],
+  'doordash':               ['#FF3008','#cc2500'],
+  'uber':                   ['#000000','#1a1a1a'],
+  'chipotle':               ['#A81612','#7a0f0d'],
+  'mcdonalds':              ['#FFC72C','#DA291C'],
+  "mcdonald's":             ['#FFC72C','#DA291C'],
+  'subway':                 ['#009B48','#FFC600'],
+  'taco bell':              ['#702082','#4b1559'],
+  'dunkin':                 ['#FF6E0F','#DD1D21'],
+  'papa johns':             ['#CC0000','#006747'],
+  'domino\'s':              ['#006491','#CC0000'],
+  'panera':                 ['#6B3A2A','#4a2519'],
+  'krispy kreme':           ['#CC0000','#267c37'],
+  'five guys':              ['#CC0000','#e8c800'],
+  // Travel
+  'airbnb':                 ['#FF5A5F','#e04045'],
+  'airbnb us':              ['#FF5A5F','#e04045'],
+  'delta airlines':         ['#003366','#cc0000'],
+  'southwest airlines':     ['#304CB2','#F9B612'],
+  'royal caribbean':        ['#003087','#0077C8'],
+  'carnival cruises':       ['#CC0000','#003087'],
+  'hilton':                 ['#004B87','#003058'],
+  // Entertainment
+  'amc':                    ['#1a1a1a','#cc0000'],
+  'fandango':               ['#5C2483','#3a1657'],
+  'stubhub':                ['#003168','#0057B8'],
+  'topgolf':                ['#1a3a1a','#2d6b2d'],
+}
+
+const CATEGORY_COLORS: Record<string, [string, string]> = {
+  gaming:        ['#2d1b69','#4B0082'],
+  streaming:     ['#8B0000','#cc0000'],
+  shopping:      ['#003d7a','#0057b3'],
+  food:          ['#6B2D0A','#a84412'],
+  travel:        ['#003366','#0057b3'],
+  entertainment: ['#1a0033','#4B0082'],
+  retail:        ['#1a2e1a','#2d4d2d'],
+  payment:       ['#1a1a2e','#2d2d5a'],
+  other:         ['#1a1a2e','#2d2d3d'],
+}
+
+function getBrandColors(brand: string, category: string): [string, string] {
+  const key = brand.toLowerCase().trim()
+  if (BRAND_COLORS[key]) return BRAND_COLORS[key]
+  for (const [k, colors] of Object.entries(BRAND_COLORS)) {
+    if (key.includes(k) || k.includes(key)) return colors
+  }
+  return CATEGORY_COLORS[category?.toLowerCase()] || CATEGORY_COLORS.other
+}
+
+// Gift card visual — brand gradient + logo (Cloudinary) or brand initial
+function GiftCardVisual({ card, height, extraClass, children }: {
+  card: GiftCard
+  height: string
+  extraClass?: string
+  children?: React.ReactNode
+}) {
+  const imageUrl = getCardImage(card)
+  const [from, to] = getBrandColors(card.brand, card.category)
+  const initial = card.brand.replace(/[^a-zA-Z]/g, '')[0]?.toUpperCase() || '?'
+
+  return (
+    <div
+      className={`relative ${height} overflow-hidden ${extraClass || ''}`}
+      style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+    >
+      {/* Gloss overlay — makes it feel like a physical card */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30 pointer-events-none z-10" />
+      {/* Horizontal shine strip */}
+      <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
+
+      {imageUrl ? (
+        // Real gift card artwork from Cloudinary — full cover
+        <img src={imageUrl} alt={card.brand} className="absolute inset-0 w-full h-full object-cover z-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+      ) : (
+        // Brand initial as fallback — large, centered, glassy
+        <div className="absolute inset-0 flex items-center justify-center z-0">
+          <span className="text-white/30 font-black select-none" style={{ fontSize: '5rem', lineHeight: 1 }}>{initial}</span>
+        </div>
+      )}
+
+      {/* Children (badges, close button etc.) */}
+      <div className="relative z-20">{children}</div>
+    </div>
+  )
 }
 
 // Category-based gradient colors for card image backgrounds
@@ -749,26 +915,13 @@ export default function GiftCardsPage() {
                     }}
                     className="bg-charcoal border border-border-dark hover:border-primary/50 rounded-2xl overflow-hidden transition-all text-center group"
                   >
-                    <div className={`relative h-24 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden`}>
-                      {getCardImage(card) ? (
-                        <img
-                          src={getCardImage(card)!}
-                          alt={card.brand}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }}
-                        />
-                      ) : null}
-                      <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
-                        <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <Icon name="gift" size={24} className="text-white/80" />
-                        </div>
-                      </div>
+                    <GiftCardVisual card={card} height="h-24">
                       {card.discountPercent > 0 && (
                         <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-lg">
                           {card.discountPercent}%
                         </span>
                       )}
-                    </div>
+                    </GiftCardVisual>
                     <div className="p-3">
                       <h3 className="font-bold text-white text-sm line-clamp-1">{card.brand}</h3>
                     </div>
@@ -875,21 +1028,7 @@ export default function GiftCardsPage() {
                       onClick={() => openModal()}
                     >
                       {/* Card Image Header */}
-                      <div className={`relative h-32 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden`}>
-                        {getCardImage(card) ? (
-                          <img
-                            src={getCardImage(card)!}
-                            alt={card.brand}
-                            className="w-full h-full object-cover"
-                            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }}
-                          />
-                        ) : null}
-                        <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
-                          <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                            <Icon name="gift" size={32} className="text-white/80" />
-                          </div>
-                        </div>
-                        {/* Badges */}
+                      <GiftCardVisual card={card} height="h-32">
                         <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
                           {card.discountPercent > 0 && (
                             <span className="bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-md shadow-lg">
@@ -902,7 +1041,7 @@ export default function GiftCardsPage() {
                             </span>
                           )}
                         </div>
-                      </div>
+                      </GiftCardVisual>
 
                       {/* Card Content */}
                       <div className="p-5">
@@ -959,7 +1098,6 @@ export default function GiftCardsPage() {
                   )
                 })}
               </div>
-
               </>
             )}
           </div>

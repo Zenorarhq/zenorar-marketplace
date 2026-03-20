@@ -929,7 +929,7 @@ export default function EsimPage() {
           </div>
 
           {loadingCarrierPlans ? (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
               {[...Array(18)].map((_, i) => (
                 <div key={i} className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden animate-pulse p-3">
                   <div className="aspect-square w-full bg-slate-800 rounded-xl mb-2" />
@@ -951,7 +951,7 @@ export default function EsimPage() {
               <p className="text-slate-500">Check back soon for carrier eSIM plans.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
               {carrierGroups.map((group) => {
                 const minPrice = Math.min(...group.plans.map(p => p.retailPrice))
                 return (
@@ -962,19 +962,19 @@ export default function EsimPage() {
                   >
                     <div className="p-3 pb-0">
                       <div className="w-full aspect-square bg-white rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
-                        <ServiceLogo name={group.carrierSlug} size={80} className="rounded-lg" />
+                        <ServiceLogo name={group.carrierSlug} size={56} className="rounded-lg" />
                       </div>
                     </div>
                     <div className="p-3 pt-2 flex flex-col flex-grow">
                       <div className="flex items-center gap-1 mb-1">
-                        <h3 className="font-bold text-[11px] text-white group-hover:text-primary transition-colors truncate">{group.carrierName}</h3>
+                        <h3 className="font-bold text-xs text-white group-hover:text-primary transition-colors truncate">{group.carrierName}</h3>
                         <FlagIcon countryCode={group.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
                       </div>
                       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 mt-auto">
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-xs text-slate-400">
                           From <span className="text-slate-300">{formatPrice(minPrice)}</span>
                         </p>
-                        <div className="px-2 py-1 rounded-md bg-primary text-black font-bold text-[9px] text-center group-hover:brightness-105 transition-all">
+                        <div className="px-2 py-1 rounded-md bg-primary text-black font-bold text-[11px] text-center group-hover:brightness-105 transition-all">
                           Select Plan
                         </div>
                       </div>
