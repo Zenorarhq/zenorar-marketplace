@@ -21,7 +21,7 @@ import type { Product } from '@/lib/types'
 
 type TabType = 'data' | 'carrier'
 
-const COUNTRIES_PER_PAGE = 16
+const COUNTRIES_PER_PAGE = 18
 
 const POPULAR_COUNTRIES = [
   'US', 'GB', 'JP', 'FR', 'DE', 'KR', 'TH', 'IT', 'ES', 'AU',
