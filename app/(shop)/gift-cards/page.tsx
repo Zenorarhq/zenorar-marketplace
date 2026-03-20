@@ -609,6 +609,7 @@ export default function GiftCardsPage() {
                 <p className="text-slate-500">Try adjusting your search or filters</p>
               </div>
             ) : (
+              <>
               <div className="grid grid-cols-1 min-[560px]:grid-cols-2 min-[700px]:grid-cols-3 min-[960px]:grid-cols-4 gap-6 items-start">
                 {giftCards.map((card) => {
                   const selectedAmount = getSelectedAmount(card.id)
@@ -899,6 +900,7 @@ export default function GiftCardsPage() {
                   </div>
                 )
               })()}
+              </>
             )}
           </div>
 
