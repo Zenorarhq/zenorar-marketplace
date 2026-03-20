@@ -391,12 +391,12 @@ export default function PhoneRefillsPage() {
         onClick={() => handleToggle(operator)}
         className="group rounded-xl border border-border-dark hover:border-slate-600 overflow-hidden transition-all relative text-left aspect-square"
       >
-        {/* Logo fills entire card */}
-        <div className="absolute inset-0 flex items-center justify-center bg-white p-2 [&>div]:!w-full [&>div]:!h-full [&>div]:!rounded-none [&>div>img]:!w-full [&>div>img]:!h-full [&>div>img]:!max-w-full [&>div>img]:!max-h-full [&>div>img]:!object-contain">
-          <ServiceLogo name={operator.name} size={160} />
+        {/* Logo centered at native resolution */}
+        <div className="absolute inset-0 flex items-center justify-center bg-white p-3">
+          <ServiceLogo name={operator.name} size={80} className="rounded-xl" />
         </div>
         {/* Dark gradient at bottom */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 pb-2 px-2">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black from-40% via-black/90 to-transparent pt-8 pb-2 px-2">
           <div className="flex items-center gap-1 justify-center">
             <h3 className="font-bold text-white text-[11px] truncate">{operator.name}</h3>
             <FlagIcon countryCode={operator.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
@@ -569,21 +569,41 @@ export default function PhoneRefillsPage() {
         if (!operator) return null
         const isProcessing = processingCard === expandedKey
 
-        // Determine if this operator uses RANGE pricing
+        // Determine pricing mode
         const rangeOffer = operator.offers.find((o) => o.priceType.toUpperCase() === 'RANGE')
-        const isRange = !!rangeOffer
-        const fixedOffers = operator.offers.filter((o) => o.priceType.toUpperCase() !== 'RANGE')
-        const sortedFixed = [...fixedOffers].sort((a, b) => a.price - b.price)
+        const allSorted = [...operator.offers].sort((a, b) => a.price - b.price)
+        // Treat as "use custom input" if explicitly RANGE or has too many fixed offers (>10)
+        const hasManyOffers = allSorted.length > 10
+        const useCustomInput = !!rangeOffer || hasManyOffers
+        const quickPicks = getQuickPicks(operator.offers)
 
-        // For range offers: build a synthetic selectedOffer from the custom amount
+        // Min/max for custom input
+        const minPrice = allSorted.length > 0 ? allSorted[0].price : 0
+        const maxPrice = allSorted.length > 0 ? allSorted[allSorted.length - 1].price : 100
+        const effectiveMin = rangeOffer?.priceMin ?? minPrice
+        const effectiveMax = rangeOffer?.priceMax ?? maxPrice
+
+        // For custom input: build a synthetic selectedOffer from the typed amount
         const customAmountNum = parseFloat(customAmount)
-        const isCustomValid = isRange && rangeOffer && !isNaN(customAmountNum)
-          && customAmountNum >= (rangeOffer.priceMin || 0)
-          && customAmountNum <= (rangeOffer.priceMax || Infinity)
+        const isCustomValid = useCustomInput && !isNaN(customAmountNum)
+          && customAmountNum >= effectiveMin
+          && customAmountNum <= effectiveMax
 
-        // Effective selected offer (real offer for FIXED, synthetic for RANGE)
-        const effectiveOffer = isRange
-          ? (isCustomValid ? { ...rangeOffer, price: customAmountNum, sendAmount: customAmountNum } : null)
+        // Find the closest actual offer for the custom amount (for FIXED operators with many offers)
+        const findClosestOffer = (amount: number) => {
+          if (rangeOffer) return { ...rangeOffer, price: amount, sendAmount: amount }
+          let closest = allSorted[0]
+          let minDist = Infinity
+          for (const o of allSorted) {
+            const dist = Math.abs(o.price - amount)
+            if (dist < minDist) { closest = o; minDist = dist }
+          }
+          return closest
+        }
+
+        // Effective selected offer
+        const effectiveOffer = useCustomInput
+          ? (isCustomValid ? findClosestOffer(customAmountNum) : null)
           : selectedOffer
         const isReadyModal = !!effectiveOffer && phoneNumber.replace(/[^+\d]/g, '').length >= 8
 
@@ -609,66 +629,78 @@ export default function PhoneRefillsPage() {
 
               {/* Amount selection */}
               <div className="p-5">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">
-                  {isRange ? 'Enter Amount' : 'Select Amount'}
-                </label>
-
-                {isRange && rangeOffer ? (
-                  /* RANGE: custom amount input */
+                {useCustomInput ? (
+                  /* Custom input + quick-pick buttons */
                   <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Enter Amount</label>
+                    {/* Quick-pick buttons */}
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {quickPicks.map((offer) => (
+                        <button
+                          key={offer.offerId}
+                          onClick={() => { setCustomAmount(String(offer.price)); setPaymentError(null) }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            customAmount === String(offer.price)
+                              ? 'bg-primary text-black'
+                              : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
+                          }`}
+                        >
+                          {formatPrice(offer.price)}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Custom amount input */}
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                       <input
                         type="number"
-                        min={rangeOffer.priceMin}
-                        max={rangeOffer.priceMax}
+                        min={effectiveMin}
+                        max={effectiveMax}
                         step="1"
-                        placeholder={`${rangeOffer.priceMin} – ${rangeOffer.priceMax}`}
+                        placeholder={`${effectiveMin} – ${effectiveMax}`}
                         value={customAmount}
                         onChange={(e) => { setCustomAmount(e.target.value); setPaymentError(null) }}
                         className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white text-lg font-bold placeholder:text-slate-500 placeholder:font-normal placeholder:text-sm focus:ring-2 focus:ring-primary focus:border-primary"
                       />
                     </div>
                     <p className="text-xs text-slate-500 mt-2">
-                      Min {formatPrice(rangeOffer.priceMin || 0)} · Max {formatPrice(rangeOffer.priceMax || 0)}
-                      {rangeOffer.sendCurrency !== 'USD' && (
-                        <> · Recipient gets {rangeOffer.sendCurrency}</>
-                      )}
+                      Min {formatPrice(effectiveMin)} · Max {formatPrice(effectiveMax)}
                     </p>
                   </div>
                 ) : (
-                  /* FIXED: amount grid */
-                  <div className="grid grid-cols-3 gap-2">
-                    {sortedFixed.map((offer) => (
-                      <button
-                        key={offer.offerId}
-                        onClick={() => { setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer); setPaymentError(null) }}
-                        className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${
-                          selectedOffer?.offerId === offer.offerId
-                            ? 'bg-primary text-black ring-2 ring-primary/30'
-                            : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
-                        }`}
-                      >
-                        <span className="block">{formatPrice(offer.price)}</span>
-                        {offer.sendCurrency !== 'USD' && offer.sendAmount !== offer.price && (
-                          <span className="block text-[10px] font-normal mt-0.5 opacity-60">
-                            {offer.sendAmount} {offer.sendCurrency}
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                  /* Few FIXED offers: show grid */
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Select Amount</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {allSorted.map((offer) => (
+                        <button
+                          key={offer.offerId}
+                          onClick={() => { setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer); setPaymentError(null) }}
+                          className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${
+                            selectedOffer?.offerId === offer.offerId
+                              ? 'bg-primary text-black ring-2 ring-primary/30'
+                              : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
+                          }`}
+                        >
+                          <span className="block">{formatPrice(offer.price)}</span>
+                          {offer.sendCurrency !== 'USD' && offer.sendAmount !== offer.price && (
+                            <span className="block text-[10px] font-normal mt-0.5 opacity-60">
+                              {offer.sendAmount} {offer.sendCurrency}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Phone + Actions */}
-              {(isRange ? isCustomValid : !!selectedOffer) && (
+              {(useCustomInput ? isCustomValid : !!selectedOffer) && (
                 <div className="px-5 pb-5 space-y-3 border-t border-border-dark pt-4">
                   {/* Summary */}
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">
-                      {isRange ? 'Amount' : (<>Receives <span className="text-white font-bold">{selectedOffer!.sendAmount} {selectedOffer!.sendCurrency}</span></>)}
-                    </span>
+                    <span className="text-slate-400">Amount</span>
                     <span className="text-primary font-extrabold text-lg">
                       {formatPrice(effectiveOffer!.price)}
                     </span>
@@ -690,8 +722,7 @@ export default function PhoneRefillsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        if (isRange && effectiveOffer) {
-                          // For range, use the synthetic offer
+                        if (useCustomInput && effectiveOffer) {
                           setSelectedOffer(effectiveOffer)
                         }
                         handlePayWithWallet(operator)
@@ -709,7 +740,7 @@ export default function PhoneRefillsPage() {
                     </button>
                     <button
                       onClick={() => {
-                        if (isRange && effectiveOffer) {
+                        if (useCustomInput && effectiveOffer) {
                           setSelectedOffer(effectiveOffer)
                         }
                         handleAddToCart(operator)
