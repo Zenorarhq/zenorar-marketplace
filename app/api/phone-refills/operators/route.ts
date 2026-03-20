@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const revalidate = 600 // Cache operators for 10 minutes
 
 import { NextResponse } from 'next/server'
 import { zenditTopupProvider } from '@/lib/phone-refills/provider'
