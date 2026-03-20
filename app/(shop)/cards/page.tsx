@@ -634,7 +634,7 @@ function VirtualCardOption({
           ) : (
             <>
               <Icon name="wallet" size={16} />
-              <span>{isAuthenticated ? `Pay ${formatPrice(provider.creationFee)}` : 'Pay with Wallet'}</span>
+              <span>{isAuthenticated ? `Pay ${formatPrice(provider.creationFee)} with Wallet` : 'Pay with Wallet'}</span>
             </>
           )}
         </button>
