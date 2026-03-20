@@ -47,6 +47,163 @@ const categoryIcons: Record<string, string> = {
   other: 'gift'
 }
 
+// Popularity-based brand ordering (lower = appears first), modelled after Bitrefill US
+// Keys are lowercase, matched against brand.toLowerCase()
+const BRAND_POPULARITY: Record<string, number> = {
+  // Mega-tier
+  'amazon':1,'amazon.com':1,
+  'apple':2,'apple gift card':2,'itunes':2,'app store & itunes':2,
+  'google play':3,'google play gift card':3,
+  'visa':4,'visa gift card':4,
+  'mastercard':5,'mastercard gift card':5,
+  'american express':6,'amex':6,
+  // Gaming
+  'steam':10,'steam gift card':10,
+  'playstation':11,'psn':11,'playstation network':11,'playstation store':11,
+  'xbox':12,'xbox gift card':12,'microsoft':12,'microsoft gift card':12,
+  'nintendo':13,'nintendo eshop':13,'nintendo switch':13,
+  'roblox':14,
+  'fortnite':15,'epic games':15,
+  'league of legends':16,'riot games':16,'riot points':16,
+  'minecraft':17,
+  'pubg':18,
+  'valorant':19,
+  // Streaming
+  'netflix':20,'netflix gift card':20,
+  'hulu':21,
+  'disney+':22,'disney plus':22,'disney':22,
+  'hbo':23,'hbo max':23,'max':23,
+  'spotify':24,'spotify gift card':24,
+  'apple tv+':25,'apple tv':25,
+  'youtube':26,'youtube premium':26,'youtube music':26,
+  'paramount+':27,'paramount plus':27,
+  'peacock':28,
+  'showtime':29,
+  'crunchyroll':30,
+  'twitch':31,
+  // Shopping
+  'walmart':40,'walmart gift card':40,
+  'target':41,'target gift card':41,
+  'best buy':42,
+  'ebay':43,
+  'etsy':44,
+  'shein':45,
+  'nike':46,
+  'adidas':47,
+  'nordstrom':48,
+  'gap':49,
+  'old navy':50,
+  'h&m':51,
+  'zara':52,
+  'macy\'s':53,'macys':53,
+  'sephora':54,
+  'ulta':55,
+  'bath & body works':56,
+  // Food & Delivery
+  'starbucks':60,'starbucks gift card':60,
+  'uber':61,'uber gift card':61,
+  'doordash':62,
+  'grubhub':63,
+  'mcdonalds':64,'mcdonald\'s':64,
+  'chipotle':65,
+  'chick-fil-a':66,'chick fil a':66,
+  'subway':67,
+  'dunkin':68,"dunkin'":68,
+  'burger king':69,
+  'dominos':70,"domino's":70,
+  'pizza hut':71,
+  // Travel
+  'airbnb':80,
+  'booking.com':81,
+  'hotels.com':82,
+  'expedia':83,
+  'delta':84,'delta airlines':84,
+  'american airlines':85,
+  'united airlines':86,
+  // Entertainment
+  'amc':90,'amc theatres':90,
+  'fandango':91,
+  'regal':92,
+  // Retail / Others
+  'cvs':100,
+  'walgreens':101,
+  'home depot':102,
+  "lowe's":103,'lowes':103,
+  'ikea':104,
+  'gamestop':105,
+  'dollar general':106,
+}
+
+const getBrandPriority = (brand: string): number => {
+  const key = brand.toLowerCase().trim()
+  if (BRAND_POPULARITY[key] !== undefined) return BRAND_POPULARITY[key]
+  // Partial match
+  for (const [k, v] of Object.entries(BRAND_POPULARITY)) {
+    if (key.includes(k) || k.includes(key)) return v
+  }
+  return 999
+}
+
+// High-quality image overrides for brands that often lack images from providers
+// Images sourced from Reloadly CDN and official brand assets
+const BRAND_IMAGE_OVERRIDES: Record<string, string> = {
+  'amazon':         'https://cdn.reloadly.com/giftcards/amazon-us-gift-card.jpg',
+  'amazon.com':     'https://cdn.reloadly.com/giftcards/amazon-us-gift-card.jpg',
+  'apple':          'https://cdn.reloadly.com/giftcards/apple-gift-card.jpg',
+  'app store & itunes': 'https://cdn.reloadly.com/giftcards/apple-gift-card.jpg',
+  'itunes':         'https://cdn.reloadly.com/giftcards/apple-gift-card.jpg',
+  'google play':    'https://cdn.reloadly.com/giftcards/google-play-gift-card.jpg',
+  'steam':          'https://cdn.reloadly.com/giftcards/steam-gift-card.jpg',
+  'playstation':    'https://cdn.reloadly.com/giftcards/playstation-store-gift-card.jpg',
+  'psn':            'https://cdn.reloadly.com/giftcards/playstation-store-gift-card.jpg',
+  'playstation store': 'https://cdn.reloadly.com/giftcards/playstation-store-gift-card.jpg',
+  'xbox':           'https://cdn.reloadly.com/giftcards/xbox-gift-card.jpg',
+  'microsoft':      'https://cdn.reloadly.com/giftcards/microsoft-gift-card.jpg',
+  'nintendo eshop': 'https://cdn.reloadly.com/giftcards/nintendo-eshop-gift-card.jpg',
+  'netflix':        'https://cdn.reloadly.com/giftcards/netflix-gift-card.jpg',
+  'spotify':        'https://cdn.reloadly.com/giftcards/spotify-gift-card.jpg',
+  'hulu':           'https://cdn.reloadly.com/giftcards/hulu-gift-card.jpg',
+  'roblox':         'https://cdn.reloadly.com/giftcards/roblox-gift-card.jpg',
+  'walmart':        'https://cdn.reloadly.com/giftcards/walmart-gift-card.jpg',
+  'target':         'https://cdn.reloadly.com/giftcards/target-gift-card.jpg',
+  'starbucks':      'https://cdn.reloadly.com/giftcards/starbucks-gift-card.jpg',
+  'uber':           'https://cdn.reloadly.com/giftcards/uber-gift-card.jpg',
+  'airbnb':         'https://cdn.reloadly.com/giftcards/airbnb-gift-card.jpg',
+  'ebay':           'https://cdn.reloadly.com/giftcards/ebay-gift-card.jpg',
+  'best buy':       'https://cdn.reloadly.com/giftcards/best-buy-gift-card.jpg',
+  'doordash':       'https://cdn.reloadly.com/giftcards/doordash-gift-card.jpg',
+  'nordstrom':      'https://cdn.reloadly.com/giftcards/nordstrom-gift-card.jpg',
+  'sephora':        'https://cdn.reloadly.com/giftcards/sephora-gift-card.jpg',
+  'nike':           'https://cdn.reloadly.com/giftcards/nike-gift-card.jpg',
+  'visa':           'https://cdn.reloadly.com/giftcards/visa-gift-card.jpg',
+  'mastercard':     'https://cdn.reloadly.com/giftcards/mastercard-gift-card.jpg',
+  'disney+':        'https://cdn.reloadly.com/giftcards/disney-plus-gift-card.jpg',
+  'disney plus':    'https://cdn.reloadly.com/giftcards/disney-plus-gift-card.jpg',
+  'fortnite':       'https://cdn.reloadly.com/giftcards/fortnite-gift-card.jpg',
+  'epic games':     'https://cdn.reloadly.com/giftcards/epic-games-gift-card.jpg',
+  'twitch':         'https://cdn.reloadly.com/giftcards/twitch-gift-card.jpg',
+  'gamestop':       'https://cdn.reloadly.com/giftcards/gamestop-gift-card.jpg',
+  'chipotle':       'https://cdn.reloadly.com/giftcards/chipotle-gift-card.jpg',
+  'mcdonalds':      'https://cdn.reloadly.com/giftcards/mcdonalds-gift-card.jpg',
+  "mcdonald's":     'https://cdn.reloadly.com/giftcards/mcdonalds-gift-card.jpg',
+  'grubhub':        'https://cdn.reloadly.com/giftcards/grubhub-gift-card.jpg',
+  'home depot':     'https://cdn.reloadly.com/giftcards/home-depot-gift-card.jpg',
+  'etsy':           'https://cdn.reloadly.com/giftcards/etsy-gift-card.jpg',
+  'crunchyroll':    'https://cdn.reloadly.com/giftcards/crunchyroll-gift-card.jpg',
+  'amc':            'https://cdn.reloadly.com/giftcards/amc-gift-card.jpg',
+  'nintendo':       'https://cdn.reloadly.com/giftcards/nintendo-eshop-gift-card.jpg',
+}
+
+const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
+  const key = card.brand.toLowerCase().trim()
+  // Check exact match first, then partial
+  if (BRAND_IMAGE_OVERRIDES[key]) return BRAND_IMAGE_OVERRIDES[key]
+  for (const [k, url] of Object.entries(BRAND_IMAGE_OVERRIDES)) {
+    if (key.includes(k) || k.includes(key)) return url
+  }
+  return card.imageUrl
+}
+
 // Category-based gradient colors for card image backgrounds
 const categoryGradients: Record<string, string> = {
   gaming: 'from-purple-900/80 via-purple-800/60 to-indigo-900/80',
@@ -94,7 +251,15 @@ export default function GiftCardsPage() {
     gcTime: 10 * 60 * 1000, // 10 minutes - cache garbage collection
   })
 
-  const giftCards = giftCardsData?.giftCards ?? []
+  // Sort by popularity map, then fall back to API order (isFeatured → purchase_count → alpha)
+  const giftCards = [...(giftCardsData?.giftCards ?? [])].sort((a, b) => {
+    const pa = getBrandPriority(a.brand)
+    const pb = getBrandPriority(b.brand)
+    if (pa !== pb) return pa - pb
+    // Both unknown: keep isFeatured first, then alpha
+    if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1
+    return a.brand.localeCompare(b.brand)
+  })
   const categories = giftCardsData?.categories ?? []
   const totalCards = giftCardsData?.total ?? giftCards.length
 
@@ -530,10 +695,10 @@ export default function GiftCardsPage() {
                     }}
                     className="bg-charcoal border border-border-dark hover:border-primary/50 rounded-2xl overflow-hidden transition-all text-center group"
                   >
-                    <div className={`relative h-24 ${!card.imageUrl ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden`}>
-                      {card.imageUrl ? (
+                    <div className={`relative h-24 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden`}>
+                      {getCardImage(card) ? (
                         <img
-                          src={card.imageUrl}
+                          src={getCardImage(card)!}
                           alt={card.brand}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
@@ -638,10 +803,10 @@ export default function GiftCardsPage() {
                       onClick={() => openModal()}
                     >
                       {/* Card Image Header */}
-                      <div className={`relative h-32 ${!card.imageUrl ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden`}>
-                        {card.imageUrl ? (
+                      <div className={`relative h-32 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden`}>
+                        {getCardImage(card) ? (
                           <img
-                            src={card.imageUrl}
+                            src={getCardImage(card)!}
                             alt={card.brand}
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -650,7 +815,7 @@ export default function GiftCardsPage() {
                             }}
                           />
                         ) : null}
-                        <div className={`${card.imageUrl ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
+                        <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
                           <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
                             <Icon name="gift" size={32} className="text-white/80" />
                           </div>
@@ -760,11 +925,11 @@ export default function GiftCardsPage() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       {/* Modal image header */}
-                      <div className={`relative h-36 ${!card.imageUrl ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden rounded-t-2xl`}>
-                        {card.imageUrl ? (
-                          <img src={card.imageUrl} alt={card.brand} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }} />
+                      <div className={`relative h-36 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden rounded-t-2xl`}>
+                        {getCardImage(card) ? (
+                          <img src={getCardImage(card)!} alt={card.brand} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }} />
                         ) : null}
-                        <div className={`${card.imageUrl ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
+                        <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
                           <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
                             <Icon name="gift" size={32} className="text-white/80" />
                           </div>
