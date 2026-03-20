@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
 
     // Create deposit record
     const result = await executeQuery(
-      `INSERT INTO deposits (user_id, amount, currency, payment_method, status, paystack_reference)
-       VALUES ($1, $2, 'USD', 'PAYSTACK', 'PENDING', $3)
+      `INSERT INTO deposits (id, user_id, amount, currency, payment_method, status, paystack_reference)
+       VALUES (gen_random_uuid()::text, $1, $2, 'USD', 'PAYSTACK', 'PENDING', $3)
        RETURNING id`,
       [user.id, amount, reference]
     )

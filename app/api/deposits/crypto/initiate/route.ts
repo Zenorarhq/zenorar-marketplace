@@ -124,8 +124,8 @@ export async function POST(request: NextRequest) {
     const paymentMethod = getCryptoPaymentMethod(network)
     const insertResult = await executeQuery(
       `INSERT INTO deposits
-       (user_id, amount, currency, payment_method, status, crypto_network, crypto_address, crypto_amount, crypto_tx_hash)
-       VALUES ($1, $2, 'USD', $7, 'PENDING', $3, $4, $5, $6)
+       (id, user_id, amount, currency, payment_method, status, crypto_network, crypto_address, crypto_amount, crypto_tx_hash)
+       VALUES (gen_random_uuid()::text, $1, $2, 'USD', $7, 'PENDING', $3, $4, $5, $6)
        RETURNING id, created_at`,
       [user.id, amount, network, receivingAddress, expectedCryptoAmount || null, userTxHash || null, paymentMethod]
     )

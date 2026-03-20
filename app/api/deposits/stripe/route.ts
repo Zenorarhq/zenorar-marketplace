@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
         getSiteSetting('stripeTestSecretKey'),
       ]),
       executeQuery(
-        `INSERT INTO deposits (user_id, amount, currency, payment_method, status)
-         VALUES ($1, $2, $3, 'CARD', 'PENDING')
+        `INSERT INTO deposits (id, user_id, amount, currency, payment_method, status)
+         VALUES (gen_random_uuid()::text, $1, $2, $3, 'CARD', 'PENDING')
          RETURNING id`,
         [user.id, amount, currency.toUpperCase()]
       ),
