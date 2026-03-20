@@ -962,7 +962,7 @@ export default function EsimPage() {
                   >
                     <div className="p-3 pb-0">
                       <div className="w-full h-20 bg-white rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
-                        <ServiceLogo name={group.carrierSlug} size={80} className="rounded-lg" />
+                        <ServiceLogo name={group.carrierSlug} size={110} className="rounded-lg" />
                       </div>
                     </div>
                     <div className="p-3 pt-2 flex flex-col flex-grow">
