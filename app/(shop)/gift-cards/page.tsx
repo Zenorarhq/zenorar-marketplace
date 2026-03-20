@@ -256,9 +256,6 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
 
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
   if (card.imageUrl?.includes('res.cloudinary.com')) return card.imageUrl
-  // Proxy clearbit URLs — our server tries Simple Icons then Wikipedia
-  const clearbitMatch = card.imageUrl?.match(/logo\.clearbit\.com\/([^?&\s]+)/)
-  if (clearbitMatch) return `/api/gift-card-logo?domain=${clearbitMatch[1]}&brand=${encodeURIComponent(card.brand)}`
   return null
 }
 
@@ -411,17 +408,8 @@ function GiftCardVisual({ card, height, extraClass, children }: {
       <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
 
       {imageUrl ? (
-        imageUrl.includes('res.cloudinary.com') ? (
-          // Cloudinary gift card artwork — full bleed cover
-          <img src={imageUrl} alt={card.brand} className="absolute inset-0 w-full h-full object-cover z-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-        ) : (
-          // Proxy logo (Simple Icons / Wikipedia) — centered on gradient
-          <div className="absolute inset-0 flex items-center justify-center z-0 p-4">
-            <img src={imageUrl} alt={card.brand} className="max-w-full max-h-full object-contain drop-shadow-lg" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).innerHTML = `<span style="font-size:5rem;line-height:1;color:rgba(255,255,255,0.3);font-weight:900">${initial}</span>`; }} />
-          </div>
-        )
+        <img src={imageUrl} alt={card.brand} className="absolute inset-0 w-full h-full object-cover z-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
       ) : (
-        // Brand initial fallback
         <div className="absolute inset-0 flex items-center justify-center z-0">
           <span className="text-white/30 font-black select-none" style={{ fontSize: '5rem', lineHeight: 1 }}>{initial}</span>
         </div>
