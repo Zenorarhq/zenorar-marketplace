@@ -1046,50 +1046,6 @@ export default function GiftCardsPage() {
                         <p className="text-xs text-slate-500 mb-2">{card.category}</p>
                         <p className="text-sm text-primary font-medium mb-4">{getPriceRange(card)}</p>
 
-                        {/* Denomination pills (tappable — each opens modal pre-selected) */}
-                        {card.denominations.length > 0 ? (
-                          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-4" onClick={(e) => e.stopPropagation()}>
-                            {card.denominations.map((amount) => {
-                              const currencyCode = preferences?.currency?.code || 'USD'
-                              const displayAmount = Math.round(convertPrice(amount, currencyCode))
-                              return (
-                                <button
-                                  key={amount}
-                                  onClick={() => openModal(amount)}
-                                  disabled={!card.inStock}
-                                  className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                                    selectedAmount === amount
-                                      ? 'bg-primary text-black'
-                                      : card.inStock
-                                      ? 'bg-charcoal border border-border-dark text-white hover:border-primary hover:bg-primary/10'
-                                      : 'bg-charcoal border border-border-dark text-slate-500 cursor-not-allowed'
-                                  }`}
-                                >
-                                  {currencySymbol}{displayAmount.toLocaleString()}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        ) : isVariableOnly ? (
-                          /* Variable-only: Select Amount button opens modal */
-                          <div className="mb-4" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => openModal()}
-                              disabled={!card.inStock}
-                              className={`w-full px-4 py-3 rounded-xl font-bold text-sm transition-all text-center ${
-                                card.inStock
-                                  ? 'bg-surface-dark border border-border-dark text-white hover:border-primary/50 group-hover:border-primary/50'
-                                  : 'bg-surface-dark border border-border-dark text-slate-500 cursor-not-allowed'
-                              }`}
-                            >
-                              {hasSelection
-                                ? (confirmedLocalAmounts[card.id]
-                                    ? `${currencySymbol}${confirmedLocalAmounts[card.id].toLocaleString()} selected`
-                                    : `${formatPrice(selectedAmount!)} selected`)
-                                : 'Select Amount'}
-                            </button>
-                          </div>
-                        ) : null}
                       </div>
                     </div>
                   )
