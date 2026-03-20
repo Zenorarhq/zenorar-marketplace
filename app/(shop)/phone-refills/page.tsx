@@ -395,7 +395,7 @@ export default function PhoneRefillsPage() {
         {/* Logo area */}
         <div className="p-3 pb-0">
           <div className="w-full aspect-square bg-white rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
-            <ServiceLogo name={operator.name} size={80} className="rounded-lg" country={operator.country} />
+            <ServiceLogo name={operator.name} size={80} className="rounded-lg" />
           </div>
         </div>
         {/* Info */}
@@ -635,7 +635,7 @@ export default function PhoneRefillsPage() {
               {/* Modal header */}
               <div className="flex items-center justify-between p-5 border-b border-border-dark">
                 <div className="flex items-center gap-3">
-                  <ServiceLogo name={operator.name} size={40} className="rounded-lg" country={operator.country} />
+                  <ServiceLogo name={operator.name} size={40} className="rounded-lg" />
                   <div>
                     <h3 className="font-bold text-white">{operator.name}</h3>
                     <div className="flex items-center gap-1.5">

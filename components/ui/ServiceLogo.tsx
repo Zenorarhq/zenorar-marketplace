@@ -6,33 +6,70 @@ interface ServiceLogoProps {
   name: string
   size?: number
   className?: string
-  country?: string
 }
 
-// ISO country code → Bitrefill country slug
-const COUNTRY_SLUGS: Record<string, string> = {
-  US: 'usa', GB: 'uk', CA: 'canada', AU: 'australia', NZ: 'new-zealand',
-  NG: 'nigeria', KE: 'kenya', GH: 'ghana', ZA: 'south-africa', TZ: 'tanzania',
-  UG: 'uganda', ET: 'ethiopia', SN: 'senegal', CI: 'ivory-coast', CM: 'cameroon',
-  EG: 'egypt', MA: 'morocco', TN: 'tunisia', DZ: 'algeria',
-  IN: 'india', PK: 'pakistan', BD: 'bangladesh', PH: 'philippines', ID: 'indonesia',
-  VN: 'vietnam', TH: 'thailand', MY: 'malaysia', LK: 'sri-lanka', NP: 'nepal',
-  MX: 'mexico', BR: 'brazil', CO: 'colombia', PE: 'peru', AR: 'argentina',
-  CL: 'chile', VE: 'venezuela', EC: 'ecuador', GT: 'guatemala', HN: 'honduras',
-  SV: 'el-salvador', NI: 'nicaragua', CR: 'costa-rica', DO: 'dominican-republic',
-  HT: 'haiti', JM: 'jamaica', TT: 'trinidad-and-tobago', CU: 'cuba',
-  FR: 'france', DE: 'germany', ES: 'spain', IT: 'italy', PT: 'portugal',
-  NL: 'netherlands', BE: 'belgium', PL: 'poland', RO: 'romania',
+// Verified Bitrefill product slugs — only known-good slugs to avoid 404 images
+// (Bitrefill returns a "404 Not Found" image, not an HTTP error, for wrong slugs)
+const BITREFILL_SLUGS: Record<string, string> = {
+  // US
+  'at&t': 'atandt-usa', 'att': 'atandt-usa',
+  'boost mobile': 'boost-mobile-usa',
+  'cricket': 'cricket-usa', 'cricket mobile': 'cricket-usa', 'cricket wireless': 'cricket-wireless-usa',
+  'gosmart': 'gosmart-usa', 'go smart': 'gosmart-usa',
+  'h2o mobile': 'h2o-pin-usa', 'h2o': 'h2o-pin-usa',
+  'lyca mobile': 'lyca-mobile-usa', 'lycamobile': 'lyca-mobile-usa',
+  'metro pcs': 'metropcs-usa', 'metropcs': 'metropcs-usa', 'metro by t-mobile': 'metropcs-usa',
+  'net10': 'net10-usa', 'net10 mobile': 'net10-usa',
+  'page plus': 'pageplus-pin-usa', 'pageplus': 'pageplus-pin-usa',
+  'simple mobile': 'simple-mobile-usa',
+  'straight talk': 'straight-talk',
+  't-mobile': 't-mobile-usa', 'tmobile': 't-mobile-usa',
+  'total wireless': 'total-by-verizon-usa', 'total by verizon': 'total-by-verizon-usa',
+  'ultra mobile': 'ultra-mobile-usa',
+  'verizon': 'verizon-usa',
+  // Canada
+  'bell': 'bell-pin-canada',
+  'chatr': 'chatr-pin-canada',
+  'fido': 'fido-pin-canada',
+  'koodo': 'koodo-pin-canada',
+  'public mobile': 'publicmobile-pin-canada', 'publicmobile': 'publicmobile-pin-canada',
+  'rogers': 'rogers-pin-canada',
+  'telus': 'telus-pin-canada',
+  'virgin mobile': 'virgin-mobile-canada',
+  // UK
+  'ee': 'ee-uk',
+  'giffgaff': 'giffgaff-uk',
+  'lebara': 'lebara-uk',
+  'o2': 'o2-uk',
+  'three': 'three-uk', '3': 'three-uk',
+  'vodafone': 'vodafone-uk',
+  // Europe
+  'orange': 'orange-france', 'sfr': 'sfr-france', 'bouygues': 'bouygues-telecom-france',
+  'telekom': 'telekom-germany', 'o2 germany': 'o2-germany',
+  'movistar': 'movistar-spain', 'vodafone spain': 'vodafone-spain',
+  // Africa
+  'airtel': 'airtel-nigeria', 'airtel nigeria': 'airtel-nigeria',
+  'mtn': 'mtn-nigeria', 'mtn nigeria': 'mtn-nigeria',
+  'glo': 'glo-nigeria', 'glo nigeria': 'glo-nigeria',
+  '9mobile': '9mobile-nigeria',
+  'safaricom': 'safaricom-kenya',
+  'mtn ghana': 'mtn-ghana',
+  'vodafone ghana': 'vodafone-ghana',
+  // Asia
+  'airtel india': 'airtel-india', 'airtel in': 'airtel-india',
+  'jio': 'jio-india', 'reliance jio': 'jio-india',
+  'vi': 'vi-india', 'vodafone idea': 'vi-india',
+  'bsnl': 'bsnl-india',
+  'jazz': 'jazz-pakistan', 'telenor pakistan': 'telenor-pakistan',
+  'zong': 'zong-pakistan',
+  'globe': 'globe-philippines', 'smart': 'smart-philippines',
+  // LatAm
+  'claro': 'claro-mexico', 'telcel': 'telcel-mexico', 'at&t mexico': 'atandt-mexico',
+  'vivo': 'vivo-brazil', 'tim brazil': 'tim-brasil', 'oi': 'oi-brazil',
 }
 
-function getBitrefillSlug(name: string, country: string): string {
-  const nameSlug = name
-    .toLowerCase()
-    .replace(/&/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-  const countrySlug = COUNTRY_SLUGS[country] || country.toLowerCase()
-  return `${nameSlug}-${countrySlug}`
+function getBitrefillSlug(name: string): string | null {
+  return BITREFILL_SLUGS[name.toLowerCase().trim()] ?? null
 }
 
 // Map service names to their domains for logo fetching
@@ -1139,7 +1176,7 @@ function getServiceDomain(serviceName: string): string | null {
   return null
 }
 
-export default function ServiceLogo({ name, size = 32, className = '', country }: ServiceLogoProps) {
+export default function ServiceLogo({ name, size = 32, className = '' }: ServiceLogoProps) {
   const [imgSrc, setImgSrc] = useState<string | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
@@ -1147,15 +1184,13 @@ export default function ServiceLogo({ name, size = 32, className = '', country }
   const domain = getServiceDomain(name)
   const initial = getInitial(name)
   const bgColor = getColorFromName(name)
-  const bitrefillSlug = country ? getBitrefillSlug(name, country) : null
+  const bitrefillSlug = getBitrefillSlug(name)
 
   useEffect(() => {
-    // Reset state when name/country changes
     setLoadFailed(false)
     setLoadAttempt(0)
 
     if (bitrefillSlug) {
-      // Start with Bitrefill CDN — highest quality operator images
       setImgSrc(`https://cdn.bitrefill.com/primg/i1w192h192/${bitrefillSlug}.webp`)
     } else if (domain) {
       setImgSrc(`https://logo.clearbit.com/${domain}?size=256`)
@@ -1167,11 +1202,9 @@ export default function ServiceLogo({ name, size = 32, className = '', country }
   // Fallback chain: Bitrefill -> Clearbit 256 -> Clearbit default -> logo.dev -> Google 128 -> Letter avatar
   const handleError = () => {
     if (loadAttempt === 0 && bitrefillSlug && domain) {
-      // Bitrefill failed, try Clearbit
       setLoadAttempt(1)
       setImgSrc(`https://logo.clearbit.com/${domain}?size=256`)
     } else if (loadAttempt === 0 && bitrefillSlug && !domain) {
-      // Bitrefill failed, no domain fallback
       setLoadFailed(true)
     } else if ((loadAttempt === 0 || loadAttempt === 1) && domain) {
       setLoadAttempt(2)
@@ -1219,13 +1252,13 @@ export default function ServiceLogo({ name, size = 32, className = '', country }
       <img
         src={imgSrc}
         alt={name}
-        width={size - 4}
-        height={size - 4}
+        width={Math.round(size * 0.85)}
+        height={Math.round(size * 0.85)}
         className="object-contain"
         onError={handleError}
         onLoad={handleLoad}
         loading="lazy"
-        style={{ maxWidth: size - 4, maxHeight: size - 4 }}
+        style={{ maxWidth: Math.round(size * 0.85), maxHeight: Math.round(size * 0.85) }}
       />
     </div>
   )
