@@ -550,7 +550,7 @@ export default function LibraryPage() {
                         <h3 className="text-white font-bold text-base sm:text-lg truncate">{item.name}</h3>
                         {getStatusBadge(item.status)}
                       </div>
-                      <p className="text-slate-400 text-sm mb-2">{item.description}</p>
+                      <p className="text-slate-400 text-sm mb-2 line-clamp-2">{item.description}</p>
                       <div className="flex flex-wrap gap-3 text-xs text-slate-500">
                         {item.category === 'virtual-numbers' && item.phoneNumberDisplay && (
                           <span className="flex items-center gap-1 text-primary font-mono">
@@ -571,7 +571,7 @@ export default function LibraryPage() {
                         {item.expiresAt && (
                           <span className={`flex items-center gap-1 ${item.status === 'expired' ? 'text-red-500' : ''}`}>
                             <Icon name="clock" size={13} />
-                            {item.status === 'expired' ? 'Expired:' : 'Expires:'} {item.expiresAt}
+                            {item.status === 'expired' ? 'Expired:' : 'Expires:'} {item.expiresAt.slice(0, 10)}
                           </span>
                         )}
                         {item.downloadCount !== undefined && (

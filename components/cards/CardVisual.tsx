@@ -535,17 +535,20 @@ export default function CardVisual({
       <div
         className={className}
         onClick={handleFlip}
-        style={{ perspective: '1000px', cursor: 'pointer' }}
+        style={{ perspective: '1000px', WebkitPerspective: '1000px', cursor: 'pointer' }}
       >
         <div
           className="relative"
           style={{
             transformStyle: 'preserve-3d',
+            WebkitTransformStyle: 'preserve-3d',
             transition: 'transform 0.5s',
+            WebkitTransition: '-webkit-transform 0.5s',
             transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+            WebkitTransform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
           }}
         >
-          <div style={{ backfaceVisibility: 'hidden' }}>
+          <div style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
             <CardFront />
           </div>
           <div
@@ -556,7 +559,9 @@ export default function CardVisual({
               right: 0,
               bottom: 0,
               backfaceVisibility: 'hidden',
-              transform: 'rotateY(180deg)'
+              WebkitBackfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+              WebkitTransform: 'rotateY(180deg)',
             }}
           >
             <CardBack />
