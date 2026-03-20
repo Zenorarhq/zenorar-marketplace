@@ -171,8 +171,8 @@ const getBrandPriority = (brand: string): number => {
   return 999
 }
 
-// Bitrefill CDN for gift card images — format: w360h216/{slug}.webp
-const B = 'https://cdn.bitrefill.com/primg/w360h216/'
+// Kept for reference but no longer used — Bitrefill CDN blocked on gift cards
+// const B = 'https://cdn.bitrefill.com/primg/w360h216/'
 const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   // === GAMING ===
   'steam':               'steam-usa',
@@ -254,17 +254,8 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'amc':                 'amc-usa',
 }
 
-const getBitrefillGiftCardUrl = (brand: string): string | null => {
-  const key = brand.toLowerCase().trim()
-  if (BRAND_BITREFILL_SLUGS[key]) return B + BRAND_BITREFILL_SLUGS[key] + '.webp'
-  for (const [k, slug] of Object.entries(BRAND_BITREFILL_SLUGS)) {
-    if (key.includes(k) || k.includes(key)) return B + slug + '.webp'
-  }
-  return null
-}
-
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
-  return getBitrefillGiftCardUrl(card.brand) || card.imageUrl
+  return card.imageUrl || null
 }
 
 // Category-based gradient colors for card image backgrounds
@@ -764,15 +755,7 @@ export default function GiftCardsPage() {
                           src={getCardImage(card)!}
                           alt={card.brand}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          onError={(e) => {
-                            const img = e.currentTarget
-                            if (card.imageUrl && img.src !== card.imageUrl) {
-                              img.src = card.imageUrl
-                            } else {
-                              img.style.display = 'none'
-                              img.nextElementSibling?.classList.remove('hidden')
-                            }
-                          }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }}
                         />
                       ) : null}
                       <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
@@ -898,15 +881,7 @@ export default function GiftCardsPage() {
                             src={getCardImage(card)!}
                             alt={card.brand}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const img = e.currentTarget
-                              if (card.imageUrl && img.src !== card.imageUrl) {
-                                img.src = card.imageUrl
-                              } else {
-                                img.style.display = 'none'
-                                img.nextElementSibling?.classList.remove('hidden')
-                              }
-                            }}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }}
                           />
                         ) : null}
                         <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
@@ -1021,7 +996,7 @@ export default function GiftCardsPage() {
                       {/* Modal image header */}
                       <div className={`relative h-36 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden rounded-t-2xl`}>
                         {getCardImage(card) ? (
-                          <img src={getCardImage(card)!} alt={card.brand} className="w-full h-full object-cover" onError={(e) => { const img = e.currentTarget; if (card.imageUrl && img.src !== card.imageUrl) { img.src = card.imageUrl } else { img.style.display = 'none'; img.nextElementSibling?.classList.remove('hidden') } }} />
+                          <img src={getCardImage(card)!} alt={card.brand} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }} />
                         ) : null}
                         <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
                           <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
