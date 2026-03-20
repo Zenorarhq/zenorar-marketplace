@@ -6,6 +6,33 @@ interface ServiceLogoProps {
   name: string
   size?: number
   className?: string
+  country?: string
+}
+
+// ISO country code → Bitrefill country slug
+const COUNTRY_SLUGS: Record<string, string> = {
+  US: 'usa', GB: 'uk', CA: 'canada', AU: 'australia', NZ: 'new-zealand',
+  NG: 'nigeria', KE: 'kenya', GH: 'ghana', ZA: 'south-africa', TZ: 'tanzania',
+  UG: 'uganda', ET: 'ethiopia', SN: 'senegal', CI: 'ivory-coast', CM: 'cameroon',
+  EG: 'egypt', MA: 'morocco', TN: 'tunisia', DZ: 'algeria',
+  IN: 'india', PK: 'pakistan', BD: 'bangladesh', PH: 'philippines', ID: 'indonesia',
+  VN: 'vietnam', TH: 'thailand', MY: 'malaysia', LK: 'sri-lanka', NP: 'nepal',
+  MX: 'mexico', BR: 'brazil', CO: 'colombia', PE: 'peru', AR: 'argentina',
+  CL: 'chile', VE: 'venezuela', EC: 'ecuador', GT: 'guatemala', HN: 'honduras',
+  SV: 'el-salvador', NI: 'nicaragua', CR: 'costa-rica', DO: 'dominican-republic',
+  HT: 'haiti', JM: 'jamaica', TT: 'trinidad-and-tobago', CU: 'cuba',
+  FR: 'france', DE: 'germany', ES: 'spain', IT: 'italy', PT: 'portugal',
+  NL: 'netherlands', BE: 'belgium', PL: 'poland', RO: 'romania',
+}
+
+function getBitrefillSlug(name: string, country: string): string {
+  const nameSlug = name
+    .toLowerCase()
+    .replace(/&/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  const countrySlug = COUNTRY_SLUGS[country] || country.toLowerCase()
+  return `${nameSlug}-${countrySlug}`
 }
 
 // Map service names to their domains for logo fetching
@@ -1112,7 +1139,7 @@ function getServiceDomain(serviceName: string): string | null {
   return null
 }
 
-export default function ServiceLogo({ name, size = 32, className = '' }: ServiceLogoProps) {
+export default function ServiceLogo({ name, size = 32, className = '', country }: ServiceLogoProps) {
   const [imgSrc, setImgSrc] = useState<string | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
@@ -1120,33 +1147,40 @@ export default function ServiceLogo({ name, size = 32, className = '' }: Service
   const domain = getServiceDomain(name)
   const initial = getInitial(name)
   const bgColor = getColorFromName(name)
+  const bitrefillSlug = country ? getBitrefillSlug(name, country) : null
 
   useEffect(() => {
-    // Reset state when name changes
+    // Reset state when name/country changes
     setLoadFailed(false)
     setLoadAttempt(0)
 
-    if (domain) {
-      // Start with Clearbit at high resolution
+    if (bitrefillSlug) {
+      // Start with Bitrefill CDN — highest quality operator images
+      setImgSrc(`https://cdn.bitrefill.com/primg/i1w192h192/${bitrefillSlug}.webp`)
+    } else if (domain) {
       setImgSrc(`https://logo.clearbit.com/${domain}?size=256`)
     } else {
-      // No known domain, use letter avatar
       setLoadFailed(true)
     }
-  }, [name, domain])
+  }, [name, domain, bitrefillSlug])
 
-  // Fallback chain: Clearbit 256 -> Clearbit default -> logo.dev -> Google 128 -> Letter avatar
+  // Fallback chain: Bitrefill -> Clearbit 256 -> Clearbit default -> logo.dev -> Google 128 -> Letter avatar
   const handleError = () => {
-    if (loadAttempt === 0 && domain) {
+    if (loadAttempt === 0 && bitrefillSlug && domain) {
+      // Bitrefill failed, try Clearbit
       setLoadAttempt(1)
-      setImgSrc(`https://logo.clearbit.com/${domain}`)
-    } else if (loadAttempt === 1 && domain) {
-      // Try logo.dev — usually high quality
+      setImgSrc(`https://logo.clearbit.com/${domain}?size=256`)
+    } else if (loadAttempt === 0 && bitrefillSlug && !domain) {
+      // Bitrefill failed, no domain fallback
+      setLoadFailed(true)
+    } else if ((loadAttempt === 0 || loadAttempt === 1) && domain) {
       setLoadAttempt(2)
-      setImgSrc(`https://img.logo.dev/${domain}?token=pk_anonymous&size=200&format=png`)
+      setImgSrc(`https://logo.clearbit.com/${domain}`)
     } else if (loadAttempt === 2 && domain) {
-      // Google favicon as last resort
       setLoadAttempt(3)
+      setImgSrc(`https://img.logo.dev/${domain}?token=pk_anonymous&size=200&format=png`)
+    } else if (loadAttempt === 3 && domain) {
+      setLoadAttempt(4)
       setImgSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`)
     } else {
       setLoadFailed(true)
