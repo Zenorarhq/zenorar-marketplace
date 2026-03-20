@@ -490,11 +490,25 @@ export default function PhoneRefillsPage() {
           </div>
           <WalletDisplay variant="desktop" />
         </header>
-        <WalletDisplay variant="mobile" />
+        {/* Mobile: wallet inside hero */}
+        <div className="md:hidden mt-6">
+          <WalletDisplay variant="mobile" />
+        </div>
+        {/* Tablet+: search inside hero */}
+        <div className="hidden md:block mt-6 relative max-w-xl">
+          <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search carriers (AT&T, Vodafone, MTN, Airtel...)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+          />
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-xl mb-6">
+      {/* Mobile: search below hero */}
+      <div className="md:hidden relative max-w-xl mb-6">
         <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           type="text"
@@ -503,6 +517,10 @@ export default function PhoneRefillsPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
         />
+      </div>
+      {/* Tablet: wallet below hero */}
+      <div className="hidden md:block lg:hidden">
+        <WalletDisplay variant="mobile" />
       </div>
 
       {/* Success Banner */}
