@@ -5973,6 +5973,62 @@ export default function AdminSettingsPage() {
                 )}
               </div>
 
+              {/* Phone Refill Markup */}
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button
+                  onClick={() => toggleSection('phoneRefillMarkup')}
+                  className="w-full flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                      <Icon name="phone" size={24} className="text-green-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Phone Refill Markup</p>
+                      <p className="text-slate-500 text-sm">Percentage added on top of Zendit wholesale cost</p>
+                    </div>
+                  </div>
+                  <Icon
+                    name={expandedSections.phoneRefillMarkup ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    className="text-slate-400 flex-shrink-0"
+                  />
+                </button>
+                {expandedSections.phoneRefillMarkup && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-[#1f1f1f]">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Phone Refill Markup %</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={phoneRefillSettings.phoneRefillMarkupPercent}
+                        onChange={(e) => setPhoneRefillSettings({ ...phoneRefillSettings, phoneRefillMarkupPercent: Number(e.target.value) })}
+                        className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      />
+                      <span className="text-slate-400">%</span>
+                    </div>
+                    <p className="text-xs text-slate-600">Applied to Zendit wholesale cost (offer.cost) at display time</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Price Preview</label>
+                    <div className="bg-[#1a1a1a] rounded-lg p-4">
+                      <p className="text-slate-500 text-sm mb-2">$5 top-up (wholesale cost):</p>
+                      <p className="text-white">
+                        Zendit cost: <span className="text-slate-400">$5.00</span>
+                      </p>
+                      <p className="text-white">
+                        + Markup ({phoneRefillSettings.phoneRefillMarkupPercent}%): <span className="text-primary">+${((5 * phoneRefillSettings.phoneRefillMarkupPercent) / 100).toFixed(2)}</span>
+                      </p>
+                      <div className="border-t border-[#2a2a2a] my-2"></div>
+                      <p className="text-primary font-bold">
+                        Customer Pays: ${(5 * (1 + phoneRefillSettings.phoneRefillMarkupPercent / 100)).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                )}
+              </div>
+
               {/* Virtual Cards Markup */}
               <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
                 <button
