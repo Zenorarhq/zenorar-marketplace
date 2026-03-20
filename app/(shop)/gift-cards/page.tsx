@@ -255,8 +255,10 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
 }
 
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
-  // Only use Cloudinary URLs — Clearbit CDN is defunct, all other CDNs block hotlinks
   if (card.imageUrl?.includes('res.cloudinary.com')) return card.imageUrl
+  // Proxy clearbit URLs through our server (bypasses hotlink protection)
+  const clearbitMatch = card.imageUrl?.match(/logo\.clearbit\.com\/([^?&\s]+)/)
+  if (clearbitMatch) return `/api/gift-card-logo?domain=${clearbitMatch[1]}`
   return null
 }
 
