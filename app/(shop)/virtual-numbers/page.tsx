@@ -942,13 +942,13 @@ export default function VirtualNumbersPage() {
                       >
                         {/* Flag shaped as SIM card — notch at bottom-right */}
                         <div
-                          className="relative w-4/5 mx-auto aspect-[4/3] overflow-hidden mb-2"
+                          className="relative w-3/5 mx-auto aspect-[4/3] overflow-hidden mb-2"
                           style={{ clipPath: 'polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%)' }}
                         >
                           <FlagIcon countryCode={country.isoCode} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full block" />
                         </div>
-                        <h3 className="font-medium text-white text-[10px] sm:text-xs truncate w-full">{resolveCountryName(country.isoCode, country.name)}</h3>
-                        <p className="text-[9px] sm:text-[10px] text-slate-500">From {formatPrice(country.retailMonthly)}</p>
+                        <h3 className="font-medium text-white text-xs sm:text-sm truncate w-full">{resolveCountryName(country.isoCode, country.name)}</h3>
+                        <p className="text-[10px] sm:text-xs text-slate-500">From {formatPrice(country.retailMonthly)}</p>
                       </button>
                     ))}
                   </div>
