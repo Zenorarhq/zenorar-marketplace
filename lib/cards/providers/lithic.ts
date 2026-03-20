@@ -67,8 +67,8 @@ class LithicProvider implements CardProviderInterface {
       // Build card payload — omit account_token if not available (sandbox allows this)
       const cardPayload: Record<string, any> = {
         type: 'VIRTUAL',
-        spending_limit: 1000000, // $10,000 in cents
-        spending_limit_duration: 'TRANSACTION',
+        spend_limit: 0,
+        spend_limit_duration: 'TRANSACTION',
         state: 'OPEN',
       }
       if (accountToken) {
