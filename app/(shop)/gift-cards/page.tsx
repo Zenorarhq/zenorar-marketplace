@@ -960,180 +960,6 @@ export default function GiftCardsPage() {
                 })}
               </div>
 
-              {/* ── Gift Card Purchase Modal ── */}
-              {modalCard && (() => {
-                const card = modalCard
-                const selectedAmount = getSelectedAmount(card.id)
-                const hasSelection = selectedAmount !== null
-                const isVariableOnly = card.denominations.length === 0 && (card.minCustomAmount || card.maxCustomAmount)
-                const finalPrice = hasSelection ? calculateFinalPrice(selectedAmount, card.discountPercent) : 0
-                const discountAmount = hasSelection ? selectedAmount * (card.discountPercent / 100) : 0
-
-                // Custom amount input state (variable cards)
-                const inputValue = customAmountInputs[card.id] || ''
-                const parsedValue = parseFloat(inputValue)
-                const currencyCode = preferences?.currency?.code || 'USD'
-                const minUsd = card.minCustomAmount || 1
-                const maxUsd = card.maxCustomAmount || 1000
-                const min = Math.ceil(convertPrice(minUsd, currencyCode))
-                const max = Math.floor(convertPrice(maxUsd, currencyCode))
-                const isValidInput = !isNaN(parsedValue) && parsedValue >= min && parsedValue <= max
-
-                const closeModal = () => {
-                  setModalCard(null)
-                  setExpandedCard(null)
-                }
-
-                return (
-                  <div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-                    onClick={closeModal}
-                  >
-                    <div
-                      className="bg-[#1a1a1a] border border-border-dark rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* Modal image header */}
-                      <div className={`relative h-36 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden rounded-t-2xl`}>
-                        {getCardImage(card) ? (
-                          <img src={getCardImage(card)!} alt={card.brand} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }} />
-                        ) : null}
-                        <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
-                          <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                            <Icon name="gift" size={32} className="text-white/80" />
-                          </div>
-                        </div>
-                        <button onClick={closeModal} className="absolute top-3 right-3 p-1.5 bg-black/50 hover:bg-black/70 rounded-lg text-white transition-colors">
-                          <Icon name="x" size={16} />
-                        </button>
-                        {card.discountPercent > 0 && (
-                          <span className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-md">
-                            {card.discountPercent}% OFF
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="p-5">
-                        <h3 className="font-bold text-white text-lg mb-0.5">{card.brand}</h3>
-                        <p className="text-xs text-slate-500 mb-4">{card.category} · {getPriceRange(card)}</p>
-
-                        {/* Amount selection */}
-                        {card.denominations.length > 0 ? (
-                          <div className="mb-4">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Select Amount</label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {card.denominations.map((amount) => {
-                                const displayAmount = Math.round(convertPrice(amount, currencyCode))
-                                return (
-                                  <button
-                                    key={amount}
-                                    onClick={() => {
-                                      if (selectedAmount === amount) {
-                                        setSelectedAmounts({})
-                                        setConfirmedLocalAmounts({})
-                                      } else {
-                                        setSelectedAmounts({ [card.id]: amount })
-                                        setConfirmedLocalAmounts({})
-                                        setPaymentErrors({})
-                                        setCustomAmountInputs({})
-                                      }
-                                    }}
-                                    className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${
-                                      selectedAmount === amount
-                                        ? 'bg-primary text-black ring-2 ring-primary/30'
-                                        : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
-                                    }`}
-                                  >
-                                    {currencySymbol}{displayAmount.toLocaleString()}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        ) : isVariableOnly ? (
-                          <div className="mb-4">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Enter Amount</label>
-                            <div className="relative">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
-                              <input
-                                type="number"
-                                min={min}
-                                max={max}
-                                placeholder={`${min.toLocaleString()} – ${max.toLocaleString()}`}
-                                value={inputValue}
-                                onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
-                                onKeyDown={(e) => {
-                                  if (['e', 'E', '+', '-'].includes(e.key)) { e.preventDefault(); return }
-                                  if (e.key === 'Enter' && isValidInput) { handleCustomAmountConfirm(card.id, card) }
-                                  if (e.key === 'Escape') { closeModal() }
-                                }}
-                                autoFocus
-                                className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                            </div>
-                            <p className="text-xs text-slate-500 mt-2">
-                              Min {currencySymbol}{min.toLocaleString()} · Max {currencySymbol}{max.toLocaleString()}
-                            </p>
-                            {isValidInput && (
-                              <button
-                                onClick={() => handleCustomAmountConfirm(card.id, card)}
-                                className="mt-3 w-full py-2.5 rounded-xl bg-surface-dark border border-primary text-primary font-bold text-sm hover:bg-primary/10 transition-colors"
-                              >
-                                Confirm {currencySymbol}{parsedValue.toLocaleString()}
-                              </button>
-                            )}
-                          </div>
-                        ) : null}
-
-                        {/* Price summary */}
-                        {hasSelection && (
-                          <>
-                            <div className="mb-4 p-3 bg-surface-dark rounded-xl space-y-2">
-                              {card.discountPercent > 0 && (
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-slate-500">Discount ({card.discountPercent}%)</span>
-                                  <span className="text-green-400">-{formatPrice(discountAmount)}</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between">
-                                <span className="text-slate-400 font-bold">You Pay</span>
-                                <span className="text-white font-extrabold">{formatPrice(finalPrice)}</span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <button
-                                onClick={() => handlePayWithWallet(card)}
-                                disabled={processingPayment === card.id || loadingBalance}
-                                className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50"
-                              >
-                                {processingPayment === card.id ? (
-                                  <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /><span>Processing...</span></>
-                                ) : loadingBalance ? (
-                                  <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /><span>Checking Balance...</span></>
-                                ) : (
-                                  <><Icon name="wallet" size={16} /><span>Pay {formatPrice(finalPrice)} with Wallet</span></>
-                                )}
-                              </button>
-                              <button
-                                onClick={() => { handleAddToCart(card); closeModal() }}
-                                className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
-                              >
-                                <Icon name="cart" size={16} />
-                                <span>Add to Cart</span>
-                              </button>
-                            </div>
-
-                            {paymentErrors[card.id] && processingPayment !== card.id && (
-                              <p className="mt-2 text-xs text-red-400 text-center">{paymentErrors[card.id]}</p>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
               </>
             )}
           </div>
@@ -1174,6 +1000,180 @@ export default function GiftCardsPage() {
           </div>
         </>
       )}
+
+      {/* ── Gift Card Purchase Modal ── */}
+      {modalCard && (() => {
+        const card = modalCard
+        const selectedAmount = getSelectedAmount(card.id)
+        const hasSelection = selectedAmount !== null
+        const isVariableOnly = card.denominations.length === 0 && (card.minCustomAmount || card.maxCustomAmount)
+        const finalPrice = hasSelection ? calculateFinalPrice(selectedAmount, card.discountPercent) : 0
+        const discountAmount = hasSelection ? selectedAmount * (card.discountPercent / 100) : 0
+
+        const inputValue = customAmountInputs[card.id] || ''
+        const parsedValue = parseFloat(inputValue)
+        const currencyCode = preferences?.currency?.code || 'USD'
+        const minUsd = card.minCustomAmount || 1
+        const maxUsd = card.maxCustomAmount || 1000
+        const min = Math.ceil(convertPrice(minUsd, currencyCode))
+        const max = Math.floor(convertPrice(maxUsd, currencyCode))
+        const isValidInput = !isNaN(parsedValue) && parsedValue >= min && parsedValue <= max
+
+        const closeModal = () => {
+          setModalCard(null)
+          setExpandedCard(null)
+        }
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={closeModal}
+          >
+            <div
+              className="bg-[#1a1a1a] border border-border-dark rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal image header */}
+              <div className={`relative h-36 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden rounded-t-2xl`}>
+                {getCardImage(card) ? (
+                  <img src={getCardImage(card)!} alt={card.brand} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }} />
+                ) : null}
+                <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
+                  <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                    <Icon name="gift" size={32} className="text-white/80" />
+                  </div>
+                </div>
+                <button onClick={closeModal} className="absolute top-3 right-3 p-1.5 bg-black/50 hover:bg-black/70 rounded-lg text-white transition-colors">
+                  <Icon name="x" size={16} />
+                </button>
+                {card.discountPercent > 0 && (
+                  <span className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-md">
+                    {card.discountPercent}% OFF
+                  </span>
+                )}
+              </div>
+
+              <div className="p-5">
+                <h3 className="font-bold text-white text-lg mb-0.5">{card.brand}</h3>
+                <p className="text-xs text-slate-500 mb-4">{card.category} · {getPriceRange(card)}</p>
+
+                {/* Amount selection */}
+                {card.denominations.length > 0 ? (
+                  <div className="mb-4">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Select Amount</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {card.denominations.map((amount) => {
+                        const displayAmount = Math.round(convertPrice(amount, currencyCode))
+                        return (
+                          <button
+                            key={amount}
+                            onClick={() => {
+                              if (selectedAmount === amount) {
+                                setSelectedAmounts({})
+                                setConfirmedLocalAmounts({})
+                              } else {
+                                setSelectedAmounts({ [card.id]: amount })
+                                setConfirmedLocalAmounts({})
+                                setPaymentErrors({})
+                                setCustomAmountInputs({})
+                              }
+                            }}
+                            className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${
+                              selectedAmount === amount
+                                ? 'bg-primary text-black ring-2 ring-primary/30'
+                                : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
+                            }`}
+                          >
+                            {currencySymbol}{displayAmount.toLocaleString()}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : isVariableOnly ? (
+                  <div className="mb-4">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Enter Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
+                      <input
+                        type="number"
+                        min={min}
+                        max={max}
+                        placeholder={`${min.toLocaleString()} – ${max.toLocaleString()}`}
+                        value={inputValue}
+                        onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (['e', 'E', '+', '-'].includes(e.key)) { e.preventDefault(); return }
+                          if (e.key === 'Enter' && isValidInput) { handleCustomAmountConfirm(card.id, card) }
+                          if (e.key === 'Escape') { closeModal() }
+                        }}
+                        autoFocus
+                        className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Min {currencySymbol}{min.toLocaleString()} · Max {currencySymbol}{max.toLocaleString()}
+                    </p>
+                    {isValidInput && (
+                      <button
+                        onClick={() => handleCustomAmountConfirm(card.id, card)}
+                        className="mt-3 w-full py-2.5 rounded-xl bg-surface-dark border border-primary text-primary font-bold text-sm hover:bg-primary/10 transition-colors"
+                      >
+                        Confirm {currencySymbol}{parsedValue.toLocaleString()}
+                      </button>
+                    )}
+                  </div>
+                ) : null}
+
+                {/* Price summary */}
+                {hasSelection && (
+                  <>
+                    <div className="mb-4 p-3 bg-surface-dark rounded-xl space-y-2">
+                      {card.discountPercent > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">Discount ({card.discountPercent}%)</span>
+                          <span className="text-green-400">-{formatPrice(discountAmount)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 font-bold">You Pay</span>
+                        <span className="text-white font-extrabold">{formatPrice(finalPrice)}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => handlePayWithWallet(card)}
+                        disabled={processingPayment === card.id || loadingBalance}
+                        className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50"
+                      >
+                        {processingPayment === card.id ? (
+                          <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /><span>Processing...</span></>
+                        ) : loadingBalance ? (
+                          <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /><span>Checking Balance...</span></>
+                        ) : (
+                          <><Icon name="wallet" size={16} /><span>Pay {formatPrice(finalPrice)} with Wallet</span></>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => { handleAddToCart(card); closeModal() }}
+                        className="w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50"
+                      >
+                        <Icon name="cart" size={16} />
+                        <span>Add to Cart</span>
+                      </button>
+                    </div>
+
+                    {paymentErrors[card.id] && processingPayment !== card.id && (
+                      <p className="mt-2 text-xs text-red-400 text-center">{paymentErrors[card.id]}</p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </main>
   )
 }
