@@ -5,6 +5,7 @@ export const navCategories: NavItem[] = [
   { label: 'Virtual Numbers', href: '/virtual-numbers' },
   { label: 'eSIMs', href: '/esim' },
   { label: 'Phone Refills', href: '/phone-refills' },
+  { label: 'Utilities', href: '/utilities' },
   { label: 'Cards', href: '/cards' },
   { label: 'Gift Cards', href: '/gift-cards' },
 ]

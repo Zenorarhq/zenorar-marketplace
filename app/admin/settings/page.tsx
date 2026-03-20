@@ -320,6 +320,7 @@ export default function AdminSettingsPage() {
     esimMarkup: false,
     giftCardMarkup: false,
     phoneRefillMarkup: false,
+    utilityMarkup: false,
     virtualCardsMarkup: false,
     virtualNumberMarkup: false,
     cloudflareR2: false,
@@ -430,6 +431,11 @@ export default function AdminSettingsPage() {
   // Phone Refill Markup Settings State
   const [phoneRefillSettings, setPhoneRefillSettings] = useState({
     phoneRefillMarkupPercent: 10, // Markup percentage on phone refills
+  })
+
+  // Utility Markup Settings State
+  const [utilitySettings, setUtilitySettings] = useState({
+    utilityMarkupPercent: 10, // Markup percentage on utilities (electricity + data)
   })
 
   // Gift Card Providers Settings State
@@ -930,6 +936,13 @@ export default function AdminSettingsPage() {
           setPhoneRefillSettings((prev) => ({
             ...prev,
             phoneRefillMarkupPercent: d.phoneRefillMarkupPercent,
+          }))
+        }
+        // Utility Markup
+        if (d.utilityMarkupPercent !== undefined) {
+          setUtilitySettings((prev) => ({
+            ...prev,
+            utilityMarkupPercent: d.utilityMarkupPercent,
           }))
         }
         // Gift Card Markup
@@ -1686,6 +1699,8 @@ export default function AdminSettingsPage() {
       { key: 'giftCardMarkupPercent', value: giftCardSettings.giftCardMarkupPercent, group: 'markup', isPublic: true },
       // Phone Refill Markup
       { key: 'phoneRefillMarkupPercent', value: phoneRefillSettings.phoneRefillMarkupPercent, group: 'markup', isPublic: true },
+      // Utility Markup
+      { key: 'utilityMarkupPercent', value: utilitySettings.utilityMarkupPercent, group: 'markup', isPublic: true },
       // Reloadly
       { key: 'reloadlyEnabled', value: giftCardSettings.reloadlyEnabled, group: 'api', isPublic: true },
       { key: 'reloadlyMode', value: giftCardSettings.reloadlyMode, group: 'api', isPublic: false },
@@ -6022,6 +6037,62 @@ export default function AdminSettingsPage() {
                       <div className="border-t border-[#2a2a2a] my-2"></div>
                       <p className="text-primary font-bold">
                         Customer Pays: ${(5 * (1 + phoneRefillSettings.phoneRefillMarkupPercent / 100)).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                )}
+              </div>
+
+              {/* Utilities Markup */}
+              <div className="bg-[#0f0f0f] rounded-xl border border-[#1f1f1f] p-6">
+                <button
+                  onClick={() => toggleSection('utilityMarkup')}
+                  className="w-full flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <Icon name="zap" size={24} className="text-amber-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-lg">Utilities Markup</p>
+                      <p className="text-slate-500 text-sm">Percentage added on top of Zendit wholesale cost for electricity and mobile data</p>
+                    </div>
+                  </div>
+                  <Icon
+                    name={expandedSections.utilityMarkup ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    className="text-slate-400 flex-shrink-0"
+                  />
+                </button>
+                {expandedSections.utilityMarkup && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-[#1f1f1f]">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Utilities Markup %</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={utilitySettings.utilityMarkupPercent}
+                        onChange={(e) => setUtilitySettings({ ...utilitySettings, utilityMarkupPercent: Number(e.target.value) })}
+                        className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary/50"
+                      />
+                      <span className="text-slate-400">%</span>
+                    </div>
+                    <p className="text-xs text-slate-600">Applied to electricity and mobile data/bundle offers</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Price Preview</label>
+                    <div className="bg-[#1a1a1a] rounded-lg p-4">
+                      <p className="text-slate-500 text-sm mb-2">$10 utility (wholesale cost):</p>
+                      <p className="text-white">
+                        Zendit cost: <span className="text-slate-400">$10.00</span>
+                      </p>
+                      <p className="text-white">
+                        + Markup ({utilitySettings.utilityMarkupPercent}%): <span className="text-primary">+${((10 * utilitySettings.utilityMarkupPercent) / 100).toFixed(2)}</span>
+                      </p>
+                      <div className="border-t border-[#2a2a2a] my-2"></div>
+                      <p className="text-primary font-bold">
+                        Customer Pays: ${(10 * (1 + utilitySettings.utilityMarkupPercent / 100)).toFixed(2)}
                       </p>
                     </div>
                   </div>

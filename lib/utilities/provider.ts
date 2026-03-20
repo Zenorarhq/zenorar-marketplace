@@ -1,62 +1,12 @@
-// Zendit Mobile Top-Up Provider
-// Uses same API credentials as Zendit eSIM/voucher providers
-// API: GET /v1/topups/offers, POST /v1/topups/purchases, GET /v1/topups/purchases/{id}
+// Zendit Utilities Provider (Electricity + Mobile Data/Bundles)
+// Uses same API credentials and endpoints as phone refills
+// API: GET /v1/topups/offers (filtered by subTypes), POST /v1/topups/purchases
 
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
+import type { TopupOffer, TopupOperator, TopupOfferSummary, TopupPurchaseResult } from '@/lib/phone-refills/provider'
 
-// ===== Types =====
-
-export interface TopupOffer {
-  offerId: string
-  brand: string
-  brandName: string
-  country: string
-  regions: string[]
-  subTypes: string[]
-  priceType: string
-  enabled: boolean
-  notes: string
-  shortNotes: string
-  // Price in sender currency (what user pays)
-  price: { fixed?: number; min?: number; max?: number; currency?: string; currencyDivisor?: number }
-  // Cost to us
-  cost: { fixed?: number; min?: number; max?: number; currency?: string; currencyDivisor?: number }
-  // Amount received by recipient
-  send: { fixed?: number; min?: number; max?: number; currency?: string; currencyDivisor?: number }
-}
-
-export interface TopupOperator {
-  id: string
-  name: string
-  country: string
-  regions: string[]
-  offers: TopupOfferSummary[]
-}
-
-export interface TopupOfferSummary {
-  offerId: string
-  priceType: string
-  // Amounts in real currency (already divided by currencyDivisor)
-  price: number
-  priceCurrency: string
-  cost: number | null  // Zendit wholesale cost (null for range-priced offers)
-  sendAmount: number
-  sendCurrency: string
-  // Range bounds (only for RANGE priceType)
-  priceMin?: number
-  priceMax?: number
-  sendMin?: number
-  sendMax?: number
-  notes: string
-  shortNotes: string
-}
-
-export interface TopupPurchaseResult {
-  success: boolean
-  transactionId?: string
-  status?: string
-  error?: string
-}
+// Re-export types for convenience
+export type { TopupOffer, TopupOperator, TopupOfferSummary, TopupPurchaseResult }
 
 // ===== Provider =====
 
@@ -69,7 +19,7 @@ let credentialsCache: { credentials: ZenditCredentials | null; timestamp: number
 const CACHE_TTL = 60 * 1000
 const REQUEST_TIMEOUT = 30000
 
-class ZenditTopupProvider {
+class ZenditUtilityProvider {
   private async getCredentials(): Promise<ZenditCredentials | null> {
     if (credentialsCache && Date.now() - credentialsCache.timestamp < CACHE_TTL) {
       return credentialsCache.credentials
@@ -152,9 +102,9 @@ class ZenditTopupProvider {
   }
 
   /**
-   * Fetch all topup offers, optionally filtered by country
+   * Fetch topup offers filtered by subType keywords
    */
-  async getOffers(country?: string): Promise<TopupOffer[]> {
+  private async getOffers(country?: string, subTypeFilter?: (subTypes: string[]) => boolean): Promise<TopupOffer[]> {
     const allOffers: TopupOffer[] = []
     const limit = 100
     let offset = 0
@@ -170,14 +120,14 @@ class ZenditTopupProvider {
 
       if (!offers || offers.length === 0) break
 
-      allOffers.push(...offers.filter((o: any) => {
-        if (o.enabled === false) return false
-        // Exclude utility/electricity and pure data/bundle offers (handled by utilities page)
-        const st = (Array.isArray(o.subTypes) ? o.subTypes : []).map((s: string) => s.toLowerCase())
-        if (st.some((s: string) => s.includes('utility') || s.includes('electricity'))) return false
-        if (st.length > 0 && st.every((s: string) => s.includes('data') || s.includes('bundle')) && !st.some((s: string) => s.includes('topup'))) return false
-        return true
-      }))
+      for (const o of offers) {
+        if (o.enabled === false) continue
+        if (subTypeFilter) {
+          const st = Array.isArray(o.subTypes) ? o.subTypes : []
+          if (!subTypeFilter(st)) continue
+        }
+        allOffers.push(o)
+      }
 
       if (offers.length < limit) break
       offset += limit
@@ -187,12 +137,9 @@ class ZenditTopupProvider {
   }
 
   /**
-   * Get operators grouped by brand, with their offers
+   * Group offers into operators
    */
-  async getOperators(country?: string): Promise<TopupOperator[]> {
-    const offers = await this.getOffers(country)
-
-    // Group offers by brand (operator)
+  private groupByOperator(offers: TopupOffer[]): TopupOperator[] {
     const operatorMap = new Map<string, TopupOperator>()
 
     for (const offer of offers) {
@@ -239,12 +186,37 @@ class ZenditTopupProvider {
       })
     }
 
-    // Sort operators by name
     return Array.from(operatorMap.values()).sort((a, b) => a.name.localeCompare(b.name))
   }
 
   /**
-   * Purchase a top-up
+   * Get electricity/utility operators
+   */
+  async getElectricityOperators(country?: string): Promise<TopupOperator[]> {
+    const offers = await this.getOffers(country, (subTypes) => {
+      const lower = subTypes.map(s => s.toLowerCase())
+      return lower.some(s =>
+        s.includes('utility') || s.includes('electricity') || s.includes('prepaid_utility')
+      )
+    })
+    return this.groupByOperator(offers)
+  }
+
+  /**
+   * Get mobile data + bundle operators (parallel fetch, merged)
+   */
+  async getDataOperators(country?: string): Promise<TopupOperator[]> {
+    const offers = await this.getOffers(country, (subTypes) => {
+      const lower = subTypes.map(s => s.toLowerCase())
+      return lower.some(s =>
+        s.includes('data') || s.includes('bundle')
+      ) && !lower.some(s => s.includes('utility') || s.includes('electricity'))
+    })
+    return this.groupByOperator(offers)
+  }
+
+  /**
+   * Purchase a utility/data top-up (same Zendit endpoint as phone refills)
    */
   async purchase(params: {
     offerId: string
@@ -252,7 +224,7 @@ class ZenditTopupProvider {
     senderPhone?: string
     value?: number
   }): Promise<TopupPurchaseResult> {
-    const transactionId = `topup-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+    const transactionId = `util-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
 
     try {
       const body: Record<string, unknown> = {
@@ -266,7 +238,6 @@ class ZenditTopupProvider {
         },
       }
 
-      // For range-priced offers, include value
       if (params.value !== undefined) {
         body.value = params.value
       }
@@ -281,24 +252,10 @@ class ZenditTopupProvider {
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Failed to process top-up',
+        error: error.message || 'Failed to process purchase',
       }
-    }
-  }
-
-  /**
-   * Check purchase status
-   */
-  async getPurchaseStatus(transactionId: string): Promise<{
-    status: string
-    error?: string
-  }> {
-    const response = await this.request<any>('GET', `/topups/purchases/${transactionId}`)
-    return {
-      status: response.status || 'UNKNOWN',
-      error: response.error?.message,
     }
   }
 }
 
-export const zenditTopupProvider = new ZenditTopupProvider()
+export const zenditUtilityProvider = new ZenditUtilityProvider()
