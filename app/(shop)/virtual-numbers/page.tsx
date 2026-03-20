@@ -814,21 +814,20 @@ export default function VirtualNumbersPage() {
           {/* Wallet Balance - Desktop */}
           <WalletDisplay variant="desktop" />
         </header>
-        {/* Search */}
-        <div className="mt-6 relative max-w-xl">
-          <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder={activeTab === 'monthly' ? 'Search countries...' : 'Search services (WhatsApp, Google, etc.)...'}
-            value={activeTab === 'monthly' ? searchQuery : otpSearchQuery}
-            onChange={(e) => activeTab === 'monthly' ? setSearchQuery(e.target.value) : setOtpSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-          />
-        </div>
+        <WalletDisplay variant="mobile" />
       </div>
 
-      {/* Wallet Balance - Mobile */}
-      <WalletDisplay variant="mobile" />
+      {/* Search */}
+      <div className="relative max-w-xl mb-6">
+        <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+        <input
+          type="text"
+          placeholder={activeTab === 'monthly' ? 'Search countries...' : 'Search services (WhatsApp, Google, etc.)...'}
+          value={activeTab === 'monthly' ? searchQuery : otpSearchQuery}
+          onChange={(e) => activeTab === 'monthly' ? setSearchQuery(e.target.value) : setOtpSearchQuery(e.target.value)}
+          className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+        />
+      </div>
 
       {/* Tab Switcher - Below Hero */}
       <div className="mb-8">

@@ -781,28 +781,28 @@ export default function EsimPage() {
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-2">
-              Travel eSIM Plans
+              eSIM Plans
             </h1>
             <p className="text-slate-500 text-sm lg:text-base max-w-2xl">
-              Stay connected anywhere in the world with instant eSIM activation. No physical SIM card needed.
+              Browse data-only eSIMs for travel or full carrier eSIMs with calls, SMS, and data — all activated instantly.
             </p>
           </div>
           <WalletDisplay variant="desktop" />
         </header>
-        {/* Search */}
-        <div className="mt-6 relative max-w-xl">
-          <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search countries..."
-            value={esimSearchQuery}
-            onChange={(e) => setEsimSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-          />
-        </div>
+        <WalletDisplay variant="mobile" />
       </div>
 
-      <WalletDisplay variant="mobile" />
+      {/* Search */}
+      <div className="relative max-w-xl mb-6">
+        <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+        <input
+          type="text"
+          placeholder="Search countries..."
+          value={esimSearchQuery}
+          onChange={(e) => setEsimSearchQuery(e.target.value)}
+          className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
+        />
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-2 p-1 bg-surface-dark rounded-xl border border-border-dark w-fit mb-8">
@@ -835,7 +835,7 @@ export default function EsimPage() {
           }`}
         >
           <Icon name="phone" size={18} />
-          Call + SMS + Data eSIMs
+          Full eSIMs
         </button>
       </div>
 
@@ -911,13 +911,12 @@ export default function EsimPage() {
           </div>
 
           {loadingCarrierPlans ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-charcoal border border-border-dark rounded-2xl p-5 animate-pulse">
-                  <div className="w-16 h-16 bg-slate-700 rounded-xl mx-auto mb-4" />
-                  <div className="h-4 bg-slate-700 rounded w-2/3 mx-auto mb-2" />
-                  <div className="h-3 bg-slate-700 rounded w-1/2 mx-auto mb-4" />
-                  <div className="h-9 bg-slate-700 rounded-lg w-full" />
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
+              {[...Array(18)].map((_, i) => (
+                <div key={i} className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden animate-pulse p-3">
+                  <div className="aspect-square w-full bg-slate-800 rounded-xl mb-2" />
+                  <div className="h-3 bg-slate-800 rounded w-3/4 mb-1.5" />
+                  <div className="h-3 bg-slate-800 rounded w-1/2" />
                 </div>
               ))}
             </div>
@@ -934,26 +933,37 @@ export default function EsimPage() {
               <p className="text-slate-500">Check back soon for carrier eSIM plans.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {carrierGroups.map((group) => (
-                <div key={group.carrierSlug} className="bg-charcoal border border-border-dark rounded-2xl p-5 flex flex-col items-center text-center hover:border-primary/50 transition-all">
-                  <ServiceLogo name={group.carrierSlug} size={56} className="mb-3" />
-                  <h3 className="font-bold text-white text-sm mb-1">{group.carrierName}</h3>
-                  <p className="text-xs text-slate-500 flex items-center gap-1 mb-1">
-                    <FlagIcon countryCode={group.country} className="w-4 h-3 rounded-sm" />
-                    {resolveCountryName(group.country, null)}
-                  </p>
-                  <p className="text-xs text-slate-400 mb-4">
-                    {group.plans.length} plan{group.plans.length !== 1 ? 's' : ''} &middot; from {formatPrice(Math.min(...group.plans.map(p => p.retailPrice)))}
-                  </p>
-                  <button
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
+              {carrierGroups.map((group) => {
+                const minPrice = Math.min(...group.plans.map(p => p.retailPrice))
+                return (
+                  <div
+                    key={group.carrierSlug}
                     onClick={() => setPlansModalCarrier(group)}
-                    className="w-full py-2.5 rounded-xl bg-primary text-black font-bold text-sm hover:brightness-105 transition-all"
+                    className="bg-[#121212] rounded-xl border border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden flex flex-col"
                   >
-                    Select Plan
-                  </button>
-                </div>
-              ))}
+                    <div className="p-3 pb-0">
+                      <div className="w-full aspect-square bg-white rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
+                        <ServiceLogo name={group.carrierSlug} size={80} className="rounded-lg" />
+                      </div>
+                    </div>
+                    <div className="p-3 pt-2 flex flex-col flex-grow">
+                      <div className="flex items-center gap-1 mb-1">
+                        <h3 className="font-bold text-[11px] text-white group-hover:text-primary transition-colors truncate">{group.carrierName}</h3>
+                        <FlagIcon countryCode={group.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
+                      </div>
+                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 mt-auto">
+                        <p className="text-[10px] text-slate-400">
+                          From <span className="text-slate-300">{formatPrice(minPrice)}</span>
+                        </p>
+                        <div className="px-2 py-1 rounded-md bg-primary text-black font-bold text-[9px] text-center group-hover:brightness-105 transition-all">
+                          Select Plan
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
 
