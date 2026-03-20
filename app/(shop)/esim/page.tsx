@@ -965,18 +965,13 @@ export default function EsimPage() {
                         <ServiceLogo name={group.carrierSlug} size={80} className="rounded-lg" />
                       </div>
                     </div>
-                    <div className="p-3 pt-2 flex flex-col flex-grow">
-                      <div className="flex items-center gap-1 mb-1">
-                        <h3 className="font-bold text-xs text-white group-hover:text-primary transition-colors truncate">{group.carrierName}</h3>
-                        <FlagIcon countryCode={group.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
-                      </div>
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 mt-auto">
-                        <p className="text-xs text-slate-400">
-                          From <span className="text-slate-300">{formatPrice(minPrice)}</span>
-                        </p>
-                        <div className="px-2 py-1 rounded-md bg-primary text-black font-bold text-[11px] text-center group-hover:brightness-105 transition-all">
-                          Select Plan
+                    <div className="p-3 pt-2">
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <h3 className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">{group.carrierName}</h3>
+                          <FlagIcon countryCode={group.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
                         </div>
+                        <p className="text-xs text-slate-300 flex-shrink-0">{formatPrice(minPrice)}</p>
                       </div>
                     </div>
                   </div>
