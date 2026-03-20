@@ -1135,19 +1135,20 @@ export default function ServiceLogo({ name, size = 32, className = '' }: Service
     }
   }, [name, domain])
 
-  // Fallback chain: Clearbit 256px -> Clearbit default -> Google 256px -> Letter avatar
-  // Skip DuckDuckGo/Yandex/direct favicon — they return tiny blurry icons
+  // Fallback chain: Clearbit 256 -> Clearbit default -> logo.dev -> Google 128 -> Letter avatar
   const handleError = () => {
     if (loadAttempt === 0 && domain) {
-      // Clearbit with size param failed, try without
       setLoadAttempt(1)
       setImgSrc(`https://logo.clearbit.com/${domain}`)
     } else if (loadAttempt === 1 && domain) {
-      // Clearbit failed entirely, try Google at max size
+      // Try logo.dev — usually high quality
       setLoadAttempt(2)
-      setImgSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=256`)
+      setImgSrc(`https://img.logo.dev/${domain}?token=pk_anonymous&size=200&format=png`)
+    } else if (loadAttempt === 2 && domain) {
+      // Google favicon as last resort
+      setLoadAttempt(3)
+      setImgSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`)
     } else {
-      // All high-res sources failed, use gradient letter avatar
       setLoadFailed(true)
     }
   }

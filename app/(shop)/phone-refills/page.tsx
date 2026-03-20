@@ -391,9 +391,9 @@ export default function PhoneRefillsPage() {
         onClick={() => handleToggle(operator)}
         className="group rounded-xl border border-border-dark hover:border-slate-600 overflow-hidden transition-all relative text-left aspect-square"
       >
-        {/* Logo centered at native resolution */}
-        <div className="absolute inset-0 flex items-center justify-center bg-white p-3">
-          <ServiceLogo name={operator.name} size={80} className="rounded-xl" />
+        {/* Logo fills card */}
+        <div className="absolute inset-0 flex items-center justify-center bg-white p-4">
+          <ServiceLogo name={operator.name} size={120} className="rounded-xl" />
         </div>
         {/* Dark gradient at bottom */}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black from-40% via-black/90 to-transparent pt-8 pb-2 px-2">
