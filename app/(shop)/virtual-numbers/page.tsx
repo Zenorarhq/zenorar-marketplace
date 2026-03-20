@@ -933,7 +933,7 @@ export default function VirtualNumbersPage() {
               )
               return (
                 <>
-                  <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                     {paginatedCountries.map((country) => (
                       <button
                         key={country.id}
