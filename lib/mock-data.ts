@@ -7,7 +7,7 @@ export const navCategories: NavItem[] = [
   { label: 'Phone Refills', href: '/phone-refills' },
   { label: 'Cards', href: '/cards' },
   { label: 'Gift Cards', href: '/gift-cards' },
-  { label: 'Utilities', href: '/utilities' },
+  // { label: 'Utilities', href: '/utilities' }, // Disabled — uncomment to re-enable
 ]
 
 export const recommendedProducts: Product[] = [

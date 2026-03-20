@@ -1,3 +1,10 @@
+// Utilities page is temporarily disabled.
+// To re-enable: remove the export below, uncomment the block, and re-add the nav link in lib/mock-data.ts.
+
+// Minimal export required by Next.js so the build doesn't fail (page.tsx must export a component)
+export default function UtilitiesPage() { return null }
+
+/*
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
@@ -75,7 +82,6 @@ export default function UtilitiesPage() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
   const [operatorPage, setOperatorPage] = useState(1)
 
-  // The currently expanded operator card (only one at a time)
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [selectedOffer, setSelectedOffer] = useState<UtilityOffer | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -88,7 +94,6 @@ export default function UtilitiesPage() {
     phone: string
   } | null>(null)
 
-  // Wallet/auth state
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
@@ -102,7 +107,6 @@ export default function UtilitiesPage() {
 
   const opKey = (op: UtilityOperator) => `${op.id}-${op.country}`
 
-  // Fetch electricity operators
   const { data: electricityOperators = [], isLoading: loadingElectricity } = useQuery({
     queryKey: ['utility-electricity-operators'],
     queryFn: async () => {
@@ -114,7 +118,6 @@ export default function UtilitiesPage() {
     gcTime: 10 * 60 * 1000,
   })
 
-  // Fetch data operators
   const { data: dataOperators = [], isLoading: loadingData } = useQuery({
     queryKey: ['utility-data-operators'],
     queryFn: async () => {
@@ -129,7 +132,6 @@ export default function UtilitiesPage() {
   const operators = activeTab === 'electricity' ? electricityOperators : dataOperators
   const loadingOperators = activeTab === 'electricity' ? loadingElectricity : loadingData
 
-  // Filter by search and sort by region priority
   const allFiltered = useMemo(() => {
     let list = operators
     if (searchQuery) {
@@ -141,8 +143,6 @@ export default function UtilitiesPage() {
           resolveCountryName(op.country).toLowerCase().includes(q)
       )
     }
-
-    // Sort by region priority, then alphabetically within each region
     return [...list].sort((a, b) => {
       const pa = REGION_PRIORITY[a.country.toUpperCase()] ?? 8
       const pb = REGION_PRIORITY[b.country.toUpperCase()] ?? 8
@@ -151,18 +151,14 @@ export default function UtilitiesPage() {
     })
   }, [operators, searchQuery])
 
-  // Pagination (over allFiltered for the main grid)
   const totalPages = Math.ceil(allFiltered.length / OPERATORS_PER_PAGE)
   const paginatedOperators = allFiltered.slice(
     (operatorPage - 1) * OPERATORS_PER_PAGE,
     operatorPage * OPERATORS_PER_PAGE
   )
 
-  useEffect(() => {
-    setOperatorPage(1)
-  }, [searchQuery, activeTab])
+  useEffect(() => { setOperatorPage(1) }, [searchQuery, activeTab])
 
-  // Fetch wallet balance
   const fetchWalletBalance = async () => {
     setLoadingBalance(true)
     try {
@@ -181,12 +177,9 @@ export default function UtilitiesPage() {
   }
 
   useEffect(() => {
-    if (isAuthenticated && walletBalance === null) {
-      fetchWalletBalance()
-    }
+    if (isAuthenticated && walletBalance === null) { fetchWalletBalance() }
   }, [isAuthenticated])
 
-  // Auto-continue purchase after login
   useEffect(() => {
     if (pendingWalletCheckout && isAuthenticated && walletBalance !== null && pendingOperator && selectedOffer) {
       setPendingWalletCheckout(false)
@@ -199,74 +192,53 @@ export default function UtilitiesPage() {
     }
   }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingOperator])
 
-  // Expand/collapse a carrier row
   const handleToggle = (op: UtilityOperator) => {
     const key = opKey(op)
     if (expandedKey === key) {
-      setExpandedKey(null)
-      setSelectedOffer(null)
-      setPhoneNumber('')
-      setCustomAmount('')
-      setPaymentError(null)
+      setExpandedKey(null); setSelectedOffer(null); setPhoneNumber(''); setCustomAmount(''); setPaymentError(null)
     } else {
-      setExpandedKey(key)
-      setSelectedOffer(null)
-      setPhoneNumber('')
-      setCustomAmount('')
-      setPaymentError(null)
+      setExpandedKey(key); setSelectedOffer(null); setPhoneNumber(''); setCustomAmount(''); setPaymentError(null)
     }
   }
 
-  // Process wallet payment
   const processWalletPayment = async (operator: UtilityOperator, offer: UtilityOffer, phone: string) => {
     const key = opKey(operator)
     setProcessingCard(key)
     setPaymentError(null)
-
     try {
       const token = localStorage.getItem('auth_token')
       const response = await fetch('/api/orders/instant', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
+        headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
         body: JSON.stringify({
-          items: [
-            {
-              productId: offer.offerId,
-              name: `${operator.name} Utility - ${offer.sendAmount} ${offer.sendCurrency}`,
-              quantity: 1,
-              price: offer.price,
+          items: [{
+            productId: offer.offerId,
+            name: `${operator.name} Utility - ${offer.sendAmount} ${offer.sendCurrency}`,
+            quantity: 1,
+            price: offer.price,
+            productType: 'utility',
+            metadata: {
               productType: 'utility',
-              metadata: {
-                productType: 'utility',
-                utilityType: activeTab,
-                offerId: offer.offerId,
-                recipientPhone: phone,
-                operatorName: operator.name,
-                country: operator.country,
-                sendAmount: offer.sendAmount,
-                sendCurrency: offer.sendCurrency,
-                providerCost: offer.cost,
-                ...(offer.priceType?.toUpperCase() === 'RANGE' && { value: offer.price }),
-              },
+              utilityType: activeTab,
+              offerId: offer.offerId,
+              recipientPhone: phone,
+              operatorName: operator.name,
+              country: operator.country,
+              sendAmount: offer.sendAmount,
+              sendCurrency: offer.sendCurrency,
+              providerCost: offer.cost,
+              ...(offer.priceType?.toUpperCase() === 'RANGE' && { value: offer.price }),
             },
-          ],
+          }],
           paymentMethod: 'wallet',
           total: offer.price,
         }),
       })
-
       const result = await response.json()
-
       if (result.success) {
         await fetchWalletBalance()
         setPurchaseSuccess({ operatorName: operator.name, offer, phone })
-        setExpandedKey(null)
-        setSelectedOffer(null)
-        setPhoneNumber('')
-        setPendingOperator(null)
+        setExpandedKey(null); setSelectedOffer(null); setPhoneNumber(''); setPendingOperator(null)
       } else {
         setPaymentError(result.error || 'Payment failed')
       }
@@ -277,56 +249,30 @@ export default function UtilitiesPage() {
     }
   }
 
-  // Handle Pay with Wallet
   const handlePayWithWallet = async (operator: UtilityOperator) => {
     if (!selectedOffer) return
     const phone = phoneNumber.replace(/[^+\d]/g, '')
     if (phone.length < 8) return
-
     setPaymentError(null)
-
-    if (!isAuthenticated) {
-      setPendingOperator(operator)
-      setShowLoginModal(true)
-      return
-    }
-
+    if (!isAuthenticated) { setPendingOperator(operator); setShowLoginModal(true); return }
     let currentBalance = walletBalance
     if (currentBalance === null) {
       setLoadingBalance(true)
       try {
         const result = await getBalance()
-        if (result.success && result.data) {
-          currentBalance = result.data.balance || 0
-          setWalletBalance(currentBalance)
-        } else {
-          setPaymentError('Failed to fetch wallet balance')
-          setLoadingBalance(false)
-          return
-        }
-      } catch {
-        setPaymentError('Failed to fetch wallet balance')
-        setLoadingBalance(false)
-        return
-      }
+        if (result.success && result.data) { currentBalance = result.data.balance || 0; setWalletBalance(currentBalance) }
+        else { setPaymentError('Failed to fetch wallet balance'); setLoadingBalance(false); return }
+      } catch { setPaymentError('Failed to fetch wallet balance'); setLoadingBalance(false); return }
       setLoadingBalance(false)
     }
-
-    if (currentBalance === null || currentBalance < selectedOffer.price) {
-      setPendingOperator(operator)
-      setShowDepositModal(true)
-      return
-    }
-
+    if (currentBalance === null || currentBalance < selectedOffer.price) { setPendingOperator(operator); setShowDepositModal(true); return }
     await processWalletPayment(operator, selectedOffer, phone)
   }
 
-  // Handle Add to Cart
   const handleAddToCart = (operator: UtilityOperator) => {
     if (!selectedOffer) return
     const phone = phoneNumber.replace(/[^+\d]/g, '')
     if (phone.length < 8) return
-
     const product = {
       id: `utility-${selectedOffer.offerId}-${Date.now()}`,
       name: `${operator.name} ${activeTab === 'electricity' ? 'Electricity' : 'Data'} (${selectedOffer.sendAmount} ${selectedOffer.sendCurrency})`,
@@ -353,77 +299,55 @@ export default function UtilitiesPage() {
         ...(selectedOffer.priceType?.toUpperCase() === 'RANGE' && { value: selectedOffer.price }),
       },
     }
-
     addItem(product, 'standard', selectedOffer.price)
     showAddedToCartPopup(product, selectedOffer.price)
   }
 
   const isReady = !!selectedOffer && phoneNumber.replace(/[^+\d]/g, '').length >= 8
 
-  // Pick up to 6 "quick-pick" amounts: prefer round numbers, spread across the range
   const getQuickPicks = (offers: UtilityOffer[]): UtilityOffer[] => {
     if (offers.length <= 6) return offers
-
     const sorted = [...offers].sort((a, b) => a.price - b.price)
     const roundTargets = [1, 2, 5, 10, 15, 20, 25, 30, 50, 75, 100]
     const picks: UtilityOffer[] = []
     const usedIds = new Set<string>()
-
     for (const target of roundTargets) {
       if (picks.length >= 6) break
       let best: UtilityOffer | null = null
       let bestDist = Infinity
       for (const o of sorted) {
         const dist = Math.abs(o.price - target)
-        if (dist < bestDist && !usedIds.has(o.offerId)) {
-          best = o
-          bestDist = dist
-        }
+        if (dist < bestDist && !usedIds.has(o.offerId)) { best = o; bestDist = dist }
       }
-      if (best && (bestDist <= target * 0.3 || bestDist <= 2)) {
-        picks.push(best)
-        usedIds.add(best.offerId)
-      }
+      if (best && (bestDist <= target * 0.3 || bestDist <= 2)) { picks.push(best); usedIds.add(best.offerId) }
     }
-
     if (picks.length < 6) {
       const remaining = sorted.filter((o) => !usedIds.has(o.offerId))
       const step = Math.max(1, Math.floor(remaining.length / (6 - picks.length)))
-      for (let i = 0; i < remaining.length && picks.length < 6; i += step) {
-        picks.push(remaining[i])
-      }
+      for (let i = 0; i < remaining.length && picks.length < 6; i += step) picks.push(remaining[i])
     }
-
     return picks.sort((a, b) => a.price - b.price)
   }
 
-  // Render a single operator card (ProductCard style)
   const renderOperatorCard = (operator: UtilityOperator) => {
     const key = opKey(operator)
-    const minPrice = operator.offers.length > 0 ? Math.min(...operator.offers.map((o) => o.price)) : 0
-
     return (
       <div
         key={key}
         onClick={() => handleToggle(operator)}
         className="bg-[#121212] rounded-xl border border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden flex flex-col"
       >
-        {/* Logo area */}
         <div className="p-3 pb-0">
           <div className="w-full aspect-square bg-white rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
             <ServiceLogo name={operator.name} size={80} className="rounded-lg" />
           </div>
         </div>
-        {/* Info */}
         <div className="p-3 pt-2 flex flex-col flex-grow">
           <div className="flex items-center gap-1 mb-1">
             <h3 className="font-bold text-[11px] text-white group-hover:text-primary transition-colors truncate">{operator.name}</h3>
             <FlagIcon countryCode={operator.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
           </div>
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 mt-auto">
-            <p className="text-[10px] text-slate-400">
-              From <span className="text-slate-300">{formatPrice(minPrice)}</span>
-            </p>
+          <div className="mt-auto">
             <div className="px-2 py-1 rounded-md bg-primary text-black font-bold text-[9px] text-center group-hover:brightness-105 transition-all">
               Select Plan
             </div>
@@ -433,7 +357,6 @@ export default function UtilitiesPage() {
     )
   }
 
-  // Render pagination
   const renderPagination = () => {
     if (totalPages <= 1) return null
     return (
@@ -442,19 +365,11 @@ export default function UtilitiesPage() {
           {(operatorPage - 1) * OPERATORS_PER_PAGE + 1} - {Math.min(operatorPage * OPERATORS_PER_PAGE, allFiltered.length)} of {allFiltered.length}
         </p>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setOperatorPage((p) => Math.max(1, p - 1))}
-            disabled={operatorPage === 1}
-            className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <button onClick={() => setOperatorPage((p) => Math.max(1, p - 1))} disabled={operatorPage === 1} className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             <Icon name="chevron-left" size={14} />
           </button>
           <span className="text-xs text-slate-400 px-2">{operatorPage} / {totalPages}</span>
-          <button
-            onClick={() => setOperatorPage((p) => Math.min(totalPages, p + 1))}
-            disabled={operatorPage === totalPages}
-            className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <button onClick={() => setOperatorPage((p) => Math.min(totalPages, p + 1))} disabled={operatorPage === totalPages} className="px-2 py-1 bg-surface-dark border border-border-dark rounded text-xs text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             <Icon name="chevron-right" size={14} />
           </button>
         </div>
@@ -464,139 +379,52 @@ export default function UtilitiesPage() {
 
   return (
     <main className="max-w-container mx-auto px-4 lg:px-12 pb-24">
-      {/* Auth Dialog */}
-      <AuthDialog
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        onSuccess={() => {
-          setShowLoginModal(false)
-          setPendingWalletCheckout(true)
-          fetchWalletBalance()
-        }}
-        defaultTab="login"
-      />
+      <AuthDialog isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} onSuccess={() => { setShowLoginModal(false); setPendingWalletCheckout(true); fetchWalletBalance() }} defaultTab="login" />
+      <DepositModal isOpen={showDepositModal} onClose={async () => { setShowDepositModal(false); const newBalance = await fetchWalletBalance(); if (pendingOperator && selectedOffer && newBalance !== null) { const phone = phoneNumber.replace(/[^+\d]/g, ''); if (newBalance >= selectedOffer.price && phone.length >= 8) processWalletPayment(pendingOperator, selectedOffer, phone) } }} />
 
-      {/* Deposit Modal */}
-      <DepositModal
-        isOpen={showDepositModal}
-        onClose={async () => {
-          setShowDepositModal(false)
-          const newBalance = await fetchWalletBalance()
-          if (pendingOperator && selectedOffer && newBalance !== null) {
-            const phone = phoneNumber.replace(/[^+\d]/g, '')
-            if (newBalance >= selectedOffer.price && phone.length >= 8) {
-              processWalletPayment(pendingOperator, selectedOffer, phone)
-            }
-          }
-        }}
-      />
-
-      {/* Breadcrumbs */}
       <div className="py-4">
         <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Utilities' }]} className="mb-0" />
       </div>
 
-      {/* Hero Section */}
       <div className="bg-gradient-to-r from-[#43D678]/20 via-[#43D678]/10 to-transparent rounded-2xl lg:rounded-3xl p-6 lg:p-12 mb-8 lg:mb-12">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-2xl lg:text-4xl font-extrabold text-white mb-2">Utilities</h1>
-            <p className="text-slate-500 text-sm lg:text-base max-w-2xl">
-              Pay for electricity, mobile data bundles, and more — delivered instantly via your phone number.
-            </p>
+            <p className="text-slate-500 text-sm lg:text-base max-w-2xl">Pay for electricity, mobile data bundles, and more — delivered instantly via your phone number.</p>
           </div>
           <WalletDisplay variant="desktop" />
         </header>
-        {/* Mobile: wallet inside hero */}
-        <div className="md:hidden mt-6">
-          <WalletDisplay variant="mobile" />
-        </div>
-        {/* Tablet+: search inside hero */}
+        <div className="md:hidden mt-6"><WalletDisplay variant="mobile" /></div>
         <div className="hidden md:block mt-6 relative max-w-xl">
           <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search operators..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-          />
+          <input type="text" placeholder="Search operators..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary" />
         </div>
       </div>
 
-      {/* Mobile: search below hero */}
       <div className="md:hidden relative max-w-xl mb-6">
         <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-        <input
-          type="text"
-          placeholder="Search operators..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-        />
+        <input type="text" placeholder="Search operators..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-charcoal border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary" />
       </div>
-      {/* Tablet: wallet below hero */}
-      <div className="hidden md:block lg:hidden mb-6">
-        <WalletDisplay variant="mobile" />
-      </div>
+      <div className="hidden md:block lg:hidden mb-6"><WalletDisplay variant="mobile" /></div>
 
-      {/* Tabs */}
       <div className="flex gap-2 p-1 bg-surface-dark rounded-xl border border-border-dark w-fit mb-8">
-        <button
-          onClick={() => {
-            setActiveTab('electricity')
-            setExpandedKey(null)
-            setSelectedOffer(null)
-            router.replace('/utilities?tab=electricity', { scroll: false })
-          }}
-          className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
-            activeTab === 'electricity'
-              ? 'bg-primary text-black'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Icon name="zap" size={18} />
-          Electricity
+        <button onClick={() => { setActiveTab('electricity'); setExpandedKey(null); setSelectedOffer(null); router.replace('/utilities?tab=electricity', { scroll: false }) }} className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${activeTab === 'electricity' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'}`}>
+          <Icon name="zap" size={18} /> Electricity
         </button>
-        <button
-          onClick={() => {
-            setActiveTab('data')
-            setExpandedKey(null)
-            setSelectedOffer(null)
-            router.replace('/utilities?tab=data', { scroll: false })
-          }}
-          className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${
-            activeTab === 'data'
-              ? 'bg-primary text-black'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Icon name="wifi" size={18} />
-          Mobile Data
+        <button onClick={() => { setActiveTab('data'); setExpandedKey(null); setSelectedOffer(null); router.replace('/utilities?tab=data', { scroll: false }) }} className={`flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg font-medium transition-colors ${activeTab === 'data' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'}`}>
+          <Icon name="wifi" size={18} /> Mobile Data
         </button>
       </div>
 
-      {/* Success Banner */}
       {purchaseSuccess && (
         <div className="mb-8 bg-green-500/10 border border-green-500/20 rounded-2xl p-6 text-center">
-          <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3">
-            <Icon name="check" size={28} className="text-green-400" />
-          </div>
+          <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3"><Icon name="check" size={28} className="text-green-400" /></div>
           <h2 className="text-xl font-bold text-white mb-1">Payment Sent!</h2>
-          <p className="text-slate-400 text-sm">
-            {purchaseSuccess.offer.sendAmount} {purchaseSuccess.offer.sendCurrency} sent to {purchaseSuccess.phone} via{' '}
-            {purchaseSuccess.operatorName}
-          </p>
-          <button
-            onClick={() => setPurchaseSuccess(null)}
-            className="mt-4 px-5 py-2.5 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all text-sm"
-          >
-            Send Another
-          </button>
+          <p className="text-slate-400 text-sm">{purchaseSuccess.offer.sendAmount} {purchaseSuccess.offer.sendCurrency} sent to {purchaseSuccess.phone} via {purchaseSuccess.operatorName}</p>
+          <button onClick={() => setPurchaseSuccess(null)} className="mt-4 px-5 py-2.5 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all text-sm">Send Another</button>
         </div>
       )}
 
-      {/* Loading */}
       {loadingOperators && (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
           {[...Array(18)].map((_, i) => (
@@ -609,85 +437,53 @@ export default function UtilitiesPage() {
         </div>
       )}
 
-      {/* Empty */}
       {!loadingOperators && allFiltered.length === 0 && (
         <div className="text-center py-16 bg-charcoal border border-border-dark rounded-2xl">
           <Icon name={activeTab === 'electricity' ? 'zap' : 'wifi'} size={48} className="text-slate-600 mx-auto mb-4" />
-          <h3 className="text-white font-bold mb-2">
-            {searchQuery ? 'No operators found' : 'No operators available'}
-          </h3>
-          <p className="text-slate-500">
-            {searchQuery ? 'Try a different search term' : `${activeTab === 'electricity' ? 'Electricity' : 'Mobile data'} operators will appear here once configured.`}
-          </p>
+          <h3 className="text-white font-bold mb-2">{searchQuery ? 'No operators found' : activeTab === 'electricity' ? 'Coming Soon' : 'No operators available'}</h3>
+          <p className="text-slate-500">{searchQuery ? 'Try a different search term' : activeTab === 'electricity' ? 'Prepaid electricity payments are coming soon. Stay tuned!' : 'Mobile data operators will appear here once configured.'}</p>
         </div>
       )}
 
-      {/* Main Operator Grid */}
       {!loadingOperators && allFiltered.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-white">
-              {searchQuery ? 'Search Results' : activeTab === 'electricity' ? 'Electricity Operators' : 'Data Operators'}
-            </h2>
+            <h2 className="text-lg font-bold text-white">{searchQuery ? 'Search Results' : activeTab === 'electricity' ? 'Electricity Operators' : 'Data Operators'}</h2>
             <span className="text-slate-500 text-sm">{allFiltered.length} operators</span>
           </div>
-
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5">
             {paginatedOperators.map((op) => renderOperatorCard(op))}
           </div>
-
           {renderPagination()}
         </>
       )}
 
-      {/* Amount Selection Modal */}
       {expandedKey && (() => {
         const operator = allFiltered.find((op) => opKey(op) === expandedKey)
         if (!operator) return null
         const isProcessing = processingCard === expandedKey
-
-        // Determine pricing mode
         const rangeOffer = operator.offers.find((o) => o.priceType.toUpperCase() === 'RANGE')
         const allSorted = [...operator.offers].sort((a, b) => a.price - b.price)
-        // Treat as "use custom input" if explicitly RANGE or has too many fixed offers (>10)
         const hasManyOffers = allSorted.length > 10
         const useCustomInput = !!rangeOffer || hasManyOffers
-        const quickPicks = getQuickPicks(operator.offers)
-
-        // Min/max for custom input
         const minPrice = allSorted.length > 0 ? allSorted[0].price : 0
         const maxPrice = allSorted.length > 0 ? allSorted[allSorted.length - 1].price : 100
         const effectiveMin = rangeOffer?.priceMin ?? minPrice
         const effectiveMax = rangeOffer?.priceMax ?? maxPrice
-
-        // For custom input: build a synthetic selectedOffer from the typed amount
         const customAmountNum = parseFloat(customAmount)
-        const isCustomValid = useCustomInput && !isNaN(customAmountNum)
-          && customAmountNum >= effectiveMin
-          && customAmountNum <= effectiveMax
-
-        // Find the closest actual offer for the custom amount (for FIXED operators with many offers)
+        const isCustomValid = useCustomInput && !isNaN(customAmountNum) && customAmountNum >= effectiveMin && customAmountNum <= effectiveMax
         const findClosestOffer = (amount: number) => {
           if (rangeOffer) return { ...rangeOffer, price: amount, sendAmount: amount }
-          let closest = allSorted[0]
-          let minDist = Infinity
-          for (const o of allSorted) {
-            const dist = Math.abs(o.price - amount)
-            if (dist < minDist) { closest = o; minDist = dist }
-          }
+          let closest = allSorted[0]; let minDist = Infinity
+          for (const o of allSorted) { const dist = Math.abs(o.price - amount); if (dist < minDist) { closest = o; minDist = dist } }
           return closest
         }
-
-        // Effective selected offer
-        const effectiveOffer = useCustomInput
-          ? (isCustomValid ? findClosestOffer(customAmountNum) : null)
-          : selectedOffer
+        const effectiveOffer = useCustomInput ? (isCustomValid ? findClosestOffer(customAmountNum) : null) : selectedOffer
         const isReadyModal = !!effectiveOffer && phoneNumber.replace(/[^+\d]/g, '').length >= 8
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => handleToggle(operator)}>
             <div className="bg-[#1a1a1a] border border-border-dark rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              {/* Modal header */}
               <div className="flex items-center justify-between p-5 border-b border-border-dark">
                 <div className="flex items-center gap-3">
                   <ServiceLogo name={operator.name} size={40} className="rounded-lg" />
@@ -699,54 +495,27 @@ export default function UtilitiesPage() {
                     </div>
                   </div>
                 </div>
-                <button onClick={() => handleToggle(operator)} className="p-2 text-slate-500 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
-                  <Icon name="x" size={18} />
-                </button>
+                <button onClick={() => handleToggle(operator)} className="p-2 text-slate-500 hover:text-white rounded-lg hover:bg-white/10 transition-colors"><Icon name="x" size={18} /></button>
               </div>
-
-              {/* Amount selection */}
               <div className="p-5">
                 {useCustomInput ? (
-                  /* Custom amount input only */
                   <div>
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Enter Amount</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                      <input
-                        type="number"
-                        min={effectiveMin}
-                        max={effectiveMax}
-                        step="1"
-                        placeholder={`${effectiveMin} – ${effectiveMax}`}
-                        value={customAmount}
-                        onChange={(e) => { setCustomAmount(e.target.value); setPaymentError(null) }}
-                        className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white text-lg font-bold placeholder:text-slate-500 placeholder:font-normal placeholder:text-sm focus:ring-2 focus:ring-primary focus:border-primary"
-                      />
+                      <input type="number" min={effectiveMin} max={effectiveMax} step="1" placeholder={`${effectiveMin} – ${effectiveMax}`} value={customAmount} onChange={(e) => { setCustomAmount(e.target.value); setPaymentError(null) }} className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white text-lg font-bold placeholder:text-slate-500 placeholder:font-normal placeholder:text-sm focus:ring-2 focus:ring-primary focus:border-primary" />
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Min {formatPrice(effectiveMin)} · Max {formatPrice(effectiveMax)}
-                    </p>
+                    <p className="text-xs text-slate-500 mt-2">Min {formatPrice(effectiveMin)} · Max {formatPrice(effectiveMax)}</p>
                   </div>
                 ) : (
-                  /* Few FIXED offers: show grid */
                   <div>
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Select Amount</label>
                     <div className="grid grid-cols-3 gap-2">
                       {allSorted.map((offer) => (
-                        <button
-                          key={offer.offerId}
-                          onClick={() => { setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer); setPaymentError(null) }}
-                          className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${
-                            selectedOffer?.offerId === offer.offerId
-                              ? 'bg-primary text-black ring-2 ring-primary/30'
-                              : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
-                          }`}
-                        >
+                        <button key={offer.offerId} onClick={() => { setSelectedOffer(selectedOffer?.offerId === offer.offerId ? null : offer); setPaymentError(null) }} className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${selectedOffer?.offerId === offer.offerId ? 'bg-primary text-black ring-2 ring-primary/30' : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'}`}>
                           <span className="block">{formatPrice(offer.price)}</span>
                           {offer.sendCurrency !== 'USD' && offer.sendAmount !== offer.price && (
-                            <span className="block text-[10px] font-normal mt-0.5 opacity-60">
-                              {offer.sendAmount} {offer.sendCurrency}
-                            </span>
+                            <span className="block text-[10px] font-normal mt-0.5 opacity-60">{offer.sendAmount} {offer.sendCurrency}</span>
                           )}
                         </button>
                       ))}
@@ -754,67 +523,25 @@ export default function UtilitiesPage() {
                   </div>
                 )}
               </div>
-
-              {/* Phone + Actions */}
               {(useCustomInput ? isCustomValid : !!selectedOffer) && (
                 <div className="px-5 pb-5 space-y-3 border-t border-border-dark pt-4">
-                  {/* Summary */}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-400">Amount</span>
-                    <span className="text-primary font-extrabold text-lg">
-                      {formatPrice(effectiveOffer!.price)}
-                    </span>
+                    <span className="text-primary font-extrabold text-lg">{formatPrice(effectiveOffer!.price)}</span>
                   </div>
-
-                  {/* Phone input */}
                   <div className="relative">
                     <Icon name="phone" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input
-                      type="tel"
-                      placeholder="+1 234 567 8900"
-                      value={phoneNumber}
-                      onChange={(e) => { setPhoneNumber(e.target.value); setPaymentError(null) }}
-                      className="w-full pl-9 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary"
-                    />
+                    <input type="tel" placeholder="+1 234 567 8900" value={phoneNumber} onChange={(e) => { setPhoneNumber(e.target.value); setPaymentError(null) }} className="w-full pl-9 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white text-sm placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary" />
                   </div>
-
-                  {/* Actions */}
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        if (useCustomInput && effectiveOffer) {
-                          setSelectedOffer(effectiveOffer)
-                        }
-                        handlePayWithWallet(operator)
-                      }}
-                      disabled={!isReadyModal || isProcessing || loadingBalance}
-                      className="flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      {isProcessing ? (
-                        <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /> Processing...</>
-                      ) : loadingBalance ? (
-                        <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /> Checking...</>
-                      ) : (
-                        <><Icon name="wallet" size={16} /> Pay with Wallet</>
-                      )}
+                    <button onClick={() => { if (useCustomInput && effectiveOffer) setSelectedOffer(effectiveOffer); handlePayWithWallet(operator) }} disabled={!isReadyModal || isProcessing || loadingBalance} className="flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                      {isProcessing ? <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /> Processing...</> : loadingBalance ? <><div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent" /> Checking...</> : <><Icon name="wallet" size={16} /> Pay with Wallet</>}
                     </button>
-                    <button
-                      onClick={() => {
-                        if (useCustomInput && effectiveOffer) {
-                          setSelectedOffer(effectiveOffer)
-                        }
-                        handleAddToCart(operator)
-                      }}
-                      disabled={!isReadyModal}
-                      className="flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
+                    <button onClick={() => { if (useCustomInput && effectiveOffer) setSelectedOffer(effectiveOffer); handleAddToCart(operator) }} disabled={!isReadyModal} className="flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-surface-dark border border-border-dark text-white hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed text-sm">
                       <Icon name="cart" size={16} /> Add to Cart
                     </button>
                   </div>
-
-                  {paymentError && !isProcessing && (
-                    <p className="text-xs text-red-400 text-center">{paymentError}</p>
-                  )}
+                  {paymentError && !isProcessing && <p className="text-xs text-red-400 text-center">{paymentError}</p>}
                 </div>
               )}
             </div>
@@ -824,3 +551,4 @@ export default function UtilitiesPage() {
     </main>
   )
 }
+*/
