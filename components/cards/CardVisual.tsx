@@ -531,41 +531,41 @@ export default function CardVisual({
   )
 
   if (flippable) {
+    // Cross-fade approach instead of CSS 3D rotateY:
+    // iOS Safari's overflow:hidden on child elements flattens the 3D context,
+    // causing backface-visibility to fail and show mirrored content mid-flip.
     return (
       <div
-        className={className}
+        className={`${className} relative`}
         onClick={handleFlip}
-        style={{ perspective: '1000px', WebkitPerspective: '1000px', cursor: 'pointer' }}
+        style={{ cursor: 'pointer' }}
       >
+        {/* Front face */}
         <div
-          className="relative"
           style={{
-            transformStyle: 'preserve-3d',
-            WebkitTransformStyle: 'preserve-3d',
-            transition: 'transform 0.5s',
-            WebkitTransition: '-webkit-transform 0.5s',
-            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-            WebkitTransform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+            transition: 'opacity 0.25s ease, transform 0.25s ease',
+            opacity: isFlipped ? 0 : 1,
+            transform: isFlipped ? 'scale(0.94)' : 'scale(1)',
+            pointerEvents: isFlipped ? 'none' : 'auto',
           }}
         >
-          <div style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
-            <CardFront />
-          </div>
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden',
-              transform: 'rotateY(180deg)',
-              WebkitTransform: 'rotateY(180deg)',
-            }}
-          >
-            <CardBack />
-          </div>
+          <CardFront />
+        </div>
+        {/* Back face */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            transition: 'opacity 0.25s ease, transform 0.25s ease',
+            opacity: isFlipped ? 1 : 0,
+            transform: isFlipped ? 'scale(1)' : 'scale(0.94)',
+            pointerEvents: isFlipped ? 'auto' : 'none',
+          }}
+        >
+          <CardBack />
         </div>
       </div>
     )
