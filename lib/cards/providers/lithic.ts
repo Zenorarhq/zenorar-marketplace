@@ -88,6 +88,7 @@ class LithicProvider implements CardProviderInterface {
       const data = await response.json()
 
       if (!response.ok) {
+        console.error('[Lithic] Card creation failed:', { status: response.status, data })
         return {
           success: false,
           error: data.message || data.error || 'Failed to create card'
@@ -154,28 +155,24 @@ class LithicProvider implements CardProviderInterface {
 
   /**
    * Get full card details including PAN (sensitive - for reveal)
+   * Uses Lithic's expand parameter to include the full card number
    */
   private async getFullCardDetails(cardToken: string, credentials: LithicCredentials): Promise<{pan: string, cvv: string} | null> {
     try {
-      const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/cards/${cardToken}/provision`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          digital_wallet: 'GOOGLE_PAY', // Just to get card details
-          certificate: '',
-          nonce: '',
-          nonce_signature: ''
-        })
-      })
+      const response = await fetch(
+        `${this.getBaseUrl(credentials.isSandbox)}/v1/cards/${cardToken}?expand[]=pan&expand[]=cvv`,
+        {
+          headers: {
+            'Authorization': `Bearer ${credentials.apiKey}`
+          }
+        }
+      )
 
       if (!response.ok) return null
 
       const data = await response.json()
       return {
-        pan: data.card_number || '',
+        pan: data.pan || '',
         cvv: data.cvv || ''
       }
     } catch {

@@ -10,7 +10,7 @@ import {
 } from '@/lib/cards/service'
 import { getProvider } from '@/lib/cards/providers'
 import type { CardProvider, CardType, CardBrand } from '@/lib/cards/types'
-import { executeQuery, getSiteSettingsByGroup } from '@/lib/db-helpers'
+import { executeQuery } from '@/lib/db-helpers'
 import { query } from '@/lib/db'
 import { isTestModeEnabled } from '@/lib/test-mode'
 
@@ -248,11 +248,9 @@ export async function POST(request: NextRequest) {
       [walletBalanceId, totalCost, balanceBefore, balanceAfter, `${cardDisplayName} - Order #${finalOrderNumber}`, orderId]
     )
 
-    // In sandbox/test mode, skip real provider and use mock data
+    // In sandbox mode, skip real provider and use mock data
     const testMode = await isTestModeEnabled()
-    const apiSettings = testMode ? {} : await getSiteSettingsByGroup('api')
-    const lithicSandbox = apiSettings.lithicMode === 'sandbox' || apiSettings.lithicSandbox === true
-    if (testMode || lithicSandbox) {
+    if (testMode) {
       const mockResult = {
         success: true,
         cardId: `TEST-${Date.now()}`,
