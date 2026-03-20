@@ -95,7 +95,6 @@ const BRAND_POPULARITY: Record<string, number> = {
   'mobile legends':33,
   'clash of clans':34,'supercell':34,
   'pokemon':35,'pokemon go':35,
-  'google play':36,'google play gift card':36,
   // Streaming
   'netflix':20,'netflix gift card':20,
   'hulu':21,
