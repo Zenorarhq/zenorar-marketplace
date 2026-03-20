@@ -254,6 +254,36 @@ export default function CardsPage() {
     }
   }, [isAuthenticated, pendingCheckout, processWalletPayment])
 
+  // Handle adding virtual card to cart
+  const handleAddVirtualToCart = (provider: CardProvider) => {
+    const isPremium = provider.isPremium
+    const product = {
+      id: `virtual-card-${provider.provider}-${Date.now()}`,
+      name: isPremium ? 'Premium Visa Virtual Card' : 'Visa Virtual Card',
+      slug: 'virtual-card-service',
+      description: isPremium ? '3D Secure enabled reloadable virtual card' : 'Reloadable virtual card for online payments',
+      price: provider.creationFee,
+      rating: 5,
+      reviewCount: 0,
+      category: 'Virtual Cards',
+      icon: 'credit-card',
+      iconColor: 'primary',
+      tags: ['Visa', 'Virtual Card'],
+      productType: 'virtual_card',
+      product_type: 'virtual_card',
+      image: undefined,
+      metadata: {
+        productType: 'virtual_card',
+        provider: provider.provider,
+        cardType: 'virtual',
+        brand: provider.cardBrand || 'visa',
+        isPremium,
+      }
+    }
+    addItem(product, 'standard', provider.creationFee)
+    showAddedToCartPopup(product, provider.creationFee)
+  }
+
   // Handle adding instant card to cart
   const handleAddToCart = (denomination: { value: number; totalPrice: number; brand: string }) => {
     const brandName = denomination.brand === 'mastercard' ? 'Mastercard' : 'Visa'
@@ -440,6 +470,7 @@ export default function CardsPage() {
                 provider={provider}
                 formatPrice={formatPrice}
                 onPayWithWallet={() => handlePayWithWallet(provider.provider, undefined, provider.creationFee)}
+                onAddToCart={() => handleAddVirtualToCart(provider)}
                 processing={processingPayment === `virtual-${provider.provider}`}
                 loadingBalance={loadingBalance}
                 isAuthenticated={isAuthenticated}
@@ -529,6 +560,7 @@ function VirtualCardOption({
   provider,
   formatPrice,
   onPayWithWallet,
+  onAddToCart,
   processing,
   loadingBalance,
   isAuthenticated
@@ -536,6 +568,7 @@ function VirtualCardOption({
   provider: CardProvider
   formatPrice: (price: number) => string
   onPayWithWallet: () => void
+  onAddToCart: () => void
   processing: boolean
   loadingBalance: boolean
   isAuthenticated: boolean
@@ -581,34 +614,39 @@ function VirtualCardOption({
         </div>
       </div>
 
-      {/* Action Button */}
-      <button
-        onClick={onPayWithWallet}
-        disabled={processing || loadingBalance}
-        className="w-full py-2.5 lg:py-3 bg-primary text-black rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
-      >
-        {processing ? (
-          <>
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
-            <span>Processing...</span>
-          </>
-        ) : loadingBalance ? (
-          <>
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
-            <span>Checking Balance...</span>
-          </>
-        ) : isAuthenticated ? (
-          <>
-            <Icon name="wallet" size={16} />
-            <span>Pay {formatPrice(provider.creationFee)} with Wallet</span>
-          </>
-        ) : (
-          <>
-            <Icon name="wallet" size={16} />
-            <span>Pay with Wallet</span>
-          </>
-        )}
-      </button>
+      {/* Action Buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={onPayWithWallet}
+          disabled={processing || loadingBalance}
+          className="flex-1 py-2.5 lg:py-3 bg-primary text-black rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
+        >
+          {processing ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+              <span>Processing...</span>
+            </>
+          ) : loadingBalance ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+              <span>Checking...</span>
+            </>
+          ) : (
+            <>
+              <Icon name="wallet" size={16} />
+              <span>{isAuthenticated ? `Pay ${formatPrice(provider.creationFee)}` : 'Pay with Wallet'}</span>
+            </>
+          )}
+        </button>
+        <button
+          onClick={onAddToCart}
+          disabled={processing}
+          className="flex-1 py-2.5 lg:py-3 bg-surface-dark border border-border-dark text-white rounded-lg font-medium hover:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm lg:text-base"
+        >
+          <Icon name="cart" size={16} />
+          <span>Add to Cart</span>
+        </button>
+      </div>
     </div>
   )
 }

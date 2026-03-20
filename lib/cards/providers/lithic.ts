@@ -61,10 +61,18 @@ class LithicProvider implements CardProviderInterface {
     }
 
     try {
-      // First, ensure account holder exists
+      // Attempt to get an account token (best-effort — not required in sandbox)
       const accountToken = await this.getOrCreateAccount(params.userId, credentials)
-      if (!accountToken) {
-        return { success: false, error: 'Failed to create account' }
+
+      // Build card payload — omit account_token if not available (sandbox allows this)
+      const cardPayload: Record<string, any> = {
+        type: 'VIRTUAL',
+        spending_limit: 1000000, // $10,000 in cents
+        spending_limit_duration: 'TRANSACTION',
+        state: 'OPEN',
+      }
+      if (accountToken) {
+        cardPayload.account_token = accountToken
       }
 
       // Create the virtual card with 3D Secure enabled
@@ -74,15 +82,7 @@ class LithicProvider implements CardProviderInterface {
           'Authorization': `Bearer ${credentials.apiKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          account_token: accountToken,
-          type: 'VIRTUAL',
-          spending_limit: 1000000, // $10,000 in cents
-          spending_limit_duration: 'TRANSACTION',
-          state: 'OPEN',
-          digital_card_art_token: null,
-          product_id: null
-        })
+        body: JSON.stringify(cardPayload)
       })
 
       const data = await response.json()
