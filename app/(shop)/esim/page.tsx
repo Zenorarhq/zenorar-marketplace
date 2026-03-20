@@ -971,7 +971,7 @@ export default function EsimPage() {
                           <h3 className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">{group.carrierName}</h3>
                           <FlagIcon countryCode={group.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
                         </div>
-                        <p className="text-xs text-slate-300 flex-shrink-0">{formatPrice(minPrice)}</p>
+                        <p className="text-xs text-slate-400 flex-shrink-0">From <span className="text-slate-300">{formatPrice(minPrice)}</span></p>
                       </div>
                     </div>
                   </div>
