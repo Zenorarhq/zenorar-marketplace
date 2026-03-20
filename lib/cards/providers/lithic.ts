@@ -79,7 +79,7 @@ class LithicProvider implements CardProviderInterface {
       const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/cards`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
+          'Authorization': credentials.apiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(cardPayload)
@@ -126,7 +126,7 @@ class LithicProvider implements CardProviderInterface {
     try {
       const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/cards/${cardId}`, {
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`
+          'Authorization': credentials.apiKey
         }
       })
 
@@ -163,7 +163,7 @@ class LithicProvider implements CardProviderInterface {
         `${this.getBaseUrl(credentials.isSandbox)}/v1/cards/${cardToken}?expand[]=pan&expand[]=cvv`,
         {
           headers: {
-            'Authorization': `Bearer ${credentials.apiKey}`
+            'Authorization': credentials.apiKey
           }
         }
       )
@@ -187,7 +187,7 @@ class LithicProvider implements CardProviderInterface {
     try {
       const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/cards/${cardToken}/spend_limits`, {
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`
+          'Authorization': credentials.apiKey
         }
       })
 
@@ -215,7 +215,7 @@ class LithicProvider implements CardProviderInterface {
       // Get the card to find the account token
       const cardResponse = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/cards/${cardId}`, {
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`
+          'Authorization': credentials.apiKey
         }
       })
 
@@ -229,7 +229,7 @@ class LithicProvider implements CardProviderInterface {
       const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/simulate/funding`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
+          'Authorization': credentials.apiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -273,7 +273,7 @@ class LithicProvider implements CardProviderInterface {
       const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/cards/${cardId}`, {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
+          'Authorization': credentials.apiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -305,7 +305,7 @@ class LithicProvider implements CardProviderInterface {
       const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/cards/${cardId}`, {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
+          'Authorization': credentials.apiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -336,7 +336,7 @@ class LithicProvider implements CardProviderInterface {
         `${this.getBaseUrl(credentials.isSandbox)}/v1/transactions?card_token=${cardId}&page_size=${limit}`,
         {
           headers: {
-            'Authorization': `Bearer ${credentials.apiKey}`
+            'Authorization': credentials.apiKey
           }
         }
       )
@@ -372,7 +372,7 @@ class LithicProvider implements CardProviderInterface {
     try {
       const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/cards?page_size=1`, {
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`
+          'Authorization': credentials.apiKey
         }
       })
 
@@ -411,7 +411,7 @@ class LithicProvider implements CardProviderInterface {
       const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/accounts`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
+          'Authorization': credentials.apiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -423,7 +423,7 @@ class LithicProvider implements CardProviderInterface {
         // Try to get existing accounts
         const listResponse = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/accounts?page_size=1`, {
           headers: {
-            'Authorization': `Bearer ${credentials.apiKey}`
+            'Authorization': credentials.apiKey
           }
         })
 

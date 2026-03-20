@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
   // Actually test the Lithic connection
   try {
     const response = await fetch(`${baseUrl}/v1/cards?page_size=1`, {
-      headers: { 'Authorization': `Bearer ${resolvedKey}` }
+      headers: { 'Authorization': resolvedKey }
     })
     const data = await response.json()
 
