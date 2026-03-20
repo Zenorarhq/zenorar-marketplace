@@ -383,6 +383,7 @@ export default function PhoneRefillsPage() {
   // Render a single operator card (ProductCard style)
   const renderOperatorCard = (operator: TopupOperator) => {
     const key = opKey(operator)
+    const minPrice = operator.offers.length > 0 ? Math.min(...operator.offers.map((o) => o.price)) : 0
 
     return (
       <div
@@ -402,10 +403,9 @@ export default function PhoneRefillsPage() {
             <h3 className="font-bold text-[11px] text-white group-hover:text-primary transition-colors truncate">{operator.name}</h3>
             <FlagIcon countryCode={operator.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
           </div>
-          <div className="mt-auto">
-            <div className="px-2 py-1 rounded-md bg-primary text-black font-bold text-[9px] text-center group-hover:brightness-105 transition-all">
-              Select Amount
-            </div>
+          <div className="flex items-center justify-between mt-auto">
+            <span className="text-[10px] text-slate-400">From</span>
+            <span className="text-[10px] text-slate-300 font-semibold">{formatPrice(minPrice)}</span>
           </div>
         </div>
       </div>
