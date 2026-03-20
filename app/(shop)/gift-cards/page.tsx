@@ -1172,15 +1172,7 @@ export default function GiftCardsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal image header */}
-              <div className={`relative h-36 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden rounded-t-2xl`}>
-                {getCardImage(card) ? (
-                  <img src={getCardImage(card)!} alt={card.brand} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }} />
-                ) : null}
-                <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
-                  <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                    <Icon name="gift" size={32} className="text-white/80" />
-                  </div>
-                </div>
+              <GiftCardVisual card={card} height="h-36" extraClass="rounded-t-2xl">
                 <button onClick={closeModal} className="absolute top-3 right-3 p-1.5 bg-black/50 hover:bg-black/70 rounded-lg text-white transition-colors">
                   <Icon name="x" size={16} />
                 </button>
@@ -1189,7 +1181,7 @@ export default function GiftCardsPage() {
                     {card.discountPercent}% OFF
                   </span>
                 )}
-              </div>
+              </GiftCardVisual>
 
               <div className="p-5">
                 <h3 className="font-bold text-white text-lg mb-0.5">{card.brand}</h3>
