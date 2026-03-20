@@ -862,7 +862,7 @@ export default function VirtualNumbersPage() {
             : 'One-time numbers for SMS verification'}
         </p>
         {activeTab === 'monthly' && (
-          <div className="mt-4 relative max-w-xl">
+          <div className="mt-4 relative max-w-xl md:hidden">
             <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
