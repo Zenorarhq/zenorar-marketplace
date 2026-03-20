@@ -38,13 +38,24 @@ interface Category {
 
 const categoryIcons: Record<string, string> = {
   gaming: 'zap',
-  streaming: 'play-circle',
   shopping: 'cart',
+  software: 'code',
   food: 'heart',
+  payment: 'wallet',
   travel: 'airplane',
+  streaming: 'play-circle',
   entertainment: 'video',
   retail: 'store',
-  other: 'gift'
+  other: 'wallet',
+}
+
+// Display order for category tabs
+const CATEGORY_ORDER = ['gaming', 'shopping', 'software', 'food', 'payment', 'travel', 'streaming', 'entertainment', 'retail']
+
+// Rename categories for display
+const CATEGORY_DISPLAY_NAME: Record<string, string> = {
+  other: 'Payment',
+  payment: 'Payment',
 }
 
 // Popularity-based brand ordering (lower = appears first), modelled after Bitrefill US
@@ -57,17 +68,34 @@ const BRAND_POPULARITY: Record<string, number> = {
   'visa':4,'visa gift card':4,
   'mastercard':5,'mastercard gift card':5,
   'american express':6,'amex':6,
-  // Gaming
-  'steam':10,'steam gift card':10,
-  'playstation':11,'psn':11,'playstation network':11,'playstation store':11,
-  'xbox':12,'xbox gift card':12,'microsoft':12,'microsoft gift card':12,
-  'nintendo':13,'nintendo eshop':13,'nintendo switch':13,
-  'roblox':14,
-  'fortnite':15,'epic games':15,
-  'league of legends':16,'riot games':16,'riot points':16,
-  'minecraft':17,
-  'pubg':18,
-  'valorant':19,
+  // Gaming — Bitrefill US order
+  'steam':10,'steam gift card':10,'steam wallet':10,
+  'playstation':11,'psn':11,'playstation network':11,'playstation store':11,'ps store':11,
+  'xbox':12,'xbox gift card':12,'microsoft':12,'microsoft gift card':12,'xbox live':12,
+  'nintendo':13,'nintendo eshop':13,'nintendo switch':13,'nintendo switch online':13,
+  'roblox':14,'roblox gift card':14,
+  'fortnite':15,'epic games':15,'fortnite v-bucks':15,
+  'league of legends':16,'riot games':16,'riot points':16,'lol':16,
+  'valorant':17,'valorant points':17,
+  'minecraft':18,
+  'pubg':19,'pubg mobile':19,
+  'razer gold':20,'razer':20,
+  'blizzard':21,'battle.net':21,'battlenet':21,'world of warcraft':21,'wow':21,
+  'ea':22,'ea play':22,'ea sports':22,'origin':22,
+  'genshin impact':23,'mihoyo':23,
+  'final fantasy':24,'square enix':24,
+  'runescape':25,
+  'warframe':26,'warframe platinum':26,
+  'apex legends':27,
+  'call of duty':28,'cod':28,
+  'fifa':29,'fifa points':29,
+  'psnow':30,'ps now':30,'ps plus':30,'playstation plus':30,
+  'xbox game pass':31,'game pass':31,
+  'garena':32,'free fire':32,
+  'mobile legends':33,
+  'clash of clans':34,'supercell':34,
+  'pokemon':35,'pokemon go':35,
+  'google play':36,'google play gift card':36,
   // Streaming
   'netflix':20,'netflix gift card':20,
   'hulu':21,
@@ -144,54 +172,91 @@ const getBrandPriority = (brand: string): number => {
   return 999
 }
 
-// High-quality image overrides for brands that often lack images from providers
-// Images sourced from Reloadly CDN and official brand assets
+// High-quality image overrides — provider images often missing or low-res
+// Gaming images selected to match Bitrefill US gaming category ordering
+const R = 'https://cdn.reloadly.com/giftcards/' // Reloadly CDN shorthand
 const BRAND_IMAGE_OVERRIDES: Record<string, string> = {
-  'amazon':         'https://cdn.reloadly.com/giftcards/amazon-us-gift-card.jpg',
-  'amazon.com':     'https://cdn.reloadly.com/giftcards/amazon-us-gift-card.jpg',
-  'apple':          'https://cdn.reloadly.com/giftcards/apple-gift-card.jpg',
-  'app store & itunes': 'https://cdn.reloadly.com/giftcards/apple-gift-card.jpg',
-  'itunes':         'https://cdn.reloadly.com/giftcards/apple-gift-card.jpg',
-  'google play':    'https://cdn.reloadly.com/giftcards/google-play-gift-card.jpg',
-  'steam':          'https://cdn.reloadly.com/giftcards/steam-gift-card.jpg',
-  'playstation':    'https://cdn.reloadly.com/giftcards/playstation-store-gift-card.jpg',
-  'psn':            'https://cdn.reloadly.com/giftcards/playstation-store-gift-card.jpg',
-  'playstation store': 'https://cdn.reloadly.com/giftcards/playstation-store-gift-card.jpg',
-  'xbox':           'https://cdn.reloadly.com/giftcards/xbox-gift-card.jpg',
-  'microsoft':      'https://cdn.reloadly.com/giftcards/microsoft-gift-card.jpg',
-  'nintendo eshop': 'https://cdn.reloadly.com/giftcards/nintendo-eshop-gift-card.jpg',
-  'netflix':        'https://cdn.reloadly.com/giftcards/netflix-gift-card.jpg',
-  'spotify':        'https://cdn.reloadly.com/giftcards/spotify-gift-card.jpg',
-  'hulu':           'https://cdn.reloadly.com/giftcards/hulu-gift-card.jpg',
-  'roblox':         'https://cdn.reloadly.com/giftcards/roblox-gift-card.jpg',
-  'walmart':        'https://cdn.reloadly.com/giftcards/walmart-gift-card.jpg',
-  'target':         'https://cdn.reloadly.com/giftcards/target-gift-card.jpg',
-  'starbucks':      'https://cdn.reloadly.com/giftcards/starbucks-gift-card.jpg',
-  'uber':           'https://cdn.reloadly.com/giftcards/uber-gift-card.jpg',
-  'airbnb':         'https://cdn.reloadly.com/giftcards/airbnb-gift-card.jpg',
-  'ebay':           'https://cdn.reloadly.com/giftcards/ebay-gift-card.jpg',
-  'best buy':       'https://cdn.reloadly.com/giftcards/best-buy-gift-card.jpg',
-  'doordash':       'https://cdn.reloadly.com/giftcards/doordash-gift-card.jpg',
-  'nordstrom':      'https://cdn.reloadly.com/giftcards/nordstrom-gift-card.jpg',
-  'sephora':        'https://cdn.reloadly.com/giftcards/sephora-gift-card.jpg',
-  'nike':           'https://cdn.reloadly.com/giftcards/nike-gift-card.jpg',
-  'visa':           'https://cdn.reloadly.com/giftcards/visa-gift-card.jpg',
-  'mastercard':     'https://cdn.reloadly.com/giftcards/mastercard-gift-card.jpg',
-  'disney+':        'https://cdn.reloadly.com/giftcards/disney-plus-gift-card.jpg',
-  'disney plus':    'https://cdn.reloadly.com/giftcards/disney-plus-gift-card.jpg',
-  'fortnite':       'https://cdn.reloadly.com/giftcards/fortnite-gift-card.jpg',
-  'epic games':     'https://cdn.reloadly.com/giftcards/epic-games-gift-card.jpg',
-  'twitch':         'https://cdn.reloadly.com/giftcards/twitch-gift-card.jpg',
-  'gamestop':       'https://cdn.reloadly.com/giftcards/gamestop-gift-card.jpg',
-  'chipotle':       'https://cdn.reloadly.com/giftcards/chipotle-gift-card.jpg',
-  'mcdonalds':      'https://cdn.reloadly.com/giftcards/mcdonalds-gift-card.jpg',
-  "mcdonald's":     'https://cdn.reloadly.com/giftcards/mcdonalds-gift-card.jpg',
-  'grubhub':        'https://cdn.reloadly.com/giftcards/grubhub-gift-card.jpg',
-  'home depot':     'https://cdn.reloadly.com/giftcards/home-depot-gift-card.jpg',
-  'etsy':           'https://cdn.reloadly.com/giftcards/etsy-gift-card.jpg',
-  'crunchyroll':    'https://cdn.reloadly.com/giftcards/crunchyroll-gift-card.jpg',
-  'amc':            'https://cdn.reloadly.com/giftcards/amc-gift-card.jpg',
-  'nintendo':       'https://cdn.reloadly.com/giftcards/nintendo-eshop-gift-card.jpg',
+  // === GAMING (Bitrefill US order) ===
+  'steam':               R+'steam-gift-card.jpg',
+  'steam wallet':        R+'steam-gift-card.jpg',
+  'playstation':         R+'playstation-store-gift-card.jpg',
+  'playstation store':   R+'playstation-store-gift-card.jpg',
+  'psn':                 R+'playstation-store-gift-card.jpg',
+  'ps store':            R+'playstation-store-gift-card.jpg',
+  'xbox':                R+'xbox-gift-card.jpg',
+  'xbox live':           R+'xbox-gift-card.jpg',
+  'xbox game pass':      R+'xbox-game-pass-gift-card.jpg',
+  'microsoft':           R+'microsoft-gift-card.jpg',
+  'nintendo':            R+'nintendo-eshop-gift-card.jpg',
+  'nintendo eshop':      R+'nintendo-eshop-gift-card.jpg',
+  'nintendo switch':     R+'nintendo-eshop-gift-card.jpg',
+  'roblox':              R+'roblox-gift-card.jpg',
+  'fortnite':            R+'fortnite-gift-card.jpg',
+  'fortnite v-bucks':    R+'fortnite-gift-card.jpg',
+  'epic games':          R+'epic-games-gift-card.jpg',
+  'league of legends':   R+'league-of-legends-gift-card.jpg',
+  'riot games':          R+'league-of-legends-gift-card.jpg',
+  'valorant':            R+'valorant-gift-card.jpg',
+  'minecraft':           R+'minecraft-gift-card.jpg',
+  'pubg':                R+'pubg-gift-card.jpg',
+  'pubg mobile':         R+'pubg-mobile-gift-card.jpg',
+  'razer gold':          R+'razer-gold-gift-card.jpg',
+  'blizzard':            R+'blizzard-gift-card.jpg',
+  'battle.net':          R+'blizzard-gift-card.jpg',
+  'world of warcraft':   R+'world-of-warcraft-gift-card.jpg',
+  'ea play':             R+'ea-gift-card.jpg',
+  'ea':                  R+'ea-gift-card.jpg',
+  'genshin impact':      R+'genshin-impact-gift-card.jpg',
+  'square enix':         R+'square-enix-gift-card.jpg',
+  'final fantasy':       R+'square-enix-gift-card.jpg',
+  'runescape':           R+'runescape-gift-card.jpg',
+  'apex legends':        R+'apex-legends-gift-card.jpg',
+  'call of duty':        R+'call-of-duty-gift-card.jpg',
+  'garena':              R+'garena-gift-card.jpg',
+  'free fire':           R+'garena-free-fire-gift-card.jpg',
+  'mobile legends':      R+'mobile-legends-gift-card.jpg',
+  'twitch':              R+'twitch-gift-card.jpg',
+  'gamestop':            R+'gamestop-gift-card.jpg',
+  'ps plus':             R+'playstation-plus-gift-card.jpg',
+  'playstation plus':    R+'playstation-plus-gift-card.jpg',
+  // === GENERAL / MEGA BRANDS ===
+  'amazon':              R+'amazon-us-gift-card.jpg',
+  'amazon.com':          R+'amazon-us-gift-card.jpg',
+  'apple':               R+'apple-gift-card.jpg',
+  'app store & itunes':  R+'apple-gift-card.jpg',
+  'itunes':              R+'apple-gift-card.jpg',
+  'google play':         R+'google-play-gift-card.jpg',
+  'visa':                R+'visa-gift-card.jpg',
+  'mastercard':          R+'mastercard-gift-card.jpg',
+  // === STREAMING ===
+  'netflix':             R+'netflix-gift-card.jpg',
+  'spotify':             R+'spotify-gift-card.jpg',
+  'hulu':                R+'hulu-gift-card.jpg',
+  'disney+':             R+'disney-plus-gift-card.jpg',
+  'disney plus':         R+'disney-plus-gift-card.jpg',
+  'crunchyroll':         R+'crunchyroll-gift-card.jpg',
+  // === SHOPPING ===
+  'walmart':             R+'walmart-gift-card.jpg',
+  'target':              R+'target-gift-card.jpg',
+  'best buy':            R+'best-buy-gift-card.jpg',
+  'ebay':                R+'ebay-gift-card.jpg',
+  'etsy':                R+'etsy-gift-card.jpg',
+  'nordstrom':           R+'nordstrom-gift-card.jpg',
+  'sephora':             R+'sephora-gift-card.jpg',
+  'nike':                R+'nike-gift-card.jpg',
+  'home depot':          R+'home-depot-gift-card.jpg',
+  // === FOOD ===
+  'starbucks':           R+'starbucks-gift-card.jpg',
+  'doordash':            R+'doordash-gift-card.jpg',
+  'grubhub':             R+'grubhub-gift-card.jpg',
+  'chipotle':            R+'chipotle-gift-card.jpg',
+  'mcdonalds':           R+'mcdonalds-gift-card.jpg',
+  "mcdonald's":          R+'mcdonalds-gift-card.jpg',
+  // === TRAVEL ===
+  'airbnb':              R+'airbnb-gift-card.jpg',
+  'uber':                R+'uber-gift-card.jpg',
+  // === ENTERTAINMENT ===
+  'amc':                 R+'amc-gift-card.jpg',
 }
 
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
@@ -724,35 +789,51 @@ export default function GiftCardsPage() {
 
           {/* Category Filter */}
           <div className="mb-10">
-            <h2 className="text-xl font-bold text-white mb-4">Browse by Category</h2>
             <div ref={categoryScrollRef} className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
               <button
                 data-category="all"
                 onClick={() => setSelectedCategory(null)}
                 className={`flex-shrink-0 px-5 py-3 rounded-xl font-bold text-sm transition-all ${
                   !selectedCategory
-                    ? 'bg-primary text-white'
+                    ? 'bg-primary text-black'
                     : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
                 }`}
               >
-                All Cards
+                All
               </button>
-              {categories.map((category) => (
-                <button
-                  key={category.name}
-                  data-category={category.name}
-                  onClick={() => setSelectedCategory(selectedCategory === category.name ? null : category.name)}
-                  className={`flex-shrink-0 px-5 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
-                    selectedCategory === category.name
-                      ? 'bg-primary text-white'
-                      : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Icon name={categoryIcons[category.name.toLowerCase()] || 'gift'} size={16} />
-                  {category.name}
-                  <span className="text-xs opacity-70">({category.count})</span>
-                </button>
-              ))}
+              {[...categories]
+                .sort((a, b) => {
+                  const ai = CATEGORY_ORDER.indexOf(a.name.toLowerCase())
+                  const bi = CATEGORY_ORDER.indexOf(b.name.toLowerCase())
+                  if (ai === -1 && bi === -1) return a.name.localeCompare(b.name)
+                  if (ai === -1) return 1
+                  if (bi === -1) return -1
+                  return ai - bi
+                })
+                .map((category) => {
+                  const key = category.name.toLowerCase()
+                  const displayName = CATEGORY_DISPLAY_NAME[key] || category.name
+                  const icon = categoryIcons[key] || 'gift'
+                  const isActive = selectedCategory === category.name ||
+                    // Treat "Other" and "Payment" as the same tab
+                    (selectedCategory?.toLowerCase() === 'other' && key === 'payment') ||
+                    (selectedCategory?.toLowerCase() === 'payment' && key === 'other')
+                  return (
+                    <button
+                      key={category.name}
+                      data-category={category.name}
+                      onClick={() => setSelectedCategory(selectedCategory === category.name ? null : category.name)}
+                      className={`flex-shrink-0 px-5 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+                        isActive
+                          ? 'bg-primary text-black'
+                          : 'bg-charcoal border border-border-dark text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Icon name={icon} size={16} />
+                      {displayName}
+                    </button>
+                  )
+                })}
             </div>
           </div>
 
