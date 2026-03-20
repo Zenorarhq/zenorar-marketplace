@@ -818,7 +818,7 @@ export default function EsimPage() {
         />
       </div>
       {/* Tablet: wallet below hero */}
-      <div className="hidden md:block lg:hidden">
+      <div className="hidden md:block lg:hidden mb-6">
         <WalletDisplay variant="mobile" />
       </div>
 
@@ -1029,7 +1029,7 @@ export default function EsimPage() {
                           <Icon name="phone" size={12} /> {plan.voiceDisplay || 'Voice'}
                         </span>
                         <span className="inline-flex items-center gap-1 text-xs bg-purple-500/10 text-purple-400 px-2 py-1 rounded-lg">
-                          <Icon name="message-square" size={12} /> {plan.smsDisplay || 'SMS'}
+                          <Icon name="message" size={12} /> {plan.smsDisplay || 'SMS'}
                         </span>
                         <span className="inline-flex items-center gap-1 text-xs bg-slate-500/10 text-slate-400 px-2 py-1 rounded-lg uppercase">
                           {plan.networkType}

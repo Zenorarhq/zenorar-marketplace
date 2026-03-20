@@ -40,9 +40,9 @@ const categoryIcons: Record<string, string> = {
   gaming: 'zap',
   streaming: 'play-circle',
   shopping: 'cart',
-  food: 'coffee',
+  food: 'heart',
   travel: 'airplane',
-  entertainment: 'film',
+  entertainment: 'video',
   retail: 'store',
   other: 'gift'
 }
@@ -491,7 +491,7 @@ export default function GiftCardsPage() {
         />
       </div>
       {/* Tablet: wallet below hero */}
-      <div className="hidden md:block lg:hidden">
+      <div className="hidden md:block lg:hidden mb-6">
         <WalletDisplay variant="mobile" />
       </div>
 

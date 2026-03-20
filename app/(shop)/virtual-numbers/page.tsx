@@ -843,7 +843,7 @@ export default function VirtualNumbersPage() {
         />
       </div>
       {/* Tablet: wallet below hero */}
-      <div className="hidden md:block lg:hidden">
+      <div className="hidden md:block lg:hidden mb-6">
         <WalletDisplay variant="mobile" />
       </div>
 

@@ -39,7 +39,7 @@ export default function WalletDisplay({ variant = 'desktop', onBalanceChange }: 
   if (variant === 'mobile') {
     return (
       <>
-        <div className="lg:hidden mb-6 p-4 bg-surface-dark rounded-xl border border-border-dark">
+        <div className="lg:hidden p-4 bg-surface-dark rounded-xl border border-border-dark">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
