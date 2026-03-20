@@ -255,6 +255,11 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
 }
 
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
+  // Already on Cloudinary (real gift card artwork) — use as-is
+  if (card.imageUrl?.includes('res.cloudinary.com')) return card.imageUrl
+  // Extract domain from Clearbit URL → build Brandfetch CDN logo URL
+  const match = card.imageUrl?.match(/logo\.clearbit\.com\/([^?&\s]+)/)
+  if (match) return `https://cdn.brandfetch.io/domain/${match[1]}?c=1idz6Vupomvwy37PpnX`
   return card.imageUrl || null
 }
 
