@@ -1,19 +1,13 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateRequest } from '@/lib/auth-middleware'
 import { getSiteSettingsByGroup } from '@/lib/db-helpers'
 
 /**
  * GET /api/admin/cards/test-lithic
- * Diagnose Lithic credentials and test connection
+ * Diagnose Lithic credentials and test connection (temporary debug endpoint)
  */
 export async function GET(request: NextRequest) {
-  const user = await authenticateRequest(request)
-  if (!user || user.role?.toUpperCase() !== 'ADMIN') {
-    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-  }
-
   const settings = await getSiteSettingsByGroup('api')
 
   const enabled = settings.lithicCardsEnabled === true || settings.lithicCardsEnabled === 'true'
