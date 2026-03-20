@@ -171,101 +171,100 @@ const getBrandPriority = (brand: string): number => {
   return 999
 }
 
-// High-quality image overrides — provider images often missing or low-res
-// Gaming images selected to match Bitrefill US gaming category ordering
-const R = 'https://cdn.reloadly.com/giftcards/' // Reloadly CDN shorthand
-const BRAND_IMAGE_OVERRIDES: Record<string, string> = {
-  // === GAMING (Bitrefill US order) ===
-  'steam':               R+'steam-gift-card.jpg',
-  'steam wallet':        R+'steam-gift-card.jpg',
-  'playstation':         R+'playstation-store-gift-card.jpg',
-  'playstation store':   R+'playstation-store-gift-card.jpg',
-  'psn':                 R+'playstation-store-gift-card.jpg',
-  'ps store':            R+'playstation-store-gift-card.jpg',
-  'xbox':                R+'xbox-gift-card.jpg',
-  'xbox live':           R+'xbox-gift-card.jpg',
-  'xbox game pass':      R+'xbox-game-pass-gift-card.jpg',
-  'microsoft':           R+'microsoft-gift-card.jpg',
-  'nintendo':            R+'nintendo-eshop-gift-card.jpg',
-  'nintendo eshop':      R+'nintendo-eshop-gift-card.jpg',
-  'nintendo switch':     R+'nintendo-eshop-gift-card.jpg',
-  'roblox':              R+'roblox-gift-card.jpg',
-  'fortnite':            R+'fortnite-gift-card.jpg',
-  'fortnite v-bucks':    R+'fortnite-gift-card.jpg',
-  'epic games':          R+'epic-games-gift-card.jpg',
-  'league of legends':   R+'league-of-legends-gift-card.jpg',
-  'riot games':          R+'league-of-legends-gift-card.jpg',
-  'valorant':            R+'valorant-gift-card.jpg',
-  'minecraft':           R+'minecraft-gift-card.jpg',
-  'pubg':                R+'pubg-gift-card.jpg',
-  'pubg mobile':         R+'pubg-mobile-gift-card.jpg',
-  'razer gold':          R+'razer-gold-gift-card.jpg',
-  'blizzard':            R+'blizzard-gift-card.jpg',
-  'battle.net':          R+'blizzard-gift-card.jpg',
-  'world of warcraft':   R+'world-of-warcraft-gift-card.jpg',
-  'ea play':             R+'ea-gift-card.jpg',
-  'ea':                  R+'ea-gift-card.jpg',
-  'genshin impact':      R+'genshin-impact-gift-card.jpg',
-  'square enix':         R+'square-enix-gift-card.jpg',
-  'final fantasy':       R+'square-enix-gift-card.jpg',
-  'runescape':           R+'runescape-gift-card.jpg',
-  'apex legends':        R+'apex-legends-gift-card.jpg',
-  'call of duty':        R+'call-of-duty-gift-card.jpg',
-  'garena':              R+'garena-gift-card.jpg',
-  'free fire':           R+'garena-free-fire-gift-card.jpg',
-  'mobile legends':      R+'mobile-legends-gift-card.jpg',
-  'twitch':              R+'twitch-gift-card.jpg',
-  'gamestop':            R+'gamestop-gift-card.jpg',
-  'ps plus':             R+'playstation-plus-gift-card.jpg',
-  'playstation plus':    R+'playstation-plus-gift-card.jpg',
-  // === GENERAL / MEGA BRANDS ===
-  'amazon':              R+'amazon-us-gift-card.jpg',
-  'amazon.com':          R+'amazon-us-gift-card.jpg',
-  'apple':               R+'apple-gift-card.jpg',
-  'app store & itunes':  R+'apple-gift-card.jpg',
-  'itunes':              R+'apple-gift-card.jpg',
-  'google play':         R+'google-play-gift-card.jpg',
-  'visa':                R+'visa-gift-card.jpg',
-  'mastercard':          R+'mastercard-gift-card.jpg',
+// Bitrefill CDN slugs for gift cards — same CDN as phone refill operators
+const B = 'https://cdn.bitrefill.com/primg/i1w192h192/'
+const BRAND_BITREFILL_SLUGS: Record<string, string> = {
+  // === GAMING ===
+  'steam':               'steam-us',
+  'steam wallet':        'steam-us',
+  'playstation':         'playstation-store-us',
+  'playstation store':   'playstation-store-us',
+  'psn':                 'playstation-store-us',
+  'ps store':            'playstation-store-us',
+  'ps plus':             'playstation-plus-us',
+  'playstation plus':    'playstation-plus-us',
+  'xbox':                'xbox-us',
+  'xbox live':           'xbox-us',
+  'xbox game pass':      'xbox-game-pass-ultimate-us',
+  'microsoft':           'microsoft-gift-card-us',
+  'nintendo':            'nintendo-eshop-us',
+  'nintendo eshop':      'nintendo-eshop-us',
+  'nintendo switch':     'nintendo-eshop-us',
+  'roblox':              'roblox-us',
+  'fortnite':            'fortnite-us',
+  'fortnite v-bucks':    'fortnite-us',
+  'epic games':          'epic-games-us',
+  'league of legends':   'league-of-legends-us',
+  'riot games':          'league-of-legends-us',
+  'valorant':            'valorant-us',
+  'minecraft':           'minecraft-us',
+  'pubg':                'pubg-mobile-us',
+  'pubg mobile':         'pubg-mobile-us',
+  'razer gold':          'razer-gold-us',
+  'blizzard':            'blizzard-us',
+  'battle.net':          'blizzard-us',
+  'genshin impact':      'genshin-impact-us',
+  'square enix':         'square-enix-us',
+  'final fantasy':       'square-enix-us',
+  'runescape':           'runescape-us',
+  'apex legends':        'apex-legends-us',
+  'call of duty':        'call-of-duty-us',
+  'garena':              'garena-free-fire-us',
+  'free fire':           'garena-free-fire-us',
+  'mobile legends':      'mobile-legends-us',
+  'twitch':              'twitch-us',
+  'gamestop':            'gamestop-us',
+  // === MEGA BRANDS ===
+  'amazon':              'amazon-us',
+  'amazon.com':          'amazon-us',
+  'apple':               'apple-gift-card-us',
+  'app store & itunes':  'apple-gift-card-us',
+  'itunes':              'apple-gift-card-us',
+  'google play':         'google-play-us',
+  'visa':                'vanilla-visa-us',
+  'mastercard':          'mastercard-gift-card-us',
   // === STREAMING ===
-  'netflix':             R+'netflix-gift-card.jpg',
-  'spotify':             R+'spotify-gift-card.jpg',
-  'hulu':                R+'hulu-gift-card.jpg',
-  'disney+':             R+'disney-plus-gift-card.jpg',
-  'disney plus':         R+'disney-plus-gift-card.jpg',
-  'crunchyroll':         R+'crunchyroll-gift-card.jpg',
+  'netflix':             'netflix-us',
+  'spotify':             'spotify-us',
+  'hulu':                'hulu-us',
+  'disney+':             'disney-plus-us',
+  'disney plus':         'disney-plus-us',
+  'crunchyroll':         'crunchyroll-us',
   // === SHOPPING ===
-  'walmart':             R+'walmart-gift-card.jpg',
-  'target':              R+'target-gift-card.jpg',
-  'best buy':            R+'best-buy-gift-card.jpg',
-  'ebay':                R+'ebay-gift-card.jpg',
-  'etsy':                R+'etsy-gift-card.jpg',
-  'nordstrom':           R+'nordstrom-gift-card.jpg',
-  'sephora':             R+'sephora-gift-card.jpg',
-  'nike':                R+'nike-gift-card.jpg',
-  'home depot':          R+'home-depot-gift-card.jpg',
+  'walmart':             'walmart-us',
+  'target':              'target-us',
+  'best buy':            'best-buy-us',
+  'ebay':                'ebay-us',
+  'etsy':                'etsy-us',
+  'nordstrom':           'nordstrom-us',
+  'sephora':             'sephora-us',
+  'nike':                'nike-us',
+  'home depot':          'home-depot-us',
   // === FOOD ===
-  'starbucks':           R+'starbucks-gift-card.jpg',
-  'doordash':            R+'doordash-gift-card.jpg',
-  'grubhub':             R+'grubhub-gift-card.jpg',
-  'chipotle':            R+'chipotle-gift-card.jpg',
-  'mcdonalds':           R+'mcdonalds-gift-card.jpg',
-  "mcdonald's":          R+'mcdonalds-gift-card.jpg',
+  'starbucks':           'starbucks-us',
+  'doordash':            'doordash-us',
+  'grubhub':             'grubhub-us',
+  'chipotle':            'chipotle-us',
+  'mcdonalds':           'mcdonalds-us',
+  "mcdonald's":         'mcdonalds-us',
   // === TRAVEL ===
-  'airbnb':              R+'airbnb-gift-card.jpg',
-  'uber':                R+'uber-gift-card.jpg',
+  'airbnb':              'airbnb-us',
+  'uber':                'uber-us',
   // === ENTERTAINMENT ===
-  'amc':                 R+'amc-gift-card.jpg',
+  'amc':                 'amc-us',
+}
+
+const getBitrefillGiftCardUrl = (brand: string): string | null => {
+  const key = brand.toLowerCase().trim()
+  if (BRAND_BITREFILL_SLUGS[key]) return B + BRAND_BITREFILL_SLUGS[key] + '.webp'
+  for (const [k, slug] of Object.entries(BRAND_BITREFILL_SLUGS)) {
+    if (key.includes(k) || k.includes(key)) return B + slug + '.webp'
+  }
+  return null
 }
 
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
-  const key = card.brand.toLowerCase().trim()
-  // Check exact match first, then partial
-  if (BRAND_IMAGE_OVERRIDES[key]) return BRAND_IMAGE_OVERRIDES[key]
-  for (const [k, url] of Object.entries(BRAND_IMAGE_OVERRIDES)) {
-    if (key.includes(k) || k.includes(key)) return url
-  }
-  return card.imageUrl
+  return getBitrefillGiftCardUrl(card.brand) || card.imageUrl
 }
 
 // Category-based gradient colors for card image backgrounds
@@ -765,12 +764,22 @@ export default function GiftCardsPage() {
                           src={getCardImage(card)!}
                           alt={card.brand}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          onError={(e) => {
+                            const img = e.currentTarget
+                            if (card.imageUrl && img.src !== card.imageUrl) {
+                              img.src = card.imageUrl
+                            } else {
+                              img.style.display = 'none'
+                              img.nextElementSibling?.classList.remove('hidden')
+                            }
+                          }}
                         />
-                      ) : (
+                      ) : null}
+                      <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
                         <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform">
                           <Icon name="gift" size={24} className="text-white/80" />
                         </div>
-                      )}
+                      </div>
                       {card.discountPercent > 0 && (
                         <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-lg">
                           {card.discountPercent}%
@@ -890,8 +899,13 @@ export default function GiftCardsPage() {
                             alt={card.brand}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              e.currentTarget.style.display = 'none'
-                              e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                              const img = e.currentTarget
+                              if (card.imageUrl && img.src !== card.imageUrl) {
+                                img.src = card.imageUrl
+                              } else {
+                                img.style.display = 'none'
+                                img.nextElementSibling?.classList.remove('hidden')
+                              }
                             }}
                           />
                         ) : null}
@@ -1007,7 +1021,7 @@ export default function GiftCardsPage() {
                       {/* Modal image header */}
                       <div className={`relative h-36 ${!getCardImage(card) ? `bg-gradient-to-br ${categoryGradients[card.category?.toLowerCase()] || categoryGradients.other}` : 'bg-surface-dark'} flex items-center justify-center overflow-hidden rounded-t-2xl`}>
                         {getCardImage(card) ? (
-                          <img src={getCardImage(card)!} alt={card.brand} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }} />
+                          <img src={getCardImage(card)!} alt={card.brand} className="w-full h-full object-cover" onError={(e) => { const img = e.currentTarget; if (card.imageUrl && img.src !== card.imageUrl) { img.src = card.imageUrl } else { img.style.display = 'none'; img.nextElementSibling?.classList.remove('hidden') } }} />
                         ) : null}
                         <div className={`${getCardImage(card) ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
                           <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
