@@ -399,16 +399,16 @@ export default function PhoneRefillsPage() {
         </div>
         {/* Info */}
         <div className="p-3 pt-2 flex flex-col flex-grow">
-          <div className="flex items-center gap-1 mb-0.5">
+          <div className="flex items-center gap-1 mb-1">
             <h3 className="font-bold text-[11px] text-white group-hover:text-primary transition-colors truncate">{operator.name}</h3>
             <FlagIcon countryCode={operator.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
           </div>
-          <div className="flex items-center justify-between mt-auto">
-            <p className="text-white font-bold text-xs">
-              {formatPrice(minPrice)}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1 mt-auto">
+            <p className="text-[10px] text-slate-400">
+              From <span className="text-slate-300">{formatPrice(minPrice)}</span>
             </p>
-            <div className="px-2 py-1 rounded-md bg-primary text-black font-bold text-[9px] group-hover:brightness-105 transition-all">
-              Select
+            <div className="px-2 py-1 rounded-md bg-primary text-black font-bold text-[9px] text-center group-hover:brightness-105 transition-all">
+              Select Amount
             </div>
           </div>
         </div>
@@ -636,26 +636,9 @@ export default function PhoneRefillsPage() {
               {/* Amount selection */}
               <div className="p-5">
                 {useCustomInput ? (
-                  /* Custom input + quick-pick buttons */
+                  /* Custom amount input only */
                   <div>
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Enter Amount</label>
-                    {/* Quick-pick buttons */}
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {quickPicks.map((offer) => (
-                        <button
-                          key={offer.offerId}
-                          onClick={() => { setCustomAmount(String(offer.price)); setPaymentError(null) }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            customAmount === String(offer.price)
-                              ? 'bg-primary text-black'
-                              : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
-                          }`}
-                        >
-                          {formatPrice(offer.price)}
-                        </button>
-                      ))}
-                    </div>
-                    {/* Custom amount input */}
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                       <input
