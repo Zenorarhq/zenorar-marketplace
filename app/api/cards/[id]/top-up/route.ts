@@ -172,7 +172,7 @@ export async function POST(
 
     // Deduct from wallet
     await executeQuery(
-      'UPDATE users SET balance = balance - $1 WHERE id = $2',
+      'UPDATE wallet_balances SET balance = balance - $1, updated_at = NOW() WHERE user_id = $2',
       [totalCost, user.id]
     )
 
