@@ -1365,7 +1365,7 @@ export default function GiftCardsPage() {
               </div>
             ) : (
               <>
-              <div className="grid grid-cols-1 min-[560px]:grid-cols-2 min-[700px]:grid-cols-3 min-[960px]:grid-cols-4 gap-6 items-start">
+              <div className="grid grid-cols-2 gap-6 items-start">
                 {giftCards.slice(0, visibleCount).map((card) => {
                   const selectedAmount = getSelectedAmount(card.id)
                   const hasSelection = selectedAmount !== null
@@ -1411,8 +1411,7 @@ export default function GiftCardsPage() {
                       {/* Card Content */}
                       <div className="p-3">
                         <h3 className="font-bold text-white text-lg mt-2 mb-0.5 line-clamp-1">{cleanBrandName(card.brand)}</h3>
-                        <p className="text-xs text-slate-500 mb-1">{card.category}</p>
-                        <p className="text-sm text-primary font-medium text-right">{getPriceRange(card)}</p>
+                        <p className="text-sm text-primary font-medium">{getPriceRange(card)}</p>
 
                       </div>
                     </div>
