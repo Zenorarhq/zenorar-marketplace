@@ -80,6 +80,8 @@ function AdminGiftCardsPageContent() {
   const [importSuccess, setImportSuccess] = useState('')
   const [formError, setFormError] = useState('')
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchLoading, setBatchLoading] = useState(false)
   const [showSyncDetails, setShowSyncDetails] = useState(false)
   const [lastSyncResult, setLastSyncResult] = useState<{ success: boolean; synced: number; updated: number; error?: string } | null>(null)
 
@@ -275,6 +277,27 @@ function AdminGiftCardsPageContent() {
       setShowSyncDetails(true)
     }
   })
+
+  const handleBatchAction = async (action: 'activate' | 'deactivate' | 'delete') => {
+    if (selectedIds.size === 0) return
+    if (action === 'delete' && !confirm(`Delete ${selectedIds.size} gift card(s)? This cannot be undone.`)) return
+    setBatchLoading(true)
+    const token = localStorage.getItem('admin_auth_token')
+    const ids = Array.from(selectedIds)
+    await Promise.all(ids.map(id => {
+      if (action === 'delete') {
+        return fetch(`/api/admin/gift-cards/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+      }
+      return fetch(`/api/admin/gift-cards/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isActive: action === 'activate' }),
+      })
+    }))
+    setSelectedIds(new Set())
+    setBatchLoading(false)
+    queryClient.invalidateQueries({ queryKey: ['gift-cards'] })
+  }
 
   const resetForm = () => {
     setFormData({
@@ -732,11 +755,47 @@ function AdminGiftCardsPageContent() {
         {/* Products Tab */}
         {activeTab === 'products' && (
           <>
+          {/* Batch action bar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 mb-4">
+              <span className="text-sm text-white font-medium">{selectedIds.size} selected</span>
+              <div className="flex items-center gap-2 ml-auto">
+                <button onClick={() => handleBatchAction('activate')} disabled={batchLoading}
+                  className="px-3 py-1.5 text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-500/30 transition-colors disabled:opacity-50">
+                  {batchLoading ? 'Working…' : 'Activate All'}
+                </button>
+                <button onClick={() => handleBatchAction('deactivate')} disabled={batchLoading}
+                  className="px-3 py-1.5 text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition-colors disabled:opacity-50">
+                  {batchLoading ? 'Working…' : 'Deactivate All'}
+                </button>
+                <button onClick={() => handleBatchAction('delete')} disabled={batchLoading}
+                  className="px-3 py-1.5 text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50">
+                  {batchLoading ? 'Working…' : 'Delete All'}
+                </button>
+                <button onClick={() => setSelectedIds(new Set())}
+                  className="px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors">
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
           <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border-dark text-left">
+                    <th className="px-4 py-3 w-10">
+                      <input type="checkbox"
+                        checked={paginatedGiftCards.length > 0 && paginatedGiftCards.every(c => selectedIds.has(c.id))}
+                        onChange={(e) => {
+                          setSelectedIds(e.target.checked
+                            ? new Set(paginatedGiftCards.map(c => c.id))
+                            : new Set()
+                          )
+                        }}
+                        className="w-4 h-4 accent-primary cursor-pointer"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-sm font-medium text-slate-400">Brand</th>
                     <th className="px-4 py-3 text-sm font-medium text-slate-400">Category</th>
                     <th className="px-4 py-3 text-sm font-medium text-slate-400">Denominations</th>
@@ -749,17 +808,30 @@ function AdminGiftCardsPageContent() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
+                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400">Loading...</td>
                     </tr>
                   ) : paginatedGiftCards.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                         No gift cards found.
                       </td>
                     </tr>
                   ) : (
                     paginatedGiftCards.map(card => (
-                      <tr key={card.id} className="border-b border-border-dark hover:bg-white/5">
+                      <tr key={card.id} className={`border-b border-border-dark hover:bg-white/5 ${selectedIds.has(card.id) ? 'bg-primary/5' : ''}`}>
+                        <td className="px-4 py-3 w-10">
+                          <input type="checkbox"
+                            checked={selectedIds.has(card.id)}
+                            onChange={(e) => {
+                              setSelectedIds(prev => {
+                                const next = new Set(prev)
+                                e.target.checked ? next.add(card.id) : next.delete(card.id)
+                                return next
+                              })
+                            }}
+                            className="w-4 h-4 accent-primary cursor-pointer"
+                          />
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             {card.imageUrl ? (
