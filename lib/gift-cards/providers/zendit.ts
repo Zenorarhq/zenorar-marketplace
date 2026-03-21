@@ -427,13 +427,8 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         transactionId: txId,
       }
 
-      // Include value if denomination is specified (for variable-value vouchers)
-      if (denomination > 0) {
-        purchaseBody.value = {
-          type: 'USD',
-          value: Math.round(denomination * 100),
-        }
-      }
+      // Note: offerId already encodes the denomination for fixed-value Zendit vouchers.
+      // Do not send 'value' — Zendit rejects type:'USD'; the offerId is sufficient.
 
       const purchaseResponse = await this.request<any>(
         'POST',
