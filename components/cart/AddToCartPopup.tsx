@@ -39,6 +39,9 @@ function CartItemRow({
   const isInstantCard = productType === 'instant_card' ||
     (item.product as any).productType === 'instant_card' ||
     (item.product as any).product_type === 'instant_card'
+  const isVirtualCard = productType === 'virtual_card' ||
+    (item.product as any).productType === 'virtual_card' ||
+    (item.product as any).product_type === 'virtual_card'
   const hasCountryFlag = (productType === 'esim' || productType === 'virtual_number') && (item.product as any).metadata?.countryIsoCode
 
   const cardMetadata = (item.product as any).metadata || {}
@@ -48,10 +51,10 @@ function CartItemRow({
       className={`flex gap-3 p-3 rounded-xl ${isJustAdded ? 'bg-primary/10 border border-primary/20' : 'bg-surface-dark'}`}
     >
       <div className="flex-shrink-0">
-        {isInstantCard ? (
+        {isInstantCard || isVirtualCard ? (
           <CardVisualMini
             brand={cardMetadata.brand === 'mastercard' ? 'mastercard' : 'visa'}
-            type="instant"
+            type={isVirtualCard ? 'virtual' : 'instant'}
             denomination={cardMetadata.denomination}
           />
         ) : hasCountryFlag ? (

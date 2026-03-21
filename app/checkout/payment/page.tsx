@@ -854,11 +854,14 @@ export default function PaymentPage() {
 
     const orderResult = await orderResponse.json()
 
-    // Notify user: order placed
-    apiFetch('/notifications/create', {
-      method: 'POST',
-      body: JSON.stringify({ type: 'ORDER_PLACED', title: 'Order Placed', message: `Your order #${orderResult.data.orderNumber} has been placed successfully.`, data: { orderId: orderResult.data.id, orderNumber: orderResult.data.orderNumber } }),
-    }).catch(() => {})
+    // Notify user: order placed (skip for card orders — "Card Delivered" fires on fulfillment)
+    const isCardOnlyOrder = orderItems.every((item: any) => item.productType === 'virtual_card' || item.productType === 'instant_card')
+    if (!isCardOnlyOrder) {
+      apiFetch('/notifications/create', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'ORDER_PLACED', title: 'Order Placed', message: `Your order #${orderResult.data.orderNumber} has been placed successfully.`, data: { orderId: orderResult.data.id, orderNumber: orderResult.data.orderNumber } }),
+      }).catch(() => {})
+    }
 
     // Record discount usage if a discount was applied
     // Note: discount is now applied and usage incremented server-side during order creation.
@@ -2270,11 +2273,14 @@ function StripeCardForm({
       const orderId = orderResult.data.id
       const orderNumber = orderResult.data.orderNumber
 
-      // Notify user: order placed
-      apiFetch('/notifications/create', {
-        method: 'POST',
-        body: JSON.stringify({ type: 'ORDER_PLACED', title: 'Order Placed', message: `Your order #${orderNumber} has been placed successfully.`, data: { orderId, orderNumber } }),
-      }).catch(() => {})
+      // Notify user: order placed (skip for card orders — "Card Delivered" fires on fulfillment)
+      const isCardOnlyOrder2 = orderItems.every((item: any) => item.productType === 'virtual_card' || item.productType === 'instant_card')
+      if (!isCardOnlyOrder2) {
+        apiFetch('/notifications/create', {
+          method: 'POST',
+          body: JSON.stringify({ type: 'ORDER_PLACED', title: 'Order Placed', message: `Your order #${orderNumber} has been placed successfully.`, data: { orderId, orderNumber } }),
+        }).catch(() => {})
+      }
 
       // 2. Create PaymentIntent in user's selected currency
       const chargeAmount = currency === 'usd' ? amount : convertPrice(amount, currency.toUpperCase())

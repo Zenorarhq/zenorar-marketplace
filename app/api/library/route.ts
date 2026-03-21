@@ -392,10 +392,13 @@ export async function GET(request: Request) {
       const valueDisplay = row.denomination
         ? `$${parseFloat(row.denomination).toFixed(0)}`
         : `$${parseFloat(row.balance || 0).toFixed(2)}`
+      const cardName = row.card_type === 'virtual'
+        ? `${brandDisplay} ${typeDisplay}`
+        : `${brandDisplay} ${valueDisplay}`
 
       return {
         id: row.id,
-        name: `${brandDisplay} ${valueDisplay}`,
+        name: cardName,
         slug: null,
         description: `${typeDisplay} - ${row.card_last_four ? `****${row.card_last_four}` : 'Card'}`,
         category: 'cards',

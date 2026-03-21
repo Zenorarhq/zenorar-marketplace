@@ -76,7 +76,11 @@ export async function POST(req: NextRequest) {
         const productTypes = orderResult.rows.map((r: any) => r.product_type)
         const hasEsims = productTypes.includes('esim')
         const hasGiftCards = productTypes.includes('gift_card')
+        const hasCards = productTypes.includes('virtual_card') || productTypes.includes('instant_card')
         const fulfilled = fulfillmentResult?.success
+
+        // Cards already get a "Card Delivered" notification from fulfillOrder — skip generic one
+        if (hasCards && !hasEsims && !hasGiftCards) return
 
         let title = 'Payment Confirmed'
         let message = `Your payment for order #${orderNumber} has been confirmed.`
