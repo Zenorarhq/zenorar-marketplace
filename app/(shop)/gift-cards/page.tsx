@@ -293,6 +293,17 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'ea 12 month (xbox) us':                         'xbox-usa',
   'pubg mobile uc (global) us':                    'pubg-mobile-usa',
   'pubg new state (global) us':                    'pubg-mobile-usa',
+  'babin seafood':                                 'babins-seafood-house-usa',
+  'bristol seafood':                               'bristol-seafood-grill-us',
+  'build-a-bear':                                  'build-a-bear-uae',
+  'devon seafood grill':                           'devon-seafood-grill-us',
+  'elearn gift':                                   'elearngift-latvia',
+  'famous footwear':                               'famous-footwear-usa',
+  'giant eagle':                                   'giant-eagle-us',
+  'l.l.bean':                                      'l_l_bean-usa',
+  'legal sea foods':                               'legal-sea-foods-usa',
+  'omaha steaks':                                  'omaha-steaks-usa',
+  'outback steakhouse us':                         'outback-steakhouse-usa',
 }
 
 // Reserved for re-enablement — Reloadly/Cloudinary artwork not currently active in the visual
