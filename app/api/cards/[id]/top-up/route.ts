@@ -33,8 +33,8 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Card not found' }, { status: 404 })
     }
 
-    // Only virtual cards can be topped up
-    if (card.cardType !== 'virtual' && card.cardType !== 'virtual_card') {
+    // Only virtual cards can be topped up ('virtual_card' is a legacy value stored by older purchases)
+    if (card.cardType !== 'virtual' && (card.cardType as string) !== 'virtual_card') {
       return NextResponse.json(
         { success: false, error: 'Instant cards cannot be topped up' },
         { status: 400 }

@@ -254,7 +254,7 @@ async function processOrderItem(
       case 'instant_card':
       case 'virtual_card':
         // Provision card for cart checkout (instant checkout handles this via /api/cards/purchase)
-        return await processCardItem(orderId, userId, item, productType as CardType)
+        return await processCardItem(orderId, userId, item, productType === 'virtual_card' ? 'virtual' : 'instant')
 
       case 'phone_refill':
         // Phone refills are delivered instantly via Zendit API at purchase time — no provisioning needed
