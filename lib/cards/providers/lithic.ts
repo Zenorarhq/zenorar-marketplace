@@ -203,64 +203,6 @@ class LithicProvider implements CardProviderInterface {
   }
 
   /**
-   * Top up a card (fund the account)
-   */
-  async topUp(cardId: string, amount: number): Promise<TopUpResult> {
-    const credentials = await this.getCredentials()
-    if (!credentials) {
-      return { success: false, error: 'Lithic not configured' }
-    }
-
-    try {
-      // Get the card to find the account token
-      const cardResponse = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/cards/${cardId}`, {
-        headers: {
-          'Authorization': credentials.apiKey
-        }
-      })
-
-      if (!cardResponse.ok) {
-        return { success: false, error: 'Card not found' }
-      }
-
-      const card = await cardResponse.json()
-
-      // Fund the account
-      const response = await fetch(`${this.getBaseUrl(credentials.isSandbox)}/v1/simulate/funding`, {
-        method: 'POST',
-        headers: {
-          'Authorization': credentials.apiKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          amount: amount * 100, // Amount in cents
-          account_token: card.account_token
-        })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data.message || data.error || 'Top up failed'
-        }
-      }
-
-      return {
-        success: true,
-        newBalance: (data.available_spend || 0) / 100,
-        transactionId: data.token
-      }
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Top up failed'
-      }
-    }
-  }
-
-  /**
    * Freeze a card
    */
   async freeze(cardId: string): Promise<{ success: boolean; error?: string }> {
