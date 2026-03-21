@@ -487,6 +487,13 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'guess':                     'guess-ae',
   'guild wars':                'guild-wars-2-gem-card-us',
   'guitar center':             'guitar-center-usa',
+  // === BATCH: H/I brands ===
+  'hard rock cafe':            'hard-rock-cafe-usa',
+  "harry n' david":            'harry-and-david-usa',
+  'home chef':                 'home-chef-usa',
+  "horatio's":                 'horatio_s-us',
+  'ifly':                      'ifly-usa',
+  'imvu':                      'imvu-usa',
   // === BATCH: M/N/O/P brands ===
   'maurices':                        'maurices-us',
   'mc. cormick & schmick':           'mccormick-and-schmick_s-usa',
