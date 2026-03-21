@@ -1105,7 +1105,7 @@ export default function GiftCardsPage() {
                       onClick={() => openModal()}
                     >
                       {/* Card Image Header */}
-                      <GiftCardVisual card={card} height="h-32">
+                      <GiftCardVisual card={card} height="h-40">
                         <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
                           {card.discountPercent > 0 && (
                             <span className="bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-md shadow-lg">
@@ -1121,10 +1121,10 @@ export default function GiftCardsPage() {
                       </GiftCardVisual>
 
                       {/* Card Content */}
-                      <div className="p-5">
-                        <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{cleanBrandName(card.brand)}</h3>
-                        <p className="text-xs text-slate-500 mb-2">{card.category}</p>
-                        <p className="text-sm text-primary font-medium mb-4">{getPriceRange(card)}</p>
+                      <div className="p-3">
+                        <h3 className="font-bold text-white text-lg mt-2 mb-0.5 line-clamp-1">{cleanBrandName(card.brand)}</h3>
+                        <p className="text-xs text-slate-500 mb-1">{card.category}</p>
+                        <p className="text-sm text-primary font-medium text-right">{getPriceRange(card)}</p>
 
                       </div>
                     </div>
