@@ -65,6 +65,7 @@ export interface Product {
   purchaseCount?: number
   proPrice?: number
   product_type?: string
+  href?: string
   metadata?: {
     productType?: string
     phoneNumber?: string

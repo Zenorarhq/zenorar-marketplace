@@ -1,47 +1,165 @@
 import { NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db-helpers'
 
+// Unified shape returned by every helper
+interface PopularItem {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  price: number
+  is_featured: boolean
+  created_at: string | null
+  category_name: string
+  average_rating: number
+  review_count: number
+  total_purchased: number
+  images: { url: string; isPrimary: boolean }[] | null
+  href: string
+}
+
+async function getTopScripts(): Promise<PopularItem[]> {
+  try {
+    const result = await executeQuery(`
+      SELECT p.id, p.name, p.slug, p.description, p.price::float,
+        p."isFeatured" as is_featured, p."createdAt"::text as created_at,
+        'Scripts' as category_name,
+        COALESCE(AVG(r.rating), 0) as average_rating,
+        COUNT(DISTINCT r.id)::int as review_count,
+        COALESCE(SUM(oi.quantity), 0)::int as total_purchased,
+        (
+          SELECT json_agg(json_build_object('url', pi.url, 'isPrimary', pi."isPrimary")
+            ORDER BY pi."isPrimary" DESC, pi."order")
+          FROM product_images pi WHERE pi."productId" = p.id
+        ) as images
+      FROM products p
+      LEFT JOIN categories c ON p."categoryId" = c.id
+      LEFT JOIN reviews r ON r."productId" = p.id
+      LEFT JOIN order_items oi ON oi."productId" = p.id
+      WHERE p.status = 'ACTIVE' AND c.slug = 'scripts' AND p.price > 0
+      GROUP BY p.id
+      ORDER BY total_purchased DESC, average_rating DESC
+      LIMIT 2
+    `)
+    return result.rows.map((r: any) => ({ ...r, href: `/products/${r.slug}` }))
+  } catch { return [] }
+}
+
+async function getTopEsims(): Promise<PopularItem[]> {
+  try {
+    const result = await executeQuery(`
+      SELECT ep.id::text, ep.name, ep.slug, ep.description,
+        ep.retail_price::float as price, false as is_featured, ep.created_at::text,
+        'eSIM' as category_name, 0 as average_rating, 0 as review_count,
+        COUNT(ue.id)::int as total_purchased, null as images
+      FROM esim_plans ep
+      LEFT JOIN user_esims ue ON ue.plan_id = ep.id
+      WHERE ep.is_active = true
+      GROUP BY ep.id
+      ORDER BY total_purchased DESC, ep.retail_price ASC
+      LIMIT 2
+    `)
+    return result.rows.map((r: any) => ({ ...r, href: '/esim' }))
+  } catch { return [] }
+}
+
+async function getTopGiftCards(): Promise<PopularItem[]> {
+  try {
+    const result = await executeQuery(`
+      SELECT gc.id::text, gc.brand as name, gc.slug, gc.description,
+        (gc.denominations->0)::float as price,
+        gc.is_featured, gc.created_at::text,
+        'Gift Cards' as category_name, 0 as average_rating, 0 as review_count,
+        COUNT(ugc.id)::int as total_purchased,
+        CASE WHEN gc.image_url IS NOT NULL
+          THEN json_build_array(json_build_object('url', gc.image_url, 'isPrimary', true))
+          ELSE null END as images
+      FROM gift_cards gc
+      LEFT JOIN user_gift_cards ugc ON ugc.gift_card_id = gc.id
+      WHERE gc.is_active = true
+      GROUP BY gc.id
+      ORDER BY total_purchased DESC
+      LIMIT 2
+    `)
+    return result.rows.map((r: any) => ({ ...r, href: '/gift-cards' }))
+  } catch { return [] }
+}
+
+async function getTopVirtualNumbers(): Promise<PopularItem[]> {
+  try {
+    const result = await executeQuery(`
+      SELECT vnc.id::text, vnc.name || ' Virtual Number' as name,
+        vnc.iso_code as slug, null as description,
+        vnc.retail_monthly::float as price, false as is_featured, vnc.created_at::text,
+        'Virtual Numbers' as category_name, 0 as average_rating, 0 as review_count,
+        COUNT(uvn.id)::int as total_purchased, null as images
+      FROM virtual_number_countries vnc
+      LEFT JOIN user_virtual_numbers uvn ON uvn.country_id = vnc.id
+      WHERE vnc.is_active = true
+      GROUP BY vnc.id
+      ORDER BY total_purchased DESC, vnc.retail_monthly ASC
+      LIMIT 2
+    `)
+    return result.rows.map((r: any) => ({ ...r, href: '/virtual-numbers' }))
+  } catch { return [] }
+}
+
+async function getTopCards(): Promise<PopularItem[]> {
+  try {
+    const result = await executeQuery(`
+      SELECT md5(card_type || card_brand) as id,
+        initcap(card_brand) || ' ' || initcap(card_type) || ' Card' as name,
+        card_type || '-' || card_brand as slug, null as description,
+        COALESCE(AVG(denomination), 0)::float as price, false as is_featured, null as created_at,
+        'Cards' as category_name, 0 as average_rating, 0 as review_count,
+        COUNT(*)::int as total_purchased, null as images
+      FROM user_cards
+      WHERE status = 'active'
+      GROUP BY card_type, card_brand
+      ORDER BY total_purchased DESC
+      LIMIT 2
+    `)
+    return result.rows.map((r: any) => ({ ...r, href: '/cards' }))
+  } catch { return [] }
+}
+
+async function getTopPhoneRefills(): Promise<PopularItem[]> {
+  try {
+    const result = await executeQuery(`
+      SELECT
+        md5(metadata->>'offerId') as id,
+        metadata->>'operatorName' as name,
+        metadata->>'offerId' as slug,
+        null as description,
+        AVG(price::float) as price,
+        false as is_featured, null as created_at,
+        'Phone Refills' as category_name, 0 as average_rating, 0 as review_count,
+        COUNT(*)::int as total_purchased, null as images
+      FROM order_items
+      WHERE product_type = 'phone_refill'
+        AND metadata->>'operatorName' IS NOT NULL
+      GROUP BY metadata->>'offerId', metadata->>'operatorName'
+      ORDER BY total_purchased DESC
+      LIMIT 2
+    `)
+    return result.rows.map((r: any) => ({ ...r, href: '/phone-refills' }))
+  } catch { return [] }
+}
+
 export async function GET() {
   try {
-    // Get popular products: admin-featured first, then most purchased
-    const result = await executeQuery(`
-      WITH product_stats AS (
-        SELECT
-          p.id, p.name, p.slug, p.description, p.price,
-          p."isFeatured" as is_featured, p."createdAt" as created_at,
-          p."categoryId",
-          c.name as category_name,
-          COALESCE(AVG(r.rating), 0) as average_rating,
-          COUNT(DISTINCT r.id) as review_count,
-          COALESCE(SUM(oi.quantity), 0) as total_purchased,
-          (
-            SELECT json_agg(json_build_object('url', pi.url, 'isPrimary', pi."isPrimary") ORDER BY pi."isPrimary" DESC, pi."order")
-            FROM product_images pi WHERE pi."productId" = p.id
-          ) as images
-        FROM products p
-        LEFT JOIN categories c ON p."categoryId" = c.id
-        LEFT JOIN reviews r ON r."productId" = p.id
-        LEFT JOIN order_items oi ON oi."productId" = p.id
-        WHERE p.status = 'ACTIVE'
-        GROUP BY p.id, p."categoryId", c.name
-      ),
-      ranked AS (
-        SELECT *,
-          ROW_NUMBER() OVER (
-            PARTITION BY "categoryId"
-            ORDER BY total_purchased DESC, average_rating DESC, created_at DESC
-          ) as rn
-        FROM product_stats
-      )
-      SELECT id, name, slug, description, price, is_featured, created_at,
-             category_name, average_rating, review_count, total_purchased, images
-      FROM ranked
-      WHERE rn <= 2
-      ORDER BY total_purchased DESC, rn ASC
-      LIMIT 12
-    `)
+    const [scripts, esims, giftCards, virtualNumbers, cards, phoneRefills] = await Promise.all([
+      getTopScripts(),
+      getTopEsims(),
+      getTopGiftCards(),
+      getTopVirtualNumbers(),
+      getTopCards(),
+      getTopPhoneRefills(),
+    ])
 
-    return NextResponse.json({ success: true, data: result.rows })
+    const data = [...scripts, ...esims, ...giftCards, ...virtualNumbers, ...cards, ...phoneRefills]
+
+    return NextResponse.json({ success: true, data })
   } catch (error) {
     console.error('Popular products error:', error)
     return NextResponse.json({ success: false, error: 'Failed to load products' }, { status: 500 })
