@@ -446,8 +446,13 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       const transactionId = purchaseResponse.transactionId || txId
 
       // Poll for confirmation with the code/PIN
+      // Zendit processes most vouchers within a few seconds; allow up to ~16s total
       let purchase: any = null
-      for (let attempt = 0; attempt < 5; attempt++) {
+      for (let attempt = 0; attempt < 8; attempt++) {
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+
         purchase = await this.request<any>(
           'GET',
           `/vouchers/purchases/${transactionId}`
@@ -458,10 +463,6 @@ class ZenditGiftCardProvider implements GiftCardProvider {
             purchase.confirmation?.serial || purchase.confirmation?.voucher ||
             purchase.status === 'DONE' || purchase.status === 'completed') {
           break
-        }
-
-        if (attempt < 4) {
-          await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)))
         }
       }
 
