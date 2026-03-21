@@ -258,11 +258,18 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'amc':                 'amc-usa',
 }
 
+// Reserved for re-enablement — Reloadly/Cloudinary artwork not currently active in the visual
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
   if (card.imageUrl?.includes('res.cloudinary.com') || card.imageUrl?.includes('cdn.reloadly.com')) return card.imageUrl
-  const bitrefillSlug = BRAND_BITREFILL_SLUGS[card.brand.toLowerCase().trim()]
-  if (bitrefillSlug) return `https://cdn.bitrefill.com/primg/w360h216/${bitrefillSlug}.webp`
   return null
+}
+
+// Derives Bitrefill CDN URL — uses manual slug map first, then auto-derives from brand name
+function getBitrefillUrl(brand: string): string {
+  const key = brand.toLowerCase().trim()
+  const slug = BRAND_BITREFILL_SLUGS[key]
+    || key.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-usa'
+  return `https://cdn.bitrefill.com/primg/w360h216/${slug}.webp`
 }
 
 // Overrides for wrong clearbit domains + the 6 brands with no image_url
@@ -575,20 +582,24 @@ function getBrandColors(brand: string, category: string): [string, string] {
   return CATEGORY_COLORS[category?.toLowerCase()] || hashBrandColor(brand)
 }
 
-// Gift card visual — 3-tier: full artwork → brand gradient+logo → brand gradient+initial
+// Gift card visual — 3-tier: Bitrefill artwork → brand logo (object-cover on gradient) → gradient+initial
 function GiftCardVisual({ card, height, extraClass, children }: {
   card: GiftCard
   height: string
   extraClass?: string
   children?: React.ReactNode
 }) {
-  const imageUrl = getCardImage(card)
   const [from, to] = getBrandColors(card.brand, card.category)
   const initial = card.brand.replace(/[^a-zA-Z]/g, '')[0]?.toUpperCase() || '?'
+  const [bitrefillError, setBitrefillError] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [useFallback, setUseFallback] = useState(false)
   const compact = height === 'h-24'
 
+  // Tier 1: Bitrefill CDN — auto-derived slug, covers all brands
+  const bitrefillUrl = !bitrefillError ? getBitrefillUrl(card.brand) : null
+
+  // Tier 2: Brandfetch / proxy logo — fills card with object-cover on gradient
   const domain = !logoError ? getBrandDomain(card.brand, card.imageUrl) : null
   const brandfetchId = process.env.NEXT_PUBLIC_BRANDFETCH_CLIENT_ID
   const logoUrl = domain
@@ -597,56 +608,49 @@ function GiftCardVisual({ card, height, extraClass, children }: {
         : `/api/gift-card-logo?domain=${encodeURIComponent(domain)}&brand=${encodeURIComponent(card.brand)}`)
     : null
 
-  // Tier 1: Full card artwork (Reloadly or Cloudinary)
-  if (imageUrl) {
-    return (
-      <div
-        className={`relative ${height} overflow-hidden ${extraClass || ''}`}
-        style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30 pointer-events-none z-10" />
-        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
-        <img src={imageUrl} alt={card.brand} className="absolute inset-0 w-full h-full object-cover z-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-        <div className="relative z-20">{children}</div>
-      </div>
-    )
-  }
+  const showInitial = !bitrefillUrl && !logoUrl
 
-  // Tier 2 & 3: Logo on white, or gradient + initial
-  const hasLogo = logoUrl !== null
   return (
     <div
       className={`relative ${height} overflow-hidden ${extraClass || ''}`}
-      style={{ background: hasLogo ? '#ffffff' : `linear-gradient(135deg, ${from}, ${to})` }}
+      style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
     >
-      {/* Decorative overlays only on gradient cards */}
-      {!hasLogo && <>
+      {/* Tier 1: Bitrefill full card artwork */}
+      {bitrefillUrl && (
+        <img
+          src={bitrefillUrl}
+          alt={card.brand}
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          onError={() => setBitrefillError(true)}
+        />
+      )}
+
+      {/* Tier 2: Logo fills card on gradient background */}
+      {!bitrefillUrl && logoUrl && (
+        <img
+          src={logoUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          onError={() => { if (!useFallback && brandfetchId) setUseFallback(true); else setLogoError(true) }}
+        />
+      )}
+
+      {/* Tier 3: Decorative overlays + initial letter */}
+      {showInitial && <>
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30 pointer-events-none z-10" />
         <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
         <div className="absolute pointer-events-none z-[1]" style={{ top: '-40%', right: '-25%', width: '65%', height: '130%', borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
         <div className="absolute pointer-events-none z-[1]" style={{ bottom: '-40%', left: '-20%', width: '55%', height: '110%', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-      </>}
-
-      {/* Center: logo or initial */}
-      <div className="absolute inset-0 flex items-center justify-center z-[2]">
-        {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt=""
-            className="w-full h-full object-cover"
-            onError={() => { if (!useFallback && brandfetchId) setUseFallback(true); else setLogoError(true) }}
-          />
-        ) : (
+        <div className="absolute inset-0 flex items-center justify-center z-[2]">
           <span
             className="text-white/25 font-black select-none"
             style={{ fontSize: compact ? '3rem' : '5rem', lineHeight: 1 }}
           >
             {initial}
           </span>
-        )}
-      </div>
+        </div>
+      </>}
 
-      {/* Children (badges, close button etc.) */}
       <div className="relative z-20">{children}</div>
     </div>
   )
