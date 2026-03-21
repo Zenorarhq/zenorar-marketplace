@@ -11,7 +11,6 @@ export async function GET() {
           p."isFeatured" as is_featured, p."createdAt" as created_at,
           p."categoryId",
           c.name as category_name,
-          c.display_order as category_order,
           COALESCE(AVG(r.rating), 0) as average_rating,
           COUNT(DISTINCT r.id) as review_count,
           COALESCE(SUM(oi.quantity), 0) as total_purchased,
@@ -24,7 +23,7 @@ export async function GET() {
         LEFT JOIN reviews r ON r."productId" = p.id
         LEFT JOIN order_items oi ON oi."productId" = p.id
         WHERE p.status = 'ACTIVE'
-        GROUP BY p.id, p."categoryId", c.name, c.display_order
+        GROUP BY p.id, p."categoryId", c.name
       ),
       ranked AS (
         SELECT *,
@@ -38,7 +37,7 @@ export async function GET() {
              category_name, average_rating, review_count, total_purchased, images
       FROM ranked
       WHERE rn <= 2
-      ORDER BY category_order ASC NULLS LAST, rn ASC
+      ORDER BY total_purchased DESC, rn ASC
       LIMIT 12
     `)
 

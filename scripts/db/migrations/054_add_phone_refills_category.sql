@@ -1,3 +1,3 @@
-INSERT INTO categories (name, slug, description, display_order, is_active)
-VALUES ('Phone Refills', 'phone-refills', 'Mobile airtime and data top-ups', 6, true)
+INSERT INTO categories (id, name, slug, description, "isActive", "createdAt", "updatedAt")
+VALUES (gen_random_uuid(), 'Phone Refills', 'phone-refills', 'Mobile airtime and data top-ups', true, NOW(), NOW())
 ON CONFLICT (slug) DO NOTHING;
