@@ -55,6 +55,7 @@ function CartItemRow({
           <CardVisualMini
             brand={cardMetadata.brand === 'mastercard' ? 'mastercard' : 'visa'}
             type={isVirtualCard ? 'virtual' : 'instant'}
+            isPremium={!!cardMetadata.isPremium}
             denomination={cardMetadata.denomination}
           />
         ) : hasCountryFlag ? (

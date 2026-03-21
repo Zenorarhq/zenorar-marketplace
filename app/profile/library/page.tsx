@@ -788,6 +788,16 @@ export default function LibraryPage() {
                           </button>
                           {openMenuId === cardId && (
                             <div className="absolute right-0 bottom-full mb-2 w-48 bg-[#1a1a1a] border border-border-dark rounded-xl shadow-xl z-50 overflow-hidden">
+                              {/* Top Up — virtual cards only */}
+                              {item.category === 'cards' && ((item as any).cardType === 'virtual' || (item as any).cardType === 'virtual_card') && item.status === 'active' && (
+                                <button
+                                  onClick={() => { setOpenMenuId(null); setSelectedCardId(item.id) }}
+                                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-primary hover:bg-white/5 transition-colors font-medium"
+                                >
+                                  <Icon name="plus-circle" size={16} />
+                                  Top Up Card
+                                </button>
+                              )}
                               {/* View Product Page - handle different categories */}
                               {item.category === 'phone-refills' ? (
                                 <button
