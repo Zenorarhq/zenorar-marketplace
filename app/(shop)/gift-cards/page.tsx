@@ -408,6 +408,7 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'girls who code':                                'girls-who-code-usa',
   'showtime':                                      'showtime-usa',
   // === BATCH: W/V/U/T brands ===
+  'stubhub':                   'stubhub-usa',
   'stubhub us':                'stubhub-usa',
   'taco bell':                 'taco-bell-malaysia',
   'texas roadhouse':           'texas-roadhouse-usa',
