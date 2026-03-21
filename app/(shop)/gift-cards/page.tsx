@@ -181,10 +181,10 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   // === GAMING ===
   'steam':               'steam-usa',
   'steam wallet':        'steam-usa',
-  'playstation':         'playstation-store-usa',
-  'playstation store':   'playstation-store-usa',
-  'psn':                 'playstation-store-usa',
-  'ps store':            'playstation-store-usa',
+  'playstation':         'sony-playstation-usa',
+  'playstation store':   'sony-playstation-usa',
+  'psn':                 'sony-playstation-usa',
+  'ps store':            'sony-playstation-usa',
   'ps plus':             'playstation-plus-usa',
   'playstation plus':    'playstation-plus-usa',
   'xbox':                'xbox-usa',
@@ -224,7 +224,7 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'apple':               'apple-gift-card-usa',
   'app store & itunes':  'apple-gift-card-usa',
   'itunes':              'apple-gift-card-usa',
-  'google play':         'google-play-usa',
+  'google play':         'google-play-australia',
   'visa':                'vanilla-visa-usa',
   'mastercard':          'mastercard-gift-card-usa',
   // === STREAMING ===
@@ -245,6 +245,7 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'nike':                'nike-usa',
   'home depot':          'home-depot-usa',
   // === FOOD ===
+  "applebee's":          'applebees-brazil',
   'starbucks':           'starbucks-usa',
   'doordash':            'doordash-usa',
   'grubhub':             'grubhub-usa',
@@ -260,7 +261,7 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'amc':                 'amc-usa',
   // === US VARIANT NAMES (same product, different brand name in DB) ===
   'nintendo us':                                    'nintendo-eshop-usa',
-  'playstation us':                                 'playstation-store-usa',
+  'playstation us':                                 'sony-playstation-usa',
   'xbox us':                                        'xbox-usa',
   'xbox live us':                                   'xbox-usa',
   'xbox game pass 3 month us':                      'xbox-game-pass-ultimate-usa',
@@ -289,6 +290,9 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'sephora us':                                    'sephora-usa',
   'nike us':                                       'nike-usa',
   'airbnb us':                                     'airbnb-usa',
+  'ea 12 month (xbox) us':                         'xbox-usa',
+  'pubg mobile uc (global) us':                    'pubg-mobile-usa',
+  'pubg new state (global) us':                    'pubg-mobile-usa',
 }
 
 // Reserved for re-enablement — Reloadly/Cloudinary artwork not currently active in the visual
