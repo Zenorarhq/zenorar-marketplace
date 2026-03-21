@@ -568,10 +568,10 @@ export default function LibraryPage() {
                             {item.version}
                           </span>
                         )}
-                        {item.expiresAt && (
+                        {(item.cardExpiry || item.expiresAt) && (
                           <span className={`flex items-center gap-1 ${item.status === 'expired' ? 'text-red-500' : ''}`}>
                             <Icon name="clock" size={13} />
-                            {item.status === 'expired' ? 'Expired:' : 'Expires:'} {item.expiresAt.slice(0, 10)}
+                            {item.status === 'expired' ? 'Expired:' : 'Expires:'} {item.cardExpiry || item.expiresAt?.slice(0, 10)}
                           </span>
                         )}
                         {item.downloadCount !== undefined && (
