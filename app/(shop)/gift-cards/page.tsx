@@ -421,13 +421,22 @@ const CATEGORY_COLORS: Record<string, [string, string]> = {
   other:         ['#1a1a2e','#2d2d3d'],
 }
 
+function hashBrandColor(brand: string): [string, string] {
+  let hash = 0
+  for (let i = 0; i < brand.length; i++) {
+    hash = brand.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const h = Math.abs(hash) % 360
+  return [`hsl(${h}, 55%, 25%)`, `hsl(${h}, 65%, 15%)`]
+}
+
 function getBrandColors(brand: string, category: string): [string, string] {
   const key = brand.toLowerCase().trim()
   if (BRAND_COLORS[key]) return BRAND_COLORS[key]
   for (const [k, colors] of Object.entries(BRAND_COLORS)) {
     if (key.includes(k) || k.includes(key)) return colors
   }
-  return CATEGORY_COLORS[category?.toLowerCase()] || CATEGORY_COLORS.other
+  return CATEGORY_COLORS[category?.toLowerCase()] || hashBrandColor(brand)
 }
 
 // Gift card visual — 3-tier: full artwork → brand gradient+logo → brand gradient+initial
@@ -441,6 +450,7 @@ function GiftCardVisual({ card, height, extraClass, children }: {
   const [from, to] = getBrandColors(card.brand, card.category)
   const initial = card.brand.replace(/[^a-zA-Z]/g, '')[0]?.toUpperCase() || '?'
   const [logoError, setLogoError] = useState(false)
+  const compact = height === 'h-24'
 
   const domain = !logoError ? getBrandDomain(card.brand, card.imageUrl) : null
   const logoUrl = domain ? `/api/brand-logo?domain=${domain}` : null
@@ -475,24 +485,24 @@ function GiftCardVisual({ card, height, extraClass, children }: {
       {/* Decorative circle — bottom left */}
       <div className="absolute pointer-events-none z-[1]" style={{ bottom: '-40%', left: '-20%', width: '55%', height: '110%', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
 
-      {/* Center: logo or initial + brand name */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-[2] gap-2 px-4">
+      {/* Center: logo or initial */}
+      <div className="absolute inset-0 flex items-center justify-center z-[2]">
         {logoUrl ? (
           <img
             src={logoUrl}
             alt=""
-            className="w-14 h-14 object-contain rounded-xl"
-            style={{ background: 'rgba(255,255,255,0.12)', padding: '8px' }}
+            className={compact ? 'w-12 h-12 object-contain' : 'w-20 h-20 object-contain'}
+            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
             onError={() => setLogoError(true)}
           />
         ) : (
-          <span className="text-white/25 font-black select-none" style={{ fontSize: '4.5rem', lineHeight: 1 }}>
+          <span
+            className="text-white/25 font-black select-none"
+            style={{ fontSize: compact ? '3rem' : '5rem', lineHeight: 1 }}
+          >
             {initial}
           </span>
         )}
-        <span className="text-white font-bold text-sm tracking-wide text-center line-clamp-1 max-w-[90%]" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
-          {cleanBrandName(card.brand)}
-        </span>
       </div>
 
       {/* Children (badges, close button etc.) */}
