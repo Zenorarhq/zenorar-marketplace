@@ -27,13 +27,15 @@ interface CardDetailsModalProps {
   onClose: () => void
   cardId: string
   formatPrice: (price: number) => string
+  onTopUpSuccess?: () => void
 }
 
 export default function CardDetailsModal({
   isOpen,
   onClose,
   cardId,
-  formatPrice
+  formatPrice,
+  onTopUpSuccess
 }: CardDetailsModalProps) {
   const [loading, setLoading] = useState(true)
   const [card, setCard] = useState<any>(null)
@@ -148,6 +150,7 @@ export default function CardDetailsModal({
         setTopUpMessage({ type: 'success', text: `Added ${formatPrice(res.data.amountAdded)} to your card successfully!` })
         setTopUpAmount('')
         setCard((prev: any) => ({ ...prev, balance: res.data.newBalance }))
+        onTopUpSuccess?.()
       }
     } catch {
       setTopUpMessage({ type: 'error', text: 'Top up failed. Please try again.' })

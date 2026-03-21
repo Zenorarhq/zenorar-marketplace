@@ -968,6 +968,7 @@ export default function LibraryPage() {
         isOpen={!!selectedCardId}
         onClose={() => setSelectedCardId(null)}
         formatPrice={(price: number) => `$${price.toFixed(2)}`}
+        onTopUpSuccess={refetchLibrary}
       />
 
       {/* Card Top Up Modal */}
