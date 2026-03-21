@@ -48,6 +48,8 @@ function StatusBadge({ status }: { status: string }) {
     APPROVED:        'bg-green-500/20 text-green-400 border border-green-500/30',
     REJECTED:        'bg-red-500/20 text-red-400 border border-red-500/30',
     PAID:            'bg-green-500/20 text-green-400 border border-green-500/30',
+    ACTIVE:          'bg-green-500/20 text-green-400 border border-green-500/30',
+    SUSPENDED:       'bg-red-500/20 text-red-400 border border-red-500/30',
     AVAILABLE:       'bg-blue-500/20 text-blue-400 border border-blue-500/30',
     SUBMITTED:       'bg-slate-500/20 text-slate-400 border border-slate-500/30',
     UNDER_REVIEW:    'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
@@ -87,7 +89,7 @@ function AdjustBalanceModal({ contributor, onClose, onDone }: { contributor: any
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#111] border border-[#1f1f1f] rounded-2xl p-6 w-full max-w-md">
+      <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-5">
           <h3 className="text-lg font-bold text-white">Adjust Balance — {contributor.email}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="x" size={20} /></button>
@@ -97,17 +99,17 @@ function AdjustBalanceModal({ contributor, onClose, onDone }: { contributor: any
             <label className="block text-sm text-slate-300 mb-1.5">Amount (positive = credit, negative = deduct)</label>
             <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
               placeholder="e.g. 10.00 or -5.00"
-              className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary" />
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary" />
           </div>
           <div>
             <label className="block text-sm text-slate-300 mb-1.5">Note (reason)</label>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)}
               placeholder="Reason for adjustment"
-              className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary" />
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary" />
           </div>
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 border border-[#1f1f1f] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary hover:text-primary transition-all">Cancel</button>
+            <button onClick={onClose} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary hover:text-primary transition-all">Cancel</button>
             <button onClick={submit} disabled={submitting}
               className="flex-1 bg-primary text-black rounded-xl py-2.5 text-sm font-bold hover:brightness-110 disabled:opacity-50">
               {submitting ? 'Saving...' : 'Apply Adjustment'}
@@ -289,61 +291,77 @@ export default function AdminContributorsPage() {
         {/* ── Overview Tab ─────────────────────────────────────────── */}
         {tab === 'overview' && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input type="text" placeholder="Search by name or email..." value={overviewSearch}
-                onChange={(e) => { setOverviewSearch(e.target.value); setOverviewPage(1) }}
-                className="flex-1 bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-4 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary" />
-              <select value={overviewStatus} onChange={(e) => { setOverviewStatus(e.target.value); setOverviewPage(1) }}
-                className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-primary">
-                <option value="ALL">All Statuses</option>
-                <option value="ACTIVE">Active</option>
-                <option value="SUSPENDED">Suspended</option>
-              </select>
+            <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-4 flex flex-col sm:flex-row gap-3 items-center">
+              <div className="relative flex-1 w-full">
+                <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input type="text" placeholder="Search by name or email..." value={overviewSearch}
+                  onChange={(e) => { setOverviewSearch(e.target.value); setOverviewPage(1) }}
+                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg pl-9 pr-4 py-2 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary" />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {(['ALL', 'ACTIVE', 'SUSPENDED'] as const).map((s) => (
+                  <button key={s} onClick={() => { setOverviewStatus(s); setOverviewPage(1) }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${overviewStatus === s ? 'bg-primary text-black' : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'}`}>
+                    {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {overviewLoading ? (
               <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
             ) : (
-              <div className="bg-[#111] border border-[#1f1f1f] rounded-xl overflow-x-auto">
+              <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[#1f1f1f] text-slate-400">
-                      <th className="text-left py-3 px-4">Contributor</th>
-                      <th className="text-right py-3 px-4">Scripts</th>
-                      <th className="text-right py-3 px-4">Available</th>
-                      <th className="text-right py-3 px-4">Lifetime</th>
-                      <th className="text-right py-3 px-4">Rate</th>
-                      <th className="text-center py-3 px-4">Status</th>
-                      <th className="text-right py-3 px-4">Actions</th>
+                  <thead className="bg-[#0a0a0a] border-b border-[#1f1f1f]">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Contributor</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Scripts</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Available</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Lifetime</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Rate</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase">Status</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1f1f1f]">
                     {overviewData?.contributors?.map((c: any) => (
-                      <tr key={c.id} className="hover:bg-white/2 text-slate-300">
+                      <tr key={c.id} className="hover:bg-[#1a1a1a] transition-colors">
                         <td className="py-3 px-4">
-                          <div className="font-medium text-white text-xs">{c.name}</div>
-                          <div className="text-slate-500 text-xs">{c.email}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-300 shrink-0">
+                              {c.name?.[0]?.toUpperCase() || '?'}
+                            </div>
+                            <div>
+                              <div className="font-medium text-white text-sm">{c.name}</div>
+                              <div className="text-slate-500 text-xs">{c.email}</div>
+                            </div>
+                          </div>
                         </td>
-                        <td className="py-3 px-4 text-right">{c.scripts_live} live / {c.scripts_count} total</td>
+                        <td className="py-3 px-4 text-right text-slate-300">{c.scripts_live} live / {c.scripts_count} total</td>
                         <td className="py-3 px-4 text-right text-primary font-semibold">{fmt(c.available_balance)}</td>
-                        <td className="py-3 px-4 text-right">{fmt(c.lifetime_earned)}</td>
-                        <td className="py-3 px-4 text-right">{c.contributor_commission_rate}%</td>
+                        <td className="py-3 px-4 text-right text-slate-300">{fmt(c.lifetime_earned)}</td>
+                        <td className="py-3 px-4 text-right text-slate-300">{c.contributor_commission_rate}%</td>
                         <td className="py-3 px-4 text-center">
-                          {c.contributor_suspended_at
-                            ? <span className="text-xs text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">Suspended</span>
-                            : <span className="text-xs text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">Active</span>}
+                          <StatusBadge status={c.contributor_suspended_at ? 'SUSPENDED' : 'ACTIVE'} />
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             {c.contributor_suspended_at ? (
-                              <button onClick={() => reinstateContributor.mutate(c.id)}
-                                className="text-xs text-green-400 hover:text-green-300 font-medium">Reinstate</button>
+                              <button onClick={() => reinstateContributor.mutate(c.id)} title="Reinstate"
+                                className="p-1.5 rounded hover:bg-green-500/10 transition-colors text-green-400">
+                                <Icon name="check" size={14} />
+                              </button>
                             ) : (
-                              <button onClick={() => { if (confirm(`Suspend ${c.email}?`)) suspendContributor.mutate(c.id) }}
-                                className="text-xs text-yellow-400 hover:text-yellow-300 font-medium">Suspend</button>
+                              <button onClick={() => { if (confirm(`Suspend ${c.email}?`)) suspendContributor.mutate(c.id) }} title="Suspend"
+                                className="p-1.5 rounded hover:bg-orange-500/10 transition-colors text-orange-400">
+                                <Icon name="x-circle" size={14} />
+                              </button>
                             )}
-                            <button onClick={() => setAdjustTarget(c)}
-                              className="text-xs text-slate-400 hover:text-white font-medium">Adjust</button>
+                            <button onClick={() => setAdjustTarget(c)} title="Adjust Balance"
+                              className="p-1.5 rounded hover:bg-blue-500/10 transition-colors text-slate-400">
+                              <Icon name="edit" size={14} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -358,9 +376,9 @@ export default function AdminContributorsPage() {
             {overviewData?.pagination?.total > 20 && (
               <div className="flex justify-center gap-2">
                 <button disabled={overviewPage === 1} onClick={() => setOverviewPage(overviewPage - 1)}
-                  className="px-4 py-2 rounded-lg border border-[#1f1f1f] text-slate-400 hover:text-white disabled:opacity-40 text-sm">← Prev</button>
+                  className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40 text-sm transition-colors">← Prev</button>
                 <button disabled={overviewPage * 20 >= overviewData.pagination.total} onClick={() => setOverviewPage(overviewPage + 1)}
-                  className="px-4 py-2 rounded-lg border border-[#1f1f1f] text-slate-400 hover:text-white disabled:opacity-40 text-sm">Next →</button>
+                  className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40 text-sm transition-colors">Next →</button>
               </div>
             )}
           </div>
@@ -369,37 +387,43 @@ export default function AdminContributorsPage() {
         {/* ── Applications Tab ─────────────────────────────────────── */}
         {tab === 'applications' && (
           <div className="space-y-4">
-            <div className="flex gap-3">
-              <select value={appStatusFilter} onChange={(e) => { setAppStatusFilter(e.target.value); setAppPage(1) }}
-                className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-primary">
-                <option value="PENDING">Pending</option>
-                <option value="APPROVED">Approved</option>
-                <option value="REJECTED">Rejected</option>
-                <option value="ALL">All</option>
-              </select>
+            <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-4 flex gap-2 flex-wrap">
+              {(['PENDING', 'APPROVED', 'REJECTED', 'ALL'] as const).map((s) => (
+                <button key={s} onClick={() => { setAppStatusFilter(s); setAppPage(1) }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${appStatusFilter === s ? 'bg-primary text-black' : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'}`}>
+                  {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+                </button>
+              ))}
             </div>
 
             {appsLoading ? (
               <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
             ) : (
-              <div className="bg-[#111] border border-[#1f1f1f] rounded-xl overflow-x-auto">
+              <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[#1f1f1f] text-slate-400">
-                      <th className="text-left py-3 px-4">Applicant</th>
-                      <th className="text-left py-3 px-4 hidden md:table-cell">Country</th>
-                      <th className="text-left py-3 px-4 hidden lg:table-cell">Script Types</th>
-                      <th className="text-right py-3 px-4">Applied</th>
-                      <th className="text-center py-3 px-4">Status</th>
-                      <th className="text-right py-3 px-4">Actions</th>
+                  <thead className="bg-[#0a0a0a] border-b border-[#1f1f1f]">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Applicant</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase hidden md:table-cell">Country</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase hidden lg:table-cell">Script Types</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Applied</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase">Status</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1f1f1f]">
                     {appsData?.applications?.map((a: any) => (
-                      <tr key={a.id} className="hover:bg-white/2 text-slate-300">
+                      <tr key={a.id} className="hover:bg-[#1a1a1a] transition-colors">
                         <td className="py-3 px-4">
-                          <div className="font-medium text-white text-xs">{a.full_name}</div>
-                          <div className="text-slate-500 text-xs">{a.email}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-300 shrink-0">
+                              {a.full_name?.[0]?.toUpperCase() || '?'}
+                            </div>
+                            <div>
+                              <div className="font-medium text-white text-sm">{a.full_name}</div>
+                              <div className="text-slate-500 text-xs">{a.email}</div>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-3 px-4 hidden md:table-cell text-slate-400">{a.country}</td>
                         <td className="py-3 px-4 hidden lg:table-cell text-slate-400 max-w-[200px] truncate">{a.script_types}</td>
@@ -409,9 +433,9 @@ export default function AdminContributorsPage() {
                           {a.status === 'PENDING' && (
                             <div className="flex items-center justify-end gap-2">
                               <button onClick={() => approveApp.mutate(a.id)}
-                                className="text-xs text-green-400 hover:text-green-300 font-medium">Approve</button>
+                                className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-colors">Approve</button>
                               <button onClick={() => setRejectNoteTarget({ id: a.id, email: a.email })}
-                                className="text-xs text-red-400 hover:text-red-300 font-medium">Reject</button>
+                                className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors">Reject</button>
                             </div>
                           )}
                           {a.admin_note && <p className="text-slate-500 text-xs mt-1 text-right">{a.admin_note}</p>}
@@ -431,37 +455,33 @@ export default function AdminContributorsPage() {
         {/* ── Scripts Tab ──────────────────────────────────────────── */}
         {tab === 'scripts' && (
           <div className="space-y-4">
-            <div className="flex gap-3">
-              <select value={scriptStatusFilter} onChange={(e) => { setScriptStatusFilter(e.target.value); setScriptPage(1) }}
-                className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-primary">
-                <option value="ALL">All Statuses</option>
-                <option value="SUBMITTED">Submitted</option>
-                <option value="UNDER_REVIEW">Under Review</option>
-                <option value="DEMO_APPROVED">Demo Approved</option>
-                <option value="AWAITING_UPLOAD">Awaiting Upload</option>
-                <option value="LIVE">Live</option>
-                <option value="REJECTED">Rejected</option>
-              </select>
+            <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-4 flex gap-2 flex-wrap">
+              {(['ALL', 'SUBMITTED', 'UNDER_REVIEW', 'DEMO_APPROVED', 'AWAITING_UPLOAD', 'LIVE', 'REJECTED'] as const).map((s) => (
+                <button key={s} onClick={() => { setScriptStatusFilter(s); setScriptPage(1) }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${scriptStatusFilter === s ? 'bg-primary text-black' : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'}`}>
+                  {s === 'ALL' ? 'All' : s.replace('_', ' ').charAt(0) + s.replace('_', ' ').slice(1).toLowerCase()}
+                </button>
+              ))}
             </div>
 
             {scriptsLoading ? (
               <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
             ) : (
-              <div className="bg-[#111] border border-[#1f1f1f] rounded-xl overflow-x-auto">
+              <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[#1f1f1f] text-slate-400">
-                      <th className="text-left py-3 px-4">Script</th>
-                      <th className="text-left py-3 px-4 hidden md:table-cell">Contributor</th>
-                      <th className="text-right py-3 px-4">Asking</th>
-                      <th className="text-right py-3 px-4">Submitted</th>
-                      <th className="text-center py-3 px-4">Status</th>
-                      <th className="text-right py-3 px-4">Actions</th>
+                  <thead className="bg-[#0a0a0a] border-b border-[#1f1f1f]">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Script</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase hidden md:table-cell">Contributor</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Asking</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Submitted</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase">Status</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1f1f1f]">
                     {scriptsData?.scripts?.map((s: any) => (
-                      <tr key={s.id} className="hover:bg-white/2 text-slate-300">
+                      <tr key={s.id} className="hover:bg-[#1a1a1a] transition-colors">
                         <td className="py-3 px-4">
                           <div className="font-medium text-white text-xs max-w-[200px] truncate">{s.title}</div>
                           {s.admin_note && <div className="text-slate-500 text-xs mt-0.5 max-w-[200px] truncate">Note: {s.admin_note}</div>}
@@ -474,17 +494,17 @@ export default function AdminContributorsPage() {
                           <div className="flex items-center justify-end gap-2 flex-wrap">
                             {!['LIVE', 'REJECTED'].includes(s.status) && (
                               <button onClick={() => advanceScript.mutate({ id: s.id })}
-                                className="text-xs text-primary hover:text-primary/80 font-medium">Advance</button>
+                                className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">Advance</button>
                             )}
                             <button onClick={() => { setScriptNoteTarget({ id: s.id, title: s.title }); setScriptNoteValue(s.admin_note || '') }}
-                              className="text-xs text-slate-400 hover:text-white font-medium">Note</button>
+                              className="px-3 py-1.5 rounded-lg bg-slate-500/10 border border-slate-500/30 text-slate-400 text-xs font-medium hover:bg-slate-500/20 transition-colors">Note</button>
                             {s.status === 'LIVE' && !s.product_id && (
                               <button onClick={() => setLinkProductTarget({ id: s.id, title: s.title })}
-                                className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">Link Product</button>
+                                className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-medium hover:bg-cyan-500/20 transition-colors">Link Product</button>
                             )}
                             {!['LIVE', 'REJECTED'].includes(s.status) && (
                               <button onClick={() => { if (confirm(`Reject "${s.title}"?`)) rejectScript.mutate({ id: s.id }) }}
-                                className="text-xs text-red-400 hover:text-red-300 font-medium">Reject</button>
+                                className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors">Reject</button>
                             )}
                           </div>
                         </td>
@@ -500,9 +520,9 @@ export default function AdminContributorsPage() {
             {scriptsData?.pagination?.total > 20 && (
               <div className="flex justify-center gap-2">
                 <button disabled={scriptPage === 1} onClick={() => setScriptPage(scriptPage - 1)}
-                  className="px-4 py-2 rounded-lg border border-[#1f1f1f] text-slate-400 hover:text-white disabled:opacity-40 text-sm">← Prev</button>
+                  className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40 text-sm transition-colors">← Prev</button>
                 <button disabled={scriptPage * 20 >= scriptsData.pagination.total} onClick={() => setScriptPage(scriptPage + 1)}
-                  className="px-4 py-2 rounded-lg border border-[#1f1f1f] text-slate-400 hover:text-white disabled:opacity-40 text-sm">Next →</button>
+                  className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40 text-sm transition-colors">Next →</button>
               </div>
             )}
           </div>
@@ -511,37 +531,43 @@ export default function AdminContributorsPage() {
         {/* ── Payouts Tab ──────────────────────────────────────────── */}
         {tab === 'payouts' && (
           <div className="space-y-4">
-            <div className="flex gap-3">
-              <select value={payoutStatusFilter} onChange={(e) => { setPayoutStatusFilter(e.target.value); setPayoutPage(1) }}
-                className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-primary">
-                <option value="PENDING">Pending</option>
-                <option value="PAID">Paid</option>
-                <option value="REJECTED">Rejected</option>
-                <option value="ALL">All</option>
-              </select>
+            <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-4 flex gap-2 flex-wrap">
+              {(['PENDING', 'PAID', 'REJECTED', 'ALL'] as const).map((s) => (
+                <button key={s} onClick={() => { setPayoutStatusFilter(s); setPayoutPage(1) }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${payoutStatusFilter === s ? 'bg-primary text-black' : 'bg-[#1a1a1a] text-slate-400 hover:text-white border border-[#2a2a2a]'}`}>
+                  {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+                </button>
+              ))}
             </div>
 
             {payoutsLoading ? (
               <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
             ) : (
-              <div className="bg-[#111] border border-[#1f1f1f] rounded-xl overflow-x-auto">
+              <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[#1f1f1f] text-slate-400">
-                      <th className="text-left py-3 px-4">Contributor</th>
-                      <th className="text-right py-3 px-4">Amount</th>
-                      <th className="text-left py-3 px-4 hidden md:table-cell">Wallet</th>
-                      <th className="text-right py-3 px-4">Requested</th>
-                      <th className="text-center py-3 px-4">Status</th>
-                      <th className="text-right py-3 px-4">Actions</th>
+                  <thead className="bg-[#0a0a0a] border-b border-[#1f1f1f]">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Contributor</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Amount</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase hidden md:table-cell">Wallet</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Requested</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase">Status</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1f1f1f]">
                     {payoutsData?.payouts?.map((p: any) => (
-                      <tr key={p.id} className="hover:bg-white/2 text-slate-300">
+                      <tr key={p.id} className="hover:bg-[#1a1a1a] transition-colors">
                         <td className="py-3 px-4">
-                          <div className="text-white text-xs font-medium">{p.contributor_name}</div>
-                          <div className="text-slate-500 text-xs">{p.contributor_email}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-300 shrink-0">
+                              {p.contributor_name?.[0]?.toUpperCase() || '?'}
+                            </div>
+                            <div>
+                              <div className="font-medium text-white text-sm">{p.contributor_name}</div>
+                              <div className="text-slate-500 text-xs">{p.contributor_email}</div>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-right font-semibold text-primary">{fmt(p.amount)}</td>
                         <td className="py-3 px-4 hidden md:table-cell">
@@ -554,9 +580,9 @@ export default function AdminContributorsPage() {
                           {p.status === 'PENDING' && (
                             <div className="flex items-center justify-end gap-2">
                               <button onClick={() => { if (confirm(`Mark payout of ${fmt(p.amount)} as paid?`)) markPayoutPaid.mutate(p.id) }}
-                                className="text-xs text-green-400 hover:text-green-300 font-medium">Mark Paid</button>
+                                className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-colors">Mark Paid</button>
                               <button onClick={() => setRejectPayoutTarget({ id: p.id })}
-                                className="text-xs text-red-400 hover:text-red-300 font-medium">Reject</button>
+                                className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors">Reject</button>
                             </div>
                           )}
                           {p.admin_note && <p className="text-slate-500 text-xs mt-1 text-right">{p.admin_note}</p>}
@@ -573,9 +599,9 @@ export default function AdminContributorsPage() {
             {payoutsData?.pagination?.total > 20 && (
               <div className="flex justify-center gap-2">
                 <button disabled={payoutPage === 1} onClick={() => setPayoutPage(payoutPage - 1)}
-                  className="px-4 py-2 rounded-lg border border-[#1f1f1f] text-slate-400 hover:text-white disabled:opacity-40 text-sm">← Prev</button>
+                  className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40 text-sm transition-colors">← Prev</button>
                 <button disabled={payoutPage * 20 >= payoutsData.pagination.total} onClick={() => setPayoutPage(payoutPage + 1)}
-                  className="px-4 py-2 rounded-lg border border-[#1f1f1f] text-slate-400 hover:text-white disabled:opacity-40 text-sm">Next →</button>
+                  className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40 text-sm transition-colors">Next →</button>
               </div>
             )}
           </div>
@@ -594,13 +620,13 @@ export default function AdminContributorsPage() {
 
       {rejectNoteTarget && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#111] border border-[#1f1f1f] rounded-2xl p-6 w-full max-w-sm">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
             <h3 className="text-lg font-bold text-white mb-4">Reject Application — {rejectNoteTarget.email}</h3>
             <textarea value={rejectNoteValue} onChange={(e) => setRejectNoteValue(e.target.value)}
               placeholder="Rejection reason (optional)..." rows={3}
-              className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary resize-none mb-4" />
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary resize-none mb-4" />
             <div className="flex gap-3">
-              <button onClick={() => setRejectNoteTarget(null)} className="flex-1 border border-[#1f1f1f] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={() => setRejectNoteTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
               <button onClick={() => rejectApp.mutate({ id: rejectNoteTarget.id, note: rejectNoteValue })} disabled={rejectApp.isPending}
                 className="flex-1 bg-red-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-red-500 disabled:opacity-50">
                 {rejectApp.isPending ? 'Rejecting...' : 'Confirm Reject'}
@@ -612,13 +638,13 @@ export default function AdminContributorsPage() {
 
       {scriptNoteTarget && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#111] border border-[#1f1f1f] rounded-2xl p-6 w-full max-w-sm">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
             <h3 className="text-lg font-bold text-white mb-4">Add Note — {scriptNoteTarget.title}</h3>
             <textarea value={scriptNoteValue} onChange={(e) => setScriptNoteValue(e.target.value)}
               placeholder="Note for the contributor..." rows={3}
-              className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary resize-none mb-4" />
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary resize-none mb-4" />
             <div className="flex gap-3">
-              <button onClick={() => setScriptNoteTarget(null)} className="flex-1 border border-[#1f1f1f] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={() => setScriptNoteTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
               <button onClick={() => addScriptNote.mutate({ id: scriptNoteTarget.id, note: scriptNoteValue })} disabled={addScriptNote.isPending}
                 className="flex-1 bg-primary text-black rounded-xl py-2.5 text-sm font-bold hover:brightness-110 disabled:opacity-50">
                 {addScriptNote.isPending ? 'Saving...' : 'Save Note'}
@@ -630,14 +656,14 @@ export default function AdminContributorsPage() {
 
       {linkProductTarget && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#111] border border-[#1f1f1f] rounded-2xl p-6 w-full max-w-sm">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
             <h3 className="text-lg font-bold text-white mb-4">Link to Product — {linkProductTarget.title}</h3>
             <p className="text-slate-400 text-sm mb-3">Enter the product ID to link this script to a live product.</p>
             <input type="text" value={linkProductId} onChange={(e) => setLinkProductId(e.target.value)}
               placeholder="Product ID"
-              className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary mb-4" />
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary mb-4" />
             <div className="flex gap-3">
-              <button onClick={() => setLinkProductTarget(null)} className="flex-1 border border-[#1f1f1f] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={() => setLinkProductTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
               <button onClick={() => linkProduct.mutate({ id: linkProductTarget.id, productId: linkProductId })} disabled={linkProduct.isPending || !linkProductId}
                 className="flex-1 bg-primary text-black rounded-xl py-2.5 text-sm font-bold hover:brightness-110 disabled:opacity-50">
                 {linkProduct.isPending ? 'Linking...' : 'Link Product'}
@@ -649,13 +675,13 @@ export default function AdminContributorsPage() {
 
       {rejectPayoutTarget && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#111] border border-[#1f1f1f] rounded-2xl p-6 w-full max-w-sm">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
             <h3 className="text-lg font-bold text-white mb-4">Reject Payout</h3>
             <textarea value={rejectPayoutNote} onChange={(e) => setRejectPayoutNote(e.target.value)}
               placeholder="Reason for rejection (optional)..." rows={3}
-              className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary resize-none mb-4" />
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary resize-none mb-4" />
             <div className="flex gap-3">
-              <button onClick={() => setRejectPayoutTarget(null)} className="flex-1 border border-[#1f1f1f] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={() => setRejectPayoutTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
               <button onClick={() => rejectPayout.mutate({ id: rejectPayoutTarget.id, note: rejectPayoutNote })} disabled={rejectPayout.isPending}
                 className="flex-1 bg-red-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-red-500 disabled:opacity-50">
                 {rejectPayout.isPending ? 'Rejecting...' : 'Confirm Reject'}
