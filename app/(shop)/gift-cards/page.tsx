@@ -740,6 +740,13 @@ export default function GiftCardsPage() {
   // Refs for auto-scroll
   const categoryScrollRef = useRef<HTMLDivElement>(null)
 
+  // Pagination — 25 per page desktop, 15 mobile. Reset when category/search changes.
+  const [visibleCount, setVisibleCount] = useState(25)
+  useEffect(() => {
+    const size = typeof window !== 'undefined' && window.innerWidth < 560 ? 15 : 25
+    setVisibleCount(size)
+  }, [selectedCategory, searchQuery])
+
   // Card state
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const [selectedAmounts, setSelectedAmounts] = useState<Record<string, number>>({})
@@ -1241,7 +1248,7 @@ export default function GiftCardsPage() {
             ) : (
               <>
               <div className="grid grid-cols-1 min-[560px]:grid-cols-2 min-[700px]:grid-cols-3 min-[960px]:grid-cols-4 gap-6 items-start">
-                {giftCards.map((card) => {
+                {giftCards.slice(0, visibleCount).map((card) => {
                   const selectedAmount = getSelectedAmount(card.id)
                   const hasSelection = selectedAmount !== null
                   const isVariableOnly = card.denominations.length === 0 && (card.minCustomAmount || card.maxCustomAmount)
@@ -1294,6 +1301,22 @@ export default function GiftCardsPage() {
                   )
                 })}
               </div>
+
+              {/* Load More */}
+              {giftCards.length > visibleCount && (
+                <div className="mt-10 flex flex-col items-center gap-3">
+                  <p className="text-slate-500 text-sm">Showing {visibleCount} of {giftCards.length}</p>
+                  <div className="w-48 h-1 bg-border-dark rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min((visibleCount / giftCards.length) * 100, 100)}%` }} />
+                  </div>
+                  <button
+                    onClick={() => setVisibleCount(v => v + (typeof window !== 'undefined' && window.innerWidth < 560 ? 15 : 25))}
+                    className="mt-2 px-8 py-3 bg-charcoal border border-border-dark rounded-xl text-white font-semibold hover:border-primary/50 transition-colors"
+                  >
+                    Load More
+                  </button>
+                </div>
+              )}
               </>
             )}
           </div>
