@@ -26,6 +26,8 @@ export interface User {
   isStaff: boolean
   isVendor?: boolean
   vendorSuspendedAt?: string | null
+  isContributor?: boolean
+  contributorSuspendedAt?: string | null
   permissions?: string[]
   createdAt: string
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, Fragment } from 'react'
+import { useState, useEffect, useRef, Fragment, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -35,6 +35,12 @@ export default function EditProductPage() {
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
+
+  // Contributor search
+  const [contributorSearch, setContributorSearch] = useState('')
+  const [contributorResults, setContributorResults] = useState<{ id: string; name: string; email: string; commissionRate: number }[]>([])
+  const [selectedContributor, setSelectedContributor] = useState<{ id: string; name: string; email: string; commissionRate: number } | null>(null)
+  const contributorSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [uploadJobStatus, setUploadJobStatus] = useState<'processing' | 'complete' | 'failed'>('processing')
   const [uploadRawStage, setUploadRawStage] = useState('queued')
   const jobProcessedRef = useRef(false)
@@ -62,6 +68,7 @@ export default function EditProductPage() {
     demoInfo: '',
     features: [] as { icon: string; title: string; description: string }[],
     specs: [] as { label: string; value: string }[],
+    contributorId: '',
   })
 
   useEffect(() => {
@@ -99,6 +106,7 @@ export default function EditProductPage() {
     if (productResult.success && productResult.data) {
       const p = productResult.data
       setProduct(p)
+      const existingContributorId = (p as any).contributorId || ''
       setFormData({
         name: p.name,
         slug: p.slug,
@@ -121,7 +129,17 @@ export default function EditProductPage() {
         demoInfo: (p as any).demoInfo || '',
         features: (p as any).features || [],
         specs: (p as any).specs || [],
+        contributorId: existingContributorId,
       })
+      // Load existing contributor info if set
+      if (existingContributorId) {
+        apiFetch<any>(`/contributor/admin/contributors/${existingContributorId}`).then(res => {
+          if (res.success && res.data?.user) {
+            const u = res.data.user
+            setSelectedContributor({ id: u.id, name: u.name, email: u.email, commissionRate: u.contributorCommissionRate ?? 70 })
+          }
+        }).catch(() => {})
+      }
     } else {
       setError(productResult.error || 'Product not found')
     }
@@ -135,6 +153,16 @@ export default function EditProductPage() {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
+  }
+
+  function handleContributorSearchChange(value: string) {
+    setContributorSearch(value)
+    if (contributorSearchRef.current) clearTimeout(contributorSearchRef.current)
+    if (!value.trim()) { setContributorResults([]); return }
+    contributorSearchRef.current = setTimeout(async () => {
+      const result = await apiFetch<any[]>(`/contributor/admin/contributors/search?email=${encodeURIComponent(value)}`)
+      if (result.success && result.data) setContributorResults(result.data)
+    }, 300)
   }
 
   async function handleAddImage(imageUrl: string) {
@@ -201,6 +229,7 @@ export default function EditProductPage() {
         demoInfo: formData.demoInfo.trim() || null,
         features: formData.features.length > 0 ? formData.features : null,
         specs: formData.specs.length > 0 ? formData.specs : null,
+        contributorId: formData.contributorId || null,
       }
 
       const result = await productsApi.update(productId, productData)
@@ -715,6 +744,42 @@ export default function EditProductPage() {
               </div>
             </div>
           </div>
+
+          {/* Contributor — only for script products */}
+          {product?.productType?.toLowerCase() === 'script' && (
+            <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">
+              <h2 className="text-lg font-semibold text-white mb-1">Contributor</h2>
+              <p className="text-slate-500 text-sm mb-4">Link to the contributor who submitted this script. They earn a commission on each sale.</p>
+              {selectedContributor ? (
+                <div className="flex items-center justify-between bg-[#1a1a1a] border border-primary/30 rounded-lg px-4 py-3">
+                  <div>
+                    <p className="text-white font-medium text-sm">{selectedContributor.name}</p>
+                    <p className="text-slate-400 text-xs">{selectedContributor.email} · {selectedContributor.commissionRate}% commission</p>
+                  </div>
+                  <button type="button" onClick={() => { setSelectedContributor(null); setFormData(prev => ({ ...prev, contributorId: '' })); setContributorSearch('') }}
+                    className="text-slate-500 hover:text-red-400 text-xs px-2 py-1">Remove</button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input type="text" value={contributorSearch} onChange={(e) => handleContributorSearchChange(e.target.value)}
+                    placeholder="Search by contributor email..."
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
+                  {contributorResults.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden shadow-xl">
+                      {contributorResults.map(c => (
+                        <button key={c.id} type="button"
+                          onClick={() => { setSelectedContributor(c); setFormData(prev => ({ ...prev, contributorId: c.id })); setContributorSearch(''); setContributorResults([]) }}
+                          className="w-full text-left px-4 py-2.5 hover:bg-white/5 transition-colors">
+                          <p className="text-white text-sm">{c.name}</p>
+                          <p className="text-slate-400 text-xs">{c.email} · {c.commissionRate}% commission</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Settings */}
           <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6">

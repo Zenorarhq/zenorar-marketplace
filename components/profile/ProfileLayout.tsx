@@ -22,6 +22,7 @@ const baseNavItems = [
   { href: '/profile/wallet', label: 'Wallet & Credits', shortLabel: 'Wallet', icon: 'wallet' },
   { href: '/profile/referrals', label: 'Referral & Rewards', shortLabel: 'Referrals', icon: 'gift' },
   { href: '/profile/commissions', label: 'Commissions', shortLabel: 'Commissions', icon: 'trending-up', vendorOnly: true },
+  { href: '/profile/contributor', label: 'Contributor', shortLabel: 'Contributor', icon: 'code', contributorOnly: true },
   { href: '/profile/billing', label: 'Billing & Payments', shortLabel: 'Billing', icon: 'credit-card' },
   { href: '/profile/tickets', label: 'Support Tickets', shortLabel: 'Support', icon: 'ticket' },
   { href: '/profile/security', label: 'Security', shortLabel: 'Security', icon: 'shield' },
@@ -31,7 +32,10 @@ const baseNavItems = [
 export default function ProfileLayout({ children }: ProfileLayoutProps) {
   const pathname = usePathname()
   const { user } = useAuth()
-  const navItems = baseNavItems.filter(item => !item.vendorOnly || user?.isVendor)
+  const navItems = baseNavItems.filter(item =>
+    (!item.vendorOnly || user?.isVendor) &&
+    (!(item as any).contributorOnly || (user as any)?.isContributor)
+  )
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const activeTabRef = useRef<HTMLAnchorElement>(null)
 

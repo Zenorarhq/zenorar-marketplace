@@ -152,6 +152,7 @@ export default function Footer() {
           {/* Link Columns - each takes 1 col on mobile, 2 on desktop */}
           {(() => {
             const vendorLink = { label: 'Become a Vendor', url: '/become-a-vendor' }
+            const contributorLink = { label: 'Become a Contributor', url: '/become-a-contributor' }
             let cols = config?.columns && config.columns.length > 0 ? config.columns : [
               { title: 'Products', links: [{ label: 'Premium Scripts', url: '/scripts' }, { label: 'Global eSIMs', url: '/esim' }, { label: 'Virtual Numbers', url: '/virtual-numbers' }, { label: 'Gift Cards', url: '/gift-cards' }] },
               { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }, { label: 'Product Request', url: '/product-request' }, { label: 'My Account', url: '/profile' }, { label: 'Terms of Service', url: '/terms' }, { label: 'Privacy Policy', url: '/privacy' }] },
@@ -165,6 +166,16 @@ export default function Footer() {
                 cols = cols.map((c) => c === companyCol ? { ...c, links: [...c.links, vendorLink] } : c)
               } else {
                 cols = [...cols.slice(0, -1), { ...cols[cols.length - 1], links: [...cols[cols.length - 1].links, vendorLink] }]
+              }
+            }
+            // Ensure "Become a Contributor" always appears — inject after vendor link
+            const hasContributorLink = cols.some((c) => c.links.some((l) => l.url === '/become-a-contributor'))
+            if (!hasContributorLink) {
+              const companyCol = cols.find((c) => c.title.toLowerCase() === 'company')
+              if (companyCol) {
+                cols = cols.map((c) => c === companyCol ? { ...c, links: [...c.links, contributorLink] } : c)
+              } else {
+                cols = [...cols.slice(0, -1), { ...cols[cols.length - 1], links: [...cols[cols.length - 1].links, contributorLink] }]
               }
             }
             return cols

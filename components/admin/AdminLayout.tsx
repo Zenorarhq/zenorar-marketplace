@@ -51,6 +51,7 @@ const navItems = [
   { href: '/admin/tickets', label: 'Tickets', icon: 'ticket', permission: 'view_tickets' },
   { href: '/admin/licenses', label: 'Licenses', icon: 'key', permission: 'manage_licenses' },
   { href: '/admin/vendors', label: 'Vendors', icon: 'users', permission: 'view_users' },
+  { href: '/admin/contributors', label: 'Contributors', icon: 'code', permission: 'view_users' },
   { href: '/admin/user-management', label: 'User Management', icon: 'people', permissions: ['view_users', 'view_staff', 'manage_roles'] },
   { href: '/admin/referrals', label: 'Referrals', icon: 'user-group', permission: 'view_analytics' },
   { href: '/admin/settings', label: 'Settings', icon: 'settings', permission: 'manage_settings' },
