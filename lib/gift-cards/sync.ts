@@ -363,6 +363,14 @@ export async function syncAllGiftCardProviders(countryCode: string = 'US'): Prom
   let totalSynced = 0
   let totalUpdated = 0
 
+  // Deactivate cards from any provider that is no longer enabled
+  const allProviders: ProviderName[] = ['reloadly', 'tango', 'zendit']
+  for (const p of allProviders) {
+    if (!enabledProviders.includes(p)) {
+      await query(`UPDATE gift_cards SET is_active = false WHERE provider = $1 AND is_active = true`, [p])
+    }
+  }
+
   for (const providerName of enabledProviders) {
     let result: SyncResult
 

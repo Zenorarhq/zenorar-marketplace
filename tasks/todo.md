@@ -1,3 +1,34 @@
+# Gift Card Provider Deactivation — Task Plan
+
+## Goal
+When a gift card provider (Reloadly, Tango, Zendit) is disabled in Admin Settings,
+all cards sourced from that provider are set to is_active = false so they disappear
+from the storefront. Sales history in user_gift_cards is never touched.
+
+## Approach
+Add deactivation logic inside syncAllGiftCardProviders() in lib/gift-cards/sync.ts.
+After getting the enabled providers list, for each provider NOT in that list, set all
+its cards to is_active = false. Runs automatically because the settings page
+auto-triggers a sync after saving when at least one provider is still enabled.
+
+## Known gap
+If ALL providers are disabled at once, no auto-sync runs so cards won't deactivate
+automatically. Admin must manually deactivate in that case.
+
+## Files changed
+- lib/gift-cards/sync.ts
+
+## Checklist
+- [x] 1. Add task to todo.md
+- [x] 2. Add deactivation loop to syncAllGiftCardProviders in sync.ts
+- [x] 3. Commit and push
+
+## Review
+Deactivation runs as part of every sync. Disabled provider cards become inactive.
+Re-enabling a provider and re-syncing restores them. All purchase history preserved.
+
+---
+
 # Vendor Badge — Task Plan
 
 ## Goal
