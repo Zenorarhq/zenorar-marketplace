@@ -610,20 +610,20 @@ function GiftCardVisual({ card, height, extraClass, children }: {
     )
   }
 
-  // Tier 2 & 3: Brand gradient + Apistemic logo (or initial) + brand name
+  // Tier 2 & 3: Logo on white, or gradient + initial
+  const hasLogo = logoUrl !== null
   return (
     <div
       className={`relative ${height} overflow-hidden ${extraClass || ''}`}
-      style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+      style={{ background: hasLogo ? '#ffffff' : `linear-gradient(135deg, ${from}, ${to})` }}
     >
-      {/* Gloss overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30 pointer-events-none z-10" />
-      {/* Shine strip */}
-      <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
-      {/* Decorative circle — top right */}
-      <div className="absolute pointer-events-none z-[1]" style={{ top: '-40%', right: '-25%', width: '65%', height: '130%', borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
-      {/* Decorative circle — bottom left */}
-      <div className="absolute pointer-events-none z-[1]" style={{ bottom: '-40%', left: '-20%', width: '55%', height: '110%', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+      {/* Decorative overlays only on gradient cards */}
+      {!hasLogo && <>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30 pointer-events-none z-10" />
+        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
+        <div className="absolute pointer-events-none z-[1]" style={{ top: '-40%', right: '-25%', width: '65%', height: '130%', borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
+        <div className="absolute pointer-events-none z-[1]" style={{ bottom: '-40%', left: '-20%', width: '55%', height: '110%', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+      </>}
 
       {/* Center: logo or initial */}
       <div className="absolute inset-0 flex items-center justify-center z-[2]">
@@ -631,8 +631,7 @@ function GiftCardVisual({ card, height, extraClass, children }: {
           <img
             src={logoUrl}
             alt=""
-            className={compact ? 'w-12 h-12 object-contain' : 'w-20 h-20 object-contain'}
-            style={{ filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.7)) drop-shadow(0 0 2px rgba(255,255,255,0.9)) drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}
+            className={compact ? 'w-4/5 h-4/5 object-contain' : 'w-3/4 h-3/4 object-contain'}
             onError={() => { if (!useFallback && brandfetchId) setUseFallback(true); else setLogoError(true) }}
           />
         ) : (
