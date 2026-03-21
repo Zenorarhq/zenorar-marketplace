@@ -161,6 +161,10 @@ const BRAND_POPULARITY: Record<string, number> = {
   'dollar general':106,
 }
 
+// Strip price suffixes from API brand names for display only (e.g. "Visa Prepaid US $1 to $150" → "Visa Prepaid US")
+const cleanBrandName = (brand: string): string =>
+  brand.replace(/\s+\$[\d,.]+(\s+(to|-)\s+\$[\d,.]+)?.*$/i, '').trim()
+
 const getBrandPriority = (brand: string): number => {
   const key = brand.toLowerCase().trim()
   if (BRAND_POPULARITY[key] !== undefined) return BRAND_POPULARITY[key]
@@ -255,8 +259,48 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
 }
 
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
-  if (card.imageUrl?.includes('res.cloudinary.com')) return card.imageUrl
+  if (card.imageUrl?.includes('res.cloudinary.com') || card.imageUrl?.includes('cdn.reloadly.com')) return card.imageUrl
   return null
+}
+
+// Overrides for wrong clearbit domains + the 6 brands with no image_url
+const DOMAIN_OVERRIDES: Record<string, string> = {
+  'amc entertainment':             'amctheatres.com',
+  'allmodern.com':                 'allmodern.com',
+  'antie anne':                    'auntieannes.com',
+  'discord nitro':                 'discord.com',
+  'ea play':                       'ea.com',
+  'free fire':                     'ff.garena.com',
+  'hotels.com':                    'hotels.com',
+  "moe's southwest grill":         'moes.com',
+  'minecraft':                     'minecraft.net',
+  'regal entertainment':           'regmovies.com',
+  'unicef':                        'unicef.org',
+  'glaad':                         'glaad.org',
+  'special olympics':              'specialolympics.org',
+  // NULL image_url brands
+  'h&m':                           'hm.com',
+  "cheddar's scratch kitchen":     'cheddars.com',
+  'claim jumper stakehouse & bar': 'claimjumper.com',
+  'equal justice initiative':      'eji.org',
+  'king ranch texas kitchen':      'kingranchtexaskitchen.com',
+}
+
+function getBrandDomain(brand: string, imageUrl: string | null): string | null {
+  const key = brand.toLowerCase().trim()
+  // 1. Known overrides — fix wrong clearbit domains + null image_url brands
+  if (DOMAIN_OVERRIDES[key]) return DOMAIN_OVERRIDES[key]
+  // 2. Extract domain already stored in the clearbit URL
+  if (imageUrl?.includes('logo.clearbit.com/')) {
+    const domain = imageUrl.split('logo.clearbit.com/')[1]
+    if (domain) return domain
+  }
+  // 3. Last resort: guess from brand name
+  const slug = key
+    .replace(/\s*(us|usa|global|gift\s*card|gift|card|prepaid|store|shop)\s*/gi, '')
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 30)
+  return slug ? `${slug}.com` : null
 }
 
 // Brand-specific gradient colors — matched to real gift card brand identity
@@ -386,7 +430,7 @@ function getBrandColors(brand: string, category: string): [string, string] {
   return CATEGORY_COLORS[category?.toLowerCase()] || CATEGORY_COLORS.other
 }
 
-// Gift card visual — brand gradient + logo (Cloudinary) or brand initial
+// Gift card visual — 3-tier: full artwork → brand gradient+logo → brand gradient+initial
 function GiftCardVisual({ card, height, extraClass, children }: {
   card: GiftCard
   height: string
@@ -396,24 +440,60 @@ function GiftCardVisual({ card, height, extraClass, children }: {
   const imageUrl = getCardImage(card)
   const [from, to] = getBrandColors(card.brand, card.category)
   const initial = card.brand.replace(/[^a-zA-Z]/g, '')[0]?.toUpperCase() || '?'
+  const [logoError, setLogoError] = useState(false)
 
+  const domain = !logoError ? getBrandDomain(card.brand, card.imageUrl) : null
+  const logoUrl = domain ? `https://logos-api.apistemic.com/domain:${domain}` : null
+
+  // Tier 1: Full card artwork (Reloadly or Cloudinary)
+  if (imageUrl) {
+    return (
+      <div
+        className={`relative ${height} overflow-hidden ${extraClass || ''}`}
+        style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30 pointer-events-none z-10" />
+        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
+        <img src={imageUrl} alt={card.brand} className="absolute inset-0 w-full h-full object-cover z-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+        <div className="relative z-20">{children}</div>
+      </div>
+    )
+  }
+
+  // Tier 2 & 3: Brand gradient + Apistemic logo (or initial) + brand name
   return (
     <div
       className={`relative ${height} overflow-hidden ${extraClass || ''}`}
       style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
     >
-      {/* Gloss overlay — makes it feel like a physical card */}
+      {/* Gloss overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30 pointer-events-none z-10" />
-      {/* Horizontal shine strip */}
+      {/* Shine strip */}
       <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
+      {/* Decorative circle — top right */}
+      <div className="absolute pointer-events-none z-[1]" style={{ top: '-40%', right: '-25%', width: '65%', height: '130%', borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
+      {/* Decorative circle — bottom left */}
+      <div className="absolute pointer-events-none z-[1]" style={{ bottom: '-40%', left: '-20%', width: '55%', height: '110%', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
 
-      {imageUrl ? (
-        <img src={imageUrl} alt={card.brand} className="absolute inset-0 w-full h-full object-cover z-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center z-0">
-          <span className="text-white/30 font-black select-none" style={{ fontSize: '5rem', lineHeight: 1 }}>{initial}</span>
-        </div>
-      )}
+      {/* Center: logo or initial + brand name */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-[2] gap-2 px-4">
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt=""
+            className="w-14 h-14 object-contain rounded-xl"
+            style={{ background: 'rgba(255,255,255,0.12)', padding: '8px' }}
+            onError={() => setLogoError(true)}
+          />
+        ) : (
+          <span className="text-white/25 font-black select-none" style={{ fontSize: '4.5rem', lineHeight: 1 }}>
+            {initial}
+          </span>
+        )}
+        <span className="text-white font-bold text-sm tracking-wide text-center line-clamp-1 max-w-[90%]" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+          {cleanBrandName(card.brand)}
+        </span>
+      </div>
 
       {/* Children (badges, close button etc.) */}
       <div className="relative z-20">{children}</div>
@@ -920,7 +1000,7 @@ export default function GiftCardsPage() {
                       )}
                     </GiftCardVisual>
                     <div className="p-3">
-                      <h3 className="font-bold text-white text-sm line-clamp-1">{card.brand}</h3>
+                      <h3 className="font-bold text-white text-sm line-clamp-1">{cleanBrandName(card.brand)}</h3>
                     </div>
                   </button>
                 ))}
@@ -1042,7 +1122,7 @@ export default function GiftCardsPage() {
 
                       {/* Card Content */}
                       <div className="p-5">
-                        <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{card.brand}</h3>
+                        <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{cleanBrandName(card.brand)}</h3>
                         <p className="text-xs text-slate-500 mb-2">{card.category}</p>
                         <p className="text-sm text-primary font-medium mb-4">{getPriceRange(card)}</p>
 
@@ -1137,7 +1217,7 @@ export default function GiftCardsPage() {
               </GiftCardVisual>
 
               <div className="p-5">
-                <h3 className="font-bold text-white text-lg mb-0.5">{card.brand}</h3>
+                <h3 className="font-bold text-white text-lg mb-0.5">{cleanBrandName(card.brand)}</h3>
                 <p className="text-xs text-slate-500 mb-4">{card.category} · {getPriceRange(card)}</p>
 
                 {/* Amount selection */}
