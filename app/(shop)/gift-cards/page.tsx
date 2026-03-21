@@ -698,7 +698,7 @@ export default function GiftCardsPage() {
       if (selectedCategory) params.set('category', selectedCategory)
       if (searchQuery) params.set('search', searchQuery)
 
-      const response = await fetch(`/api/gift-cards?${params.toString()}`)
+      const response = await fetch(`/api/gift-cards?${params.toString()}&limit=500`)
       const data = await response.json()
 
       if (!data.success) {
