@@ -43,6 +43,9 @@ export default function CardDetailsModal({
   const [revealing, setRevealing] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [isCardFlipped, setIsCardFlipped] = useState(false)
+  const [topUpAmount, setTopUpAmount] = useState('')
+  const [topUpLoading, setTopUpLoading] = useState(false)
+  const [topUpMessage, setTopUpMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
     if (!isOpen || !cardId) return
@@ -127,6 +130,30 @@ export default function CardDetailsModal({
 
   const formatCardNumber = (number: string) => {
     return number.replace(/(.{4})/g, '$1 ').trim()
+  }
+
+  const handleTopUp = async () => {
+    const amount = parseFloat(topUpAmount)
+    if (!amount || amount <= 0) return
+    setTopUpLoading(true)
+    setTopUpMessage(null)
+    try {
+      const res = await localApiFetch<any>(`/cards/${cardId}/top-up`, {
+        method: 'POST',
+        body: JSON.stringify({ amount }),
+      })
+      if (!res.success) {
+        setTopUpMessage({ type: 'error', text: res.error || 'Top up failed' })
+      } else {
+        setTopUpMessage({ type: 'success', text: `Added ${formatPrice(res.data.amountAdded)} to your card successfully!` })
+        setTopUpAmount('')
+        setCard((prev: any) => ({ ...prev, balance: res.data.newBalance }))
+      }
+    } catch {
+      setTopUpMessage({ type: 'error', text: 'Top up failed. Please try again.' })
+    } finally {
+      setTopUpLoading(false)
+    }
   }
 
   if (!isOpen) return null
@@ -362,6 +389,39 @@ export default function CardDetailsModal({
                   </div>
                 )}
               </div>
+
+              {/* Top Up — virtual cards only */}
+              {isVirtual && card.status === 'active' && (
+                <div className="bg-[#1a1a1a] rounded-xl p-4">
+                  <h3 className="text-white font-medium mb-3">Top Up Card</h3>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
+                      <input
+                        type="number"
+                        min="5"
+                        step="1"
+                        value={topUpAmount}
+                        onChange={(e) => { setTopUpAmount(e.target.value); setTopUpMessage(null) }}
+                        placeholder="Amount"
+                        className="w-full pl-7 pr-3 py-2.5 bg-[#252525] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-primary/50"
+                      />
+                    </div>
+                    <button
+                      onClick={handleTopUp}
+                      disabled={topUpLoading || !topUpAmount}
+                      className="px-4 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                    >
+                      {topUpLoading ? 'Processing...' : 'Add Funds'}
+                    </button>
+                  </div>
+                  {topUpMessage && (
+                    <p className={`mt-2 text-sm ${topUpMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                      {topUpMessage.text}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Transactions */}
               <div>
