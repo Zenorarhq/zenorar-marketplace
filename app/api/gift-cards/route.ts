@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     // Group by brand (case-insensitive) so duplicate provider entries become one card
     const brandMap = new Map<string, typeof rawCards>()
     for (const card of rawCards) {
-      const key = card.brand.toLowerCase()
+      const key = card.brand.toLowerCase().replace(/\s+(us|usa|uk|gb|au|ca|de|fr|mx|jp|sg|ae|ng)$/, '').trim()
       if (!brandMap.has(key)) brandMap.set(key, [])
       brandMap.get(key)!.push(card)
     }
