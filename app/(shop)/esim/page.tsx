@@ -856,7 +856,7 @@ export default function EsimPage() {
           Full eSIMs
         </button>
       </div>
-      <p className="mt-3 text-sm text-slate-500">
+      <p className="mt-3 mb-6 text-sm text-slate-500">
         {activeTab === 'data'
           ? 'Browse data-only eSIMs for 200+ countries — no physical SIM needed'
           : 'Full eSIMs with calls, SMS & data — like a local SIM, activated digitally'}
