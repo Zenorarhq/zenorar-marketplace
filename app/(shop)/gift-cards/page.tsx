@@ -614,7 +614,7 @@ function getBrandColors(brand: string, category: string): [string, string] {
   return CATEGORY_COLORS[category?.toLowerCase()] || hashBrandColor(brand)
 }
 
-// Gift card visual — 3-tier: Bitrefill artwork → brand logo (object-cover on gradient) → gradient+initial
+// Gift card visual — 2-tier: Bitrefill artwork → gradient+initial
 function GiftCardVisual({ card, height, extraClass, children }: {
   card: GiftCard
   height: string
@@ -624,64 +624,38 @@ function GiftCardVisual({ card, height, extraClass, children }: {
   const [from, to] = getBrandColors(card.brand, card.category)
   const initial = card.brand.replace(/[^a-zA-Z]/g, '')[0]?.toUpperCase() || '?'
   const [bitrefillError, setBitrefillError] = useState(false)
-  const [logoError, setLogoError] = useState(false)
-  const [useFallback, setUseFallback] = useState(false)
   const compact = height === 'h-24'
 
-  // Tier 1: Bitrefill CDN — auto-derived slug, covers all brands
   const bitrefillUrl = !bitrefillError ? getBitrefillUrl(card.brand) : null
-
-  // Tier 2: Brandfetch / proxy logo — fills card with object-cover on gradient
-  const domain = !logoError ? getBrandDomain(card.brand, card.imageUrl) : null
-  const brandfetchId = process.env.NEXT_PUBLIC_BRANDFETCH_CLIENT_ID
-  const logoUrl = domain
-    ? (!useFallback && brandfetchId
-        ? `https://cdn.brandfetch.io/${domain}/w/256/h/256/icon?c=${brandfetchId}`
-        : `/api/gift-card-logo?domain=${encodeURIComponent(domain)}&brand=${encodeURIComponent(card.brand)}`)
-    : null
-
-  const showInitial = !bitrefillUrl && !logoUrl
 
   return (
     <div
       className={`relative ${height} overflow-hidden ${extraClass || ''}`}
       style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
     >
-      {/* Tier 1: Bitrefill full card artwork */}
-      {bitrefillUrl && (
+      {bitrefillUrl ? (
         <img
           src={bitrefillUrl}
           alt={card.brand}
           className="absolute inset-0 w-full h-full object-cover z-0"
           onError={() => setBitrefillError(true)}
         />
+      ) : (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30 pointer-events-none z-10" />
+          <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
+          <div className="absolute pointer-events-none z-[1]" style={{ top: '-40%', right: '-25%', width: '65%', height: '130%', borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
+          <div className="absolute pointer-events-none z-[1]" style={{ bottom: '-40%', left: '-20%', width: '55%', height: '110%', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+          <div className="absolute inset-0 flex items-center justify-center z-[2]">
+            <span
+              className="text-white/25 font-black select-none"
+              style={{ fontSize: compact ? '3rem' : '5rem', lineHeight: 1 }}
+            >
+              {initial}
+            </span>
+          </div>
+        </>
       )}
-
-      {/* Tier 2: Logo fills card on gradient background */}
-      {!bitrefillUrl && logoUrl && (
-        <img
-          src={logoUrl}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover z-0"
-          onError={() => { if (!useFallback && brandfetchId) setUseFallback(true); else setLogoError(true) }}
-        />
-      )}
-
-      {/* Tier 3: Decorative overlays + initial letter */}
-      {showInitial && <>
-        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30 pointer-events-none z-10" />
-        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10" />
-        <div className="absolute pointer-events-none z-[1]" style={{ top: '-40%', right: '-25%', width: '65%', height: '130%', borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
-        <div className="absolute pointer-events-none z-[1]" style={{ bottom: '-40%', left: '-20%', width: '55%', height: '110%', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-        <div className="absolute inset-0 flex items-center justify-center z-[2]">
-          <span
-            className="text-white/25 font-black select-none"
-            style={{ fontSize: compact ? '3rem' : '5rem', lineHeight: 1 }}
-          >
-            {initial}
-          </span>
-        </div>
-      </>}
 
       <div className="relative z-20">{children}</div>
     </div>
