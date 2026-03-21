@@ -120,7 +120,7 @@ const BRAND_POPULARITY: Record<string, number> = {
   'nordstrom':48,
   'gap':49,
   'old navy':50,
-  'h&m':51,
+  'h&m':51,'h&m us':51,
   'zara':52,
   'macy\'s':53,'macys':53,
   'sephora':54,
@@ -258,7 +258,26 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'hotels.com':          'hotels_com-usa',
   'fairmont hotel':      'fairmont-hotels-and-resorts-ca',
   // === ENTERTAINMENT ===
-  'amc':                 'amc-usa',
+  'amc':                 'amc-theatres-usa',
+  'amc entertainment':   'amc-theatres-usa',
+  'fandango':            'fandango-usa',
+  'regal entertainment':           'regal-premiere-ticket-usa',
+  'regal entertainment group us':  'regal-premiere-ticket-usa',
+  // === SHOPPING (additional) ===
+  'banana republic (gap) us':  'banana-republic-usa',
+  'adidas':            'adidas-usa',
+  'gap':               'gap-usa',
+  'old navy':          'old-navy-usa',
+  'h&m':               'handm-uk',
+  'h&m us':            'handm-uk',
+  "macy's":            'macys-usa',
+  "macy's us":         'macys-usa',
+  // === FOOD (additional) ===
+  'subway':            'subway-usa',
+  'dunkin':            'dunkin-donuts-singapore',
+  "domino's":          'dominos-usa',
+  // === TRAVEL (additional) ===
+  'delta airlines':    'delta-air-lines-usa',
   // === US VARIANT NAMES (same product, different brand name in DB) ===
   'nintendo us':                                    'nintendo-eshop-usa',
   'playstation us':                                 'sony-playstation-usa',
