@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
        ORDER BY count DESC`
     )
 
-    const giftCards = result.rows.map(row => ({
+    const rawCards = result.rows.map(row => ({
       id: row.id,
       brand: row.brand,
       slug: row.slug,
@@ -95,6 +95,45 @@ export async function GET(request: NextRequest) {
       maxCustomAmount: row.max_custom_amount ? parseFloat(row.max_custom_amount) : null,
       inStock: parseInt(row.available_count) > 0 || row.has_api_fallback
     }))
+
+    // Group by brand (case-insensitive) so duplicate provider entries become one card
+    const brandMap = new Map<string, typeof rawCards>()
+    for (const card of rawCards) {
+      const key = card.brand.toLowerCase()
+      if (!brandMap.has(key)) brandMap.set(key, [])
+      brandMap.get(key)!.push(card)
+    }
+
+    const giftCards = Array.from(brandMap.values()).map(group => {
+      const primary = group[0]
+      // Merge denominations from all providers (deduplicated, sorted)
+      const allDenominations = [...new Set(group.flatMap(c => c.denominations))].sort((a, b) => a - b)
+      // Merge custom range: widest range across providers
+      const customCards = group.filter(c => c.minCustomAmount !== null && c.maxCustomAmount !== null)
+      const minCustomAmount = customCards.length > 0 ? Math.min(...customCards.map(c => c.minCustomAmount!)) : null
+      const maxCustomAmount = customCards.length > 0 ? Math.max(...customCards.map(c => c.maxCustomAmount!)) : null
+      return {
+        id: primary.id,
+        brand: primary.brand,
+        slug: primary.slug,
+        category: primary.category,
+        description: primary.description,
+        imageUrl: primary.imageUrl,
+        denominations: allDenominations,
+        discountPercent: Math.max(...group.map(c => c.discountPercent)),
+        isFeatured: group.some(c => c.isFeatured),
+        minCustomAmount,
+        maxCustomAmount,
+        inStock: group.some(c => c.inStock),
+        // Each original provider row, so the frontend can route purchases correctly
+        providerCards: group.map(c => ({
+          id: c.id,
+          denominations: c.denominations,
+          minCustomAmount: c.minCustomAmount,
+          maxCustomAmount: c.maxCustomAmount,
+        })),
+      }
+    })
 
     return NextResponse.json({
       success: true,

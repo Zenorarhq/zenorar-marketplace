@@ -29,6 +29,12 @@ interface GiftCard {
   minCustomAmount: number | null
   maxCustomAmount: number | null
   inStock: boolean
+  providerCards?: Array<{
+    id: string
+    denominations: number[]
+    minCustomAmount: number | null
+    maxCustomAmount: number | null
+  }>
 }
 
 interface Category {
@@ -1012,6 +1018,10 @@ export default function GiftCardsPage() {
   const [confirmedLocalAmounts, setConfirmedLocalAmounts] = useState<Record<string, number>>({})
   // Modal state — which card's purchase modal is open
   const [modalCard, setModalCard] = useState<GiftCard | null>(null)
+  // Tracks which provider card ID to use for purchase (resolved from selected amount)
+  const [selectedProviderCardIds, setSelectedProviderCardIds] = useState<Record<string, string>>({})
+  // Whether the "show all denominations" state is active in the modal
+  const [showAllDenominations, setShowAllDenominations] = useState(false)
 
   // Payment state - card-specific to prevent error bleeding
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -1150,6 +1160,11 @@ export default function GiftCardsPage() {
       // Clear ALL errors and custom inputs
       setPaymentErrors({})
       setCustomAmountInputs({})
+      // Resolve which provider card owns the custom amount range
+      const customProviderCard = card.providerCards?.find(pc => pc.minCustomAmount !== null)
+      if (customProviderCard) {
+        setSelectedProviderCardIds({ [cardId]: customProviderCard.id })
+      }
     }
   }
 
@@ -1179,8 +1194,8 @@ export default function GiftCardsPage() {
       imageUrl: card.imageUrl || undefined,
       metadata: {
         productType: 'gift_card',
-        gift_card_id: card.id,
-        giftCardId: card.id,
+        gift_card_id: selectedProviderCardIds[card.id] ?? card.id,
+        giftCardId: selectedProviderCardIds[card.id] ?? card.id,
         denomination: amount,
         brand: card.brand,
         imageUrl: card.imageUrl || undefined,
@@ -1205,7 +1220,7 @@ export default function GiftCardsPage() {
       const response = await localApiFetch<any>('/gift-cards/purchase', {
         method: 'POST',
         body: JSON.stringify({
-          giftCardId: card.id,
+          giftCardId: selectedProviderCardIds[card.id] ?? card.id,
           denomination: amount,
           paymentMethod: 'wallet'
         })
@@ -1601,6 +1616,7 @@ export default function GiftCardsPage() {
         const closeModal = () => {
           setModalCard(null)
           setExpandedCard(null)
+          setShowAllDenominations(false)
         }
 
         return (
@@ -1628,72 +1644,103 @@ export default function GiftCardsPage() {
                 <h3 className="font-bold text-white text-lg mb-0.5">{cleanBrandName(card.brand)}</h3>
                 <p className="text-xs text-slate-500 mb-4">{card.category} · {getPriceRange(card)}</p>
 
-                {/* Amount selection */}
-                {card.denominations.length > 0 ? (
-                  <div className="mb-4">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Select Amount</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {card.denominations.map((amount) => {
-                        const displayAmount = Math.round(convertPrice(amount, currencyCode))
-                        return (
-                          <button
-                            key={amount}
-                            onClick={() => {
-                              if (selectedAmount === amount) {
-                                setSelectedAmounts({})
-                                setConfirmedLocalAmounts({})
-                              } else {
-                                setSelectedAmounts({ [card.id]: amount })
-                                setConfirmedLocalAmounts({})
-                                setPaymentErrors({})
-                                setCustomAmountInputs({})
-                              }
-                            }}
-                            className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${
-                              selectedAmount === amount
-                                ? 'bg-primary text-black ring-2 ring-primary/30'
-                                : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
-                            }`}
-                          >
-                            {currencySymbol}{displayAmount.toLocaleString()}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ) : isVariableOnly ? (
-                  <div className="mb-4">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Enter Amount</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
-                      <input
-                        type="number"
-                        min={min}
-                        max={max}
-                        placeholder={`${min.toLocaleString()} – ${max.toLocaleString()}`}
-                        value={inputValue}
-                        onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (['e', 'E', '+', '-'].includes(e.key)) { e.preventDefault(); return }
-                          if (e.key === 'Enter' && isValidInput) { handleCustomAmountConfirm(card.id, card) }
-                          if (e.key === 'Escape') { closeModal() }
-                        }}
-                        className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-base font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Min {currencySymbol}{min.toLocaleString()} · Max {currencySymbol}{max.toLocaleString()}
-                    </p>
-                    {isValidInput && (
-                      <button
-                        onClick={() => handleCustomAmountConfirm(card.id, card)}
-                        className="mt-3 w-full py-2.5 rounded-xl bg-surface-dark border border-primary text-primary font-bold text-sm hover:bg-primary/10 transition-colors"
-                      >
-                        Confirm {currencySymbol}{parsedValue.toLocaleString()}
-                      </button>
-                    )}
-                  </div>
-                ) : null}
+                {/* Amount selection — merged across all providers */}
+                {(() => {
+                  const allDenominations = card.providerCards
+                    ? [...new Set(card.providerCards.flatMap(pc => pc.denominations))].sort((a, b) => a - b)
+                    : card.denominations
+                  const hasCustom = card.minCustomAmount !== null && card.maxCustomAmount !== null
+                  const COLLAPSED = 8
+                  const needsShowMore = !showAllDenominations && allDenominations.length > COLLAPSED
+                  const visibleDenominations = needsShowMore ? allDenominations.slice(0, COLLAPSED) : allDenominations
+
+                  return (
+                    <>
+                      {allDenominations.length > 0 && (
+                        <div className="mb-4">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Select Amount</label>
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            {visibleDenominations.map((amount, index) => {
+                              const displayAmount = Math.round(convertPrice(amount, currencyCode))
+                              // On mobile (3-col), items at index 6 & 7 would create a 3rd row — hide them via CSS
+                              const mobileHide = needsShowMore && index >= 6 && index < 8
+                              const ownerCard = card.providerCards?.find(pc => pc.denominations.includes(amount))
+                              return (
+                                <button
+                                  key={amount}
+                                  onClick={() => {
+                                    if (selectedAmount === amount) {
+                                      setSelectedAmounts({})
+                                      setConfirmedLocalAmounts({})
+                                      setSelectedProviderCardIds(prev => { const n = { ...prev }; delete n[card.id]; return n })
+                                    } else {
+                                      setSelectedAmounts({ [card.id]: amount })
+                                      setConfirmedLocalAmounts({})
+                                      setPaymentErrors({})
+                                      setCustomAmountInputs({})
+                                      setSelectedProviderCardIds({ [card.id]: ownerCard?.id ?? card.id })
+                                    }
+                                  }}
+                                  className={`px-3 py-3 rounded-xl text-sm font-bold transition-all text-center ${mobileHide ? 'hidden sm:block' : ''} ${
+                                    selectedAmount === amount
+                                      ? 'bg-primary text-black ring-2 ring-primary/30'
+                                      : 'bg-surface-dark border border-border-dark text-white hover:border-primary/50'
+                                  }`}
+                                >
+                                  {currencySymbol}{displayAmount.toLocaleString()}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {needsShowMore && (
+                            <button
+                              onClick={() => setShowAllDenominations(true)}
+                              className="mt-2 w-full py-2 rounded-xl bg-surface-dark border border-border-dark text-slate-400 text-xs font-bold hover:border-primary/50 hover:text-white transition-colors"
+                            >
+                              + {allDenominations.length - COLLAPSED} more amounts
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {hasCustom && (
+                        <div className="mb-4">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">
+                            {allDenominations.length > 0 ? 'Or Enter Custom Amount' : 'Enter Amount'}
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
+                            <input
+                              type="number"
+                              min={min}
+                              max={max}
+                              placeholder={`${min.toLocaleString()} – ${max.toLocaleString()}`}
+                              value={inputValue}
+                              onChange={(e) => setCustomAmountInputs(prev => ({ ...prev, [card.id]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (['e', 'E', '+', '-'].includes(e.key)) { e.preventDefault(); return }
+                                if (e.key === 'Enter' && isValidInput) { handleCustomAmountConfirm(card.id, card) }
+                                if (e.key === 'Escape') { closeModal() }
+                              }}
+                              className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-base font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                          </div>
+                          <p className="text-xs text-slate-500 mt-2">
+                            Min {currencySymbol}{min.toLocaleString()} · Max {currencySymbol}{max.toLocaleString()}
+                          </p>
+                          {isValidInput && (
+                            <button
+                              onClick={() => handleCustomAmountConfirm(card.id, card)}
+                              className="mt-3 w-full py-2.5 rounded-xl bg-surface-dark border border-primary text-primary font-bold text-sm hover:bg-primary/10 transition-colors"
+                            >
+                              Confirm {currencySymbol}{parsedValue.toLocaleString()}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
 
                 {/* Price summary */}
                 {hasSelection && (
