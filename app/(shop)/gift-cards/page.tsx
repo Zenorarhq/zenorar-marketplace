@@ -584,10 +584,16 @@ function GiftCardVisual({ card, height, extraClass, children }: {
   const [from, to] = getBrandColors(card.brand, card.category)
   const initial = card.brand.replace(/[^a-zA-Z]/g, '')[0]?.toUpperCase() || '?'
   const [logoError, setLogoError] = useState(false)
+  const [useFallback, setUseFallback] = useState(false)
   const compact = height === 'h-24'
 
   const domain = !logoError ? getBrandDomain(card.brand, card.imageUrl) : null
-  const logoUrl = domain ? `https://cdn.brandfetch.io/${domain}/w/256/h/256/icon?c=${process.env.NEXT_PUBLIC_BRANDFETCH_CLIENT_ID}` : null
+  const brandfetchId = process.env.NEXT_PUBLIC_BRANDFETCH_CLIENT_ID
+  const logoUrl = domain
+    ? (!useFallback && brandfetchId
+        ? `https://cdn.brandfetch.io/${domain}/w/256/h/256/icon?c=${brandfetchId}`
+        : `/api/gift-card-logo?domain=${encodeURIComponent(domain)}&brand=${encodeURIComponent(card.brand)}`)
+    : null
 
   // Tier 1: Full card artwork (Reloadly or Cloudinary)
   if (imageUrl) {
@@ -627,7 +633,7 @@ function GiftCardVisual({ card, height, extraClass, children }: {
             alt=""
             className={compact ? 'w-12 h-12 object-contain' : 'w-20 h-20 object-contain'}
             style={{ filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.7)) drop-shadow(0 0 2px rgba(255,255,255,0.9)) drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}
-            onError={() => setLogoError(true)}
+            onError={() => { if (!useFallback && brandfetchId) setUseFallback(true); else setLogoError(true) }}
           />
         ) : (
           <span
