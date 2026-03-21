@@ -313,17 +313,13 @@ async function getEnabledProviders(): Promise<ProviderName[]> {
     const settings = await getSiteSettingsByGroup('api')
     const enabled: ProviderName[] = []
 
-    // Check Reloadly - using new split credential fields or legacy fields
-    if (settings.reloadlyEnabled === true || settings.reloadlyEnabled === 'true' ||
-        settings.reloadlySandboxClientId || settings.reloadlyProductionClientId ||
-        settings.reloadlyClientId) {
+    // Check Reloadly - toggle flag is the sole gate
+    if (settings.reloadlyEnabled === true || settings.reloadlyEnabled === 'true') {
       enabled.push('reloadly')
     }
 
-    // Check Tango - using new split credential fields or legacy fields
-    if (settings.tangoEnabled === true || settings.tangoEnabled === 'true' ||
-        settings.tangoSandboxPlatformName || settings.tangoProductionPlatformName ||
-        settings.tangoPlatformName) {
+    // Check Tango - toggle flag is the sole gate
+    if (settings.tangoEnabled === true || settings.tangoEnabled === 'true') {
       enabled.push('tango')
     }
 
