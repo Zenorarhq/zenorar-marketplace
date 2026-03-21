@@ -631,7 +631,7 @@ function GiftCardVisual({ card, height, extraClass, children }: {
           <img
             src={logoUrl}
             alt=""
-            className={compact ? 'w-4/5 h-4/5 object-contain' : 'w-3/4 h-3/4 object-contain'}
+            className="w-full h-full object-cover"
             onError={() => { if (!useFallback && brandfetchId) setUseFallback(true); else setLogoError(true) }}
           />
         ) : (
