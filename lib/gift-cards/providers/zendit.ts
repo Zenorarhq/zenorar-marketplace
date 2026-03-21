@@ -128,6 +128,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         currency: string
         offerIds: Record<number, string> // denomination -> offerId
         firstOfferId: string
+        subTypes: string[]
       }>()
 
       let offset = 0
@@ -213,6 +214,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
               currency,
               offerIds: { [denomination]: offerId },
               firstOfferId: offerId,
+              subTypes,
             })
           }
         }
@@ -236,6 +238,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
           denominations: entry.denominations,
           country: entry.country,
           currency: entry.currency,
+          redeemNote: entry.subTypes.length > 0 ? entry.subTypes.join(',') : undefined,
           providerMeta: { offerIds: entry.offerIds },
         })
       }

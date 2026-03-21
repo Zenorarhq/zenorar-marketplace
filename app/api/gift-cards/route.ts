@@ -93,7 +93,8 @@ export async function GET(request: NextRequest) {
       isFeatured: row.is_featured,
       minCustomAmount: row.min_custom_amount ? parseFloat(row.min_custom_amount) : null,
       maxCustomAmount: row.max_custom_amount ? parseFloat(row.max_custom_amount) : null,
-      inStock: parseInt(row.available_count) > 0 || row.has_api_fallback
+      inStock: parseInt(row.available_count) > 0 || row.has_api_fallback,
+      redeemType: row.redeem_type || null
     }))
 
     // Group by brand (case-insensitive) so duplicate provider entries become one card
@@ -125,6 +126,8 @@ export async function GET(request: NextRequest) {
         minCustomAmount,
         maxCustomAmount,
         inStock: group.some(c => c.inStock),
+        // Use the first non-null redeemType found across providers for this brand
+        redeemType: group.map(c => c.redeemType).find(t => t !== null) ?? null,
         // Each original provider row, so the frontend can route purchases correctly
         providerCards: group.map(c => ({
           id: c.id,

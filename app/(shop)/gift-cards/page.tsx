@@ -29,6 +29,7 @@ interface GiftCard {
   minCustomAmount: number | null
   maxCustomAmount: number | null
   inStock: boolean
+  redeemType: 'online' | 'instore' | 'both' | null
   providerCards?: Array<{
     id: string
     denominations: number[]
@@ -1642,7 +1643,18 @@ export default function GiftCardsPage() {
 
               <div className="p-5">
                 <h3 className="font-bold text-white text-lg mb-0.5">{cleanBrandName(card.brand)}</h3>
-                <p className="text-xs text-slate-500 mb-4">{card.category} · {getPriceRange(card)}</p>
+                <p className="text-xs text-slate-500 mb-3">{card.category} · {getPriceRange(card)}</p>
+
+                {card.redeemType && (
+                  <div className="mb-4 flex items-center gap-2 text-xs text-slate-400 bg-surface-dark border border-border-dark rounded-xl px-3 py-2">
+                    <Icon name={card.redeemType === 'instore' ? 'store' : 'globe'} size={13} />
+                    <span>
+                      {card.redeemType === 'online' && 'Only redeemable online'}
+                      {card.redeemType === 'instore' && 'Only redeemable at physical stores'}
+                      {card.redeemType === 'both' && 'Redeemable online & in-store'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Amount selection — merged across all providers */}
                 {(() => {

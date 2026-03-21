@@ -177,7 +177,8 @@ class ReloadlyProvider implements GiftCardProvider {
         maxAmount: p.maxRecipientDenomination,
         discountPercent: p.discountPercentage || 0,
         country: p.country?.isoName,
-        currency: p.recipientCurrencyCode
+        currency: p.recipientCurrencyCode,
+        redeemNote: p.redeemInstruction?.concise || p.redeemInstruction?.verbose || undefined
       }))
     } catch (error) {
       console.error('Reloadly getProducts error:', error)

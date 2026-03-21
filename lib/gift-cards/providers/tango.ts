@@ -123,7 +123,8 @@ class TangoProvider implements GiftCardProvider {
             minAmount: item.valueType === 'VARIABLE_VALUE' ? parseFloat(item.minValue) : undefined,
             maxAmount: item.valueType === 'VARIABLE_VALUE' ? parseFloat(item.maxValue) : undefined,
             country: item.countries?.[0] || 'US',
-            currency: item.currencyCode || 'USD'
+            currency: item.currencyCode || 'USD',
+            redeemNote: item.redemptionInstructions || brand.description || undefined
           })
         }
       }

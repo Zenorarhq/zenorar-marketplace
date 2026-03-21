@@ -61,6 +61,7 @@ export async function GET(
         provider: row.provider,
         providerProductId: row.provider_product_id,
         providerData: row.provider_data,
+        redeemType: row.redeem_type || null,
         sortPriority: row.sort_priority,
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -151,7 +152,8 @@ export async function PUT(
       { name: 'max_custom_amount', value: body.maxCustomAmount },
       { name: 'provider', value: body.provider },
       { name: 'provider_product_id', value: body.providerProductId },
-      { name: 'sort_priority', value: body.sortPriority }
+      { name: 'sort_priority', value: body.sortPriority },
+      { name: 'redeem_type', value: body.redeemType ?? undefined }
     ]
 
     for (const field of fields) {

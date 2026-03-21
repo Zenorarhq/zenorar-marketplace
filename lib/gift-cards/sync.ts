@@ -57,6 +57,21 @@ const providerMap: Record<ProviderName, GiftCardProvider> = {
 }
 
 /**
+ * Derive a normalized redeem_type from raw provider text or subType keywords.
+ * Returns 'online', 'instore', 'both', or null (no label shown).
+ */
+function normalizeRedeemType(note?: string): 'online' | 'instore' | 'both' | null {
+  if (!note) return null
+  const n = note.toLowerCase()
+  const hasOnline = /online|e-commerce|ecommerce|website|web|digital|internet|app|\.com/.test(n)
+  const hasInstore = /in.?store|physical|brick|retail|location|store|offline/.test(n)
+  if (hasOnline && hasInstore) return 'both'
+  if (hasInstore) return 'instore'
+  if (hasOnline) return 'online'
+  return null
+}
+
+/**
  * Sync products from a provider to the database
  */
 async function syncProductsToDb(
@@ -103,6 +118,7 @@ async function syncProductsToDb(
                discount_percent = $8,
                is_active = true,
                provider_data = COALESCE($9::jsonb, provider_data),
+               redeem_type = COALESCE($11, redeem_type),
                updated_at = NOW()
            WHERE id = $10`,
           [
@@ -115,7 +131,8 @@ async function syncProductsToDb(
             product.maxAmount,
             product.discountPercent || 0,
             providerData,
-            existing.rows[0].id
+            existing.rows[0].id,
+            normalizeRedeemType(product.redeemNote)
           ]
         )
         updated++
@@ -135,8 +152,8 @@ async function syncProductsToDb(
           `INSERT INTO gift_cards
              (brand, slug, category, description, image_url, denominations,
               min_custom_amount, max_custom_amount, discount_percent,
-              provider, provider_product_id, provider_data, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, true)`,
+              provider, provider_product_id, provider_data, redeem_type, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, true)`,
           [
             product.brand,
             finalSlug,
@@ -149,7 +166,8 @@ async function syncProductsToDb(
             product.discountPercent || 0,
             providerName,
             product.productId,
-            providerData
+            providerData,
+            normalizeRedeemType(product.redeemNote)
           ]
         )
         synced++

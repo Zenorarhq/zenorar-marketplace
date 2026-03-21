@@ -135,6 +135,8 @@ export interface ProviderProduct {
   discountPercent?: number
   country?: string
   currency?: string
+  /** Raw redemption hint from the provider (text or subType keywords) used to derive redeem_type */
+  redeemNote?: string
   /** Extra provider-specific data (e.g. denomination-to-offerId map for Zendit) */
   providerMeta?: Record<string, unknown>
 }
