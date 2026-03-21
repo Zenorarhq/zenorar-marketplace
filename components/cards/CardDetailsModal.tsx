@@ -352,7 +352,40 @@ export default function CardDetailsModal({
                 )}
               </div>
 
-              {/* Card Info - MOVED BELOW credentials */}
+              {/* Top Up — virtual cards only, shown second after credentials */}
+              {isVirtual && card.status === 'active' && (
+                <div className="bg-[#1a1a1a] rounded-xl p-4">
+                  <h3 className="text-white font-medium mb-3">Top Up Card</h3>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={topUpAmount}
+                        onChange={(e) => { setTopUpAmount(e.target.value); setTopUpMessage(null) }}
+                        placeholder="Amount"
+                        className="w-full pl-7 pr-3 py-2.5 bg-[#252525] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-primary/50"
+                      />
+                    </div>
+                    <button
+                      onClick={handleTopUp}
+                      disabled={topUpLoading || !topUpAmount}
+                      className="px-4 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                    >
+                      {topUpLoading ? 'Processing...' : 'Add Funds'}
+                    </button>
+                  </div>
+                  {topUpMessage && (
+                    <p className={`mt-2 text-sm ${topUpMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                      {topUpMessage.text}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Card Info */}
               <div className="bg-[#1a1a1a] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-white font-medium">{displayName}</h3>
@@ -389,39 +422,6 @@ export default function CardDetailsModal({
                   </div>
                 )}
               </div>
-
-              {/* Top Up — virtual cards only */}
-              {isVirtual && card.status === 'active' && (
-                <div className="bg-[#1a1a1a] rounded-xl p-4">
-                  <h3 className="text-white font-medium mb-3">Top Up Card</h3>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
-                      <input
-                        type="number"
-                        min="5"
-                        step="1"
-                        value={topUpAmount}
-                        onChange={(e) => { setTopUpAmount(e.target.value); setTopUpMessage(null) }}
-                        placeholder="Amount"
-                        className="w-full pl-7 pr-3 py-2.5 bg-[#252525] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-primary/50"
-                      />
-                    </div>
-                    <button
-                      onClick={handleTopUp}
-                      disabled={topUpLoading || !topUpAmount}
-                      className="px-4 py-2.5 bg-primary text-black font-bold rounded-lg hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
-                    >
-                      {topUpLoading ? 'Processing...' : 'Add Funds'}
-                    </button>
-                  </div>
-                  {topUpMessage && (
-                    <p className={`mt-2 text-sm ${topUpMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-                      {topUpMessage.text}
-                    </p>
-                  )}
-                </div>
-              )}
 
               {/* Transactions */}
               <div>

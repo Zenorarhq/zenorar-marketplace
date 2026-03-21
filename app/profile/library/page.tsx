@@ -66,6 +66,10 @@ export default function LibraryPage() {
   const [selectedEsimId, setSelectedEsimId] = useState<string | null>(null)
   const [selectedGiftCardId, setSelectedGiftCardId] = useState<string | null>(null)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [cardTopUpModal, setCardTopUpModal] = useState<{ cardId: string; cardName: string } | null>(null)
+  const [topUpAmount, setTopUpAmount] = useState('')
+  const [topUpLoading, setTopUpLoading] = useState(false)
+  const [topUpResult, setTopUpResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [revealedCards, setRevealedCards] = useState<Map<string, { cardNumber: string; cvv: string; expiry: string }>>(new Map())
   const [revealingCardId, setRevealingCardId] = useState<string | null>(null)
   const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set())
@@ -182,6 +186,32 @@ export default function LibraryPage() {
       alert(error.message || 'Failed to retrieve API key')
     } finally {
       setLoadingAction(null)
+    }
+  }
+
+  // Handler for card top-up from library dropdown
+  const handleCardTopUp = async () => {
+    if (!cardTopUpModal) return
+    const amount = parseFloat(topUpAmount)
+    if (!amount || amount <= 0) return
+    setTopUpLoading(true)
+    setTopUpResult(null)
+    try {
+      const res = await localApiFetch<any>(`/cards/${cardTopUpModal.cardId}/top-up`, {
+        method: 'POST',
+        body: JSON.stringify({ amount }),
+      })
+      if (!res.success) {
+        setTopUpResult({ type: 'error', text: res.error || 'Top up failed' })
+      } else {
+        setTopUpResult({ type: 'success', text: `Added $${amount.toFixed(2)} to your card!` })
+        setTopUpAmount('')
+        refetchLibrary()
+      }
+    } catch {
+      setTopUpResult({ type: 'error', text: 'Top up failed. Please try again.' })
+    } finally {
+      setTopUpLoading(false)
     }
   }
 
@@ -791,7 +821,7 @@ export default function LibraryPage() {
                               {/* Top Up — virtual cards only */}
                               {item.category === 'cards' && ((item as any).cardType === 'virtual' || (item as any).cardType === 'virtual_card') && item.status === 'active' && (
                                 <button
-                                  onClick={() => { setOpenMenuId(null); setSelectedCardId(item.id) }}
+                                  onClick={() => { setOpenMenuId(null); setTopUpAmount(''); setTopUpResult(null); setCardTopUpModal({ cardId: item.id, cardName: item.name }) }}
                                   className="flex items-center gap-3 w-full px-4 py-3 text-sm text-primary hover:bg-white/5 transition-colors font-medium"
                                 >
                                   <Icon name="plus-circle" size={16} />
@@ -939,6 +969,55 @@ export default function LibraryPage() {
         onClose={() => setSelectedCardId(null)}
         formatPrice={(price: number) => `$${price.toFixed(2)}`}
       />
+
+      {/* Card Top Up Modal */}
+      {cardTopUpModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f0f0f] rounded-2xl p-6 max-w-sm w-full border border-[#1f1f1f]">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-white font-bold text-lg">Top Up Card</h2>
+                <p className="text-slate-400 text-sm mt-0.5">{cardTopUpModal.cardName}</p>
+              </div>
+              <button onClick={() => setCardTopUpModal(null)} className="text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition-colors">
+                <Icon name="x" size={20} />
+              </button>
+            </div>
+            <div className="flex gap-2 mb-3">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={topUpAmount}
+                  onChange={(e) => { setTopUpAmount(e.target.value); setTopUpResult(null) }}
+                  placeholder="Enter amount"
+                  className="w-full pl-7 pr-3 py-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary/50"
+                  autoFocus
+                />
+              </div>
+              <button
+                onClick={handleCardTopUp}
+                disabled={topUpLoading || !topUpAmount}
+                className="px-5 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {topUpLoading ? 'Adding...' : 'Add Funds'}
+              </button>
+            </div>
+            {topUpResult && (
+              <p className={`text-sm ${topUpResult.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                {topUpResult.text}
+              </p>
+            )}
+            {topUpResult?.type === 'success' && (
+              <button onClick={() => setCardTopUpModal(null)} className="w-full mt-4 py-2.5 bg-surface-dark border border-border-dark text-white font-medium rounded-xl hover:bg-[#262626] transition-colors text-sm">
+                Done
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* API Key Modal */}
       {apiKeyModal && (
