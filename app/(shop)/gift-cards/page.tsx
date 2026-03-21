@@ -256,6 +256,37 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   'uber':                'uber-usa',
   // === ENTERTAINMENT ===
   'amc':                 'amc-usa',
+  // === US VARIANT NAMES (same product, different brand name in DB) ===
+  'nintendo us':                                    'nintendo-eshop-usa',
+  'playstation us':                                 'playstation-store-usa',
+  'xbox us':                                        'xbox-usa',
+  'xbox live us':                                   'xbox-usa',
+  'xbox game pass 3 month us':                      'xbox-game-pass-ultimate-usa',
+  'roblox us':                                      'roblox-usa',
+  'steam us':                                       'steam-usa',
+  'minecraft us':                                   'minecraft-usa',
+  'razer gold (global) us':                         'razer-gold-usa',
+  'mobile legends diamonds (global) us':            'mobile-legends-usa',
+  'fortnite (standard edition) 1000-v-bucks us':   'fortnite-v-bucks-usa',
+  'fortnite (standard edition) 2800-v-bucks us':   'fortnite-v-bucks-usa',
+  'fortnite (standard edition) 5000-v-bucks us':   'fortnite-v-bucks-usa',
+  'fortnite (standard edition) 13500-v-bucks us':  'fortnite-v-bucks-usa',
+  'free fire 100 + 10 diamond us':                 'garena-free-fire-usa',
+  'free fire 210 + 21 diamond us':                 'garena-free-fire-usa',
+  'free fire 530 + 53 diamond us':                 'garena-free-fire-usa',
+  'free fire 1080 + 108 diamond us':               'garena-free-fire-usa',
+  'free fire 2200 + 220 diamond us':               'garena-free-fire-usa',
+  'amazon us':                                     'amazon-usa',
+  'app store & itunes us':                         'apple-gift-card-usa',
+  'netflix us':                                    'netflix-usa',
+  'spotify us':                                    'spotify-usa',
+  'hulu plus':                                     'hulu-usa',
+  'starbucks us':                                  'starbucks-usa',
+  'target us':                                     'target-usa',
+  'nordstrom us':                                  'nordstrom-usa',
+  'sephora us':                                    'sephora-usa',
+  'nike us':                                       'nike-usa',
+  'airbnb us':                                     'airbnb-usa',
 }
 
 // Reserved for re-enablement — Reloadly/Cloudinary artwork not currently active in the visual
@@ -264,12 +295,13 @@ const getCardImage = (card: { brand: string; imageUrl: string | null }): string 
   return null
 }
 
-// Derives Bitrefill CDN URL — uses manual slug map first, then auto-derives from brand name
-function getBitrefillUrl(brand: string): string {
+// Returns Bitrefill CDN URL only for brands explicitly in the slug map.
+// Auto-derivation removed — Bitrefill CDN returns a 404 image (not HTTP 404)
+// so onError never fires for unknown slugs.
+function getBitrefillUrl(brand: string): string | null {
   const key = brand.toLowerCase().trim()
   const slug = BRAND_BITREFILL_SLUGS[key]
-    || key.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-usa'
-  return `https://cdn.bitrefill.com/primg/w360h216/${slug}.webp`
+  return slug ? `https://cdn.bitrefill.com/primg/w360h216/${slug}.webp` : null
 }
 
 // Overrides for wrong clearbit domains + the 6 brands with no image_url
