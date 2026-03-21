@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { User, getAccessToken, clearAccessToken, clearUserStorage, setAccessToken, apiFetch } from '@/lib/api'
 import { useSessionTimeout } from '@/hooks/use-session-timeout'
@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isAdminRoute = pathname?.startsWith('/admin') ?? false
   const queryClient = useQueryClient()
+  const router = useRouter()
 
   // Shared helper: clear all user-specific data (localStorage + query cache)
   const clearUserData = useCallback(() => {
@@ -215,8 +216,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearUserData()
   }, [clearUserData])
 
-  // Auto-logout on session timeout (based on admin setting)
-  useSessionTimeout(logout, !!user)
+  // Auto-logout on session timeout — redirect to homepage (not login page)
+  const logoutOnTimeout = useCallback(() => {
+    logout()
+    router.push('/')
+  }, [logout, router])
+
+  useSessionTimeout(logoutOnTimeout, !!user)
 
   // Permission checking helpers
   const hasPermission = useCallback(
