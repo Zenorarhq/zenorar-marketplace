@@ -260,6 +260,8 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
 
 const getCardImage = (card: { brand: string; imageUrl: string | null }): string | null => {
   if (card.imageUrl?.includes('res.cloudinary.com') || card.imageUrl?.includes('cdn.reloadly.com')) return card.imageUrl
+  const bitrefillSlug = BRAND_BITREFILL_SLUGS[card.brand.toLowerCase().trim()]
+  if (bitrefillSlug) return `https://cdn.bitrefill.com/primg/w360h216/${bitrefillSlug}.webp`
   return null
 }
 
