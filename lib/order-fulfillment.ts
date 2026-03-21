@@ -10,6 +10,7 @@ import { query } from './db'
 import { esimProvisioningService } from './esim'
 import { provisionGiftCard } from './gift-cards/provisioning'
 import { virtualNumberService } from './virtual-numbers/service'
+import { zenditTopupProvider } from './phone-refills/provider'
 import {
   sendEsimDeliveryEmail,
   sendVirtualNumberDeliveryEmail,
@@ -257,12 +258,7 @@ async function processOrderItem(
         return await processCardItem(orderId, userId, item, productType === 'virtual_card' ? 'virtual' : 'instant')
 
       case 'phone_refill':
-        // Phone refills are delivered instantly via Zendit API at purchase time — no provisioning needed
-        return {
-          itemId: item.item_id,
-          productType: 'phone_refill',
-          status: 'success',
-        }
+        return await processPhoneRefillItem(orderId, userId, item)
 
       case 'carrier_esim':
         return await processCarrierEsimItem(orderId, userId, item)
@@ -889,6 +885,68 @@ async function processGiftCardItem(
     return {
       itemId: item.item_id,
       productType: 'gift_card',
+      status: 'failed',
+      error: error.message
+    }
+  }
+}
+
+/**
+ * Process phone refill order item - deliver mobile top-up via Zendit
+ */
+async function processPhoneRefillItem(
+  orderId: string,
+  userId: string,
+  item: { item_id: string; product_id: string; name: string; quantity: number }
+): Promise<FulfillmentResult['details'][0]> {
+  try {
+    // Read metadata from order_items
+    const orderItemResult = await query(
+      `SELECT metadata FROM order_items WHERE id = $1`,
+      [item.item_id]
+    )
+
+    const metadata = orderItemResult.rows[0]?.metadata || {}
+
+    // Idempotency: already fulfilled if transaction ID is recorded
+    if (metadata.zendit_transaction_id) {
+      return {
+        itemId: item.item_id,
+        productType: 'phone_refill',
+        status: 'success',
+        provisionedId: metadata.zendit_transaction_id
+      }
+    }
+
+    const { offerId, recipientPhone, value } = metadata
+
+    if (!offerId || !recipientPhone) {
+      throw new Error('Missing offerId or recipientPhone in order metadata')
+    }
+
+    const result = await zenditTopupProvider.purchase({ offerId, recipientPhone, value })
+
+    if (!result.success) {
+      throw new Error(result.error || 'Zendit topup failed')
+    }
+
+    // Record transaction ID for idempotency
+    await query(
+      `UPDATE order_items SET metadata = metadata || $1 WHERE id = $2`,
+      [JSON.stringify({ zendit_transaction_id: result.transactionId }), item.item_id]
+    )
+
+    return {
+      itemId: item.item_id,
+      productType: 'phone_refill',
+      status: 'success',
+      provisionedId: result.transactionId
+    }
+  } catch (error: any) {
+    console.error('processPhoneRefillItem error:', error)
+    return {
+      itemId: item.item_id,
+      productType: 'phone_refill',
       status: 'failed',
       error: error.message
     }
