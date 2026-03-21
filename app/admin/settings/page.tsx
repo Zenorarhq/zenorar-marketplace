@@ -1812,6 +1812,13 @@ export default function AdminSettingsPage() {
         }).catch((err) => {
           console.error('Gift card sync error:', err)
         })
+      } else {
+        // All providers disabled — still call sync so the deactivation loop runs
+        // and hides any cards that were previously synced from those providers
+        localApiFetch<any>(
+          '/admin/gift-cards/sync',
+          { method: 'POST', body: JSON.stringify({ countryCode: 'US' }) }
+        ).catch((err) => console.error('Gift card deactivation error:', err))
       }
 
       // Auto-sync eSIM providers if any are enabled with credentials
