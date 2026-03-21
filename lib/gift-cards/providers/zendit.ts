@@ -443,7 +443,13 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         purchaseBody
       )
 
-      const transactionId = purchaseResponse.transactionId || txId
+      console.log('[Zendit] Purchase POST response:', JSON.stringify(purchaseResponse))
+
+      // Zendit may return transaction ID under various keys
+      const transactionId = purchaseResponse.transactionId
+        || purchaseResponse.id
+        || purchaseResponse.transaction_id
+        || txId
 
       // Poll for confirmation with the code/PIN
       // Zendit processes most vouchers within a few seconds; allow up to ~16s total
@@ -458,22 +464,30 @@ class ZenditGiftCardProvider implements GiftCardProvider {
           `/vouchers/purchases/${transactionId}`
         )
 
-        // Check if confirmation is ready with code
-        if (purchase.confirmation?.code || purchase.confirmation?.pin ||
-            purchase.confirmation?.serial || purchase.confirmation?.voucher ||
-            purchase.status === 'DONE' || purchase.status === 'completed') {
+        console.log(`[Zendit] Poll attempt ${attempt + 1}:`, JSON.stringify(purchase))
+
+        const status = (purchase.status || '').toUpperCase()
+        const conf = purchase.confirmation || {}
+
+        // Check if confirmation is ready with code (case-insensitive status)
+        if (conf.code || conf.pin || conf.serial || conf.voucher ||
+            conf.cardNumber || conf.card_number || conf.voucherCode ||
+            status === 'DONE' || status === 'COMPLETED' || status === 'SUCCESS') {
           break
         }
       }
 
       const confirmation = purchase?.confirmation || {}
 
-      // Extract code and PIN from confirmation
+      // Extract code and PIN — cover all known Zendit field names
       const code = confirmation.code || confirmation.serial || confirmation.voucher ||
-                   confirmation.cardNumber || confirmation.card_number || ''
+                   confirmation.cardNumber || confirmation.card_number ||
+                   confirmation.voucherCode || confirmation.value || ''
       const pin = confirmation.pin || confirmation.securityCode || confirmation.security_code || ''
 
       if (!code && !pin) {
+        console.error('[Zendit] No code in final confirmation:', JSON.stringify(confirmation))
+        console.error('[Zendit] Final purchase status:', purchase?.status)
         return {
           success: false,
           orderId: transactionId,
