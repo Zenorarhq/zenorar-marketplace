@@ -587,7 +587,7 @@ function GiftCardVisual({ card, height, extraClass, children }: {
   const compact = height === 'h-24'
 
   const domain = !logoError ? getBrandDomain(card.brand, card.imageUrl) : null
-  const logoUrl = domain ? `/api/brand-logo?domain=${domain}` : null
+  const logoUrl = domain ? `https://cdn.brandfetch.io/${domain}/w/256/h/256/icon?c=${process.env.NEXT_PUBLIC_BRANDFETCH_CLIENT_ID}` : null
 
   // Tier 1: Full card artwork (Reloadly or Cloudinary)
   if (imageUrl) {
