@@ -448,7 +448,52 @@ export async function GET(request: Request) {
       }
     })
 
-    // Query user's carrier eSIM orders (pending/cancelled — fulfilled ones show via user_esims)
+    // Query fulfilled carrier eSIMs from user_esims (source_type = 'carrier')
+    const fulfilledCarrierEsimsResult = await query(
+      `
+      SELECT
+        ue.id,
+        ue.iccid,
+        ue.status,
+        ue.qr_code_data,
+        ue.smdp_address,
+        ue.activation_code,
+        ue.created_at as purchase_date,
+        cep.carrier_name,
+        cep.carrier_slug,
+        cep.plan_name,
+        cep.data_amount_display,
+        cep.voice_display,
+        cep.sms_display,
+        cep.country,
+        cep.network_type
+      FROM user_esims ue
+      JOIN carrier_esim_plans cep ON ue.carrier_plan_id = cep.id
+      WHERE ue.user_id = $1 AND ue.source_type = 'carrier'
+      ORDER BY ue.created_at DESC
+      `,
+      [userId]
+    ).catch(() => ({ rows: [] }))
+
+    const fulfilledCarrierEsimItems = fulfilledCarrierEsimsResult.rows.map((row: any) => ({
+      id: row.id,
+      name: `${row.carrier_name} ${row.plan_name}`,
+      slug: `carrier-esim-${row.id}`,
+      description: `${row.data_amount_display} · ${row.voice_display || 'Voice'} · ${row.sms_display || 'SMS'} · ${row.network_type?.toUpperCase()}`,
+      category: 'esims',
+      icon: 'sim-card',
+      purchaseDateRaw: new Date(row.purchase_date).getTime(),
+      purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      status: 'active',
+      iccid: row.iccid,
+      hasQrCode: !!row.qr_code_data,
+      carrierName: row.carrier_name,
+      carrierSlug: row.carrier_slug,
+      isCarrierEsim: true,
+      countries: [row.country],
+    }))
+
+    // Query user's carrier eSIM orders (pending/cancelled only — fulfilled ones are in user_esims above)
     const carrierEsimOrdersResult = await query(
       `
       SELECT
@@ -555,7 +600,7 @@ export async function GET(request: Request) {
     })
 
     // Combine all library items (include pending/failed virtual numbers and eSIMs)
-    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...pendingEsimItems, ...carrierEsimItems, ...cardItems, ...phoneRefillItems]
+    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...fulfilledCarrierEsimItems, ...pendingEsimItems, ...carrierEsimItems, ...cardItems, ...phoneRefillItems]
 
     // Sort all items by purchase date (newest first)
     libraryItems.sort((a, b) => {
