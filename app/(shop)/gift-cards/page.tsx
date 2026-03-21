@@ -443,7 +443,7 @@ function GiftCardVisual({ card, height, extraClass, children }: {
   const [logoError, setLogoError] = useState(false)
 
   const domain = !logoError ? getBrandDomain(card.brand, card.imageUrl) : null
-  const logoUrl = domain ? `https://logos-api.apistemic.com/domain:${domain}` : null
+  const logoUrl = domain ? `/api/brand-logo?domain=${domain}` : null
 
   // Tier 1: Full card artwork (Reloadly or Cloudinary)
   if (imageUrl) {
