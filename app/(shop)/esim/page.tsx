@@ -856,6 +856,11 @@ export default function EsimPage() {
           Full eSIMs
         </button>
       </div>
+      <p className="mt-3 text-sm text-slate-500">
+        {activeTab === 'data'
+          ? 'Browse data-only eSIMs for 200+ countries — no physical SIM needed'
+          : 'Full eSIMs with calls, SMS & data — like a local SIM, activated digitally'}
+      </p>
 
       {/* Sandbox Mode Banner */}
       <TestModeBanner />
@@ -891,6 +896,7 @@ export default function EsimPage() {
             </div>
           ) : (
             <>
+              <h2 className="text-xl font-bold text-white mb-4">Select Country</h2>
               {/* Country grid */}
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {paginatedCountries.map((country) => (
