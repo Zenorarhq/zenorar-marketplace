@@ -120,7 +120,7 @@ export interface GiftCardProvider {
   name: string
   getProducts(countryCode?: string): Promise<ProviderProduct[]>
   checkStock(productId: string, denomination: number): Promise<number>
-  purchaseCard(productId: string, denomination: number): Promise<ProviderPurchaseResult>
+  purchaseCard(productId: string, denomination: number, userInfo?: { email?: string; firstName?: string; lastName?: string }): Promise<ProviderPurchaseResult>
 }
 
 export interface ProviderProduct {

@@ -167,7 +167,7 @@ class TangoProvider implements GiftCardProvider {
     return 999
   }
 
-  async purchaseCard(productId: string, denomination: number): Promise<ProviderPurchaseResult> {
+  async purchaseCard(productId: string, denomination: number, _userInfo?: { email?: string; firstName?: string; lastName?: string }): Promise<ProviderPurchaseResult> {
     const credentials = await this.getCredentials()
     if (!credentials) {
       return { success: false, error: 'Tango not configured' }

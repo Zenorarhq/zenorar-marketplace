@@ -180,12 +180,30 @@ export async function provisionGiftCard(
         }
       }
 
+      // Look up user info to pass recipient fields to providers that require them (e.g. Zendit)
+      let userInfo: { email?: string; firstName?: string; lastName?: string } | undefined
+      try {
+        const userResult = await query(`SELECT email, name FROM users WHERE id = $1`, [userId])
+        if (userResult.rows.length > 0) {
+          const { email, name } = userResult.rows[0]
+          const parts = (name || '').trim().split(/\s+/)
+          userInfo = {
+            email: email || undefined,
+            firstName: parts[0] || 'Customer',
+            lastName: parts.slice(1).join(' ') || undefined,
+          }
+        }
+      } catch {
+        // Non-fatal — proceed without user info
+      }
+
       // Call the provider's purchaseCard method
       console.log(`[Provisioning] Calling ${providerName}.purchaseCard with productId=${purchaseProductId}, denomination=${denomination}`)
 
       const apiResult = await provider.purchaseCard(
         purchaseProductId,
-        denomination
+        denomination,
+        userInfo
       )
 
       console.log(`[Provisioning] ${providerName} result:`, {

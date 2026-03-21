@@ -267,9 +267,9 @@ class ReloadlyProvider implements GiftCardProvider {
   async purchaseCard(
     productId: string,
     denomination: number,
-    recipientEmail?: string
+    userInfo?: { email?: string; firstName?: string; lastName?: string }
   ): Promise<ProviderPurchaseResult> {
-    console.log('[Reloadly] Starting purchase:', { productId, denomination, recipientEmail: recipientEmail ? 'provided' : 'none' })
+    console.log('[Reloadly] Starting purchase:', { productId, denomination, recipientEmail: userInfo?.email ? 'provided' : 'none' })
 
     const credentials = await this.getCredentials()
     if (!credentials) {
@@ -296,7 +296,7 @@ class ReloadlyProvider implements GiftCardProvider {
         unitPrice: denomination,
         customIdentifier: `GC_${Date.now()}_${Math.random().toString(36).substring(7)}`,
         senderName: 'Zenorar',
-        recipientEmail: recipientEmail,
+        recipientEmail: userInfo?.email,
         recipientPhoneDetails: null
       }
 
@@ -511,12 +511,12 @@ class ReloadlyProvider implements GiftCardProvider {
     productId: string,
     denomination: number,
     maxAttempts: number = 3,
-    recipientEmail?: string
+    userInfo?: { email?: string; firstName?: string; lastName?: string }
   ): Promise<ProviderPurchaseResult & { attempts: number }> {
     let lastError = ''
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const result = await this.purchaseCard(productId, denomination, recipientEmail)
+      const result = await this.purchaseCard(productId, denomination, userInfo)
 
       if (result.success) {
         return { ...result, attempts: attempt }

@@ -412,7 +412,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
     }
   }
 
-  async purchaseCard(productId: string, denomination: number): Promise<ProviderPurchaseResult> {
+  async purchaseCard(productId: string, denomination: number, userInfo?: { email?: string; firstName?: string; lastName?: string }): Promise<ProviderPurchaseResult> {
     const credentials = await this.getCredentials()
     if (!credentials) {
       return { success: false, error: 'Zendit gift cards not configured' }
@@ -421,11 +421,17 @@ class ZenditGiftCardProvider implements GiftCardProvider {
     try {
       const txId = `ZGC_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
+      // Build recipient fields from user info — some Zendit products require these
+      const fields: Array<{ key: string; value: string }> = []
+      if (userInfo?.firstName) fields.push({ key: 'recipient.firstName', value: userInfo.firstName })
+      if (userInfo?.lastName)  fields.push({ key: 'recipient.lastName',  value: userInfo.lastName })
+      if (userInfo?.email)     fields.push({ key: 'recipient.email',     value: userInfo.email })
+
       // Create purchase
       const purchaseBody: Record<string, unknown> = {
         offerId: productId,
         transactionId: txId,
-        fields: [],
+        fields,
       }
 
       // Note: offerId already encodes the denomination for fixed-value Zendit vouchers.
