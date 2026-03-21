@@ -248,11 +248,11 @@ export default function AdminContributorsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'overview',     label: 'Overview' },
-    { key: 'applications', label: 'Applications' },
-    { key: 'scripts',      label: 'Scripts' },
-    { key: 'payouts',      label: 'Payouts' },
+  const tabs: { key: Tab; label: string; icon: string }[] = [
+    { key: 'overview',     label: 'Overview',      icon: 'chart' },
+    { key: 'applications', label: 'Applications',  icon: 'file' },
+    { key: 'scripts',      label: 'Scripts',       icon: 'code' },
+    { key: 'payouts',      label: 'Payouts',       icon: 'wallet' },
   ]
 
   return (
@@ -279,11 +279,29 @@ export default function AdminContributorsPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl p-1">
+        <div className="flex gap-2 mb-6 overflow-x-auto max-w-full">
           {tabs.map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${tab === t.key ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'}`}>
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                tab === t.key ? 'bg-primary text-black' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-slate-400 hover:text-white'
+              }`}>
+              <Icon name={t.icon} size={14} />
               {t.label}
+              {t.key === 'applications' && stats?.pendingApplications > 0 && (
+                <span className="bg-yellow-500 text-black text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                  {stats.pendingApplications}
+                </span>
+              )}
+              {t.key === 'scripts' && stats?.pendingScriptReviews > 0 && (
+                <span className="bg-yellow-500 text-black text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                  {stats.pendingScriptReviews}
+                </span>
+              )}
+              {t.key === 'payouts' && stats?.pendingPayouts > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                  {stats.pendingPayouts}
+                </span>
+              )}
             </button>
           ))}
         </div>
