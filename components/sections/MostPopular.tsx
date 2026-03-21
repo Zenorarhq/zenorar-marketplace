@@ -18,6 +18,7 @@ interface PopularProduct {
   total_purchased: number
   created_at: string | null
   images: { url: string; isPrimary: boolean }[] | null
+  href?: string
 }
 
 export default function MostPopular({ config }: { config?: { title?: string; columns?: string; style?: Record<string, any> } } = {}) {
@@ -92,6 +93,7 @@ export default function MostPopular({ config }: { config?: { title?: string; col
                 tags: [],
                 images: p.images || undefined,
                 badge,
+                href: p.href,
               }}
             />
           )
