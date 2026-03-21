@@ -158,7 +158,7 @@ export default function CardDetailsModal({
 
   if (!isOpen) return null
 
-  const isVirtual = card?.cardType === 'virtual'
+  const isVirtual = card?.cardType === 'virtual' || card?.cardType === 'virtual_card'
   const brandName = card?.cardBrand === 'mastercard' ? 'Mastercard' : 'Visa'
   const displayName = card?.isPremium ? `Premium ${brandName}` : brandName
   const isRevealed = !!revealedDetails && isCardFlipped
@@ -370,7 +370,7 @@ export default function CardDetailsModal({
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-slate-400">Type</p>
-                    <p className="text-white capitalize">{card.cardType} Card</p>
+                    <p className="text-white">{isVirtual ? 'Virtual Card' : 'Instant Card'}</p>
                   </div>
                   <div>
                     <p className="text-slate-400">
@@ -484,8 +484,8 @@ export default function CardDetailsModal({
                   month: 'long',
                   day: 'numeric'
                 })}</p>
-                {card.expiresAt && (
-                  <p>Expires: {new Date(card.expiresAt).toLocaleDateString('en-US', {
+                {(card.cardExpiry || card.expiresAt) && (
+                  <p>Expires: {card.cardExpiry || new Date(card.expiresAt).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'

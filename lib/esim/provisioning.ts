@@ -657,7 +657,7 @@ export class EsimProvisioningService {
         er.name as region_name,
         er.slug as region_slug
       FROM user_esims ue
-      JOIN esim_plans ep ON ue.plan_id = ep.id
+      LEFT JOIN esim_plans ep ON ue.plan_id = ep.id
       LEFT JOIN esim_regions er ON ep.region_id = er.id
       WHERE ue.id = $1 AND ue.user_id = $2
       `,
@@ -669,15 +669,28 @@ export class EsimProvisioningService {
     }
 
     const row = result.rows[0]
+
+    // Carrier eSIMs have plan_id = null — fetch carrier plan details separately
+    let carrierPlan: any = null
+    if (!row.plan_id && row.carrier_plan_id) {
+      const cepResult = await query(
+        `SELECT * FROM carrier_esim_plans WHERE id = $1`,
+        [row.carrier_plan_id]
+      )
+      if (cepResult.rows.length > 0) {
+        carrierPlan = cepResult.rows[0]
+      }
+    }
+
     return {
       id: row.id,
-      planId: row.plan_id,
-      planName: row.plan_name,
-      dataAmountDisplay: row.data_amount_display,
-      validityDays: row.validity_days,
-      countries: row.countries,
-      regionName: row.region_name,
-      regionSlug: row.region_slug,
+      planId: row.plan_id || row.carrier_plan_id,
+      planName: row.plan_name || (carrierPlan ? `${carrierPlan.carrier_name} ${carrierPlan.plan_name}` : 'Carrier eSIM'),
+      dataAmountDisplay: row.data_amount_display || carrierPlan?.data_amount_display || '',
+      validityDays: row.validity_days || 0,
+      countries: row.countries || (carrierPlan?.country ? [carrierPlan.country] : []),
+      regionName: row.region_name || carrierPlan?.country || '',
+      regionSlug: row.region_slug || carrierPlan?.carrier_slug || '',
       iccid: row.iccid,
       matchingId: row.matching_id,
       smdpAddress: row.smdp_address,

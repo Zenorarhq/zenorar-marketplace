@@ -34,7 +34,7 @@ export async function POST(
     }
 
     // Only virtual cards can be topped up
-    if (card.cardType !== 'virtual') {
+    if (card.cardType !== 'virtual' && card.cardType !== 'virtual_card') {
       return NextResponse.json(
         { success: false, error: 'Instant cards cannot be topped up' },
         { status: 400 }
