@@ -743,7 +743,7 @@ export default function GiftCardsPage() {
   // Pagination — 25 per page desktop, 15 mobile. Reset when category/search changes.
   const [visibleCount, setVisibleCount] = useState(25)
   useEffect(() => {
-    const size = typeof window !== 'undefined' && window.innerWidth < 560 ? 15 : 25
+    const size = typeof window !== 'undefined' && window.innerWidth < 560 ? 20 : 25
     setVisibleCount(size)
   }, [selectedCategory, searchQuery])
 
@@ -1310,7 +1310,7 @@ export default function GiftCardsPage() {
                     <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min((visibleCount / giftCards.length) * 100, 100)}%` }} />
                   </div>
                   <button
-                    onClick={() => setVisibleCount(v => v + (typeof window !== 'undefined' && window.innerWidth < 560 ? 15 : 25))}
+                    onClick={() => setVisibleCount(v => v + (typeof window !== 'undefined' && window.innerWidth < 560 ? 20 : 25))}
                     className="mt-2 px-8 py-3 bg-charcoal border border-border-dark rounded-xl text-white font-semibold hover:border-primary/50 transition-colors"
                   >
                     Load More
@@ -1321,40 +1321,6 @@ export default function GiftCardsPage() {
             )}
           </div>
 
-          {/* How It Works Section */}
-          <div className="bg-charcoal border border-border-dark rounded-2xl lg:rounded-3xl p-4 lg:p-12">
-            <h2 className="text-2xl font-bold text-white mb-8 text-center">How It Works</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
-                  1
-                </div>
-                <h3 className="font-bold text-white mb-2">Choose a Card</h3>
-                <p className="text-slate-500 text-sm">Browse our selection and pick your preferred brand.</p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
-                  2
-                </div>
-                <h3 className="font-bold text-white mb-2">Select Amount</h3>
-                <p className="text-slate-500 text-sm">Choose from available denominations or enter a custom amount.</p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
-                  3
-                </div>
-                <h3 className="font-bold text-white mb-2">Pay Securely</h3>
-                <p className="text-slate-500 text-sm">Pay with your wallet balance or add to cart.</p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary font-extrabold text-lg">
-                  4
-                </div>
-                <h3 className="font-bold text-white mb-2">Instant Delivery</h3>
-                <p className="text-slate-500 text-sm">Receive your code instantly in your library.</p>
-              </div>
-            </div>
-          </div>
         </>
       )}
 
