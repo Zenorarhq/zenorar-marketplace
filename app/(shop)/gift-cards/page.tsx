@@ -254,6 +254,8 @@ const BRAND_BITREFILL_SLUGS: Record<string, string> = {
   // === TRAVEL ===
   'airbnb':              'airbnb-usa',
   'uber':                'uber-usa',
+  'hotels.com':          'hotels_com-usa',
+  'fairmont hotel':      'fairmont-hotels-and-resorts-ca',
   // === ENTERTAINMENT ===
   'amc':                 'amc-usa',
   // === US VARIANT NAMES (same product, different brand name in DB) ===
