@@ -1365,7 +1365,7 @@ export default function GiftCardsPage() {
               </div>
             ) : (
               <>
-              <div className="grid grid-cols-2 gap-6 items-start">
+              <div className="grid grid-cols-2 min-[700px]:grid-cols-3 min-[960px]:grid-cols-4 gap-6 items-start">
                 {giftCards.slice(0, visibleCount).map((card) => {
                   const selectedAmount = getSelectedAmount(card.id)
                   const hasSelection = selectedAmount !== null
