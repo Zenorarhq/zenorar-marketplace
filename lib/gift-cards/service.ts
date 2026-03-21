@@ -38,23 +38,23 @@ async function getEnabledProviders(): Promise<ProviderName[]> {
     const zenditGiftCardsEnabled = settings.zenditGiftCardsEnabled === true || settings.zenditGiftCardsEnabled === 'true'
     const zenditHasCreds = settings.zenditSandboxApiKey || settings.zenditProductionApiKey
 
-    // Add default provider first if enabled
-    if (defaultProvider === 'reloadly' && (reloadlyEnabled || reloadlyHasCreds)) {
+    // Add default provider first if enabled (toggle flag is the sole gate)
+    if (defaultProvider === 'reloadly' && reloadlyEnabled) {
       enabled.push('reloadly')
-    } else if (defaultProvider === 'tango' && (tangoEnabled || tangoHasCreds)) {
+    } else if (defaultProvider === 'tango' && tangoEnabled) {
       enabled.push('tango')
-    } else if (defaultProvider === 'zendit' && (zenditGiftCardsEnabled || zenditHasCreds)) {
+    } else if (defaultProvider === 'zendit' && zenditGiftCardsEnabled) {
       enabled.push('zendit')
     }
 
     // Add other enabled providers
-    if (!enabled.includes('reloadly') && (reloadlyEnabled || reloadlyHasCreds)) {
+    if (!enabled.includes('reloadly') && reloadlyEnabled) {
       enabled.push('reloadly')
     }
-    if (!enabled.includes('tango') && (tangoEnabled || tangoHasCreds)) {
+    if (!enabled.includes('tango') && tangoEnabled) {
       enabled.push('tango')
     }
-    if (!enabled.includes('zendit') && (zenditGiftCardsEnabled || zenditHasCreds)) {
+    if (!enabled.includes('zendit') && zenditGiftCardsEnabled) {
       enabled.push('zendit')
     }
 
