@@ -59,13 +59,11 @@ export async function POST(
       )
     }
 
-    // Get pricing
-    const pricing = await getProviderPricing(card.provider)
-    if (!pricing) {
-      return NextResponse.json(
-        { success: false, error: 'Provider pricing not found' },
-        { status: 500 }
-      )
+    // Get pricing — fall back to defaults for test/unknown providers
+    const pricing = await getProviderPricing(card.provider) ?? {
+      minTopUp: 1,
+      maxTopUp: 10000,
+      topUpFeePercent: 0,
     }
 
     // Validate amount range
