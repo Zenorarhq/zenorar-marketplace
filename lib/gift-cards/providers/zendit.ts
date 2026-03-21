@@ -425,6 +425,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       const purchaseBody: Record<string, unknown> = {
         offerId: productId,
         transactionId: txId,
+        fields: [],
       }
 
       // Note: offerId already encodes the denomination for fixed-value Zendit vouchers.
