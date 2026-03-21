@@ -1678,8 +1678,7 @@ export default function GiftCardsPage() {
                           if (e.key === 'Enter' && isValidInput) { handleCustomAmountConfirm(card.id, card) }
                           if (e.key === 'Escape') { closeModal() }
                         }}
-                        autoFocus
-                        className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-full pl-8 pr-4 py-3 bg-surface-dark border border-border-dark rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary focus:border-primary text-base font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
                     <p className="text-xs text-slate-500 mt-2">
