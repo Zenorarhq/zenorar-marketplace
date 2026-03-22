@@ -36,7 +36,7 @@ export async function GET(request: Request) {
         lf.latest_file_id
       FROM licenses l
       JOIN products p ON l.product_id = p.id
-      JOIN categories c ON p."categoryId" = c.id
+      LEFT JOIN categories c ON p."categoryId" = c.id
       LEFT JOIN (
         SELECT DISTINCT ON (product_id) file_id as last_file_id, product_id
         FROM download_history

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { verifyAccessToken } from '@/lib/auth-utils'
+import { fulfillOrder } from '@/lib/order-fulfillment'
 
 /**
  * Get or create a product by type
@@ -230,6 +231,58 @@ export async function POST(req: NextRequest) {
         `UPDATE orders SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{sessionId}', $1::jsonb) WHERE id = $2`,
         [JSON.stringify(sessionId), orderId]
       ).catch(() => {}) // Ignore if metadata column doesn't exist
+    }
+
+    // Wallet credits: deduct balance and fulfill immediately
+    if (paymentMethod === 'wallet_credits' && userId) {
+      const walletResult = await query(
+        `SELECT id, balance, is_frozen FROM wallet_balances WHERE user_id = $1`,
+        [userId]
+      )
+
+      if (walletResult.rows.length === 0 || walletResult.rows[0].is_frozen) {
+        // Rollback order
+        await query(`DELETE FROM orders WHERE id = $1`, [orderId])
+        return NextResponse.json(
+          { success: false, error: walletResult.rows[0]?.is_frozen ? 'Wallet is frozen' : 'Wallet not found' },
+          { status: 400 }
+        )
+      }
+
+      const walletBalance = parseFloat(walletResult.rows[0].balance)
+      if (walletBalance < finalTotal) {
+        await query(`DELETE FROM orders WHERE id = $1`, [orderId])
+        return NextResponse.json(
+          { success: false, error: `Insufficient wallet balance. Available: $${walletBalance.toFixed(2)}, Required: $${finalTotal.toFixed(2)}` },
+          { status: 400 }
+        )
+      }
+
+      const walletBalanceId = walletResult.rows[0].id
+      const balanceBefore = walletBalance
+      const balanceAfter = walletBalance - finalTotal
+
+      // Deduct wallet
+      await query(
+        `UPDATE wallet_balances SET balance = $1, updated_at = NOW() WHERE user_id = $2`,
+        [balanceAfter, userId]
+      )
+
+      // Record wallet transaction
+      await query(
+        `INSERT INTO wallet_transactions (id, wallet_balance_id, type, amount, balance_before, balance_after, description, order_id, created_at)
+         VALUES (gen_random_uuid()::text, $1, 'DEBIT', $2, $3, $4, $5, $6, NOW())`,
+        [walletBalanceId, finalTotal, balanceBefore, balanceAfter, `Order #${finalOrderNumber}`, orderId]
+      )
+
+      // Update order to PAID before fulfillment
+      await query(
+        `UPDATE orders SET "paymentStatus" = 'PAID', "paidAt" = NOW(), "updatedAt" = NOW() WHERE id = $1`,
+        [orderId]
+      )
+
+      // Fulfill order (generates licenses, grants access)
+      await fulfillOrder(orderId)
     }
 
     return NextResponse.json({
