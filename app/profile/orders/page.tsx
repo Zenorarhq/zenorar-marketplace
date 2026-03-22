@@ -550,14 +550,26 @@ export default function OrdersPage() {
 
                 <div className="flex flex-wrap gap-2 sm:gap-3">
                   {order.status === 'CANCELLED' || order.status === 'REFUNDED' ? (
-                    order.items[0]?.product?.slug && (
-                      <Link
-                        href={`/products/${order.items[0].product.slug}`}
-                        className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white text-sm font-medium transition-colors"
-                      >
-                        <Icon name="refresh" size={18} /> Buy Again
-                      </Link>
-                    )
+                    (() => {
+                      const _item = order.items[0]
+                      const _enriched = itemEnrichment[order.id]?.[_item?.id]
+                      const _type = _enriched?.product_type || (_item as any)?.product_type || (_item as any)?.metadata?.productType
+                      const _buyHref =
+                        _type === 'gift_card' ? '/gift-cards'
+                        : _type === 'esim' ? '/esim'
+                        : _type === 'virtual_number' ? '/virtual-numbers'
+                        : _type === 'phone_refill' ? '/phone-refills'
+                        : _item?.product?.slug ? `/products/${_item.product.slug}`
+                        : null
+                      return _buyHref ? (
+                        <Link
+                          href={_buyHref}
+                          className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white text-sm font-medium transition-colors"
+                        >
+                          <Icon name="refresh" size={18} /> Buy Again
+                        </Link>
+                      ) : null
+                    })()
                   ) : (
                     <>
                       {order.status === 'PENDING' && (
