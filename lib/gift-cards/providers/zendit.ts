@@ -493,11 +493,13 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       }
 
       const confirmation = purchase?.confirmation || {}
+      const receipt = purchase?.receipt || {}
 
       // Extract code and PIN — cover all known Zendit field names
       const code = confirmation.code || confirmation.serial || confirmation.voucher ||
                    confirmation.cardNumber || confirmation.card_number ||
-                   confirmation.voucherCode || confirmation.value || ''
+                   confirmation.voucherCode || confirmation.value ||
+                   receipt.voucherId || ''
       const pin = confirmation.pin || confirmation.securityCode || confirmation.security_code || ''
 
       if (!code && !pin) {
