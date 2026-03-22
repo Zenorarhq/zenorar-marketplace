@@ -69,6 +69,9 @@ let credentialsCache: { credentials: ZenditCredentials | null; timestamp: number
 const CACHE_TTL = 60 * 1000
 const REQUEST_TIMEOUT = 30000
 
+const operatorsCache = new Map<string, { data: TopupOperator[]; timestamp: number }>()
+const OPERATORS_CACHE_TTL = 15 * 60 * 1000 // 15 minutes
+
 class ZenditTopupProvider {
   private async getCredentials(): Promise<ZenditCredentials | null> {
     if (credentialsCache && Date.now() - credentialsCache.timestamp < CACHE_TTL) {
@@ -190,6 +193,12 @@ class ZenditTopupProvider {
    * Get operators grouped by brand, with their offers
    */
   async getOperators(country?: string): Promise<TopupOperator[]> {
+    const cacheKey = country || '__all__'
+    const cached = operatorsCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < OPERATORS_CACHE_TTL) {
+      return cached.data
+    }
+
     const offers = await this.getOffers(country)
 
     // Group offers by brand (operator)
@@ -240,7 +249,9 @@ class ZenditTopupProvider {
     }
 
     // Sort operators by name
-    return Array.from(operatorMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+    const result = Array.from(operatorMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+    operatorsCache.set(cacheKey, { data: result, timestamp: Date.now() })
+    return result
   }
 
   /**
