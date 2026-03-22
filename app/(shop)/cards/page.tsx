@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import Icon from '@/components/ui/Icon'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { useAuth } from '@/contexts/AuthContext'
@@ -56,6 +57,7 @@ interface ProvidersData {
 export default function CardsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const { isAuthenticated, user } = useAuth()
   const { formatPrice } = usePreferences()
   const { addItem, showAddedToCartPopup } = useCart()
@@ -173,6 +175,9 @@ export default function CardsPage() {
       const balanceResponse = await getBalance()
       setWalletBalance(balanceResponse.data?.balance ?? null)
 
+      // Invalidate library cache so the new card appears immediately
+      await queryClient.invalidateQueries({ queryKey: ['user-library'] })
+
       // Redirect to library with cards tab
       router.push('/profile/library?tab=cards&purchased=true')
     } catch (err: any) {
@@ -181,7 +186,7 @@ export default function CardsPage() {
       setProcessingPayment(null)
       setPendingCheckout(null)
     }
-  }, [router])
+  }, [router, queryClient])
 
   // Handle pay with wallet click
   const handlePayWithWallet = async (provider: string, denomination: number | undefined, totalCost: number, cardBrand?: 'visa' | 'mastercard') => {
