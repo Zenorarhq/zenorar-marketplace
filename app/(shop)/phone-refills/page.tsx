@@ -407,11 +407,11 @@ export default function PhoneRefillsPage() {
         {/* Info */}
         <div className="p-3 pt-2 flex flex-col flex-grow">
           <div className="flex items-center gap-1 mb-1">
-            <h3 className="font-bold text-[11px] text-white group-hover:text-primary transition-colors truncate">{operator.name}</h3>
+            <h3 className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">{operator.name}</h3>
             <FlagIcon countryCode={operator.country} className="w-3.5 h-2.5 rounded-sm flex-shrink-0" />
           </div>
           <div className="mt-auto">
-            <span className="text-[10px] text-slate-300 font-semibold">
+            <span className="text-sm text-primary font-medium">
               {formatPrice(minPrice)}{minPrice !== maxPrice ? ` - ${formatPrice(maxPrice)}` : ''}
             </span>
           </div>
