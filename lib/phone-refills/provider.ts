@@ -275,7 +275,7 @@ class ZenditTopupProvider {
 
       // For range-priced offers, include value as dto.PurchaseValue { type, value }
       if (params.value !== undefined) {
-        body.value = { type: 'PRICE', value: params.value }
+        body.value = { type: 'PRICE', value: Math.round(params.value * 100) }
       }
 
       const response = await this.request<any>('POST', '/topups/purchases', body)
