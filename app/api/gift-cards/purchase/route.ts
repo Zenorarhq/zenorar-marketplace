@@ -1,3 +1,5 @@
+export const maxDuration = 60 // Allow up to 60s for Zendit voucher polling
+
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { fulfillOrder } from '@/lib/order-fulfillment'

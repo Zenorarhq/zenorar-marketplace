@@ -1,3 +1,5 @@
+export const maxDuration = 60 // Allow up to 60s for Zendit voucher polling
+
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSiteSetting } from '@/lib/db-helpers'

@@ -467,11 +467,13 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       }
 
       // Poll for confirmation with the code/PIN
-      // Allow up to ~22s total (12 attempts × 2s) to handle slower brands
+      // Fast checks first (0, 1, 1s), then 2s intervals — handles both quick and slow vouchers
+      // Total worst-case: 0 + 1 + 1 + 2×9 = 20s (well within 60s maxDuration)
+      const pollDelays = [0, 1000, 1000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000]
       let purchase: any = null
-      for (let attempt = 0; attempt < 12; attempt++) {
-        if (attempt > 0) {
-          await new Promise(resolve => setTimeout(resolve, 2000))
+      for (let attempt = 0; attempt < pollDelays.length; attempt++) {
+        if (pollDelays[attempt] > 0) {
+          await new Promise(resolve => setTimeout(resolve, pollDelays[attempt]))
         }
 
         purchase = await this.request<any>(
