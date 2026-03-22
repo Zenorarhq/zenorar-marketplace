@@ -69,7 +69,7 @@ async function generateLicenseRecord(
     `INSERT INTO licenses
        (id, user_id, product_id, order_id, order_item_id, license_key, license_type,
         domains_allowed, registered_domains, support_expires_at, is_active, status, verification_count)
-     VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6::"LicenseType", $7, $8, $9, true, 'ACTIVE', 0)
+     VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6::"LicenseType", $7, $8::jsonb, $9, true, 'ACTIVE'::"LicenseStatus", 0)
      RETURNING id`,
     [userId, productId, orderId, orderItemId, licenseKey, cfg.type, cfg.domains, JSON.stringify([]), supportExpiry]
   )
