@@ -98,7 +98,7 @@ async function generateLicenseRecord(
     `INSERT INTO notifications (id, "userId", type, title, message, metadata)
      VALUES (gen_random_uuid()::text, $1, 'LICENSE_GENERATED'::"NotificationType",
              'License Key Generated',
-             'Your license key for order #' || $2 || ' is ready: ' || $3,
+             'Your license key for order #' || (SELECT "orderNumber" FROM orders WHERE id = $2) || ' is ready: ' || $3,
              $4::jsonb)`,
     [userId, orderId, licenseKey, JSON.stringify({ licenseKey, productId, orderId })]
   ).catch((err) => console.error('Failed to send license notification:', err))
