@@ -124,11 +124,11 @@ export async function PATCH(
       UPDATE user_gift_cards
       SET
         status = $1,
-        redeemed_at = CASE WHEN $1::text = 'redeemed' THEN NOW() ELSE redeemed_at END
+        redeemed_at = CASE WHEN $4 = 'redeemed' THEN NOW() ELSE redeemed_at END
       WHERE id = $2 AND user_id = $3
       RETURNING id, status, redeemed_at
       `,
-      [status, id, userId]
+      [status, id, userId, status]
     )
 
     if (result.rows.length === 0) {
