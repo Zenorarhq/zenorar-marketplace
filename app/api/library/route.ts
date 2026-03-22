@@ -63,7 +63,7 @@ export async function GET(request: Request) {
         ugc.category,
         ugc.denomination,
         ugc.status,
-        ugc.image_url,
+        COALESCE(gc.image_url, ugc.image_url) as image_url,
         ugc.delivered_at as purchase_date,
         ugc.expires_at,
         ugc.redeemed_at,

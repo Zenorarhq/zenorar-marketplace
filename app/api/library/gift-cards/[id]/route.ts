@@ -35,7 +35,7 @@ export async function GET(
         ugc.code,
         ugc.pin,
         ugc.status,
-        ugc.image_url,
+        COALESCE(gc.image_url, ugc.image_url) as image_url,
         ugc.delivered_at,
         ugc.expires_at,
         ugc.redeemed_at,
