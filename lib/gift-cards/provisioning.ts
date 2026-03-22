@@ -190,7 +190,7 @@ export async function provisionGiftCard(
           userInfo = {
             email: email || undefined,
             firstName: parts[0] || 'Customer',
-            lastName: parts.slice(1).join(' ') || undefined,
+            lastName: parts.slice(1).join(' ') || parts[0] || 'Customer',
           }
         }
       } catch {
