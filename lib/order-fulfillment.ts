@@ -74,13 +74,14 @@ async function generateLicenseRecord(
     [userId, productId, orderId, orderItemId, licenseKey, cfg.type, cfg.domains, JSON.stringify([]), supportExpiry]
   )
 
-  // Update user_product_access with license key (non-blocking — library reads licenses table directly)
-  query(
+  // Upsert user_product_access with license key and type (avoids unique constraint
+  // violation when a previous failed attempt already inserted a row for this user+product)
+  await query(
     `INSERT INTO user_product_access (user_id, product_id, order_id, access_type, access_key)
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (user_id, product_id, access_type) DO UPDATE SET access_key = EXCLUDED.access_key`,
     [userId, productId, orderId, `license_${cfg.type.toLowerCase()}`, licenseKey]
-  ).catch((err) => console.error('Failed to update user_product_access:', err))
+  )
 
   // Send in-app notification (non-blocking — same as wallet path)
   // notifications table uses Prisma camelCase columns: "userId", "isRead", "createdAt", metadata
@@ -192,13 +193,17 @@ export async function fulfillOrder(orderId: string): Promise<FulfillmentResult> 
         [orderId]
       )
     } else if (result.itemsFailed > 0) {
+      const errorDetails = result.details
+        .filter(d => d.status === 'failed')
+        .map(d => `[${d.productType}] ${d.error || 'unknown'}`)
+        .join('; ')
       await query(
         `UPDATE orders
          SET status = 'PROCESSING',
-             "adminNote" = COALESCE("adminNote", '') || E'\n[Auto] Partial fulfillment: ' || $2 || ' items failed',
+             "adminNote" = COALESCE("adminNote", '') || E'\n[Auto] ' || $2 || ' item(s) failed: ' || $3,
              "updatedAt" = NOW()
          WHERE id = $1`,
-        [orderId, result.itemsFailed.toString()]
+        [orderId, result.itemsFailed.toString(), errorDetails]
       )
     }
 
