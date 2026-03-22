@@ -51,7 +51,13 @@ async function getTopEsims(): Promise<PopularItem[]> {
       SELECT ep.id::text, ep.name, ep.slug, ep.description,
         ep.retail_price::float as price, false as is_featured, ep.created_at::text,
         'eSIM' as category_name, 0 as average_rating, 0 as review_count,
-        COUNT(ue.id)::int as total_purchased, null as images
+        COUNT(ue.id)::int as total_purchased,
+        CASE WHEN array_length(ep.countries, 1) > 0
+          THEN json_build_array(json_build_object(
+            'url', 'https://flagcdn.com/w160/' || lower(ep.countries[1]) || '.png',
+            'isPrimary', true
+          ))
+          ELSE null END as images
       FROM esim_plans ep
       LEFT JOIN user_esims ue ON ue.plan_id = ep.id
       WHERE ep.is_active = true
@@ -59,7 +65,7 @@ async function getTopEsims(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC, ep.retail_price ASC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: '/esim' }))
+    return result.rows.map((r: any) => ({ ...r, href: `/esim/${r.slug}` }))
   } catch { return [] }
 }
 
@@ -81,7 +87,7 @@ async function getTopGiftCards(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: '/gift-cards' }))
+    return result.rows.map((r: any) => ({ ...r, href: `/gift-cards/${r.slug}` }))
   } catch { return [] }
 }
 
@@ -92,7 +98,11 @@ async function getTopVirtualNumbers(): Promise<PopularItem[]> {
         vnc.iso_code as slug, null as description,
         vnc.retail_monthly::float as price, false as is_featured, vnc.created_at::text,
         'Virtual Numbers' as category_name, 0 as average_rating, 0 as review_count,
-        COUNT(uvn.id)::int as total_purchased, null as images
+        COUNT(uvn.id)::int as total_purchased,
+        json_build_array(json_build_object(
+          'url', 'https://flagcdn.com/w160/' || lower(vnc.iso_code) || '.png',
+          'isPrimary', true
+        )) as images
       FROM virtual_number_countries vnc
       LEFT JOIN user_virtual_numbers uvn ON uvn.country_id = vnc.id
       WHERE vnc.is_active = true
@@ -100,7 +110,7 @@ async function getTopVirtualNumbers(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC, vnc.retail_monthly ASC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: '/virtual-numbers' }))
+    return result.rows.map((r: any) => ({ ...r, href: `/virtual-numbers/${r.id}` }))
   } catch { return [] }
 }
 
@@ -119,7 +129,7 @@ async function getTopCards(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: '/cards' }))
+    return result.rows.map((r: any) => ({ ...r, href: `/cards/${r.slug}` }))
   } catch { return [] }
 }
 
@@ -142,7 +152,7 @@ async function getTopPhoneRefills(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: '/phone-refills' }))
+    return result.rows.map((r: any) => ({ ...r, href: `/phone-refills/${encodeURIComponent(r.name)}` }))
   } catch { return [] }
 }
 
