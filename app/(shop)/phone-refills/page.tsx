@@ -180,6 +180,12 @@ export default function PhoneRefillsPage() {
     }
   }, [pendingWalletCheckout, isAuthenticated, walletBalance, pendingOperator])
 
+  // Deep-link: when ?search= yields exactly one operator (from Most Popular), auto-expand it
+  useEffect(() => {
+    if (!searchQuery || allFiltered.length !== 1 || expandedKey) return
+    handleToggle(allFiltered[0])
+  }, [allFiltered.length, searchQuery])
+
   // Expand/collapse a carrier row
   const handleToggle = (op: TopupOperator) => {
     const key = opKey(op)

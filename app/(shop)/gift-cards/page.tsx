@@ -1068,6 +1068,14 @@ export default function GiftCardsPage() {
     return 'Variable'
   }
 
+  // Auto-open modal when ?card= param is present (from Most Popular deep link)
+  const cardParam = searchParams.get('card')
+  useEffect(() => {
+    if (!cardParam || !giftCards.length || modalCard) return
+    const match = giftCards.find(c => c.slug === cardParam)
+    if (match) setModalCard(match)
+  }, [giftCards.length, cardParam])
+
   // Fetch wallet balance
   const fetchWalletBalance = async () => {
     setLoadingBalance(true)

@@ -223,6 +223,27 @@ export default function EsimPage() {
     }
   }, [isAuthenticated])
 
+  // Deep-link: ?plan={id} — fetch all plans to find country, then auto-select it
+  const planParam = searchParams.get('plan')
+  useEffect(() => {
+    if (!planParam) return
+    fetch('/api/esim/plans')
+      .then(r => r.json())
+      .then(data => {
+        const found = data.data?.find((p: any) => p.id === planParam)
+        if (found?.countries?.[0]) setSelectedCountry(found.countries[0])
+      })
+      .catch(() => {})
+  }, [planParam])
+
+  // After plans load, scroll to the specific plan card
+  useEffect(() => {
+    if (!planParam || !plans.length) return
+    setTimeout(() => {
+      document.getElementById(`plan-${planParam}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+  }, [plans.length, planParam])
+
   // Auto-continue purchase after login (data eSIM)
   useEffect(() => {
     if (pendingWalletCheckout && isAuthenticated && walletBalance !== null && pendingPlan) {
@@ -508,6 +529,7 @@ export default function EsimPage() {
           {plans.map((plan) => (
             <div
               key={plan.id}
+              id={`plan-${plan.id}`}
               className={`bg-charcoal border rounded-2xl p-6 hover:border-primary/50 transition-all relative ${
                 plan.isFeatured ? 'border-primary' : 'border-border-dark'
               }`}

@@ -298,6 +298,14 @@ export default function VirtualNumbersPage() {
   const [codeCopied, setCodeCopied] = useState(false)
   const [otpCodeExpiryTime, setOtpCodeExpiryTime] = useState(3 * 60) // 3 minutes for code expiry
 
+  // Deep-link: ?country={id} — auto-select the country when data loads (from Most Popular)
+  const countryParam = searchParams.get('country')
+  useEffect(() => {
+    if (!countryParam || !countries.length || selectedCountry) return
+    const match = countries.find((c: any) => c.id === countryParam)
+    if (match) setSelectedCountry(match)
+  }, [countries.length, countryParam])
+
   // ===== MONTHLY NUMBERS EFFECTS =====
 
   // Auto-select featured plan when plans load

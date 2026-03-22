@@ -65,7 +65,7 @@ async function getTopEsims(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC, ep.retail_price ASC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: `/esim/${r.slug}` }))
+    return result.rows.map((r: any) => ({ ...r, href: `/esim?plan=${r.id}` }))
   } catch { return [] }
 }
 
@@ -87,7 +87,7 @@ async function getTopGiftCards(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: `/gift-cards/${r.slug}` }))
+    return result.rows.map((r: any) => ({ ...r, href: `/gift-cards?card=${r.slug}` }))
   } catch { return [] }
 }
 
@@ -110,7 +110,7 @@ async function getTopVirtualNumbers(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC, vnc.retail_monthly ASC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: `/virtual-numbers/${r.id}` }))
+    return result.rows.map((r: any) => ({ ...r, href: `/virtual-numbers?country=${r.id}` }))
   } catch { return [] }
 }
 
@@ -129,7 +129,12 @@ async function getTopCards(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: `/cards/${r.slug}` }))
+    // slug is "instant-visa" or "virtual_card-visa"; extract card_type for tab param
+    return result.rows.map((r: any) => {
+      const cardType = r.slug.split('-')[0]
+      const tab = cardType === 'instant' ? 'instant' : 'virtual'
+      return { ...r, href: `/cards?tab=${tab}` }
+    })
   } catch { return [] }
 }
 
@@ -152,7 +157,7 @@ async function getTopPhoneRefills(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: `/phone-refills/${encodeURIComponent(r.name)}` }))
+    return result.rows.map((r: any) => ({ ...r, href: `/phone-refills?search=${encodeURIComponent(r.name)}` }))
   } catch { return [] }
 }
 
