@@ -711,7 +711,7 @@ export default function DepositModal({ isOpen, onClose, onBackToWallet, resumeDe
   ].filter(tab => tab.enabled)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-lg bg-[#0a0a0a] border border-border-dark rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
