@@ -417,6 +417,12 @@ export default function LibraryPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Delivered
           </div>
         )
+      case 'redeemed':
+        return (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-900/30 text-purple-400 border border-purple-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span> Redeemed
+          </div>
+        )
       case 'pending':
         return (
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-900/30 text-blue-400 border border-blue-500/20">
