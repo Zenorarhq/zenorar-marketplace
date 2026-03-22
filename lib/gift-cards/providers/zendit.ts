@@ -521,7 +521,8 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       if (!code && !pin) {
         const diagStatus = purchase?.status || 'no-response'
         // Capture any top-level error reason Zendit may provide
-        const zenditReason = purchase?.error || purchase?.message || purchase?.errorMessage || purchase?.reason || purchase?.description || ''
+        const rawReason = purchase?.error || purchase?.message || purchase?.errorMessage || purchase?.reason || purchase?.description || ''
+        const zenditReason = typeof rawReason === 'string' ? rawReason : JSON.stringify(rawReason)
         const confKeys = Object.keys(purchase?.confirmation || {}).join(',') || 'empty'
         const recKeys = Object.keys(purchase?.receipt || {}).join(',') || 'empty'
         const diagMsg = zenditReason
