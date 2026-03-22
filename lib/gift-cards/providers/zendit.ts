@@ -467,9 +467,9 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       }
 
       // Poll for confirmation with the code/PIN
-      // Zendit processes most vouchers within a few seconds; allow up to ~16s total
+      // Allow up to ~22s total (12 attempts × 2s) to handle slower brands
       let purchase: any = null
-      for (let attempt = 0; attempt < 8; attempt++) {
+      for (let attempt = 0; attempt < 12; attempt++) {
         if (attempt > 0) {
           await new Promise(resolve => setTimeout(resolve, 2000))
         }
@@ -483,10 +483,12 @@ class ZenditGiftCardProvider implements GiftCardProvider {
 
         const status = (purchase.status || '').toUpperCase()
         const conf = purchase.confirmation || {}
+        const rec = purchase.receipt || {}
 
-        // Check if confirmation is ready with code (case-insensitive status)
+        // Break when status is terminal or any known code field is populated
         if (conf.code || conf.pin || conf.serial || conf.voucher ||
             conf.cardNumber || conf.card_number || conf.voucherCode ||
+            rec.voucherId || rec.code || rec.cardNumber || rec.epin || rec.barcode || rec.serial ||
             status === 'DONE' || status === 'COMPLETED' || status === 'SUCCESS') {
           break
         }
@@ -495,16 +497,18 @@ class ZenditGiftCardProvider implements GiftCardProvider {
       const confirmation = purchase?.confirmation || {}
       const receipt = purchase?.receipt || {}
 
-      // Extract code and PIN — cover all known Zendit field names
+      // Extract code and PIN — cover all known Zendit field names across all brands
       const code = confirmation.code || confirmation.serial || confirmation.voucher ||
                    confirmation.cardNumber || confirmation.card_number ||
                    confirmation.voucherCode || confirmation.value ||
-                   receipt.voucherId || ''
-      const pin = confirmation.pin || confirmation.securityCode || confirmation.security_code || ''
+                   receipt.voucherId || receipt.code || receipt.cardNumber ||
+                   receipt.epin || receipt.barcode || receipt.serial || receipt.pin || ''
+      const pin = confirmation.pin || confirmation.securityCode || confirmation.security_code ||
+                  receipt.pinCode || receipt.securityCode || ''
 
       if (!code && !pin) {
-        console.error('[Zendit] No code in final confirmation:', JSON.stringify(confirmation))
-        console.error('[Zendit] Final purchase status:', purchase?.status)
+        console.error('[Zendit] No code found. Full purchase response:', JSON.stringify(purchase))
+        console.error('[Zendit] Final status:', purchase?.status)
         return {
           success: false,
           orderId: transactionId,
