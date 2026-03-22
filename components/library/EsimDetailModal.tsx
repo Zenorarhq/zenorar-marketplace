@@ -16,7 +16,8 @@ export default function EsimDetailModal({ esimId, isOpen, onClose }: EsimDetailM
   const [esim, setEsim] = useState<UserEsim | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [activeTab, setActiveTab] = useState<'qr' | 'ios' | 'android'>('qr')
+  const [activeTab, setActiveTab] = useState<'ios' | 'android'>('ios')
+  const [showQr, setShowQr] = useState(false)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -196,55 +197,67 @@ export default function EsimDetailModal({ esimId, isOpen, onClose }: EsimDetailM
                 </div>
               )}
 
-              {/* Tabs */}
-              <div className="flex gap-2 mb-4">
-                {(['qr', 'ios', 'android'] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      activeTab === tab
-                        ? 'bg-primary text-black'
-                        : 'bg-surface-dark text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {tab === 'qr' ? 'QR Code' : tab === 'ios' ? 'iOS' : 'Android'}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tab Content */}
-              {activeTab === 'qr' && esim.qrCodeData && (
-                <div className="text-center">
-                  <div className="bg-white p-4 rounded-xl inline-block mb-4">
-                    <QRCodeSVG value={esim.qrCodeData} size={200} />
-                  </div>
-                  <p className="text-sm text-slate-400 mb-3">
-                    Scan this QR code with your device's camera to install the eSIM
-                  </p>
+              {/* Install Button — primary CTA */}
+              {esim.qrCodeData && (
+                <div className="mb-6">
                   <a
                     href={esim.qrCodeData}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all text-sm mb-4"
+                    className="w-full flex items-center justify-center gap-3 py-4 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all text-lg"
                   >
+                    <Icon name="smartphone" size={22} />
                     Install eSIM on this Device
                   </a>
-                  <p className="text-xs text-slate-500 mb-4">Tap on your phone · iPhone iOS 12.1+ or Android 10+</p>
-                  <div className="bg-surface-dark rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-slate-500">ICCID</span>
-                      <button
-                        onClick={() => copyToClipboard(esim.iccid)}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        {copied ? 'Copied!' : 'Copy'}
-                      </button>
+                  <p className="text-center text-xs text-slate-500 mt-2 mb-3">
+                    Tap on your phone · iPhone iOS 12.1+ · Android 10+
+                  </p>
+                  <button
+                    onClick={() => setShowQr(!showQr)}
+                    className="w-full text-center text-xs text-slate-400 hover:text-primary transition-colors"
+                  >
+                    {showQr ? 'Hide QR code ↑' : 'or scan QR code instead ↓'}
+                  </button>
+                  {showQr && (
+                    <div className="mt-4 text-center">
+                      <div className="bg-white p-4 rounded-xl inline-block mb-3">
+                        <QRCodeSVG value={esim.qrCodeData} size={180} />
+                      </div>
+                      <div className="bg-surface-dark rounded-lg p-3 text-left">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-slate-500">ICCID</span>
+                          <button
+                            onClick={() => copyToClipboard(esim.iccid)}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            {copied ? 'Copied!' : 'Copy'}
+                          </button>
+                        </div>
+                        <code className="text-xs text-slate-300 break-all">{esim.iccid}</code>
+                      </div>
                     </div>
-                    <code className="text-xs text-slate-300 break-all">{esim.iccid}</code>
-                  </div>
+                  )}
                 </div>
               )}
 
-              {activeTab === 'ios' && esim.installationManual?.ios && (
+              {/* Step-by-step instructions */}
+              {(esim.installationManual?.ios || esim.installationManual?.android) && (
+                <>
+                  <div className="flex gap-2 mb-4">
+                    {(['ios', 'android'] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          activeTab === tab
+                            ? 'bg-primary text-black'
+                            : 'bg-surface-dark text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {tab === 'ios' ? 'iPhone / iOS' : 'Android'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {activeTab === 'ios' && esim.installationManual?.ios && (
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-sm font-medium text-white mb-2">
@@ -308,6 +321,8 @@ export default function EsimDetailModal({ esimId, isOpen, onClose }: EsimDetailM
                     </ol>
                   </div>
                 </div>
+                  )}
+                </>
               )}
             </>
           )}
