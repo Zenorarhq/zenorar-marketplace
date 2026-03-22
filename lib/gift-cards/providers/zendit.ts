@@ -452,24 +452,30 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         || txId
 
       // If Zendit returned the code synchronously in the POST response, use it directly
+      // Check both confirmation and receipt — Zendit sometimes puts code in receipt.voucherId on POST
       const postConf = purchaseResponse.confirmation || {}
+      const postRec = purchaseResponse.receipt || {}
       const postCode = postConf.code || postConf.serial || postConf.voucher ||
-                       postConf.cardNumber || postConf.card_number || postConf.voucherCode || postConf.value || ''
-      const postPin = postConf.pin || postConf.securityCode || postConf.security_code || ''
+                       postConf.cardNumber || postConf.card_number || postConf.voucherCode || postConf.value ||
+                       postRec.voucherId || postRec.code || postRec.cardNumber || postRec.epin || postRec.barcode || postRec.serial || postRec.pin || ''
+      const postPin = postConf.pin || postConf.securityCode || postConf.security_code ||
+                      postRec.pinCode || postRec.securityCode || ''
       if (postCode || postPin) {
         return {
           success: true,
           orderId: transactionId,
           code: postCode,
           pin: postPin || undefined,
-          expiresAt: postConf.expiryDate ? new Date(postConf.expiryDate) : undefined,
+          expiresAt: postConf.expiryDate || postRec.expiryDate
+            ? new Date(postConf.expiryDate || postRec.expiryDate)
+            : undefined,
         }
       }
 
       // Poll for confirmation with the code/PIN
-      // Fast checks first (0, 1, 1s), then 2s intervals — handles both quick and slow vouchers
-      // Total worst-case: 0 + 1 + 1 + 2×9 = 20s (well within 60s maxDuration)
-      const pollDelays = [0, 1000, 1000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000]
+      // Fast checks first (0, 1, 1s), then 2s intervals — handles slow Zendit sandbox vouchers
+      // Total worst-case: 0 + 1 + 1 + 2×17 = 36s delays + ~10s requests ≈ 46s (within 60s maxDuration)
+      const pollDelays = [0, 1000, 1000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000]
       let purchase: any = null
       for (let attempt = 0; attempt < pollDelays.length; attempt++) {
         if (pollDelays[attempt] > 0) {
@@ -509,12 +515,16 @@ class ZenditGiftCardProvider implements GiftCardProvider {
                   receipt.pinCode || receipt.securityCode || ''
 
       if (!code && !pin) {
+        const diagStatus = purchase?.status || 'no-response'
+        const confKeys = Object.keys(purchase?.confirmation || {}).join(',') || 'empty'
+        const recKeys = Object.keys(purchase?.receipt || {}).join(',') || 'empty'
+        const diagMsg = `Zendit: no code after ${pollDelays.length} polls [status=${diagStatus}, conf={${confKeys}}, receipt={${recKeys}}]`
         console.error('[Zendit] No code found. Full purchase response:', JSON.stringify(purchase))
-        console.error('[Zendit] Final status:', purchase?.status)
+        console.error('[Zendit] Diagnostic:', diagMsg)
         return {
           success: false,
           orderId: transactionId,
-          error: 'Gift card code not yet available from Zendit. Please check order status.',
+          error: diagMsg,
         }
       }
 
