@@ -451,6 +451,21 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         || purchaseResponse.transaction_id
         || txId
 
+      // If Zendit returned the code synchronously in the POST response, use it directly
+      const postConf = purchaseResponse.confirmation || {}
+      const postCode = postConf.code || postConf.serial || postConf.voucher ||
+                       postConf.cardNumber || postConf.card_number || postConf.voucherCode || postConf.value || ''
+      const postPin = postConf.pin || postConf.securityCode || postConf.security_code || ''
+      if (postCode || postPin) {
+        return {
+          success: true,
+          orderId: transactionId,
+          code: postCode,
+          pin: postPin || undefined,
+          expiresAt: postConf.expiryDate ? new Date(postConf.expiryDate) : undefined,
+        }
+      }
+
       // Poll for confirmation with the code/PIN
       // Zendit processes most vouchers within a few seconds; allow up to ~16s total
       let purchase: any = null
