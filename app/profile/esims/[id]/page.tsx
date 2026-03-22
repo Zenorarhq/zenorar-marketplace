@@ -321,6 +321,21 @@ export default function EsimDetailPage() {
       {/* Install Tab */}
       {activeTab === 'install' && (
         <div className="bg-[#121212] border border-border-dark rounded-xl p-6">
+          {/* One-Tap Install Button */}
+          {esimData.qrCodeData && (
+            <div className="mb-6 p-4 bg-primary/10 border border-primary/30 rounded-xl text-center">
+              <p className="text-slate-300 text-sm mb-3">On your mobile device, tap the button below to install instantly — no QR scanning needed</p>
+              <a
+                href={esimData.qrCodeData}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all"
+              >
+                <Icon name="smartphone" size={18} />
+                Install eSIM on this Device
+              </a>
+              <p className="text-slate-500 text-xs mt-2">Requires iPhone (iOS 12.1+) or Android 10+ · Does not work on desktop</p>
+            </div>
+          )}
+
           {/* Platform Toggle */}
           <div className="flex gap-2 mb-6">
             <button
