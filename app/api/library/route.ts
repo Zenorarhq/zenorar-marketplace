@@ -600,8 +600,49 @@ export async function GET(request: Request) {
       }
     })
 
+    // Query digital product orders (scripts/tools/api) with no license yet — show as pending/failed
+    const pendingDigitalResult = await query(
+      `
+      SELECT
+        oi.id,
+        p.name,
+        p.slug,
+        COALESCE(oi.product_type, p.product_type) as product_type,
+        o."createdAt" as purchase_date,
+        o.status as order_status
+      FROM orders o
+      JOIN order_items oi ON oi."orderId" = o.id
+      JOIN products p ON p.id = oi."productId"
+      LEFT JOIN licenses l ON l.order_id = o.id AND l.order_item_id = oi.id
+      WHERE o."userId" = $1
+        AND COALESCE(oi.product_type, p.product_type) IN ('script', 'tool', 'api', 'digital')
+        AND l.id IS NULL
+        AND o.status NOT IN ('CANCELLED', 'REFUNDED')
+      ORDER BY o."createdAt" DESC
+      LIMIT 10
+      `,
+      [userId]
+    ).catch(() => ({ rows: [] }))
+
+    const pendingDigitalItems = pendingDigitalResult.rows.map((row: any) => {
+      const isFailed = row.order_status === 'CANCELLED'
+      const categoryMap: Record<string, string> = { script: 'scripts', tool: 'tools', api: 'api', digital: 'scripts' }
+      const category = categoryMap[row.product_type] || 'scripts'
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        description: isFailed ? 'Delivery failed — please contact support' : `${row.name} — Delivering...`,
+        category,
+        icon: category === 'api' ? 'api' : 'code',
+        purchaseDateRaw: new Date(row.purchase_date).getTime(),
+        purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        status: isFailed ? 'failed' : 'pending',
+      }
+    })
+
     // Combine all library items (include pending/failed virtual numbers and eSIMs)
-    const libraryItems = [...productItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...fulfilledCarrierEsimItems, ...pendingEsimItems, ...carrierEsimItems, ...cardItems, ...phoneRefillItems]
+    const libraryItems = [...productItems, ...pendingDigitalItems, ...virtualNumberItems, ...pendingVirtualNumberItems, ...giftCardItems, ...esimItems, ...fulfilledCarrierEsimItems, ...pendingEsimItems, ...carrierEsimItems, ...cardItems, ...phoneRefillItems]
 
     // Sort all items by purchase date (newest first)
     libraryItems.sort((a, b) => {

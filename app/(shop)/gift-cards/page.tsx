@@ -942,6 +942,7 @@ const categoryGradients: Record<string, string> = {
 
 export default function GiftCardsPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const { isAuthenticated } = useAuth()
   const { addItem, showAddedToCartPopup } = useCart()
@@ -1246,6 +1247,7 @@ export default function GiftCardsPage() {
           return newAmounts
         })
         setPendingCard(null)
+        queryClient.invalidateQueries({ queryKey: ['user-library'] })
         router.push('/profile/library?tab=gift-cards&purchased=true')
       } else {
         setPaymentErrors(prev => ({ ...prev, [card.id]: response.error || 'Payment failed' }))

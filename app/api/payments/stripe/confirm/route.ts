@@ -94,6 +94,9 @@ export async function POST(req: NextRequest) {
         } else if (fulfilled) {
           title = 'Order Delivered'
           message = `Your order #${orderNumber} has been fulfilled. Check your library!`
+        } else if (!fulfilled && (hasGiftCards || hasEsims)) {
+          title = 'Delivery Issue — Action Required'
+          message = `Your payment for order #${orderNumber} was successful, but automatic delivery failed. Our team has been notified. Please contact support quoting order #${orderNumber} if not resolved within 1 hour.`
         }
 
         await executeQuery(
@@ -106,7 +109,7 @@ export async function POST(req: NextRequest) {
       console.error('Failed to send notification:', notifError)
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, fulfillmentWarning: fulfillmentResult?.success === false })
   } catch (error: any) {
     console.error('Stripe confirm error:', error)
     return NextResponse.json(
