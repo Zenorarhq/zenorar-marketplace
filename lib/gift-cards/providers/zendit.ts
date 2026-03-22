@@ -493,7 +493,11 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         const conf = purchase.confirmation || {}
         const rec = purchase.receipt || {}
 
-        // Break when status is terminal or any known code field is populated
+        // Break immediately on terminal failure — no point polling further
+        if (status === 'FAILED' || status === 'ERROR' || status === 'CANCELLED') {
+          break
+        }
+        // Break when status is success or any known code field is populated
         if (conf.code || conf.pin || conf.serial || conf.voucher ||
             conf.cardNumber || conf.card_number || conf.voucherCode ||
             rec.voucherId || rec.code || rec.cardNumber || rec.epin || rec.barcode || rec.serial ||
@@ -516,9 +520,13 @@ class ZenditGiftCardProvider implements GiftCardProvider {
 
       if (!code && !pin) {
         const diagStatus = purchase?.status || 'no-response'
+        // Capture any top-level error reason Zendit may provide
+        const zenditReason = purchase?.error || purchase?.message || purchase?.errorMessage || purchase?.reason || purchase?.description || ''
         const confKeys = Object.keys(purchase?.confirmation || {}).join(',') || 'empty'
         const recKeys = Object.keys(purchase?.receipt || {}).join(',') || 'empty'
-        const diagMsg = `Zendit: no code after ${pollDelays.length} polls [status=${diagStatus}, conf={${confKeys}}, receipt={${recKeys}}]`
+        const diagMsg = zenditReason
+          ? `Zendit purchase failed [status=${diagStatus}]: ${zenditReason}`
+          : `Zendit: no code after ${pollDelays.length} polls [status=${diagStatus}, conf={${confKeys}}, receipt={${recKeys}}]`
         console.error('[Zendit] No code found. Full purchase response:', JSON.stringify(purchase))
         console.error('[Zendit] Diagnostic:', diagMsg)
         return {
