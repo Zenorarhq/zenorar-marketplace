@@ -219,9 +219,16 @@ export default function EsimDetailModal({ esimId, isOpen, onClose }: EsimDetailM
                   <div className="bg-white p-4 rounded-xl inline-block mb-4">
                     <QRCodeSVG value={esim.qrCodeData} size={200} />
                   </div>
-                  <p className="text-sm text-slate-400 mb-4">
+                  <p className="text-sm text-slate-400 mb-3">
                     Scan this QR code with your device's camera to install the eSIM
                   </p>
+                  <a
+                    href={esim.qrCodeData}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all text-sm mb-4"
+                  >
+                    Install eSIM on this Device
+                  </a>
+                  <p className="text-xs text-slate-500 mb-4">Tap on your phone · iPhone iOS 12.1+ or Android 10+</p>
                   <div className="bg-surface-dark rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-slate-500">ICCID</span>
