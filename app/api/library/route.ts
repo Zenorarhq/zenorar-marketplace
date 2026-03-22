@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth-middleware'
 import { query } from '@/lib/db'
+import { getBitrefillImageUrl } from '@/lib/gift-cards/brand-images'
 
 export async function GET(request: Request) {
   try {
@@ -328,7 +329,7 @@ export async function GET(request: Request) {
         description: `${row.brand} Gift Card - $${row.denomination}`,
         category: 'gift-cards',
         icon: 'gift',
-        imageUrl: row.image_url,
+        imageUrl: getBitrefillImageUrl(row.brand) || row.image_url,
         purchaseDateRaw: new Date(row.purchase_date).getTime(),
         purchaseDate: new Date(row.purchase_date).toLocaleDateString('en-US', {
           month: 'short',

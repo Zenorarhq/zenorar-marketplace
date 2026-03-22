@@ -28,6 +28,10 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'cdn.bitrefill.com',
+      },
+      {
+        protocol: 'https',
         hostname: 'www.google.com',
         pathname: '/s2/favicons**',
       },
