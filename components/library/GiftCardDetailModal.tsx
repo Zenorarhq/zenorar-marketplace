@@ -22,6 +22,7 @@ export default function GiftCardDetailModal({
   const [copiedField, setCopiedField] = useState<'code' | 'pin' | null>(null)
   const [codeRevealed, setCodeRevealed] = useState(false)
   const [markingRedeemed, setMarkingRedeemed] = useState(false)
+  const [redeemError, setRedeemError] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen && giftCardId) {
@@ -64,11 +65,12 @@ export default function GiftCardDetailModal({
   const handleMarkRedeemed = async () => {
     if (!giftCard) return
     setMarkingRedeemed(true)
-
+    setRedeemError(null)
     const res = await libraryApi.updateGiftCardStatus(giftCard.id, 'redeemed')
-
     if (res.success) {
       setGiftCard({ ...giftCard, status: 'redeemed', redeemedAt: new Date().toISOString() })
+    } else {
+      setRedeemError(res.error || 'Failed to mark as redeemed')
     }
     setMarkingRedeemed(false)
   }
@@ -233,6 +235,9 @@ export default function GiftCardDetailModal({
                   >
                     {markingRedeemed ? 'Marking...' : 'Mark as Redeemed'}
                   </button>
+                )}
+                {redeemError && (
+                  <p className="text-red-400 text-xs text-center">{redeemError}</p>
                 )}
                 <button
                   onClick={() => {
