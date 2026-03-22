@@ -11,6 +11,7 @@ import { usePreferences } from '@/contexts/PreferencesContext'
 import { CardVisualMini } from '@/components/cards/CardVisual'
 import FlagIcon from '@/components/ui/FlagIcon'
 import ServiceLogo from '@/components/ui/ServiceLogo'
+import { getBitrefillImageUrl } from '@/lib/gift-cards/brand-images'
 
 function getStatusBadge(status: string) {
   const styles: Record<string, { bg: string; text: string; dot?: string; icon?: string }> = {
@@ -248,12 +249,14 @@ export default function OrderDetailPage() {
                         || (item.product as any)?.image
                         || (item.product as any)?.imageUrl
                         || metadata.imageUrl
+                      const giftCardBrand = isGiftCard ? (metadata?.brand || (item.name || '').split(' Gift Card')[0].trim()) : null
+                      const resolvedImageUrl = (giftCardBrand ? getBitrefillImageUrl(giftCardBrand) : null) || imageUrl
 
                       return (
                         <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center overflow-hidden">
-                          {imageUrl ? (
+                          {resolvedImageUrl ? (
                             <img
-                              src={imageUrl}
+                              src={resolvedImageUrl}
                               alt={item.name}
                               className="h-full w-full object-cover"
                               onError={(e) => {
@@ -262,7 +265,7 @@ export default function OrderDetailPage() {
                               }}
                             />
                           ) : null}
-                          <div className={`${imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
+                          <div className={`${resolvedImageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
                             <Icon name={isGiftCard ? 'gift' : isEsim || isCarrierEsim ? 'sim-card' : isVirtualNumber || isPhoneRefill || isOtpNumber ? 'phone' : 'box'} size={36} className="text-slate-500" />
                           </div>
                         </div>
