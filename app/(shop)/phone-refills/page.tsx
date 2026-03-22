@@ -264,8 +264,11 @@ export default function PhoneRefillsPage() {
   }
 
   // Handle Pay with Wallet
-  const handlePayWithWallet = async (operator: TopupOperator) => {
-    if (!selectedOffer) return
+  // offerOverride: pass the resolved offer directly to avoid reading stale React state
+  // (setState is async — reading selectedOffer immediately after setSelectedOffer gives the old value)
+  const handlePayWithWallet = async (operator: TopupOperator, offerOverride?: TopupOffer) => {
+    const offer = offerOverride ?? selectedOffer
+    if (!offer) return
     const phone = phoneNumber.replace(/[^+\d]/g, '')
     if (phone.length < 8) return
 
@@ -298,13 +301,13 @@ export default function PhoneRefillsPage() {
       setLoadingBalance(false)
     }
 
-    if (currentBalance === null || currentBalance < selectedOffer.price) {
+    if (currentBalance === null || currentBalance < offer.price) {
       setPendingOperator(operator)
       setShowDepositModal(true)
       return
     }
 
-    await processWalletPayment(operator, selectedOffer, phone)
+    await processWalletPayment(operator, offer, phone)
   }
 
   // Handle Add to Cart
@@ -733,10 +736,9 @@ export default function PhoneRefillsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        if (useCustomInput && effectiveOffer) {
-                          setSelectedOffer(effectiveOffer)
-                        }
-                        handlePayWithWallet(operator)
+                        const resolvedOffer = (useCustomInput && effectiveOffer) ? effectiveOffer : selectedOffer
+                        if (useCustomInput && effectiveOffer) setSelectedOffer(effectiveOffer)
+                        handlePayWithWallet(operator, resolvedOffer ?? undefined)
                       }}
                       disabled={!isReadyModal || isProcessing || loadingBalance}
                       className="flex-1 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 bg-primary text-black hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
