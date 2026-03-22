@@ -500,7 +500,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
         // Break when status is success or any known code field is populated
         if (conf.code || conf.pin || conf.serial || conf.voucher ||
             conf.cardNumber || conf.card_number || conf.voucherCode ||
-            rec.voucherId || rec.code || rec.cardNumber || rec.epin || rec.barcode || rec.serial ||
+            rec.voucherId || rec.code || rec.cardNumber || rec.epin || rec.barcode || rec.serial || rec.redemptionUrl ||
             status === 'DONE' || status === 'COMPLETED' || status === 'SUCCESS') {
           break
         }
@@ -514,7 +514,7 @@ class ZenditGiftCardProvider implements GiftCardProvider {
                    confirmation.cardNumber || confirmation.card_number ||
                    confirmation.voucherCode || confirmation.value ||
                    receipt.voucherId || receipt.code || receipt.cardNumber ||
-                   receipt.epin || receipt.barcode || receipt.serial || receipt.pin || ''
+                   receipt.epin || receipt.barcode || receipt.serial || receipt.pin || receipt.redemptionUrl || ''
       const pin = confirmation.pin || confirmation.securityCode || confirmation.security_code ||
                   receipt.pinCode || receipt.securityCode || ''
 
