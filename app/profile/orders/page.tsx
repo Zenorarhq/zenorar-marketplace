@@ -12,6 +12,7 @@ import { ordersApi, Order } from '@/lib/api/orders'
 import { libraryApi } from '@/lib/api/library'
 import { localApiFetch } from '@/lib/api/client'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { getBitrefillImageUrl } from '@/lib/gift-cards/brand-images'
 
 type FilterStatus = 'all' | 'PENDING' | 'PROCESSING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
 
@@ -446,6 +447,8 @@ export default function OrdersPage() {
                           || (item.product as any)?.imageUrl
                           || mergedMeta?.imageUrl
                         const isGiftCard = productType === 'gift_card'
+                        const giftCardBrand = isGiftCard ? (mergedMeta?.brand || (item.name || '').split(' Gift Card')[0].trim()) : null
+                        const resolvedImageUrl = (giftCardBrand ? getBitrefillImageUrl(giftCardBrand) : null) || imageUrl
                         const isEsim = productType === 'esim'
                         const isVirtualNumber = productType === 'virtual_number'
                         const countryIsoCode = mergedMeta?.countryIsoCode
@@ -492,9 +495,9 @@ export default function OrdersPage() {
 
                         return (
                           <div className="h-16 w-16 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {imageUrl ? (
+                            {resolvedImageUrl ? (
                               <img
-                                src={imageUrl}
+                                src={resolvedImageUrl}
                                 alt={item.name}
                                 className="h-full w-full object-cover"
                                 onError={(e) => {
@@ -503,7 +506,7 @@ export default function OrdersPage() {
                                 }}
                               />
                             ) : null}
-                            <div className={`${imageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
+                            <div className={`${resolvedImageUrl ? 'hidden' : ''} flex items-center justify-center w-full h-full`}>
                               <Icon name={isGiftCard ? 'gift' : isEsim || isCarrierEsim ? 'sim-card' : isVirtualNumber || isPhoneRefill || isOtpNumber ? 'phone' : 'box'} size={36} className="text-slate-500" />
                             </div>
                           </div>
