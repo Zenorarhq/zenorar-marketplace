@@ -269,17 +269,13 @@ class ZenditTopupProvider {
       const body: Record<string, unknown> = {
         offerId: params.offerId,
         transactionId,
-        recipient: {
-          phoneNumber: params.recipientPhone,
-        },
-        sender: {
-          phoneNumber: params.senderPhone || params.recipientPhone,
-        },
+        recipientPhoneNumber: params.recipientPhone,
+        senderPhoneNumber: params.senderPhone || params.recipientPhone,
       }
 
-      // For range-priced offers, include value as dto.PurchaseValue object { amount, currency }
+      // For range-priced offers, include value as dto.PurchaseValue { type, value }
       if (params.value !== undefined) {
-        body.value = { amount: params.value, currency: 'USD' }
+        body.value = { type: 'PRICE', value: params.value }
       }
 
       const response = await this.request<any>('POST', '/topups/purchases', body)
