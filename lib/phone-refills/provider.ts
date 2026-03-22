@@ -277,9 +277,9 @@ class ZenditTopupProvider {
         },
       }
 
-      // For range-priced offers, include value (must be string — Zendit dto.PurchaseValue is a string type)
+      // For range-priced offers, include value as dto.PurchaseValue object { amount, currency }
       if (params.value !== undefined) {
-        body.value = String(params.value)
+        body.value = { amount: params.value, currency: 'USD' }
       }
 
       const response = await this.request<any>('POST', '/topups/purchases', body)
