@@ -74,12 +74,13 @@ async function generateLicenseRecord(
     [userId, productId, orderId, orderItemId, licenseKey, cfg.type, cfg.domains, JSON.stringify([]), supportExpiry]
   )
 
-  // Update user_product_access with license key and type
+  // Upsert user_product_access with license key and type (avoids unique constraint
+  // violation when a previous failed attempt already inserted a row for this user+product)
   await query(
-    `UPDATE user_product_access
-     SET access_key = $1, access_type = $2
-     WHERE user_id = $3 AND product_id = $4`,
-    [licenseKey, `license_${cfg.type.toLowerCase()}`, userId, productId]
+    `INSERT INTO user_product_access (user_id, product_id, order_id, access_type, access_key)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (user_id, product_id, access_type) DO UPDATE SET access_key = EXCLUDED.access_key`,
+    [userId, productId, orderId, `license_${cfg.type.toLowerCase()}`, licenseKey]
   )
 
   // Send in-app notification (non-blocking — same as wallet path)
