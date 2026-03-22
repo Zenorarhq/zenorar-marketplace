@@ -399,7 +399,7 @@ export default function PhoneRefillsPage() {
         className="bg-[#121212] rounded-xl border border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden flex flex-col"
       >
         {/* Logo area */}
-        <div className="p-3 pb-0">
+        <div className="p-3">
           <div className="w-full aspect-square bg-white rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
             <ServiceLogo name={operator.name} size={80} className="rounded-lg" />
           </div>
