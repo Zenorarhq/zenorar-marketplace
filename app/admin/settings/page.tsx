@@ -167,7 +167,7 @@ export default function AdminSettingsPage() {
   const [generalSettings, setGeneralSettings] = useState({
     siteName: 'Zenorar Marketplace',
     siteDescription: 'Premium digital marketplace for scripts, plugins, and eSIMs',
-    supportEmail: 'support@zenorar.com',
+    supportEmail: 'support@zenorahq.com',
     timezone: 'auto',
     currency: 'USD',
     maintenanceMode: false,
