@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth-middleware'
 import { query } from '@/lib/db'
+import { getBitrefillImageUrl } from '@/lib/gift-cards/brand-images'
 
 /**
  * GET /api/library/gift-cards/[id]
@@ -69,7 +70,7 @@ export async function GET(
         code: card.code,
         pin: card.pin,
         status: card.status,
-        imageUrl: card.image_url,
+        imageUrl: getBitrefillImageUrl(card.brand) || card.image_url,
         deliveredAt: card.delivered_at ? new Date(card.delivered_at).toISOString() : null,
         expiresAt: card.expires_at ? new Date(card.expires_at).toISOString() : null,
         redeemedAt: card.redeemed_at ? new Date(card.redeemed_at).toISOString() : null,
