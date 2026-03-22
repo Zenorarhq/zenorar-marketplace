@@ -76,12 +76,19 @@ async function generateLicenseRecord(
     [userId, productId, orderId, orderItemId, licenseKey, cfg.type, cfg.domains, JSON.stringify([]), supportExpiry]
   )
 
-  // Upsert user_product_access with license key and type (avoids unique constraint
-  // violation when a previous failed attempt already inserted a row for this user+product)
+  // Upsert user_product_access without relying on a unique constraint (constraint may not
+  // exist on production DB if CREATE TABLE IF NOT EXISTS was a no-op on an existing table).
+  // CTE: UPDATE existing row first; INSERT only if no row was updated.
   await query(
-    `INSERT INTO user_product_access (user_id, product_id, order_id, access_type, access_key)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (user_id, product_id, access_type) DO UPDATE SET access_key = EXCLUDED.access_key`,
+    `WITH updated AS (
+       UPDATE user_product_access
+       SET access_key = $5, order_id = $3
+       WHERE user_id = $1 AND product_id = $2 AND access_type = $4
+       RETURNING id
+     )
+     INSERT INTO user_product_access (user_id, product_id, order_id, access_type, access_key)
+     SELECT $1, $2, $3, $4, $5
+     WHERE NOT EXISTS (SELECT 1 FROM updated)`,
     [userId, productId, orderId, `license_${cfg.type.toLowerCase()}`, licenseKey]
   )
 
