@@ -411,6 +411,12 @@ export default function LibraryPage() {
             <Icon name="alert" size={12} /> Suspended
           </div>
         )
+      case 'delivered':
+        return (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-900/30 text-green-500 border border-green-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Delivered
+          </div>
+        )
       case 'pending':
         return (
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-900/30 text-blue-400 border border-blue-500/20">
