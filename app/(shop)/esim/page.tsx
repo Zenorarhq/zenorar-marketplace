@@ -69,6 +69,7 @@ export default function EsimPage() {
   const [processingPayment, setProcessingPayment] = useState<string | null>(null)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
+  const [checkingBalancePlanId, setCheckingBalancePlanId] = useState<string | null>(null)
   const [showDepositModal, setShowDepositModal] = useState(false)
   const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
   const [pendingPlan, setPendingPlan] = useState<EsimPlan | null>(null)
@@ -393,6 +394,7 @@ export default function EsimPage() {
     let currentBalance = walletBalance
     if (currentBalance === null) {
       setLoadingBalance(true)
+      setCheckingBalancePlanId(plan.id)
       try {
         const result = await getBalance()
         if (result.success && result.data) {
@@ -400,13 +402,16 @@ export default function EsimPage() {
           setWalletBalance(currentBalance)
         } else {
           setLoadingBalance(false)
+          setCheckingBalancePlanId(null)
           return
         }
       } catch {
         setLoadingBalance(false)
+        setCheckingBalancePlanId(null)
         return
       }
       setLoadingBalance(false)
+      setCheckingBalancePlanId(null)
     }
 
     if (currentBalance === null || currentBalance < plan.retailPrice) {
@@ -442,6 +447,7 @@ export default function EsimPage() {
     let currentBalance = walletBalance
     if (currentBalance === null) {
       setLoadingBalance(true)
+      setCheckingBalancePlanId(plan.id)
       try {
         const result = await getBalance()
         if (result.success && result.data) {
@@ -449,13 +455,16 @@ export default function EsimPage() {
           setWalletBalance(currentBalance)
         } else {
           setLoadingBalance(false)
+          setCheckingBalancePlanId(null)
           return
         }
       } catch {
         setLoadingBalance(false)
+        setCheckingBalancePlanId(null)
         return
       }
       setLoadingBalance(false)
+      setCheckingBalancePlanId(null)
     }
 
     if (currentBalance === null || currentBalance < plan.retailPrice) {
@@ -595,7 +604,7 @@ export default function EsimPage() {
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
                       <span>Processing...</span>
                     </>
-                  ) : loadingBalance ? (
+                  ) : checkingBalancePlanId === plan.id ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
                       <span>Checking Balance...</span>
@@ -748,7 +757,7 @@ export default function EsimPage() {
             <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent"></div>
             <span>Processing...</span>
           </>
-        ) : loadingBalance ? (
+        ) : checkingBalancePlanId === plan.id ? (
           <>
             <div className="animate-spin rounded-full h-5 w-5 border-2 border-black border-t-transparent"></div>
             <span>Checking Balance...</span>
