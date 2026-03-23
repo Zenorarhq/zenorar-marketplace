@@ -91,9 +91,10 @@ export default function AdminVendorsPage() {
   // Payouts tab state
   const [payoutStatusFilter, setPayoutStatusFilter] = useState('PENDING')
   const [payoutPage, setPayoutPage] = useState(1)
-  const [expandedPayoutId, setExpandedPayoutId] = useState<string | null>(null)
-  const [txHashInput, setTxHashInput] = useState<Record<string, string>>({})
-  const [rejectNote, setRejectNote] = useState<Record<string, string>>({})
+  const [markPaidTarget, setMarkPaidTarget] = useState<{ id: string; amount: number; vendorName: string } | null>(null)
+  const [markPaidNote, setMarkPaidNote] = useState('')
+  const [rejectPayoutTarget, setRejectPayoutTarget] = useState<{ id: string } | null>(null)
+  const [rejectPayoutNote, setRejectPayoutNote] = useState('')
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
@@ -200,9 +201,10 @@ export default function AdminVendorsPage() {
   })
 
   const markPaidMutation = useMutation({
-    mutationFn: ({ id, txHash }: { id: string; txHash: string }) =>
-      apiFetch(`/vendor/admin/payouts/${id}/mark-paid`, { method: 'POST', body: JSON.stringify({ txHash }) }),
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      apiFetch(`/vendor/admin/payouts/${id}/mark-paid`, { method: 'POST', body: JSON.stringify({ txHash: note || '' }) }),
     onSuccess: () => {
+      setMarkPaidTarget(null); setMarkPaidNote('')
       queryClient.invalidateQueries({ queryKey: ['vendor-payouts-admin'] })
       queryClient.invalidateQueries({ queryKey: ['vendor-admin-stats'] })
     },
@@ -211,7 +213,7 @@ export default function AdminVendorsPage() {
   const rejectPayoutMutation = useMutation({
     mutationFn: ({ id, note }: { id: string; note?: string }) =>
       apiFetch(`/vendor/admin/payouts/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vendor-payouts-admin'] }),
+    onSuccess: () => { setRejectPayoutTarget(null); setRejectPayoutNote(''); queryClient.invalidateQueries({ queryKey: ['vendor-payouts-admin'] }) },
   })
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -861,56 +863,23 @@ export default function AdminVendorsPage() {
                               <span className="text-xs text-slate-500 font-mono truncate block max-w-[100px]" title={p.tx_hash}>{p.tx_hash.slice(0, 12)}…</span>
                             )}
                             {p.status === 'PENDING' && (
-                              <button
-                                onClick={() => setExpandedPayoutId(expandedPayoutId === p.id ? null : p.id)}
-                                className="text-xs text-primary hover:underline"
-                              >
-                                {expandedPayoutId === p.id ? 'Close' : 'Process'}
-                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setMarkPaidTarget({ id: p.id, amount: p.amount, vendorName: p.vendor_name || p.email })}
+                                  className="text-xs text-green-400 hover:underline"
+                                >
+                                  Mark Paid
+                                </button>
+                                <button
+                                  onClick={() => setRejectPayoutTarget({ id: p.id })}
+                                  className="text-xs text-red-400 hover:underline"
+                                >
+                                  Reject
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>
-                        {expandedPayoutId === p.id && p.status === 'PENDING' && (
-                          <tr key={`${p.id}-process`}>
-                            <td colSpan={6} className="px-4 py-4 bg-[#0a0a0a]">
-                              <div className="flex flex-col sm:flex-row gap-3 items-start">
-                                <div className="flex-1">
-                                  <label className="text-xs text-slate-400 mb-1 block">Transaction Hash</label>
-                                  <input
-                                    type="text"
-                                    value={txHashInput[p.id] || ''}
-                                    onChange={e => setTxHashInput(prev => ({ ...prev, [p.id]: e.target.value }))}
-                                    placeholder="Enter tx hash after sending..."
-                                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-primary/50"
-                                  />
-                                </div>
-                                <div className="flex gap-2 pt-5">
-                                  <button
-                                    onClick={() => markPaidMutation.mutate({ id: p.id, txHash: txHashInput[p.id] || '' })}
-                                    disabled={!txHashInput[p.id] || markPaidMutation.isPending}
-                                    className="px-4 py-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 text-xs font-medium rounded-lg transition-colors disabled:opacity-40"
-                                  >
-                                    Mark Paid
-                                  </button>
-                                  <button
-                                    onClick={() => rejectPayoutMutation.mutate({ id: p.id, note: rejectNote[p.id] })}
-                                    disabled={rejectPayoutMutation.isPending}
-                                    className="px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-medium rounded-lg transition-colors disabled:opacity-40"
-                                  >
-                                    Reject
-                                  </button>
-                                </div>
-                              </div>
-                              <input
-                                type="text"
-                                value={rejectNote[p.id] || ''}
-                                onChange={e => setRejectNote(prev => ({ ...prev, [p.id]: e.target.value }))}
-                                placeholder="Rejection note (optional)"
-                                className="w-full mt-2 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-primary/50"
-                              />
-                            </td>
-                          </tr>
-                        )}
                       </Fragment>
                     ))}
                   </tbody>
@@ -931,6 +900,47 @@ export default function AdminVendorsPage() {
         )}
 
       </div>
+
+      {rejectPayoutTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold text-white mb-4">Reject Payout</h3>
+            <textarea value={rejectPayoutNote} onChange={(e) => setRejectPayoutNote(e.target.value)}
+              placeholder="Reason for rejection (optional)..." rows={3}
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary resize-none mb-4" />
+            <div className="flex gap-3">
+              <button onClick={() => setRejectPayoutTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={() => rejectPayoutMutation.mutate({ id: rejectPayoutTarget.id, note: rejectPayoutNote })} disabled={rejectPayoutMutation.isPending}
+                className="flex-1 bg-red-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-red-500 disabled:opacity-50">
+                {rejectPayoutMutation.isPending ? 'Rejecting...' : 'Confirm Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {markPaidTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold text-white mb-1">Mark Payout as Paid</h3>
+            <p className="text-slate-400 text-sm mb-4">{markPaidTarget.vendorName} — ${markPaidTarget.amount.toFixed(2)}</p>
+            <div className="mb-4">
+              <label className="block text-sm text-slate-300 mb-1.5">Transaction hash (optional)</label>
+              <input type="text" value={markPaidNote} onChange={(e) => setMarkPaidNote(e.target.value)}
+                placeholder="Transaction hash or reference..."
+                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setMarkPaidTarget(null); setMarkPaidNote('') }} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={() => markPaidMutation.mutate({ id: markPaidTarget.id, note: markPaidNote || undefined })} disabled={markPaidMutation.isPending}
+                className="flex-1 bg-green-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-green-500 disabled:opacity-50">
+                {markPaidMutation.isPending ? 'Processing...' : 'Confirm Paid'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </AdminLayout>
   )
 }
