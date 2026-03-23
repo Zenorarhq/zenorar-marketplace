@@ -863,19 +863,11 @@ export default function AdminVendorsPage() {
                               <span className="text-xs text-slate-500 font-mono truncate block max-w-[100px]" title={p.tx_hash}>{p.tx_hash.slice(0, 12)}…</span>
                             )}
                             {p.status === 'PENDING' && (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => setMarkPaidTarget({ id: p.id, amount: p.amount, vendorName: p.vendor_name || p.email })}
-                                  className="text-xs text-green-400 hover:underline"
-                                >
-                                  Mark Paid
-                                </button>
-                                <button
-                                  onClick={() => setRejectPayoutTarget({ id: p.id })}
-                                  className="text-xs text-red-400 hover:underline"
-                                >
-                                  Reject
-                                </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button onClick={() => setMarkPaidTarget({ id: p.id, amount: p.amount, vendorName: p.vendor_name || p.email })}
+                                  className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-colors">Mark Paid</button>
+                                <button onClick={() => setRejectPayoutTarget({ id: p.id })}
+                                  className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors">Reject</button>
                               </div>
                             )}
                           </td>
