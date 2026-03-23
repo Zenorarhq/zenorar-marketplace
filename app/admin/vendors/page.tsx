@@ -260,6 +260,15 @@ export default function AdminVendorsPage() {
           <p className="text-slate-400 text-sm">Manage vendor applications, commissions, and payouts.</p>
         </div>
 
+        {/* Stat cards — always visible */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+          <StatCard label="Total Vendors" value={stats?.totalVendors ?? '—'} icon="users" color="primary" />
+          <StatCard label="Pending Applications" value={stats?.pendingApplications ?? '—'} icon="document" color="yellow" />
+          <StatCard label="Commission Paid" value={stats ? `$${Number(stats.totalCommissionPaid).toFixed(2)}` : '—'} icon="check" color="green" />
+          <StatCard label="Pending Payouts" value={stats?.pendingPayouts ?? '—'} icon="wallet" color="red" />
+          <StatCard label="Pending Amount" value={stats ? `$${Number(stats.pendingPayoutAmount).toFixed(2)}` : '—'} icon="dollar" color="blue" />
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto max-w-full">
           {tabs.map(t => (
@@ -289,15 +298,6 @@ export default function AdminVendorsPage() {
         {/* ── OVERVIEW ─────────────────────────────────────────────────── */}
         {tab === 'overview' && (
           <div className="space-y-6">
-            {/* Stat cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <StatCard label="Total Vendors" value={stats?.totalVendors ?? '—'} icon="users" color="primary" />
-              <StatCard label="Pending Applications" value={stats?.pendingApplications ?? '—'} icon="document" color="yellow" />
-              <StatCard label="Commission Paid" value={stats ? `$${Number(stats.totalCommissionPaid).toFixed(2)}` : '—'} icon="check" color="green" />
-              <StatCard label="Pending Payouts" value={stats?.pendingPayouts ?? '—'} icon="wallet" color="red" />
-              <StatCard label="Pending Amount" value={stats ? `$${Number(stats.pendingPayoutAmount).toFixed(2)}` : '—'} icon="dollar" color="blue" />
-            </div>
-
             {/* Search + filter bar */}
             <div className="bg-[#111111] border border-[#1f1f1f] rounded-xl p-4 space-y-3">
               <div className="flex flex-col sm:flex-row gap-3">
