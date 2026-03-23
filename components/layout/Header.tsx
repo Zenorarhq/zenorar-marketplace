@@ -861,9 +861,7 @@ export default function Header() {
               <div className="px-5 py-4 border-t border-[#333]">
                 <button
                   type="button"
-                  onClick={() => {
-                    closeMobileMenu()
-                  }}
+                  onClick={() => { closeMobileMenu(); setShowAppModal(true) }}
                   className="w-full flex items-center gap-3 py-3 text-white"
                 >
                   <Icon name="download" size={20} />
