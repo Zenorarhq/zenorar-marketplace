@@ -124,6 +124,80 @@ function AdjustBalanceModal({ contributor, onClose, onDone }: { contributor: any
   )
 }
 
+// ── Link Product Modal ────────────────────────────────────────────────────────
+
+function LinkProductModal({ target, onClose, onLink, isPending }: {
+  target: { id: string; title: string }
+  onClose: () => void
+  onLink: (scriptId: string, productId: string) => void
+  isPending: boolean
+}) {
+  const [search, setSearch] = useState('')
+  const [results, setResults] = useState<{ id: string; name: string; status: string }[]>([])
+  const [selected, setSelected] = useState<{ id: string; name: string } | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleSearch(value: string) {
+    setSearch(value)
+    setSelected(null)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    if (!value.trim()) { setResults([]); return }
+    timerRef.current = setTimeout(async () => {
+      const res = await apiFetch<any>(`/products?search=${encodeURIComponent(value)}&limit=10`)
+      if (res.success && res.data) setResults(res.data)
+    }, 300)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-white">Link to Product</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="x" size={20} /></button>
+        </div>
+        <p className="text-slate-500 text-xs mb-3">Script: {target.title}</p>
+        {selected ? (
+          <div className="flex items-center justify-between bg-[#0a0a0a] border border-primary/40 rounded-xl px-3 py-2.5 mb-4">
+            <span className="text-white text-sm">{selected.name}</span>
+            <button onClick={() => { setSelected(null); setSearch('') }} className="text-slate-400 hover:text-white ml-2">
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+        ) : (
+          <div className="relative mb-4">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search products by name..."
+              autoFocus
+              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary"
+            />
+            {results.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden z-10 max-h-48 overflow-y-auto">
+                {results.map(p => (
+                  <button key={p.id} onClick={() => { setSelected({ id: p.id, name: p.name }); setResults([]) }}
+                    className="w-full text-left px-3 py-2 hover:bg-[#2a2a2a] transition-colors">
+                    <div className="text-white text-sm">{p.name}</div>
+                    <div className="text-slate-500 text-xs">{p.status}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+          <button onClick={() => selected && onLink(target.id, selected.id)} disabled={isPending || !selected}
+            className="flex-1 bg-primary text-black rounded-xl py-2.5 text-sm font-bold hover:brightness-110 disabled:opacity-50">
+            {isPending ? 'Linking...' : 'Link Product'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AdminContributorsPage() {
@@ -156,7 +230,6 @@ export default function AdminContributorsPage() {
   const [scriptNoteValue, setScriptNoteValue] = useState('')
   const [viewScriptId, setViewScriptId] = useState<string | null>(null)
   const [linkProductTarget, setLinkProductTarget] = useState<{ id: string; title: string } | null>(null)
-  const [linkProductId, setLinkProductId] = useState('')
 
   // Payouts state
   const [payoutStatusFilter, setPayoutStatusFilter] = useState('PENDING')
@@ -261,7 +334,7 @@ export default function AdminContributorsPage() {
   const linkProduct = useMutation({
     mutationFn: ({ id, productId }: { id: string; productId: string }) =>
       cFetch(`/admin/scripts/${id}/link-product`, { method: 'POST', body: JSON.stringify({ productId }) }),
-    onSuccess: () => { setLinkProductTarget(null); setLinkProductId(''); qc.invalidateQueries({ queryKey: ['c-admin-scripts'] }) },
+    onSuccess: () => { setLinkProductTarget(null); qc.invalidateQueries({ queryKey: ['c-admin-scripts'] }) },
   })
 
   const markPayoutPaid = useMutation({
@@ -821,22 +894,12 @@ export default function AdminContributorsPage() {
       )}
 
       {linkProductTarget && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-bold text-white mb-4">Link to Product — {linkProductTarget.title}</h3>
-            <p className="text-slate-400 text-sm mb-3">Enter the product ID to link this script to a live product.</p>
-            <input type="text" value={linkProductId} onChange={(e) => setLinkProductId(e.target.value)}
-              placeholder="Product ID"
-              className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary mb-4" />
-            <div className="flex gap-3">
-              <button onClick={() => setLinkProductTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
-              <button onClick={() => linkProduct.mutate({ id: linkProductTarget.id, productId: linkProductId })} disabled={linkProduct.isPending || !linkProductId}
-                className="flex-1 bg-primary text-black rounded-xl py-2.5 text-sm font-bold hover:brightness-110 disabled:opacity-50">
-                {linkProduct.isPending ? 'Linking...' : 'Link Product'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <LinkProductModal
+          target={linkProductTarget}
+          onClose={() => setLinkProductTarget(null)}
+          onLink={(scriptId, productId) => linkProduct.mutate({ id: scriptId, productId })}
+          isPending={linkProduct.isPending}
+        />
       )}
 
       {rejectPayoutTarget && (
