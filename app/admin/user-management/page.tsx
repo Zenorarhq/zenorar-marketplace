@@ -100,6 +100,13 @@ function UsersTab() {
   const [filters, setFilters] = useState<{ dateFrom?: string; dateTo?: string; status?: string; minOrders?: string; maxOrders?: string }>({})
   const [bulkLoading, setBulkLoading] = useState(false)
   const limit = 20
+  const [blockTarget, setBlockTarget] = useState<any>(null)
+  const [blockReason, setBlockReason] = useState('')
+  const [blockLoading, setBlockLoading] = useState(false)
+  const [pwResetTarget, setPwResetTarget] = useState<any>(null)
+  const [pwResetLoading, setPwResetLoading] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<any>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const { data, isLoading } = useQuery<UsersListResponse>({
     queryKey: ['admin-users', currentPage, searchQuery, filters],
@@ -130,46 +137,43 @@ function UsersTab() {
     },
   })
 
-  async function handleDelete(userId: string, userName: string) {
-    if (!confirm(`Delete user "${userName}"?`)) return
-    const result = await usersApi.delete(userId)
+  async function doDelete() {
+    if (!deleteTarget) return
+    setDeleteLoading(true)
+    const result = await usersApi.delete(deleteTarget.id)
+    setDeleteLoading(false)
     if (result.success) {
+      setDeleteTarget(null)
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
       queryClient.invalidateQueries({ queryKey: ['admin-user-stats'] })
-    } else {
-      alert(result.error || 'Failed to delete user')
     }
   }
 
-  async function handleBlock(user: any) {
-    const reason = prompt('Reason for blocking (optional):')
-    const result = await usersApi.block(user.id, reason || undefined)
+  function handleBlock(user: any) { setBlockTarget(user); setBlockReason('') }
+  function handleUnblock(user: any) { setBlockTarget(user); setBlockReason('') }
+
+  async function doBlockUnblock() {
+    if (!blockTarget) return
+    setBlockLoading(true)
+    const result = (blockTarget as any).isBlocked
+      ? await usersApi.unblock(blockTarget.id)
+      : await usersApi.block(blockTarget.id, blockReason || undefined)
+    setBlockLoading(false)
     if (result.success) {
+      setBlockTarget(null)
+      setBlockReason('')
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      alert(`User ${user.name} has been blocked`)
-    } else {
-      alert(result.error || 'Failed to block user')
     }
   }
 
-  async function handleUnblock(user: any) {
-    const result = await usersApi.unblock(user.id)
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      alert(`User ${user.name} has been unblocked`)
-    } else {
-      alert(result.error || 'Failed to unblock user')
-    }
-  }
+  function handlePasswordReset(user: any) { setPwResetTarget(user) }
 
-  async function handlePasswordReset(user: any) {
-    if (!confirm(`Send password reset email to ${user.email}?`)) return
-    const result = await usersApi.sendPasswordReset(user.id)
-    if (result.success) {
-      alert(`Password reset email sent to ${user.email}`)
-    } else {
-      alert(result.error || 'Failed to send password reset email')
-    }
+  async function doPwReset() {
+    if (!pwResetTarget) return
+    setPwResetLoading(true)
+    const result = await usersApi.sendPasswordReset(pwResetTarget.id)
+    setPwResetLoading(false)
+    if (result.success) setPwResetTarget(null)
   }
 
   function handleViewOrders(user: any) {
@@ -419,10 +423,22 @@ function UsersTab() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                             <span className="text-primary text-sm font-medium">{user.name?.charAt(0).toUpperCase()}</span>
                           </div>
-                          <span className="text-white font-medium">{user.name}</span>
+                          <div>
+                            <div className="text-white font-medium">{user.name}</div>
+                            {((user as any).isVendor || (user as any).isContributor) && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {(user as any).isVendor && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">Vendor</span>
+                                )}
+                                {(user as any).isContributor && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">Contributor</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-slate-400">{user.email}</td>
@@ -452,7 +468,7 @@ function UsersTab() {
                               <Icon name="close" size={16} />
                             </button>
                           )}
-                          <button onClick={() => handleDelete(user.id, user.name)} className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete">
+                          <button onClick={() => setDeleteTarget(user)} className="p-1.5 rounded hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete">
                             <Icon name="delete" size={16} />
                           </button>
                         </div>
@@ -545,6 +561,74 @@ function UsersTab() {
                   Send Email
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block / Unblock Modal */}
+      {blockTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="text-lg font-bold text-white">{(blockTarget as any).isBlocked ? 'Unblock User' : 'Block User'}</h3>
+              <button onClick={() => setBlockTarget(null)} className="text-slate-400 hover:text-white"><Icon name="close" size={20} /></button>
+            </div>
+            <p className="text-slate-400 text-sm mb-4">{blockTarget.name} — {blockTarget.email}</p>
+            {!(blockTarget as any).isBlocked && (
+              <div className="mb-4">
+                <label className="block text-sm text-slate-300 mb-1.5">Reason (optional)</label>
+                <input type="text" value={blockReason} onChange={(e) => setBlockReason(e.target.value)}
+                  placeholder="Reason for blocking..."
+                  className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary" />
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setBlockTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={doBlockUnblock} disabled={blockLoading}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50 ${(blockTarget as any).isBlocked ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-orange-600 text-white hover:bg-orange-500'}`}>
+                {blockLoading ? 'Processing...' : (blockTarget as any).isBlocked ? 'Confirm Unblock' : 'Confirm Block'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {pwResetTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="text-lg font-bold text-white">Send Password Reset</h3>
+              <button onClick={() => setPwResetTarget(null)} className="text-slate-400 hover:text-white"><Icon name="close" size={20} /></button>
+            </div>
+            <p className="text-slate-400 text-sm mb-6">A reset link will be sent to <span className="text-white">{pwResetTarget.email}</span>.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setPwResetTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={doPwReset} disabled={pwResetLoading}
+                className="flex-1 bg-primary text-black rounded-xl py-2.5 text-sm font-bold hover:brightness-110 disabled:opacity-50">
+                {pwResetLoading ? 'Sending...' : 'Send Reset Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="text-lg font-bold text-white">Delete User</h3>
+              <button onClick={() => setDeleteTarget(null)} className="text-slate-400 hover:text-white"><Icon name="close" size={20} /></button>
+            </div>
+            <p className="text-slate-400 text-sm mb-6">Permanently delete <span className="text-white">{deleteTarget.name}</span>? This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={doDelete} disabled={deleteLoading}
+                className="flex-1 bg-red-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-red-500 disabled:opacity-50">
+                {deleteLoading ? 'Deleting...' : 'Confirm Delete'}
+              </button>
             </div>
           </div>
         </div>
