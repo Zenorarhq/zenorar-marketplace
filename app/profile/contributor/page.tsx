@@ -290,8 +290,8 @@ function ScriptDetailModal({ scriptId, onClose }: { scriptId: string; onClose: (
   const s = data?.data
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface-dark border border-border-dark rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-surface-dark border border-border-dark rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {isLoading || !s ? (
           <div className="flex justify-center py-16">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -691,8 +691,9 @@ export default function ContributorDashboard() {
               </div>
             ) : (
               scriptsData.data.map((script: Script) => (
-                <div key={script.id} onClick={() => setSelectedScriptId(script.id)}
-                  className="bg-surface-dark rounded-2xl border border-border-dark p-5 cursor-pointer hover:border-primary/40 transition-colors">
+                <div key={script.id}
+                  onClick={() => script.status === 'LIVE' && setSelectedScriptId(script.id)}
+                  className={`bg-surface-dark rounded-2xl border border-border-dark p-5 transition-colors ${script.status === 'LIVE' ? 'cursor-pointer hover:border-primary/40' : ''}`}>
                   <div className="flex items-start justify-between gap-4 mb-1">
                     <h3 className="text-white font-semibold leading-tight">{script.title}</h3>
                     <div className="flex items-center gap-2 flex-shrink-0">
