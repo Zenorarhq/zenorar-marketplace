@@ -24,6 +24,8 @@ interface Script {
   status: ScriptStatus
   admin_note: string | null
   product_id: string | null
+  product_name?: string | null
+  product_slug?: string | null
   asking_price: number
   created_at: string
 }
@@ -278,6 +280,128 @@ function RequestPayoutModal({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+// ── Script Detail Modal ───────────────────────────────────────────────────────
+
+function ScriptDetailModal({ scriptId, onClose }: { scriptId: string; onClose: () => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['contributor-script-detail', scriptId],
+    queryFn: () => cFetch<any>(`/scripts/${scriptId}`),
+  })
+  const s = data?.data
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-dark border border-border-dark rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        {isLoading || !s ? (
+          <div className="flex justify-center py-16">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="p-6 space-y-5">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold text-white leading-tight">{s.title}</h3>
+                <p className="text-slate-500 text-xs mt-1">
+                  Submitted {fmtDate(s.created_at)} · Asking {fmt(Number(s.asking_price))}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[s.status] ?? 'text-slate-400 bg-slate-400/10'}`}>
+                  {s.status.replace(/_/g, ' ')}
+                </span>
+                <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="x" size={18} /></button>
+              </div>
+            </div>
+
+            {/* Progress */}
+            <div>
+              <p className="text-xs font-medium text-slate-400 mb-1">Progress</p>
+              <ScriptStepper status={s.status} />
+            </div>
+
+            {/* Admin note */}
+            {s.admin_note && (
+              <div className="bg-background-dark rounded-xl p-3 border border-border-dark">
+                <p className="text-slate-300 text-xs leading-relaxed">
+                  <span className="text-slate-500">Admin note: </span>{s.admin_note}
+                </p>
+              </div>
+            )}
+
+            {/* Linked product */}
+            {s.product_id && (
+              <div className="border border-border-dark rounded-xl p-4 space-y-3">
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Linked Product</p>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-white font-semibold">{s.product_name ?? s.product_id}</span>
+                  {s.product_slug && (
+                    <a href={`/products/${s.product_slug}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline flex-shrink-0">
+                      View on Store <Icon name="external-link" size={12} />
+                    </a>
+                  )}
+                </div>
+
+                {/* Sales stats */}
+                <div className="grid grid-cols-3 gap-3 pt-1">
+                  {[
+                    { label: 'Total Earned', value: fmt(s.total_earned ?? 0) },
+                    { label: 'Sales',        value: String(s.sales_count ?? 0) },
+                    { label: 'Available',    value: fmt(s.available_earnings ?? 0) },
+                  ].map((stat) => (
+                    <div key={stat.label} className="bg-background-dark rounded-xl p-3 text-center border border-border-dark">
+                      <div className="text-white font-bold text-sm">{stat.value}</div>
+                      <div className="text-slate-500 text-xs mt-0.5">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Script details */}
+            {(s.category || s.language_platform || s.demo_url) && (
+              <div className="border border-border-dark rounded-xl divide-y divide-border-dark">
+                {s.category && (
+                  <div className="flex justify-between px-4 py-2.5 text-sm">
+                    <span className="text-slate-400">Category</span>
+                    <span className="text-white">{s.category}</span>
+                  </div>
+                )}
+                {s.language_platform && (
+                  <div className="flex justify-between px-4 py-2.5 text-sm">
+                    <span className="text-slate-400">Platform</span>
+                    <span className="text-white">{s.language_platform}</span>
+                  </div>
+                )}
+                {s.demo_url && (
+                  <div className="flex justify-between items-center px-4 py-2.5 text-sm">
+                    <span className="text-slate-400">Demo</span>
+                    <a href={s.demo_url} target="_blank" rel="noopener noreferrer"
+                      className="text-primary hover:underline flex items-center gap-1">
+                      Open <Icon name="external-link" size={12} />
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Description */}
+            {s.short_description && (
+              <p className="text-slate-400 text-sm leading-relaxed">{s.short_description}</p>
+            )}
+
+            <button onClick={onClose}
+              className="w-full border border-border-dark text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary hover:text-primary transition-all">
+              Close
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Submit Script Modal ───────────────────────────────────────────────────────
 
 const CATEGORIES = ['Automation', 'Data Processing', 'Web Scraping', 'API Integration', 'Security', 'Productivity', 'DevOps', 'Other']
@@ -454,6 +578,7 @@ export default function ContributorDashboard() {
   const [showRequestPayout, setShowRequestPayout] = useState(false)
   const [showSubmitScript, setShowSubmitScript] = useState(false)
   const [uploadTarget, setUploadTarget] = useState<{ id: string; title: string } | null>(null)
+  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null)
   const [scriptPage, setScriptPage] = useState(1)
   const [earningsPage, setEarningsPage] = useState(1)
   const [payoutPage, setPayoutPage] = useState(1)
@@ -566,7 +691,8 @@ export default function ContributorDashboard() {
               </div>
             ) : (
               scriptsData.data.map((script: Script) => (
-                <div key={script.id} className="bg-surface-dark rounded-2xl border border-border-dark p-5">
+                <div key={script.id} onClick={() => setSelectedScriptId(script.id)}
+                  className="bg-surface-dark rounded-2xl border border-border-dark p-5 cursor-pointer hover:border-primary/40 transition-colors">
                   <div className="flex items-start justify-between gap-4 mb-1">
                     <h3 className="text-white font-semibold leading-tight">{script.title}</h3>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -575,7 +701,7 @@ export default function ContributorDashboard() {
                       </span>
                       {script.status === 'SUBMITTED' && (
                         <button
-                          onClick={() => { if (confirm('Delete this script submission? This cannot be undone.')) deleteScript.mutate(script.id) }}
+                          onClick={(e) => { e.stopPropagation(); if (confirm('Delete this script submission? This cannot be undone.')) deleteScript.mutate(script.id) }}
                           className="text-slate-600 hover:text-red-400 transition-colors"
                           title="Delete submission"
                         >
@@ -597,7 +723,7 @@ export default function ContributorDashboard() {
                     <div className="mt-3 bg-purple-900/20 border border-purple-800/30 rounded-xl p-3 flex items-center justify-between gap-3">
                       <p className="text-purple-300 text-xs font-medium">Action required: Upload your script file to complete the submission.</p>
                       <button
-                        onClick={() => setUploadTarget({ id: script.id, title: script.title })}
+                        onClick={(e) => { e.stopPropagation(); setUploadTarget({ id: script.id, title: script.title }) }}
                         className="bg-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-purple-500 transition-colors flex-shrink-0 flex items-center gap-1.5"
                       >
                         <Icon name="upload" size={12} />
@@ -818,6 +944,9 @@ export default function ContributorDashboard() {
               qc.invalidateQueries({ queryKey: ['contributor-scripts'] })
             }}
           />
+        )}
+        {selectedScriptId && (
+          <ScriptDetailModal scriptId={selectedScriptId} onClose={() => setSelectedScriptId(null)} />
         )}
       </div>
     </ProfileLayout>
