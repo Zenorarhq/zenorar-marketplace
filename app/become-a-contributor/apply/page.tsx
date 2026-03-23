@@ -203,7 +203,7 @@ export default function ContributorApplyPage() {
               {/* Website */}
               <div>
                 <label className={labelCls}>Website / Portfolio <span className="text-slate-500 font-normal">(optional)</span></label>
-                <input type="url" value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })}
+                <input type="text" value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })}
                   placeholder="https://yoursite.com" className={inputCls} />
               </div>
 
