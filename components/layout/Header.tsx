@@ -907,6 +907,46 @@ export default function Header() {
           </div>
         </div>
       )}
+
+      {/* App Coming Soon Modal */}
+      {showAppModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAppModal(false)} />
+          <div className="relative bg-[#121212] border border-border-dark rounded-2xl w-full max-w-md p-8 text-center shadow-2xl">
+            <button onClick={() => setShowAppModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors">
+              <Icon name="x" size={20} />
+            </button>
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-5">
+              <Icon name="smartphone" size={32} className="text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Mobile App Coming Soon</h2>
+            <p className="text-slate-400 text-sm leading-relaxed mb-6">
+              We’re crafting a dedicated mobile experience for Zenorar — bringing your digital products,
+              eSIMs, gift cards, and more to iOS and Android. Our app is currently in active development
+              and will be available shortly.
+            </p>
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-dark border border-border-dark rounded-xl opacity-50 cursor-not-allowed select-none">
+                <Icon name="smartphone" size={18} className="text-slate-400" />
+                <div className="text-left">
+                  <p className="text-[9px] text-slate-500 leading-none">Available on the</p>
+                  <p className="text-xs font-semibold text-slate-300 leading-tight">App Store</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-dark border border-border-dark rounded-xl opacity-50 cursor-not-allowed select-none">
+                <Icon name="smartphone" size={18} className="text-slate-400" />
+                <div className="text-left">
+                  <p className="text-[9px] text-slate-500 leading-none">Get it on</p>
+                  <p className="text-xs font-semibold text-slate-300 leading-tight">Google Play</p>
+                </div>
+              </div>
+            </div>
+            <button onClick={() => setShowAppModal(false)} className="w-full py-3 bg-primary text-black font-bold rounded-xl hover:brightness-105 transition-all">
+              Got It
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
