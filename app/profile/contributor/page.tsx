@@ -112,7 +112,7 @@ function ScriptStepper({ status }: { status: ScriptStatus }) {
       </div>
     )
   }
-  const currentIdx = SCRIPT_STEPS.indexOf(status)
+  const currentIdx = status === 'LIVE' ? SCRIPT_STEPS.length : SCRIPT_STEPS.indexOf(status)
   return (
     <div className="flex items-center gap-0 mt-3 overflow-x-auto pb-1">
       {SCRIPT_STEPS.map((step, i) => {
