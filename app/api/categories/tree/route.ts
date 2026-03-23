@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
           productCount = Number(countResult.rows[0]?.count) || 0
         } catch { /* keep default */ }
       }
-      return { ...row, productCount, children: [] as any[] }
+      return { ...row, productCount, _count: { products: productCount }, children: [] as any[] }
     }))
 
     // Build tree: parents first, then attach children
