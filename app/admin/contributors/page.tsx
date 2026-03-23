@@ -337,6 +337,12 @@ export default function AdminContributorsPage() {
     onSuccess: () => { setLinkProductTarget(null); qc.invalidateQueries({ queryKey: ['c-admin-scripts'] }) },
   })
 
+  const unlinkProduct = useMutation({
+    mutationFn: ({ id }: { id: string }) =>
+      cFetch(`/admin/scripts/${id}/unlink-product`, { method: 'POST' }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['c-admin-scripts'] }) },
+  })
+
   const markPayoutPaid = useMutation({
     mutationFn: ({ id, note }: { id: string; note?: string }) =>
       cFetch(`/admin/payouts/${id}/mark-paid`, { method: 'POST', body: JSON.stringify({ note: note || undefined }) }),
@@ -629,6 +635,7 @@ export default function AdminContributorsPage() {
                         <td className="py-3 px-4">
                           <div className="font-medium text-white text-xs max-w-[200px] truncate">{s.title}</div>
                           {s.admin_note && <div className="text-slate-500 text-xs mt-0.5 max-w-[200px] truncate">Note: {s.admin_note}</div>}
+                          {s.product_name && <div className="text-cyan-500 text-xs mt-0.5 max-w-[200px] truncate">Linked: {s.product_name}</div>}
                         </td>
                         <td className="py-3 px-4 hidden md:table-cell text-slate-400 text-xs">{s.contributor_email}</td>
                         <td className="py-3 px-4 text-right">{fmt(s.asking_price)}</td>
@@ -647,6 +654,11 @@ export default function AdminContributorsPage() {
                             {s.status === 'LIVE' && !s.product_id && (
                               <button onClick={() => setLinkProductTarget({ id: s.id, title: s.title })}
                                 className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-medium hover:bg-cyan-500/20 transition-colors">Link Product</button>
+                            )}
+                            {s.status === 'LIVE' && s.product_id && (
+                              <button onClick={() => { if (confirm(`Unlink "${s.product_name || s.product_id}" from this script?`)) unlinkProduct.mutate({ id: s.id }) }}
+                                disabled={unlinkProduct.isPending}
+                                className="px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-medium hover:bg-orange-500/20 disabled:opacity-50 transition-colors">Unlink</button>
                             )}
                             {!['LIVE', 'REJECTED'].includes(s.status) && (
                               <button onClick={() => { if (confirm(`Reject "${s.title}"?`)) rejectScript.mutate({ id: s.id }) }}
