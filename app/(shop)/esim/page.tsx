@@ -73,6 +73,7 @@ export default function EsimPage() {
   const [pendingWalletCheckout, setPendingWalletCheckout] = useState(false)
   const [pendingPlan, setPendingPlan] = useState<EsimPlan | null>(null)
   const [pendingCarrierPlan, setPendingCarrierPlan] = useState<CarrierEsimPlan | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{ message: string; note?: string; onConfirm: () => void } | null>(null)
 
   const { addItem, showAddedToCartPopup } = useCart()
   const { isAuthenticated, user } = useAuth()
@@ -414,8 +415,10 @@ export default function EsimPage() {
       return
     }
 
-    if (!window.confirm(`Pay ${formatPrice(plan.retailPrice)} for ${plan.name} using your wallet?`)) return
-    await processWalletPayment(plan)
+    setConfirmModal({
+      message: `Pay ${formatPrice(plan.retailPrice)} for ${plan.name} using your wallet?`,
+      onConfirm: () => processWalletPayment(plan),
+    })
   }
 
   // Pay with wallet handler for carrier eSIM
@@ -461,8 +464,11 @@ export default function EsimPage() {
       return
     }
 
-    if (!window.confirm(`Pay ${formatPrice(plan.retailPrice)} for ${plan.carrierName} ${plan.planName} using your wallet? Your eSIM will be delivered within 24 hours.`)) return
-    await processCarrierPayment(plan)
+    setConfirmModal({
+      message: `Pay ${formatPrice(plan.retailPrice)} for ${plan.carrierName} ${plan.planName} using your wallet?`,
+      note: 'Your eSIM will be delivered within 24 hours.',
+      onConfirm: () => processCarrierPayment(plan),
+    })
   }
 
   // Add to Cart: add and stay on page
@@ -789,6 +795,40 @@ export default function EsimPage() {
           }
         }}
       />
+
+      {/* Wallet Confirm Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setConfirmModal(null)} />
+          <div className="relative bg-[#121212] border border-border-dark rounded-2xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Icon name="wallet" size={20} className="text-primary" />
+              </div>
+              <h3 className="text-lg font-bold text-white">Confirm Purchase</h3>
+            </div>
+            <p className="text-slate-300 mb-2">{confirmModal.message}</p>
+            {confirmModal.note && (
+              <p className="text-slate-500 text-sm mb-6">{confirmModal.note}</p>
+            )}
+            {!confirmModal.note && <div className="mb-6" />}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 py-3 rounded-xl bg-surface-dark border border-border-dark text-slate-300 font-medium hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { confirmModal.onConfirm(); setConfirmModal(null) }}
+                className="flex-1 py-3 rounded-xl bg-primary text-black font-bold hover:brightness-105 transition-all"
+              >
+                Pay Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Breadcrumbs */}
       <div className="py-4">
