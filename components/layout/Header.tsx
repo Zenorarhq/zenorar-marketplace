@@ -92,6 +92,7 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showPreferences, setShowPreferences] = useState(false)
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
+  const [showAppModal, setShowAppModal] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showMobileUserMenu, setShowMobileUserMenu] = useState(false)
