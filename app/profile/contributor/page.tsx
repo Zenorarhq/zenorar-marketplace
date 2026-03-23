@@ -278,11 +278,182 @@ function RequestPayoutModal({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+// ── Submit Script Modal ───────────────────────────────────────────────────────
+
+const CATEGORIES = ['Automation', 'Data Processing', 'Web Scraping', 'API Integration', 'Security', 'Productivity', 'DevOps', 'Other']
+
+function SubmitScriptModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitted: () => void }) {
+  const [form, setForm] = useState({
+    title: '', shortDescription: '', fullDescription: '', category: CATEGORIES[0],
+    demoUrl: '', languagePlatform: '', askingPrice: '', tags: '',
+    offersSupport: false, exclusive: false,
+  })
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  function set(k: string, v: any) { setForm((f) => ({ ...f, [k]: v })) }
+
+  async function submit() {
+    if (!form.title.trim() || !form.shortDescription.trim() || !form.fullDescription.trim() || !form.demoUrl.trim() || !form.languagePlatform.trim() || !form.askingPrice) {
+      setError('Please fill in all required fields'); return
+    }
+    setSaving(true); setError(null)
+    try {
+      const res = await cFetch<any>('/scripts', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: form.title.trim(),
+          shortDescription: form.shortDescription.trim(),
+          fullDescription: form.fullDescription.trim(),
+          category: form.category,
+          demoUrl: form.demoUrl.trim(),
+          languagePlatform: form.languagePlatform.trim(),
+          askingPrice: Number(form.askingPrice),
+          tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+          offersSupport: form.offersSupport,
+          exclusive: form.exclusive,
+        }),
+      })
+      if (!res.success) throw new Error(res.error || 'Failed to submit')
+      onSubmitted()
+    } catch (e: any) { setError(e.message) } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-dark border border-border-dark rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-lg font-bold text-white">Submit a Script</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="x" size={20} /></button>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Title <span className="text-red-400">*</span></label>
+            <input type="text" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Auto Email Responder"
+              className="w-full bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Short Description <span className="text-red-400">*</span></label>
+            <input type="text" value={form.shortDescription} onChange={(e) => set('shortDescription', e.target.value)} placeholder="One-line summary (shown in listings)"
+              className="w-full bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Full Description <span className="text-red-400">*</span></label>
+            <textarea value={form.fullDescription} onChange={(e) => set('fullDescription', e.target.value)} rows={4} placeholder="Detailed description, use cases, requirements..."
+              className="w-full bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary resize-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Category <span className="text-red-400">*</span></label>
+              <select value={form.category} onChange={(e) => set('category', e.target.value)}
+                className="w-full bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary">
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Language / Platform <span className="text-red-400">*</span></label>
+              <input type="text" value={form.languagePlatform} onChange={(e) => set('languagePlatform', e.target.value)} placeholder="e.g. Python 3, Node.js"
+                className="w-full bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Demo URL <span className="text-red-400">*</span></label>
+              <input type="url" value={form.demoUrl} onChange={(e) => set('demoUrl', e.target.value)} placeholder="https://..."
+                className="w-full bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Asking Price (USD) <span className="text-red-400">*</span></label>
+              <input type="number" min="1" step="0.01" value={form.askingPrice} onChange={(e) => set('askingPrice', e.target.value)} placeholder="e.g. 29.99"
+                className="w-full bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Tags (comma-separated)</label>
+            <input type="text" value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="automation, email, python"
+              className="w-full bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+              <input type="checkbox" checked={form.offersSupport} onChange={(e) => set('offersSupport', e.target.checked)} className="accent-primary" />
+              I will offer post-purchase support to buyers
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+              <input type="checkbox" checked={form.exclusive} onChange={(e) => set('exclusive', e.target.checked)} className="accent-primary" />
+              Exclusive — sell only on Zenorar (not on other platforms)
+            </label>
+          </div>
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 border border-border-dark text-slate-300 rounded-xl py-2.5 font-medium hover:border-primary hover:text-primary transition-all">Cancel</button>
+            <button onClick={submit} disabled={saving}
+              className="flex-1 bg-primary text-black rounded-xl py-2.5 font-bold hover:brightness-110 transition-all disabled:opacity-50">
+              {saving ? 'Submitting...' : 'Submit Script'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Upload Script Modal ───────────────────────────────────────────────────────
+
+function UploadScriptModal({ scriptId, scriptTitle, onClose, onUploaded }: { scriptId: string; scriptTitle: string; onClose: () => void; onUploaded: () => void }) {
+  const [cloudinaryUrl, setCloudinaryUrl] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function submit() {
+    if (!cloudinaryUrl.trim()) { setError('Cloudinary URL is required'); return }
+    setSaving(true); setError(null)
+    try {
+      const res = await cFetch<any>(`/scripts/${scriptId}/upload`, {
+        method: 'POST',
+        body: JSON.stringify({ cloudinaryUrl: cloudinaryUrl.trim() }),
+      })
+      if (!res.success) throw new Error(res.error || 'Upload failed')
+      onUploaded()
+    } catch (e: any) { setError(e.message) } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface-dark border border-border-dark rounded-2xl p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-lg font-bold text-white">Upload Script File</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="x" size={20} /></button>
+        </div>
+        <p className="text-slate-400 text-sm mb-4">Upload <strong className="text-white">{scriptTitle}</strong> to Cloudinary and paste the URL below.</p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Cloudinary URL <span className="text-red-400">*</span></label>
+            <input type="url" value={cloudinaryUrl} onChange={(e) => setCloudinaryUrl(e.target.value)} placeholder="https://res.cloudinary.com/..."
+              className="w-full bg-background-dark border border-border-dark rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-primary" />
+          </div>
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 border border-border-dark text-slate-300 rounded-xl py-2.5 font-medium hover:border-primary hover:text-primary transition-all">Cancel</button>
+            <button onClick={submit} disabled={saving}
+              className="flex-1 bg-primary text-black rounded-xl py-2.5 font-bold hover:brightness-110 transition-all disabled:opacity-50">
+              {saving ? 'Uploading...' : 'Upload'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function ContributorDashboard() {
   const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'scripts' | 'earnings' | 'payouts' | 'methods'>('scripts')
   const [showAddMethod, setShowAddMethod] = useState(false)
   const [showRequestPayout, setShowRequestPayout] = useState(false)
+  const [showSubmitScript, setShowSubmitScript] = useState(false)
+  const [uploadTarget, setUploadTarget] = useState<{ id: string; title: string } | null>(null)
   const [scriptPage, setScriptPage] = useState(1)
   const [earningsPage, setEarningsPage] = useState(1)
   const [payoutPage, setPayoutPage] = useState(1)
@@ -371,6 +542,15 @@ export default function ContributorDashboard() {
         {/* ── Scripts Tab ─────────────────────────────────────────────── */}
         {activeTab === 'scripts' && (
           <div className="space-y-4">
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowSubmitScript(true)}
+                className="bg-primary text-black px-4 py-2.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all flex items-center gap-2"
+              >
+                <Icon name="plus" size={15} />
+                Submit Script
+              </button>
+            </div>
             {scriptsLoading ? (
               <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
             ) : !scriptsData?.data?.length ? (
@@ -398,8 +578,15 @@ export default function ContributorDashboard() {
                     </div>
                   )}
                   {script.status === 'AWAITING_UPLOAD' && (
-                    <div className="mt-3 bg-purple-900/20 border border-purple-800/30 rounded-xl p-3">
-                      <p className="text-purple-300 text-xs font-medium">Action required: Upload your script file from your dashboard or via the API.</p>
+                    <div className="mt-3 bg-purple-900/20 border border-purple-800/30 rounded-xl p-3 flex items-center justify-between gap-3">
+                      <p className="text-purple-300 text-xs font-medium">Action required: Upload your script file to complete the submission.</p>
+                      <button
+                        onClick={() => setUploadTarget({ id: script.id, title: script.title })}
+                        className="bg-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-purple-500 transition-colors flex-shrink-0 flex items-center gap-1.5"
+                      >
+                        <Icon name="upload" size={12} />
+                        Upload File
+                      </button>
                     </div>
                   )}
                 </div>
@@ -510,6 +697,9 @@ export default function ContributorDashboard() {
                         <td className="py-3 px-4 text-right font-semibold">{fmt(p.amount)}</td>
                         <td className="py-3 px-4 text-right">
                           <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[p.status] ?? ''}`}>{p.status}</span>
+                          {p.status === 'REJECTED' && p.adminNote && (
+                            <p className="text-red-400/70 text-xs mt-1">{p.adminNote}</p>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -590,6 +780,26 @@ export default function ContributorDashboard() {
               setShowRequestPayout(false)
               qc.invalidateQueries({ queryKey: ['contributor-balance'] })
               qc.invalidateQueries({ queryKey: ['contributor-payouts'] })
+            }}
+          />
+        )}
+        {showSubmitScript && (
+          <SubmitScriptModal
+            onClose={() => setShowSubmitScript(false)}
+            onSubmitted={() => {
+              setShowSubmitScript(false)
+              qc.invalidateQueries({ queryKey: ['contributor-scripts'] })
+            }}
+          />
+        )}
+        {uploadTarget && (
+          <UploadScriptModal
+            scriptId={uploadTarget.id}
+            scriptTitle={uploadTarget.title}
+            onClose={() => setUploadTarget(null)}
+            onUploaded={() => {
+              setUploadTarget(null)
+              qc.invalidateQueries({ queryKey: ['contributor-scripts'] })
             }}
           />
         )}

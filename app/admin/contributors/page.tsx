@@ -154,6 +154,8 @@ export default function AdminContributorsPage() {
   const [payoutPage, setPayoutPage] = useState(1)
   const [rejectPayoutTarget, setRejectPayoutTarget] = useState<{ id: string } | null>(null)
   const [rejectPayoutNote, setRejectPayoutNote] = useState('')
+  const [markPaidTarget, setMarkPaidTarget] = useState<{ id: string; amount: number; contributorName: string } | null>(null)
+  const [markPaidNote, setMarkPaidNote] = useState('')
 
   // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -236,8 +238,9 @@ export default function AdminContributorsPage() {
   })
 
   const markPayoutPaid = useMutation({
-    mutationFn: (id: string) => cFetch(`/admin/payouts/${id}/mark-paid`, { method: 'POST' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['c-admin-payouts'] }),
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      cFetch(`/admin/payouts/${id}/mark-paid`, { method: 'POST', body: JSON.stringify({ note: note || undefined }) }),
+    onSuccess: () => { setMarkPaidTarget(null); setMarkPaidNote(''); qc.invalidateQueries({ queryKey: ['c-admin-payouts'] }) },
   })
 
   const rejectPayout = useMutation({
@@ -597,7 +600,7 @@ export default function AdminContributorsPage() {
                         <td className="py-3 px-4">
                           {p.status === 'PENDING' && (
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => { if (confirm(`Mark payout of ${fmt(p.amount)} as paid?`)) markPayoutPaid.mutate(p.id) }}
+                              <button onClick={() => setMarkPaidTarget({ id: p.id, amount: p.amount, contributorName: p.contributor_name })}
                                 className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-colors">Mark Paid</button>
                               <button onClick={() => setRejectPayoutTarget({ id: p.id })}
                                 className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors">Reject</button>
@@ -703,6 +706,28 @@ export default function AdminContributorsPage() {
               <button onClick={() => rejectPayout.mutate({ id: rejectPayoutTarget.id, note: rejectPayoutNote })} disabled={rejectPayout.isPending}
                 className="flex-1 bg-red-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-red-500 disabled:opacity-50">
                 {rejectPayout.isPending ? 'Rejecting...' : 'Confirm Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {markPaidTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold text-white mb-1">Mark Payout as Paid</h3>
+            <p className="text-slate-400 text-sm mb-4">{markPaidTarget.contributorName} — {fmt(markPaidTarget.amount)}</p>
+            <div className="mb-4">
+              <label className="block text-sm text-slate-300 mb-1.5">Note (optional — e.g. txn hash)</label>
+              <input type="text" value={markPaidNote} onChange={(e) => setMarkPaidNote(e.target.value)}
+                placeholder="Transaction hash or reference..."
+                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-primary" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setMarkPaidTarget(null); setMarkPaidNote('') }} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button onClick={() => markPayoutPaid.mutate({ id: markPaidTarget.id, note: markPaidNote || undefined })} disabled={markPayoutPaid.isPending}
+                className="flex-1 bg-green-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-green-500 disabled:opacity-50">
+                {markPayoutPaid.isPending ? 'Processing...' : 'Confirm Paid'}
               </button>
             </div>
           </div>
