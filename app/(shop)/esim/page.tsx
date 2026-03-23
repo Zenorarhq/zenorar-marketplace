@@ -845,7 +845,7 @@ export default function EsimPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 p-1 bg-surface-dark rounded-xl border border-border-dark w-fit mb-8">
+      <div className="flex gap-2 p-1 bg-surface-dark rounded-xl border border-border-dark w-fit">
         <button
           onClick={() => {
             setActiveTab('data')
@@ -878,7 +878,7 @@ export default function EsimPage() {
           Full eSIMs
         </button>
       </div>
-      <p className="mt-3 mb-6 text-sm text-slate-500">
+      <p className="mt-3 mb-8 text-sm text-slate-500">
         {activeTab === 'data'
           ? 'Browse data-only eSIMs for 200+ countries — no physical SIM needed'
           : 'Full eSIMs with calls, SMS & data — like a local SIM, activated digitally'}
