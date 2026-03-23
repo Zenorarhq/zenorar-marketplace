@@ -7,6 +7,8 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { formatNumber } from '@/lib/formatNumber'
 import { GIFT_CARD_CATEGORIES } from '@/lib/gift-cards/types'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 interface GiftCard {
   id: string
@@ -83,6 +85,9 @@ function AdminGiftCardsPageContent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchLoading, setBatchLoading] = useState(false)
   const [showSyncDetails, setShowSyncDetails] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const [lastSyncResult, setLastSyncResult] = useState<{ success: boolean; synced: number; updated: number; error?: string } | null>(null)
 
   // Refresh provider status when window gains focus (e.g., after changing settings)
@@ -280,20 +285,37 @@ function AdminGiftCardsPageContent() {
 
   const handleBatchAction = async (action: 'activate' | 'deactivate' | 'delete') => {
     if (selectedIds.size === 0) return
-    if (action === 'delete' && !confirm(`Delete ${selectedIds.size} gift card(s)? This cannot be undone.`)) return
+    if (action === 'delete') {
+      setConfirmModal({
+        title: 'Delete Gift Cards',
+        description: `Delete ${selectedIds.size} gift card(s)? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        danger: true,
+        onConfirm: async () => {
+          setConfirmLoading(true)
+          const token = localStorage.getItem('admin_auth_token')
+          const ids = Array.from(selectedIds)
+          await Promise.all(ids.map(id =>
+            fetch(`/api/admin/gift-cards/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+          ))
+          setSelectedIds(new Set())
+          setConfirmModal(null)
+          setConfirmLoading(false)
+          queryClient.invalidateQueries({ queryKey: ['gift-cards'] })
+        }
+      })
+      return
+    }
     setBatchLoading(true)
     const token = localStorage.getItem('admin_auth_token')
     const ids = Array.from(selectedIds)
-    await Promise.all(ids.map(id => {
-      if (action === 'delete') {
-        return fetch(`/api/admin/gift-cards/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-      }
-      return fetch(`/api/admin/gift-cards/${id}`, {
+    await Promise.all(ids.map(id =>
+      fetch(`/api/admin/gift-cards/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ isActive: action === 'activate' }),
       })
-    }))
+    ))
     setSelectedIds(new Set())
     setBatchLoading(false)
     queryClient.invalidateQueries({ queryKey: ['gift-cards'] })
@@ -1321,6 +1343,9 @@ function AdminGiftCardsPageContent() {
           </div>
         )}
       </div>
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

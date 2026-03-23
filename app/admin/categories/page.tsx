@@ -7,6 +7,8 @@ import Icon from '@/components/ui/Icon'
 import { categoriesApi, CategoryWithChildren } from '@/lib/api/categories'
 import CategoryModal from '@/components/admin/CategoryModal'
 import { formatNumber } from '@/lib/formatNumber'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 // Icon mapping for categories
 const getCategoryIcon = (name: string): string => {
@@ -33,6 +35,9 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<CategoryWithChildren | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const itemsPerPage = 12
 
   // Toggle category expand/collapse
@@ -93,16 +98,24 @@ export default function CategoriesPage() {
     queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
   }
 
-  async function handleDelete(categoryId: string) {
-    if (!confirm('Are you sure you want to delete this category?')) return
-
-    const result = await categoriesApi.delete(categoryId)
-    if (result.success) {
-      // Invalidate cache to trigger refetch after CRUD operation
-      queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
-    } else {
-      alert(result.error || 'Failed to delete category')
-    }
+  function handleDelete(categoryId: string) {
+    setConfirmModal({
+      title: 'Delete Category',
+      description: 'Are you sure you want to delete this category?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await categoriesApi.delete(categoryId)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) {
+          queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
+        } else {
+          setToast({ message: result.error || 'Failed to delete category', type: 'error' })
+        }
+      },
+    })
   }
 
   // Pagination for table view
@@ -367,6 +380,8 @@ export default function CategoriesPage() {
         category={editingCategory}
         onSuccess={loadCategories}
       />
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

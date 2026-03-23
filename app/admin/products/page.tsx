@@ -10,6 +10,8 @@ import { categoriesApi, Category } from '@/lib/api/categories'
 import { formatNumber } from '@/lib/formatNumber'
 import { apiFetch } from '@/lib/api/client'
 import ProductReviewsModal from '@/components/admin/ProductReviewsModal'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 export default function ProductsPage() {
   const queryClient = useQueryClient()
@@ -21,6 +23,9 @@ export default function ProductsPage() {
   const [bulkLoading, setBulkLoading] = useState(false)
   const [statusMenuId, setStatusMenuId] = useState<string | null>(null)
   const [reviewProduct, setReviewProduct] = useState<{ id: string; name: string } | null>(null)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const itemsPerPage = 10
 
   // Fetch products with React Query (cached for 5 minutes)
@@ -59,16 +64,24 @@ export default function ProductsPage() {
   const loading = productsLoading
   const error = productsError ? String(productsError) : ''
 
-  async function handleDelete(productId: string) {
-    if (!confirm('Are you sure you want to delete this product?')) return
-
-    const result = await productsApi.delete(productId)
-    if (result.success) {
-      // Invalidate cache to trigger refetch after CRUD operation
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
-    } else {
-      alert(result.error || 'Failed to delete product')
-    }
+  function handleDelete(productId: string) {
+    setConfirmModal({
+      title: 'Delete Product',
+      description: 'Are you sure you want to delete this product?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await productsApi.delete(productId)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) {
+          queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+        } else {
+          setToast({ message: result.error || 'Failed to delete product', type: 'error' })
+        }
+      }
+    })
   }
 
   async function handleStatusChange(productId: string, status: string) {
@@ -76,27 +89,44 @@ export default function ProductsPage() {
     if (result.success) {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
     } else {
-      alert(result.error || 'Failed to update status')
+      setToast({ message: result.error || 'Failed to update status', type: 'error' })
     }
   }
 
   async function handleBulkAction(action: 'ACTIVE' | 'DRAFT' | 'ARCHIVED' | 'DELETE') {
     if (selectedIds.size === 0) return
     if (action === 'DELETE') {
-      if (!confirm(`Are you sure you want to delete ${selectedIds.size} product(s)?`)) return
+      setConfirmModal({
+        title: 'Delete Products',
+        description: `Are you sure you want to delete ${selectedIds.size} product(s)?`,
+        confirmLabel: 'Delete',
+        danger: true,
+        onConfirm: async () => {
+          setConfirmLoading(true)
+          try {
+            const promises = Array.from(selectedIds).map(id => productsApi.delete(id))
+            await Promise.all(promises)
+            setSelectedIds(new Set())
+            queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+          } catch {
+            setToast({ message: 'Some operations failed', type: 'error' })
+          }
+          setConfirmModal(null)
+          setConfirmLoading(false)
+        }
+      })
+      return
     }
     setBulkLoading(true)
     try {
       const promises = Array.from(selectedIds).map(id =>
-        action === 'DELETE'
-          ? productsApi.delete(id)
-          : productsApi.update(id, { status: action } as any)
+        productsApi.update(id, { status: action } as any)
       )
       await Promise.all(promises)
       setSelectedIds(new Set())
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
     } catch {
-      alert('Some operations failed')
+      setToast({ message: 'Some operations failed', type: 'error' })
     }
     setBulkLoading(false)
   }
@@ -127,7 +157,7 @@ export default function ProductsPage() {
         queryClient.invalidateQueries({ queryKey: ['admin-staff-picks'] })
       }
     } catch {
-      alert('Failed to update staff pick status')
+      setToast({ message: 'Failed to update staff pick status', type: 'error' })
     }
   }
 
@@ -488,6 +518,9 @@ export default function ProductsPage() {
         productId={reviewProduct?.id || ''}
         productName={reviewProduct?.name || ''}
       />
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

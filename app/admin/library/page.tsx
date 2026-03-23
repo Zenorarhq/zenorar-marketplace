@@ -8,6 +8,8 @@ import { formatNumber } from '@/lib/formatNumber'
 import { mediaApi, MediaFile } from '@/lib/api/media'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDateShort } from '@/lib/date-utils'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 type UploadType = 'all' | 'images' | 'documents' | 'videos'
 
@@ -53,6 +55,9 @@ export default function AdminLibraryPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [uploadingFiles, setUploadingFiles] = React.useState<File[]>([])
   const [previewingUpload, setPreviewingUpload] = React.useState<MediaFile | null>(null)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Fetch media files
   const { data: mediaData, isLoading } = useQuery({
@@ -101,7 +106,7 @@ export default function AdminLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['media-files'] })
       setEditingUpload(null)
     },
-    onError: (error: any) => { alert(error.message || 'Failed to update file') },
+    onError: (error: any) => { setToast({ message: error.message || 'Failed to update file', type: 'error' }) },
   })
 
   // Delete mutation
@@ -111,7 +116,7 @@ export default function AdminLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['media-files'] })
       queryClient.invalidateQueries({ queryKey: ['media-stats'] })
     },
-    onError: (error: any) => { alert(error.message || 'Failed to delete file') },
+    onError: (error: any) => { setToast({ message: error.message || 'Failed to delete file', type: 'error' }) },
   })
 
   // Upload mutation
@@ -121,7 +126,7 @@ export default function AdminLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['media-files'] })
       queryClient.invalidateQueries({ queryKey: ['media-stats'] })
     },
-    onError: (error: any) => { alert(error.message || 'Failed to upload file') },
+    onError: (error: any) => { setToast({ message: error.message || 'Failed to upload file', type: 'error' }) },
   })
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,7 +147,7 @@ export default function AdminLibraryPage() {
     setUploadingFiles([])
     setShowUploadModal(false)
     if (failedFiles.length > 0) {
-      alert(`Failed to upload: ${failedFiles.join(', ')}`)
+      setToast({ message: `Failed to upload: ${failedFiles.join(', ')}`, type: 'error' })
     }
   }
 
@@ -168,10 +173,19 @@ export default function AdminLibraryPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this file?')) {
-      await deleteMutation.mutateAsync(id)
-    }
+  const handleDelete = (id: string) => {
+    setConfirmModal({
+      title: 'Delete File',
+      description: 'Are you sure you want to delete this file?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        await deleteMutation.mutateAsync(id)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+      }
+    })
   }
 
   // Convert MediaFile to Upload format for rendering
@@ -696,6 +710,9 @@ export default function AdminLibraryPage() {
           </div>
         </div>
       )}
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

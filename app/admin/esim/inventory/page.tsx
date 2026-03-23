@@ -7,6 +7,7 @@ import Icon from '@/components/ui/Icon'
 import { formatNumber } from '@/lib/formatNumber'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDateShort } from '@/lib/date-utils'
+import Toast, { ToastState } from '@/components/ui/Toast'
 
 interface InventoryItem {
   id: string
@@ -72,6 +73,7 @@ export default function AdminEsimInventoryPage() {
   const [importPlanId, setImportPlanId] = useState('')
   const [importData, setImportData] = useState('')
   const [importError, setImportError] = useState('')
+  const [toast, setToast] = useState<ToastState | null>(null)
 
   // Fetch stats
   const { data: stats, isLoading: loadingStats } = useQuery<InventoryStats>({
@@ -133,7 +135,7 @@ export default function AdminEsimInventoryPage() {
       setShowImportModal(false)
       setImportData('')
       setImportPlanId('')
-      alert(`Import complete: ${data.imported} imported, ${data.duplicates} duplicates skipped`)
+      setToast({ message: `Import complete: ${data.imported} imported, ${data.duplicates} duplicates skipped`, type: 'success' })
     },
     onError: (error: any) => {
       setImportError(error.message)
@@ -562,6 +564,7 @@ export default function AdminEsimInventoryPage() {
           </div>
         )}
       </div>
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </AdminLayout>
   )
 }

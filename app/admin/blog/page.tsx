@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { blogApi, BlogPostSummary } from '@/lib/api/blog'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 const STATUS_COLORS: Record<string, string> = {
   PUBLISHED: 'bg-emerald-500/20 text-emerald-400',
@@ -24,6 +26,9 @@ export default function AdminBlogPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [page, setPage] = useState(1)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-blog', page, statusFilter, searchQuery],
@@ -153,9 +158,18 @@ export default function AdminBlogPage() {
                           </button>
                           <button
                             onClick={() => {
-                              if (confirm('Are you sure you want to delete this post?')) {
-                                deleteMutation.mutate(post.id)
-                              }
+                              setConfirmModal({
+                                title: 'Delete Post',
+                                description: 'Are you sure you want to delete this post?',
+                                confirmLabel: 'Delete',
+                                danger: true,
+                                onConfirm: async () => {
+                                  setConfirmLoading(true)
+                                  deleteMutation.mutate(post.id)
+                                  setConfirmModal(null)
+                                  setConfirmLoading(false)
+                                },
+                              })
                             }}
                             className="p-1.5 text-slate-400 hover:text-red-400 rounded transition-colors"
                             title="Delete"
@@ -198,6 +212,8 @@ export default function AdminBlogPage() {
           )}
         </div>
       </div>
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/formatNumber'
 import { financeApi, AdminExpense } from '@/lib/api/finance'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDate } from '@/lib/date-utils'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 export default function FinancePage() {
   const tz = useTimezone()
@@ -17,6 +18,8 @@ export default function FinancePage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ amount: '', description: '', category: '' })
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Fetch finance overview
   const { data: overview = null } = useQuery({
@@ -340,10 +343,19 @@ export default function FinancePage() {
                             </button>
                             <button
                               onClick={() => {
-                                if (confirm('Delete this expense?')) {
-                                  setDeletingId(exp.id)
-                                  deleteExpenseMutation.mutate(exp.id)
-                                }
+                                setConfirmModal({
+                                  title: 'Delete Expense',
+                                  description: 'Delete this expense?',
+                                  confirmLabel: 'Delete',
+                                  danger: true,
+                                  onConfirm: async () => {
+                                    setConfirmLoading(true)
+                                    setDeletingId(exp.id)
+                                    deleteExpenseMutation.mutate(exp.id)
+                                    setConfirmModal(null)
+                                    setConfirmLoading(false)
+                                  },
+                                })
                               }}
                               disabled={deletingId === exp.id}
                               className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-500 hover:text-red-400 disabled:opacity-50"
@@ -362,6 +374,7 @@ export default function FinancePage() {
           </div>
         )}
       </div>
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

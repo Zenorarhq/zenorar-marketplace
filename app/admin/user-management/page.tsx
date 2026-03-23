@@ -11,6 +11,8 @@ import { staffApi, StaffListResponse } from '@/lib/api/staff'
 import { rolesApi, Role } from '@/lib/api/roles'
 import { apiFetch } from '@/lib/api/client'
 import { newsletterApi } from '@/lib/api/newsletter'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 type Tab = 'users' | 'staff' | 'roles' | 'guest-purchases' | 'newsletter'
 
@@ -107,6 +109,9 @@ function UsersTab() {
   const [pwResetLoading, setPwResetLoading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<any>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const { data, isLoading } = useQuery<UsersListResponse>({
     queryKey: ['admin-users', currentPage, searchQuery, filters],
@@ -189,16 +194,16 @@ function UsersTab() {
 
   async function handleSendEmail() {
     if (!selectedUser || !emailForm.subject || !emailForm.message) {
-      alert('Please fill in both subject and message')
+      setToast({ message: 'Please fill in both subject and message', type: 'error' })
       return
     }
     const result = await usersApi.sendEmail(selectedUser.id, emailForm.subject, emailForm.message)
     if (result.success) {
-      alert(`Email sent to ${selectedUser.email}`)
+      setToast({ message: `Email sent to ${selectedUser.email}`, type: 'success' })
       setShowEmailModal(false)
       setEmailForm({ subject: '', message: '' })
     } else {
-      alert(result.error || 'Failed to send email')
+      setToast({ message: result.error || 'Failed to send email', type: 'error' })
     }
   }
 
@@ -215,38 +220,52 @@ function UsersTab() {
   }
 
   async function handleBulkDelete() {
-    if (!confirm(`Delete ${selectedIds.length} user(s)? This cannot be undone.`)) return
-    setBulkLoading(true)
-    const result = await usersApi.bulkDelete(selectedIds)
-    setBulkLoading(false)
-    if (result.success) {
-      setSelectedIds([])
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-user-stats'] })
-      alert(result.message || 'Users deleted')
-    } else {
-      alert(result.error || 'Failed to delete users')
-    }
+    setConfirmModal({
+      title: 'Delete Users',
+      description: `Delete ${selectedIds.length} user(s)? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await usersApi.bulkDelete(selectedIds)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) {
+          setSelectedIds([])
+          queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+          queryClient.invalidateQueries({ queryKey: ['admin-user-stats'] })
+        } else {
+          setToast({ message: result.error || 'Failed to delete users', type: 'error' })
+        }
+      },
+    })
   }
 
   async function handleBulkBlock(block: boolean) {
     const action = block ? 'block' : 'unblock'
-    if (!confirm(`${block ? 'Block' : 'Unblock'} ${selectedIds.length} user(s)?`)) return
-    setBulkLoading(true)
-    const result = await usersApi.bulkBlock(selectedIds, block)
-    setBulkLoading(false)
-    if (result.success) {
-      setSelectedIds([])
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      alert(result.message || `Users ${action}ed`)
-    } else {
-      alert(result.error || `Failed to ${action} users`)
-    }
+    setConfirmModal({
+      title: block ? 'Block Users' : 'Unblock Users',
+      description: `${block ? 'Block' : 'Unblock'} ${selectedIds.length} user(s)?`,
+      confirmLabel: block ? 'Block' : 'Unblock',
+      danger: block,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await usersApi.bulkBlock(selectedIds, block)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) {
+          setSelectedIds([])
+          queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+        } else {
+          setToast({ message: result.error || `Failed to ${action} users`, type: 'error' })
+        }
+      },
+    })
   }
 
   async function handleBulkSendEmail() {
     if (!bulkEmailForm.subject || !bulkEmailForm.message) {
-      alert('Please fill in both subject and message')
+      setToast({ message: 'Please fill in both subject and message', type: 'error' })
       return
     }
     setBulkLoading(true)
@@ -255,9 +274,8 @@ function UsersTab() {
     if (result.success) {
       setShowBulkEmail(false)
       setBulkEmailForm({ subject: '', message: '' })
-      alert(result.message || 'Emails sent')
     } else {
-      alert(result.error || 'Failed to send emails')
+      setToast({ message: result.error || 'Failed to send emails', type: 'error' })
     }
   }
 
@@ -285,7 +303,7 @@ function UsersTab() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      alert('Failed to export users')
+      setToast({ message: 'Failed to export users', type: 'error' })
     }
   }
 
@@ -661,6 +679,9 @@ function UsersTab() {
           </div>
         </div>
       )}
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </div>
   )
 }
@@ -732,6 +753,9 @@ function StaffTab() {
   const [selectedStaff, setSelectedStaff] = useState<any>(null)
   const [editStaffForm, setEditStaffForm] = useState({ name: '', bio: '' })
   const [newStaff, setNewStaff] = useState({ name: '', email: '', password: '', roleId: '' })
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const limit = 20
 
   const { data, isLoading } = useQuery<StaffListResponse>({
@@ -760,22 +784,35 @@ function StaffTab() {
   })
 
   async function handleCreate() {
-    if (!newStaff.name || !newStaff.email || !newStaff.password) return alert('Fill required fields')
+    if (!newStaff.name || !newStaff.email || !newStaff.password) {
+      setToast({ message: 'Fill required fields', type: 'error' })
+      return
+    }
     const result = await staffApi.create(newStaff)
     if (result.success) {
       queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
       setShowCreateModal(false)
       setNewStaff({ name: '', email: '', password: '', roleId: '' })
     } else {
-      alert(result.error || 'Failed to create staff')
+      setToast({ message: result.error || 'Failed to create staff', type: 'error' })
     }
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete staff "${name}"?`)) return
-    const result = await staffApi.delete(id)
-    if (result.success) queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
-    else alert(result.error || 'Failed to delete')
+    setConfirmModal({
+      title: 'Delete Staff',
+      description: `Delete staff "${name}"?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await staffApi.delete(id)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
+        else setToast({ message: result.error || 'Failed to delete', type: 'error' })
+      },
+    })
   }
 
   function handleEdit(member: any) {
@@ -785,29 +822,41 @@ function StaffTab() {
   }
 
   async function handleUpdateStaff() {
-    if (!selectedStaff || !editStaffForm.name) return alert('Name is required')
+    if (!selectedStaff || !editStaffForm.name) {
+      setToast({ message: 'Name is required', type: 'error' })
+      return
+    }
     const result = await staffApi.update(selectedStaff.id, { name: editStaffForm.name, bio: editStaffForm.bio })
     if (result.success) {
       queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
       setSelectedStaff({ ...selectedStaff, name: editStaffForm.name, bio: editStaffForm.bio })
-      alert('Staff details updated')
+      setToast({ message: 'Staff details updated', type: 'success' })
     } else {
-      alert(result.error || 'Failed to update staff')
+      setToast({ message: result.error || 'Failed to update staff', type: 'error' })
     }
   }
 
   async function handleRemoveAccess() {
     if (!selectedStaff) return
-    if (!confirm(`Remove staff access for "${selectedStaff.name}"? They will become a regular user.`)) return
-    const result = await staffApi.removeAccess(selectedStaff.id)
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-staff-stats'] })
-      setShowEditModal(false)
-      alert(`${selectedStaff.name} has been converted to a regular user`)
-    } else {
-      alert(result.error || 'Failed to remove staff access')
-    }
+    setConfirmModal({
+      title: 'Remove Staff Access',
+      description: `Remove staff access for "${selectedStaff.name}"? They will become a regular user.`,
+      confirmLabel: 'Remove Access',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await staffApi.removeAccess(selectedStaff.id)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) {
+          queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
+          queryClient.invalidateQueries({ queryKey: ['admin-staff-stats'] })
+          setShowEditModal(false)
+        } else {
+          setToast({ message: result.error || 'Failed to remove staff access', type: 'error' })
+        }
+      },
+    })
   }
 
   async function handleAssignRole(roleId: string | null) {
@@ -817,9 +866,8 @@ function StaffTab() {
       queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
       queryClient.invalidateQueries({ queryKey: ['admin-staff-stats'] })
       setShowEditModal(false)
-      alert('Staff role updated successfully')
     } else {
-      alert(result.error || 'Failed to assign role')
+      setToast({ message: result.error || 'Failed to assign role', type: 'error' })
     }
   }
 
@@ -842,21 +890,30 @@ function StaffTab() {
     if (result.success) {
       queryClient.invalidateQueries({ queryKey: ['admin-staff'] })
       setShowEditModal(false)
-      alert(`${selectedStaff.name} has been unblocked`)
     } else {
-      alert(result.error || 'Failed to unblock user')
+      setToast({ message: result.error || 'Failed to unblock user', type: 'error' })
     }
   }
 
   async function handlePasswordReset() {
     if (!selectedStaff) return
-    if (!confirm(`Send password reset email to ${selectedStaff.email}?`)) return
-    const result = await usersApi.sendPasswordReset(selectedStaff.id)
-    if (result.success) {
-      alert(`Password reset email sent to ${selectedStaff.email}`)
-    } else {
-      alert(result.error || 'Failed to send password reset email')
-    }
+    setConfirmModal({
+      title: 'Send Password Reset',
+      description: `Send password reset email to ${selectedStaff.email}?`,
+      confirmLabel: 'Send',
+      danger: false,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await usersApi.sendPasswordReset(selectedStaff.id)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) {
+          setToast({ message: `Password reset email sent to ${selectedStaff.email}`, type: 'success' })
+        } else {
+          setToast({ message: result.error || 'Failed to send password reset email', type: 'error' })
+        }
+      },
+    })
   }
 
   const staff = data?.staff || []
@@ -1051,6 +1108,9 @@ function StaffTab() {
           </div>
         </div>
       )}
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </div>
   )
 }
@@ -1062,6 +1122,9 @@ function RolesTab() {
   const [newRole, setNewRole] = useState({ name: '', description: '', permissionIds: [] as string[] })
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [editRole, setEditRole] = useState({ name: '', description: '', permissionIds: [] as string[] })
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const { data: roles = [], isLoading } = useQuery<Role[]>({
     queryKey: ['admin-roles'],
@@ -1080,22 +1143,35 @@ function RolesTab() {
   })
 
   async function handleCreate() {
-    if (!newRole.name) return alert('Enter role name')
+    if (!newRole.name) {
+      setToast({ message: 'Enter role name', type: 'error' })
+      return
+    }
     const result = await rolesApi.create(newRole)
     if (result.success) {
       queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
       setShowCreateModal(false)
       setNewRole({ name: '', description: '', permissionIds: [] })
     } else {
-      alert(result.error || 'Failed to create role')
+      setToast({ message: result.error || 'Failed to create role', type: 'error' })
     }
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete role "${name}"?`)) return
-    const result = await rolesApi.delete(id)
-    if (result.success) queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
-    else alert(result.error || 'Failed to delete')
+    setConfirmModal({
+      title: 'Delete Role',
+      description: `Delete role "${name}"?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await rolesApi.delete(id)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
+        else setToast({ message: result.error || 'Failed to delete', type: 'error' })
+      },
+    })
   }
 
   function openEditRole(role: Role) {
@@ -1108,14 +1184,23 @@ function RolesTab() {
   }
 
   async function handleEditRole() {
-    if (!editingRole || !editRole.name) return alert('Enter role name')
+    if (!editingRole || !editRole.name) {
+      setToast({ message: 'Enter role name', type: 'error' })
+      return
+    }
     const updateResult = await rolesApi.update(editingRole.id, { name: editRole.name, description: editRole.description })
-    if (!updateResult.success) return alert(updateResult.error || 'Failed to update role')
+    if (!updateResult.success) {
+      setToast({ message: updateResult.error || 'Failed to update role', type: 'error' })
+      return
+    }
     const permResult = await rolesApi.updatePermissions(editingRole.id, editRole.permissionIds)
-    if (!permResult.success) return alert(permResult.error || 'Failed to update permissions')
+    if (!permResult.success) {
+      setToast({ message: permResult.error || 'Failed to update permissions', type: 'error' })
+      return
+    }
     queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
     setEditingRole(null)
-    alert('Role updated successfully')
+    setToast({ message: 'Role updated successfully', type: 'success' })
   }
 
   const permissionsByCategory = permissionsData?.byCategory || {}
@@ -1215,6 +1300,9 @@ function RolesTab() {
           </div>
         </div>
       )}
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </div>
   )
 }
@@ -1347,6 +1435,9 @@ function NewsletterTab() {
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [emailForm, setEmailForm] = useState({ subject: '', message: '' })
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-newsletter', currentPage, searchQuery],
@@ -1374,32 +1465,49 @@ function NewsletterTab() {
   }
 
   async function handleRemove(id: string, email: string) {
-    if (!confirm(`Remove subscriber "${email}"?`)) return
-    const result = await newsletterApi.removeSubscriber(id)
-    if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ['admin-newsletter'] })
-    } else {
-      alert(result.error || 'Failed to remove subscriber')
-    }
+    setConfirmModal({
+      title: 'Remove Subscriber',
+      description: `Remove subscriber "${email}"?`,
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await newsletterApi.removeSubscriber(id)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) {
+          queryClient.invalidateQueries({ queryKey: ['admin-newsletter'] })
+        } else {
+          setToast({ message: result.error || 'Failed to remove subscriber', type: 'error' })
+        }
+      },
+    })
   }
 
   async function handleBulkRemove() {
-    if (!confirm(`Remove ${selectedIds.length} subscriber(s)?`)) return
-    setBulkLoading(true)
-    const result = await newsletterApi.bulkRemove(selectedIds)
-    setBulkLoading(false)
-    if (result.success) {
-      setSelectedIds([])
-      queryClient.invalidateQueries({ queryKey: ['admin-newsletter'] })
-      alert(result.message || 'Subscribers removed')
-    } else {
-      alert(result.error || 'Failed to remove subscribers')
-    }
+    setConfirmModal({
+      title: 'Remove Subscribers',
+      description: `Remove ${selectedIds.length} subscriber(s)?`,
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await newsletterApi.bulkRemove(selectedIds)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) {
+          setSelectedIds([])
+          queryClient.invalidateQueries({ queryKey: ['admin-newsletter'] })
+        } else {
+          setToast({ message: result.error || 'Failed to remove subscribers', type: 'error' })
+        }
+      },
+    })
   }
 
   async function handleSendBulkEmail() {
     if (!emailForm.subject || !emailForm.message) {
-      alert('Please fill in both subject and message')
+      setToast({ message: 'Please fill in both subject and message', type: 'error' })
       return
     }
     setBulkLoading(true)
@@ -1408,9 +1516,8 @@ function NewsletterTab() {
     if (result.success) {
       setShowEmailModal(false)
       setEmailForm({ subject: '', message: '' })
-      alert(result.message || 'Emails sent')
     } else {
-      alert(result.error || 'Failed to send emails')
+      setToast({ message: result.error || 'Failed to send emails', type: 'error' })
     }
   }
 
@@ -1430,7 +1537,7 @@ function NewsletterTab() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      alert('Failed to export subscribers')
+      setToast({ message: 'Failed to export subscribers', type: 'error' })
     }
   }
 
@@ -1563,6 +1670,9 @@ function NewsletterTab() {
           </div>
         </div>
       )}
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </div>
   )
 }

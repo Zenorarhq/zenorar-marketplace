@@ -8,6 +8,7 @@ import { ticketsApi, Ticket, TicketStatus, TicketPriority, SupportStatus } from 
 import NewTicketModal from '@/components/admin/NewTicketModal'
 import ViewTicketThreadModal from '@/components/admin/ViewTicketThreadModal'
 import ReplyTicketModal from '@/components/admin/ReplyTicketModal'
+import Toast, { ToastState } from '@/components/ui/Toast'
 
 export default function TicketsPage() {
   const queryClient = useQueryClient()
@@ -33,6 +34,7 @@ export default function TicketsPage() {
   const [resolveTicketId, setResolveTicketId] = useState<string | null>(null)
   const [resolutionText, setResolutionText] = useState('')
   const [isResolving, setIsResolving] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
 
   // Fetch tickets with React Query (cached for 5 minutes)
   const { data: tickets = [], isLoading: ticketsLoading, error: ticketsError } = useQuery({
@@ -67,7 +69,7 @@ export default function TicketsPage() {
       setResolutionText('')
       queryClient.invalidateQueries({ queryKey: ['admin-tickets'] })
     } else {
-      alert(result.error || 'Failed to resolve ticket')
+      setToast({ message: result.error || 'Failed to resolve ticket', type: 'error' })
     }
   }
 
@@ -544,6 +546,7 @@ export default function TicketsPage() {
           </div>
         </div>
       )}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </AdminLayout>
   )
 }

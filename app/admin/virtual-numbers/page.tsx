@@ -7,6 +7,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { formatNumber } from '@/lib/formatNumber'
 import { localApiFetch } from '@/lib/api/client'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 interface VirtualNumber {
   id: string
@@ -122,6 +123,8 @@ function AdminVirtualNumbersContent() {
   const [showCountryModal, setShowCountryModal] = useState(false)
   const [editingCountry, setEditingCountry] = useState<Country | null>(null)
   const [formError, setFormError] = useState('')
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Sync
   const [showSyncDetails, setShowSyncDetails] = useState(false)
@@ -610,7 +613,7 @@ function AdminVirtualNumbersContent() {
                               <button onClick={() => handleEditPlan(plan)} className="p-1.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
                                 <Icon name="edit" size={16} />
                               </button>
-                              <button onClick={() => { if (confirm('Delete this plan?')) deletePlanMutation.mutate(plan.id) }}
+                              <button onClick={() => setConfirmModal({ title: 'Delete Plan', description: 'Delete this plan?', confirmLabel: 'Delete', danger: true, onConfirm: async () => { setConfirmLoading(true); deletePlanMutation.mutate(plan.id); setConfirmModal(null); setConfirmLoading(false) } })}
                                 disabled={parseInt(plan.total_subscriptions) > 0}
                                 className="p-1.5 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                                 <Icon name="delete" size={16} />
@@ -922,6 +925,8 @@ function AdminVirtualNumbersContent() {
           </div>
         </div>
       )}
+
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

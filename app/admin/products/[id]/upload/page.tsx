@@ -6,6 +6,8 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import UploadProgressModal from '@/components/admin/UploadProgressModal'
 import { downloadsApi, ProductFile } from '@/lib/api/downloads'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 export default function UploadProductFilePage() {
   const router = useRouter()
@@ -24,6 +26,9 @@ export default function UploadProductFilePage() {
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const [uploadJobStatus, setUploadJobStatus] = useState<'processing' | 'complete' | 'failed'>('processing')
   const [uploadRawStage, setUploadRawStage] = useState('queued')
   const jobProcessedRef = useRef(false)
@@ -137,16 +142,26 @@ export default function UploadProductFilePage() {
     setUploadError(null)
   }
 
-  const handleDeleteFile = async (fileId: string) => {
-    if (!confirm('Permanently delete this file from storage?')) return
-    setDeletingFileId(fileId)
-    const res = await downloadsApi.adminDeleteFile(productId, fileId)
-    if (res.success) {
-      setProductFiles(prev => prev.filter(f => f.id !== fileId))
-    } else {
-      alert(res.error || 'Failed to delete file')
-    }
-    setDeletingFileId(null)
+  const handleDeleteFile = (fileId: string) => {
+    setConfirmModal({
+      title: 'Delete File',
+      description: 'Permanently delete this file from storage?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setDeletingFileId(fileId)
+        const res = await downloadsApi.adminDeleteFile(productId, fileId)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (res.success) {
+          setProductFiles(prev => prev.filter(f => f.id !== fileId))
+        } else {
+          setToast({ message: res.error || 'Failed to delete file', type: 'error' })
+        }
+        setDeletingFileId(null)
+      }
+    })
   }
 
   const handleSetLatest = async (fileId: string) => {
@@ -348,6 +363,9 @@ export default function UploadProductFilePage() {
         onClose={handleCloseUploadModal}
         onCancel={handleCancelUpload}
       />
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

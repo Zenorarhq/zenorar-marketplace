@@ -8,6 +8,8 @@ import { getAllReferrals, getReferralAnalytics, cancelReferral, distributeReward
 import { formatCurrency } from '@/lib/currency'
 import { apiFetch } from '@/lib/api/client'
 import Link from 'next/link'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 type StatusFilter = 'all' | 'PENDING' | 'COMPLETED' | 'REWARDED' | 'CANCELLED'
 
@@ -18,6 +20,9 @@ export default function AdminReferralsPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [distributingId, setDistributingId] = useState<string | null>(null)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const limit = 20
 
   // Fetch public settings for reward amounts
@@ -107,48 +112,62 @@ export default function AdminReferralsPage() {
 
   const handleCancelReferral = async (referralId: string) => {
     if (!cancelReason.trim()) {
-      alert('Please provide a reason for cancellation')
+      setToast({ message: 'Please provide a reason for cancellation', type: 'error' })
       return
     }
 
-    if (!confirm('Are you sure you want to cancel this referral? This action cannot be undone.')) {
-      return
-    }
-
-    try {
-      const result = await cancelReferral(referralId, cancelReason)
-      if (result.success) {
-        alert('Referral cancelled successfully')
-        setCancellingId(null)
-        setCancelReason('')
-        refetch()
-      } else {
-        alert(result.error || 'Failed to cancel referral')
+    setConfirmModal({
+      title: 'Cancel Referral',
+      description: 'Are you sure you want to cancel this referral? This action cannot be undone.',
+      confirmLabel: 'Cancel Referral',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        try {
+          const result = await cancelReferral(referralId, cancelReason)
+          if (result.success) {
+            setToast({ message: 'Referral cancelled successfully', type: 'success' })
+            setCancellingId(null)
+            setCancelReason('')
+            refetch()
+          } else {
+            setToast({ message: result.error || 'Failed to cancel referral', type: 'error' })
+          }
+        } catch (error) {
+          setToast({ message: 'Failed to cancel referral', type: 'error' })
+        } finally {
+          setConfirmModal(null)
+          setConfirmLoading(false)
+        }
       }
-    } catch (error) {
-      alert('Failed to cancel referral')
-    }
+    })
   }
 
   const handleDistributeRewards = async (referralId: string) => {
-    if (!confirm(`Distribute rewards (${formatCurrency(referrerRewardAmount)} to referrer, ${formatCurrency(refereeRewardAmount)} to referee)? This action cannot be undone.`)) {
-      return
-    }
-
-    setDistributingId(referralId)
-    try {
-      const result = await distributeRewards(referralId)
-      if (result.success) {
-        alert(`Rewards distributed successfully! Referrer received ${formatCurrency(referrerRewardAmount)}, referee received ${formatCurrency(refereeRewardAmount)}.`)
-        refetch()
-      } else {
-        alert(result.error || 'Failed to distribute rewards')
+    setConfirmModal({
+      title: 'Distribute Rewards',
+      description: `Distribute rewards (${formatCurrency(referrerRewardAmount)} to referrer, ${formatCurrency(refereeRewardAmount)} to referee)? This action cannot be undone.`,
+      confirmLabel: 'Distribute',
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setDistributingId(referralId)
+        try {
+          const result = await distributeRewards(referralId)
+          if (result.success) {
+            setToast({ message: `Rewards distributed successfully! Referrer received ${formatCurrency(referrerRewardAmount)}, referee received ${formatCurrency(refereeRewardAmount)}.`, type: 'success' })
+            refetch()
+          } else {
+            setToast({ message: result.error || 'Failed to distribute rewards', type: 'error' })
+          }
+        } catch (error) {
+          setToast({ message: 'Failed to distribute rewards', type: 'error' })
+        } finally {
+          setDistributingId(null)
+          setConfirmModal(null)
+          setConfirmLoading(false)
+        }
       }
-    } catch (error) {
-      alert('Failed to distribute rewards')
-    } finally {
-      setDistributingId(null)
-    }
+    })
   }
 
   // Filter referrals by search query
@@ -483,6 +502,9 @@ export default function AdminReferralsPage() {
           </p>
         </div>
       )}
+
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </AdminLayout>
   )
 }

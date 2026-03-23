@@ -11,6 +11,8 @@ import MediaPickerModal from '@/components/admin/MediaPickerModal'
 import UploadProgressModal from '@/components/admin/UploadProgressModal'
 import { apiFetch, getAccessToken } from '@/lib/api/client'
 import { downloadsApi, ProductFile } from '@/lib/api/downloads'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 export default function EditProductPage() {
   const router = useRouter()
@@ -35,6 +37,9 @@ export default function EditProductPage() {
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Contributor search
   const [contributorSearch, setContributorSearch] = useState('')
@@ -180,15 +185,24 @@ export default function EditProductPage() {
     setAddingImage(false)
   }
 
-  async function handleDeleteImage(imageId: string) {
-    if (!confirm('Are you sure you want to delete this image?')) return
-
-    const result = await productsApi.deleteImage(productId, imageId)
-    if (result.success) {
-      await loadData() // Reload product
-    } else {
-      alert(result.error || 'Failed to delete image')
-    }
+  function handleDeleteImage(imageId: string) {
+    setConfirmModal({
+      title: 'Delete Image',
+      description: 'Are you sure you want to delete this image?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        const result = await productsApi.deleteImage(productId, imageId)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (result.success) {
+          await loadData()
+        } else {
+          setToast({ message: result.error || 'Failed to delete image', type: 'error' })
+        }
+      }
+    })
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -353,16 +367,26 @@ export default function EditProductPage() {
     setUploadError(null)
   }
 
-  const handleDeleteFile = async (fileId: string) => {
-    if (!confirm('Permanently delete this file from storage?')) return
-    setDeletingFileId(fileId)
-    const res = await downloadsApi.adminDeleteFile(productId, fileId)
-    if (res.success) {
-      setProductFiles(prev => prev.filter(f => f.id !== fileId))
-    } else {
-      alert(res.error || 'Failed to delete file')
-    }
-    setDeletingFileId(null)
+  const handleDeleteFile = (fileId: string) => {
+    setConfirmModal({
+      title: 'Delete File',
+      description: 'Permanently delete this file from storage?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setDeletingFileId(fileId)
+        const res = await downloadsApi.adminDeleteFile(productId, fileId)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+        if (res.success) {
+          setProductFiles(prev => prev.filter(f => f.id !== fileId))
+        } else {
+          setToast({ message: res.error || 'Failed to delete file', type: 'error' })
+        }
+        setDeletingFileId(null)
+      }
+    })
   }
 
   const handleSetLatest = async (fileId: string) => {
@@ -1078,6 +1102,9 @@ export default function EditProductPage() {
         onClose={handleCloseUploadModal}
         onCancel={handleCancelUpload}
       />
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

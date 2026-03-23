@@ -12,6 +12,8 @@ import useAutoSave from '@/components/page-builder/hooks/useAutoSave'
 import { pagesApi, componentsApi, Page, Section, ComponentTemplate, PageVersion } from '@/lib/cms/api'
 import LinkButtonScanner from '@/components/cms/LinkButtonScanner'
 import LandingPageAnalytics from '@/components/cms/LandingPageAnalytics'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 // Helper to update a section in a nested structure
 function updateSectionInTree(
@@ -64,6 +66,9 @@ export default function PageEditorPage() {
   const [versions, setVersions] = useState<PageVersion[]>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Undo/Redo history
   const { pushState: pushHistory, undo, redo, canUndo, canRedo } = useEditorHistory(page?.content || [])
@@ -266,23 +271,33 @@ export default function PageEditorPage() {
     }
   }
 
-  async function handleRestoreVersion(versionId: string) {
+  function handleRestoreVersion(versionId: string) {
     if (!page) return
-    if (!confirm('Restore this version? Current content will be saved as a new version first.')) return
-    setRestoringVersionId(versionId)
-    try {
-      const result = await pagesApi.restoreVersion(page.id, versionId)
-      if (result.success && result.data) {
-        setPage(result.data)
-        setShowVersions(false)
-      } else {
-        alert('Failed to restore version')
+    setConfirmModal({
+      title: 'Restore Version',
+      description: 'Restore this version? Current content will be saved as a new version first.',
+      confirmLabel: 'Restore',
+      danger: false,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setRestoringVersionId(versionId)
+        try {
+          const result = await pagesApi.restoreVersion(page.id, versionId)
+          if (result.success && result.data) {
+            setPage(result.data)
+            setShowVersions(false)
+          } else {
+            setToast({ message: 'Failed to restore version', type: 'error' })
+          }
+        } catch {
+          setToast({ message: 'Failed to restore version', type: 'error' })
+        } finally {
+          setRestoringVersionId(null)
+          setConfirmModal(null)
+          setConfirmLoading(false)
+        }
       }
-    } catch {
-      alert('Failed to restore version')
-    } finally {
-      setRestoringVersionId(null)
-    }
+    })
   }
 
   async function handlePublish() {
@@ -291,7 +306,7 @@ export default function PageEditorPage() {
       await pagesApi.publish(page.id)
       setPage({ ...page, status: 'PUBLISHED', publishedAt: new Date().toISOString() })
     } catch (err) {
-      alert('Failed to publish: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      setToast({ message: 'Failed to publish: ' + (err instanceof Error ? err.message : 'Unknown error'), type: 'error' })
     }
   }
 
@@ -301,7 +316,7 @@ export default function PageEditorPage() {
       await pagesApi.unpublish(page.id)
       setPage({ ...page, status: 'DRAFT', publishedAt: null })
     } catch (err) {
-      alert('Failed to unpublish: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      setToast({ message: 'Failed to unpublish: ' + (err instanceof Error ? err.message : 'Unknown error'), type: 'error' })
     }
   }
 
@@ -682,6 +697,9 @@ export default function PageEditorPage() {
       {showAnalytics && (
         <LandingPageAnalytics pageId={pageId} onClose={() => setShowAnalytics(false)} />
       )}
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </div>
   )
 }

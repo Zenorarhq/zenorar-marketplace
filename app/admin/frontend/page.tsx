@@ -10,6 +10,7 @@ import ThemeEditor from '@/components/admin/ThemeEditor'
 import HeaderFooterEditor from '@/components/admin/HeaderFooterEditor'
 import { formatDateShort } from '@/lib/date-utils'
 import LandingPageAnalytics from '@/components/cms/LandingPageAnalytics'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 type TabType = 'all' | 'published' | 'draft' | 'archived'
 
@@ -25,6 +26,8 @@ export default function PageBuilderPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [analyticsPageId, setAnalyticsPageId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const loadPages = useCallback(async () => {
     setLoading(true)
@@ -63,15 +66,25 @@ export default function PageBuilderPage() {
     { id: 'archived', label: 'Archived', count: allPages.filter(p => p.status === 'ARCHIVED').length },
   ]
 
-  async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this page?')) return
-    setActionError(null)
-    try {
-      await pagesApi.delete(id)
-      loadPages()
-    } catch {
-      setActionError('Failed to delete page. Please try again.')
-    }
+  function handleDelete(id: string) {
+    setConfirmModal({
+      title: 'Delete Page',
+      description: 'Are you sure you want to delete this page?',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setActionError(null)
+        try {
+          await pagesApi.delete(id)
+          loadPages()
+        } catch {
+          setActionError('Failed to delete page. Please try again.')
+        }
+        setConfirmModal(null)
+        setConfirmLoading(false)
+      },
+    })
   }
 
   async function handlePublish(id: string) {
@@ -420,6 +433,7 @@ export default function PageBuilderPage() {
       {analyticsPageId && (
         <LandingPageAnalytics pageId={analyticsPageId} onClose={() => setAnalyticsPageId(null)} />
       )}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

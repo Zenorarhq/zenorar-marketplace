@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { apiFetch } from '@/lib/api/client'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 type Tab = 'overview' | 'applications' | 'scripts' | 'payouts'
 
@@ -230,6 +232,10 @@ export default function AdminContributorsPage() {
   const [scriptNoteValue, setScriptNoteValue] = useState('')
   const [viewScriptId, setViewScriptId] = useState<string | null>(null)
   const [linkProductTarget, setLinkProductTarget] = useState<{ id: string; title: string } | null>(null)
+
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Payouts state
   const [payoutStatusFilter, setPayoutStatusFilter] = useState('PENDING')
@@ -503,7 +509,7 @@ export default function AdminContributorsPage() {
                                 <Icon name="check" size={14} />
                               </button>
                             ) : (
-                              <button onClick={() => { if (confirm(`Suspend ${c.email}?`)) suspendContributor.mutate(c.id) }} title="Suspend"
+                              <button onClick={() => { setConfirmModal({ title: 'Suspend Contributor', description: `Suspend ${c.email}?`, confirmLabel: 'Suspend', danger: true, onConfirm: async () => { setConfirmLoading(true); suspendContributor.mutate(c.id); setConfirmModal(null); setConfirmLoading(false) } }) }} title="Suspend"
                                 className="p-1.5 rounded hover:bg-orange-500/10 transition-colors text-orange-400">
                                 <Icon name="ban" size={14} />
                               </button>
@@ -656,12 +662,12 @@ export default function AdminContributorsPage() {
                                 className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-medium hover:bg-cyan-500/20 transition-colors">Link Product</button>
                             )}
                             {s.status === 'LIVE' && s.product_id && (
-                              <button onClick={() => { if (confirm(`Unlink "${s.product_name || s.product_id}" from this script?`)) unlinkProduct.mutate({ id: s.id }) }}
+                              <button onClick={() => { setConfirmModal({ title: 'Unlink Product', description: `Unlink "${s.product_name || s.product_id}" from this script?`, confirmLabel: 'Unlink', danger: true, onConfirm: async () => { setConfirmLoading(true); unlinkProduct.mutate({ id: s.id }); setConfirmModal(null); setConfirmLoading(false) } }) }}
                                 disabled={unlinkProduct.isPending}
                                 className="px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-medium hover:bg-orange-500/20 disabled:opacity-50 transition-colors">Unlink</button>
                             )}
                             {!['LIVE', 'REJECTED'].includes(s.status) && (
-                              <button onClick={() => { if (confirm(`Reject "${s.title}"?`)) rejectScript.mutate({ id: s.id }) }}
+                              <button onClick={() => { setConfirmModal({ title: 'Reject Script', description: `Reject "${s.title}"?`, confirmLabel: 'Reject', danger: true, onConfirm: async () => { setConfirmLoading(true); rejectScript.mutate({ id: s.id }); setConfirmModal(null); setConfirmLoading(false) } }) }}
                                 className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors">Reject</button>
                             )}
                           </div>
@@ -1130,7 +1136,7 @@ export default function AdminContributorsPage() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => { if (confirm(`Suspend ${detailTarget.email}?`)) { suspendContributor.mutate(detailTarget.id); setDetailTarget(null) } }}
+                      onClick={() => { setConfirmModal({ title: 'Suspend Contributor', description: `Suspend ${detailTarget.email}?`, confirmLabel: 'Suspend', danger: true, onConfirm: async () => { setConfirmLoading(true); suspendContributor.mutate(detailTarget.id); setDetailTarget(null); setConfirmModal(null); setConfirmLoading(false) } }) }}
                       className="flex-1 bg-orange-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-orange-500 transition-colors">
                       Suspend Contributor
                     </button>
@@ -1144,6 +1150,9 @@ export default function AdminContributorsPage() {
           </div>
         </div>
       )}
+
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </AdminLayout>
   )
 }

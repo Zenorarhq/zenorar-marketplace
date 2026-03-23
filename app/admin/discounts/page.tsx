@@ -9,12 +9,15 @@ import { discountsApi, Discount } from '@/lib/api/discounts'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDateShort } from '@/lib/date-utils'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 export default function DiscountsPage() {
   const queryClient = useQueryClient()
   const { isAuthenticated } = useAuth()
   const tz = useTimezone()
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingDiscount, setEditingDiscount] = useState<Discount | null>(null)
   const [formData, setFormData] = useState({
@@ -161,10 +164,19 @@ export default function DiscountsPage() {
     }
   }
 
-  const handleDelete = async (id: string, code: string) => {
-    if (confirm(`Are you sure you want to delete discount code "${code}"?`)) {
-      await deleteMutation.mutateAsync(id)
-    }
+  const handleDelete = (id: string, code: string) => {
+    setConfirmModal({
+      title: 'Delete Discount Code',
+      description: `Are you sure you want to delete discount code "${code}"?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        await deleteMutation.mutateAsync(id)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+      },
+    })
   }
 
   const isExpired = (expiresAt: string | null) => {
@@ -573,6 +585,7 @@ export default function DiscountsPage() {
           </div>
         </div>
       )}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

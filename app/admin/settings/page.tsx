@@ -14,6 +14,8 @@ import ProtectionLevelsSection from '@/components/admin/ProtectionLevelsSection'
 import PinSetupForm from '@/components/admin/PinSetupForm'
 import VirtualNumberPricingSection, { VirtualNumberPricingSettings, defaultVirtualNumberPricing } from '@/components/admin/VirtualNumberPricingSection'
 import ScriptCommissionTiersSection from '@/components/admin/ScriptCommissionTiersSection'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 type SettingsTab = 'profile' | 'general' | 'security' | 'notifications' | 'payments' | 'referral' | 'api' | 'markup' | 'email' | 'marketing' | 'seo' | 'activity'
 
@@ -217,6 +219,9 @@ export default function AdminSettingsPage() {
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false)
   const [selectedBatchIds, setSelectedBatchIds] = useState<Set<string>>(new Set())
   const [deletingBulk, setDeletingBulk] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Payment Settings State
   const [paymentSettings, setPaymentSettings] = useState({
@@ -1233,21 +1238,31 @@ export default function AdminSettingsPage() {
   }
 
   // Delete a notification batch
-  const deleteBatch = async (batchId: string) => {
-    if (!confirm('Are you sure? This will delete this notification from all users.')) return
-    try {
-      const data = await apiFetch<{ count: number }>(`/notifications/sent/${batchId}`, {
-        method: 'DELETE',
-      })
-      if (data.success) {
-        setMessage({ type: 'success', text: `Deleted ${data.data?.count || 0} notifications` })
-        fetchSentNotifications() // Refresh list
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to delete' })
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to delete notification batch' })
-    }
+  const deleteBatch = (batchId: string) => {
+    setConfirmModal({
+      title: 'Delete Notification',
+      description: 'Are you sure? This will delete this notification from all users.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        try {
+          const data = await apiFetch<{ count: number }>(`/notifications/sent/${batchId}`, {
+            method: 'DELETE',
+          })
+          if (data.success) {
+            setMessage({ type: 'success', text: `Deleted ${data.data?.count || 0} notifications` })
+            fetchSentNotifications() // Refresh list
+          } else {
+            setMessage({ type: 'error', text: data.error || 'Failed to delete' })
+          }
+        } catch (error) {
+          setMessage({ type: 'error', text: 'Failed to delete notification batch' })
+        }
+        setConfirmModal(null)
+        setConfirmLoading(false)
+      },
+    })
   }
 
   const toggleSelectBatch = (batchId: string) => {
@@ -1287,16 +1302,36 @@ export default function AdminSettingsPage() {
     setDeletingBulk(false)
   }
 
-  const deleteSelected = async () => {
+  const deleteSelected = () => {
     if (selectedBatchIds.size === 0) return
-    if (!confirm(`Delete ${selectedBatchIds.size} selected notification(s) from all users?`)) return
-    await bulkDelete(Array.from(selectedBatchIds))
+    setConfirmModal({
+      title: 'Delete Selected Notifications',
+      description: `Delete ${selectedBatchIds.size} selected notification(s) from all users?`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        await bulkDelete(Array.from(selectedBatchIds))
+        setConfirmModal(null)
+        setConfirmLoading(false)
+      },
+    })
   }
 
-  const deleteAll = async () => {
+  const deleteAll = () => {
     if (sentNotifications.length === 0) return
-    if (!confirm(`Delete all ${sentNotifications.length} notification batch(es) from all users? This cannot be undone.`)) return
-    await bulkDelete(sentNotifications.map((b) => b.batchId))
+    setConfirmModal({
+      title: 'Delete All Notifications',
+      description: `Delete all ${sentNotifications.length} notification batch(es) from all users? This cannot be undone.`,
+      confirmLabel: 'Delete All',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        await bulkDelete(sentNotifications.map((b) => b.batchId))
+        setConfirmModal(null)
+        setConfirmLoading(false)
+      },
+    })
   }
 
   const handleAvatarClick = () => {
@@ -1338,22 +1373,28 @@ export default function AdminSettingsPage() {
     setSaving(false)
   }
 
-  const handleRemoveAvatar = async () => {
-    if (!confirm('Are you sure you want to remove your avatar?')) return
-
-    setSaving(true)
-    setMessage(null)
-
-    const result = await profileApi.removeAvatar()
-
-    if (result.success && result.data) {
-      updateUser(result.data)
-      setMessage({ type: 'success', text: 'Avatar removed successfully!' })
-    } else {
-      setMessage({ type: 'error', text: result.error || 'Failed to remove avatar' })
-    }
-
-    setSaving(false)
+  const handleRemoveAvatar = () => {
+    setConfirmModal({
+      title: 'Remove Avatar',
+      description: 'Are you sure you want to remove your avatar?',
+      confirmLabel: 'Remove',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setSaving(true)
+        setMessage(null)
+        const result = await profileApi.removeAvatar()
+        if (result.success && result.data) {
+          updateUser(result.data)
+          setMessage({ type: 'success', text: 'Avatar removed successfully!' })
+        } else {
+          setMessage({ type: 'error', text: result.error || 'Failed to remove avatar' })
+        }
+        setSaving(false)
+        setConfirmModal(null)
+        setConfirmLoading(false)
+      },
+    })
   }
 
   const handleUpdateProfile = async () => {
@@ -2160,8 +2201,23 @@ export default function AdminSettingsPage() {
                 </div>
                 <button
                   onClick={() => {
-                    if (!generalSettings.maintenanceMode && !confirm('Enable maintenance mode? This will disable the marketplace for all visitors.')) return
-                    setGeneralSettings({ ...generalSettings, maintenanceMode: !generalSettings.maintenanceMode })
+                    if (generalSettings.maintenanceMode) {
+                      // Disabling — no confirmation needed
+                      setGeneralSettings({ ...generalSettings, maintenanceMode: false })
+                    } else {
+                      setConfirmModal({
+                        title: 'Enable Maintenance Mode',
+                        description: 'Enable maintenance mode? This will disable the marketplace for all visitors.',
+                        confirmLabel: 'Enable',
+                        danger: true,
+                        onConfirm: async () => {
+                          setConfirmLoading(true)
+                          setGeneralSettings({ ...generalSettings, maintenanceMode: true })
+                          setConfirmModal(null)
+                          setConfirmLoading(false)
+                        },
+                      })
+                    }
                   }}
                   className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
                     generalSettings.maintenanceMode ? 'bg-primary' : 'bg-[#2a2a2a]'
@@ -6778,6 +6834,8 @@ export default function AdminSettingsPage() {
           </div>
         )}
       </div>
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }

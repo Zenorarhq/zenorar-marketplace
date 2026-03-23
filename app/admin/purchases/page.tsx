@@ -7,6 +7,8 @@ import Icon from '@/components/ui/Icon'
 import { ordersApi, Order } from '@/lib/api/orders'
 import { formatCurrency, formatNumber } from '@/lib/formatNumber'
 import { apiFetch, localApiFetch } from '@/lib/api/client'
+import Toast, { ToastState } from '@/components/ui/Toast'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 // Crypto payment data interface
 interface CryptoPayment {
@@ -136,6 +138,9 @@ export default function PurchasesPage() {
   const [adminTxHash, setAdminTxHash] = useState('')
   const [adminPaymentNote, setAdminPaymentNote] = useState('')
   const [cancellingOrder, setCancellingOrder] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const itemsPerPage = 10
 
   // Fetch orders
@@ -264,36 +269,50 @@ export default function PurchasesPage() {
   async function handleStatusUpdate(newStatus: string) {
     if (!detailOrder) return
     if (newStatus === detailOrder.status) return
-    if (!confirm(`Change order status to ${newStatus}?`)) return
-    setUpdatingStatus(true)
-    try {
-      const result = await ordersApi.updateStatus(detailOrder.id, newStatus, statusNote || undefined)
-      if (result.success && result.data) {
-        setDetailOrder(result.data)
-        setStatusNote('')
-        refreshData()
-      } else {
-        alert(result.error || 'Failed to update status')
+    setConfirmModal({
+      title: 'Update Order Status',
+      description: `Change status to ${newStatus}?`,
+      confirmLabel: 'Update',
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setUpdatingStatus(true)
+        try {
+          const result = await ordersApi.updateStatus(detailOrder.id, newStatus, statusNote || undefined)
+          if (result.success && result.data) {
+            setDetailOrder(result.data)
+            setStatusNote('')
+            refreshData()
+          } else {
+            setToast({ message: result.error || 'Failed to update status', type: 'error' })
+          }
+        } catch { setToast({ message: 'Network error', type: 'error' }) }
+        finally { setUpdatingStatus(false); setConfirmModal(null); setConfirmLoading(false) }
       }
-    } catch { alert('Network error') }
-    finally { setUpdatingStatus(false) }
+    })
   }
 
   async function handlePaymentUpdate(newStatus: string) {
     if (!detailOrder) return
     if (newStatus === detailOrder.paymentStatus) return
-    if (!confirm(`Change payment status to ${newStatus}?`)) return
-    setUpdatingPayment(true)
-    try {
-      const result = await ordersApi.updatePaymentStatus(detailOrder.id, newStatus)
-      if (result.success && result.data) {
-        setDetailOrder(result.data)
-        refreshData()
-      } else {
-        alert(result.error || 'Failed to update payment')
+    setConfirmModal({
+      title: 'Update Payment Status',
+      description: `Change payment status to ${newStatus}?`,
+      confirmLabel: 'Update',
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setUpdatingPayment(true)
+        try {
+          const result = await ordersApi.updatePaymentStatus(detailOrder.id, newStatus)
+          if (result.success && result.data) {
+            setDetailOrder(result.data)
+            refreshData()
+          } else {
+            setToast({ message: result.error || 'Failed to update payment', type: 'error' })
+          }
+        } catch { setToast({ message: 'Network error', type: 'error' }) }
+        finally { setUpdatingPayment(false); setConfirmModal(null); setConfirmLoading(false) }
       }
-    } catch { alert('Network error') }
-    finally { setUpdatingPayment(false) }
+    })
   }
 
   async function handleTrackingUpdate() {
@@ -305,9 +324,9 @@ export default function PurchasesPage() {
         setDetailOrder(result.data)
         refreshData()
       } else {
-        alert(result.error || 'Failed to update tracking')
+        setToast({ message: result.error || 'Failed to update tracking', type: 'error' })
       }
-    } catch { alert('Network error') }
+    } catch { setToast({ message: 'Network error', type: 'error' }) }
     finally { setUpdatingTracking(false) }
   }
 
@@ -334,28 +353,36 @@ export default function PurchasesPage() {
           setCryptoPayment({ ...cryptoPayment, status: 'MANUALLY_CONFIRMED' })
         }
         refreshData()
-        alert('Order marked as paid successfully')
+        setToast({ message: 'Order marked as paid successfully', type: 'success' })
       } else {
-        alert(result.error || 'Failed to mark as paid')
+        setToast({ message: result.error || 'Failed to mark as paid', type: 'error' })
       }
-    } catch { alert('Network error') }
+    } catch { setToast({ message: 'Network error', type: 'error' }) }
     finally { setMarkingPaid(false) }
   }
 
   async function handleCancelOrder() {
     if (!detailOrder) return
-    if (!confirm(`Are you sure you want to cancel order #${detailOrder.orderNumber}? This action cannot be undone.`)) return
-    setCancellingOrder(true)
-    try {
-      const result = await ordersApi.cancel(detailOrder.id, 'Cancelled by admin')
-      if (result.success && result.data) {
-        setDetailOrder(result.data)
-        refreshData()
-      } else {
-        alert(result.error || 'Failed to cancel order')
+    setConfirmModal({
+      title: 'Cancel Order',
+      description: `Are you sure you want to cancel order #${detailOrder.orderNumber}? This action cannot be undone.`,
+      confirmLabel: 'Cancel Order',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setCancellingOrder(true)
+        try {
+          const result = await ordersApi.cancel(detailOrder.id, 'Cancelled by admin')
+          if (result.success && result.data) {
+            setDetailOrder(result.data)
+            refreshData()
+          } else {
+            setToast({ message: result.error || 'Failed to cancel order', type: 'error' })
+          }
+        } catch { setToast({ message: 'Network error', type: 'error' }) }
+        finally { setCancellingOrder(false); setConfirmModal(null); setConfirmLoading(false) }
       }
-    } catch { alert('Network error') }
-    finally { setCancellingOrder(false) }
+    })
   }
 
   const loading = ordersLoading || statsLoading
@@ -1030,6 +1057,9 @@ export default function PurchasesPage() {
           </div>
         </>
       )}
+
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </AdminLayout>
   )
 }

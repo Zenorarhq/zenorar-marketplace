@@ -10,6 +10,7 @@ import ServiceLogo from '@/components/ui/ServiceLogo'
 import { formatNumber } from '@/lib/formatNumber'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDateShort } from '@/lib/date-utils'
+import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
 interface EsimPlan {
   id: string
@@ -170,6 +171,8 @@ function AdminEsimPageContent() {
   // Sync results modal
   const [lastSyncResults, setLastSyncResults] = useState<SyncResult[] | null>(null)
   const [showSyncDetails, setShowSyncDetails] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Update URL when tab changes
   const handleTabChange = (tab: TabType) => {
@@ -504,9 +507,18 @@ function AdminEsimPageContent() {
           <div className="flex gap-3">
             <button
               onClick={() => {
-                if (window.confirm('Sync all eSIM providers? This will fetch and update plans from all configured providers.')) {
-                  syncMutation.mutate()
-                }
+                setConfirmModal({
+                  title: 'Sync eSIM Providers',
+                  description: 'Sync all eSIM providers? This will fetch and update plans from all configured providers.',
+                  confirmLabel: 'Sync',
+                  danger: false,
+                  onConfirm: async () => {
+                    setConfirmLoading(true)
+                    syncMutation.mutate()
+                    setConfirmModal(null)
+                    setConfirmLoading(false)
+                  },
+                })
               }}
               disabled={syncMutation.isPending}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
@@ -1362,6 +1374,7 @@ function AdminEsimPageContent() {
           </div>
         )}
       </div>
+      {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
   )
 }
