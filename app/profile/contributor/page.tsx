@@ -494,6 +494,11 @@ export default function ContributorDashboard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contributor-methods'] }),
   })
 
+  const deleteScript = useMutation({
+    mutationFn: (id: string) => cFetch<any>(`/scripts/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contributor-scripts'] }),
+  })
+
   const tabs = [
     { key: 'scripts',  label: 'Scripts',  icon: 'code' },
     { key: 'earnings', label: 'Earnings', icon: 'trending-up' },
@@ -564,9 +569,20 @@ export default function ContributorDashboard() {
                 <div key={script.id} className="bg-surface-dark rounded-2xl border border-border-dark p-5">
                   <div className="flex items-start justify-between gap-4 mb-1">
                     <h3 className="text-white font-semibold leading-tight">{script.title}</h3>
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_COLORS[script.status] ?? 'text-slate-400 bg-slate-400/10'}`}>
-                      {script.status.replace('_', ' ')}
-                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[script.status] ?? 'text-slate-400 bg-slate-400/10'}`}>
+                        {script.status.replace('_', ' ')}
+                      </span>
+                      {script.status === 'SUBMITTED' && (
+                        <button
+                          onClick={() => { if (confirm('Delete this script submission? This cannot be undone.')) deleteScript.mutate(script.id) }}
+                          className="text-slate-600 hover:text-red-400 transition-colors"
+                          title="Delete submission"
+                        >
+                          <Icon name="trash-2" size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p className="text-slate-500 text-xs mb-1">Submitted {fmtDate(script.created_at)} · Asking {fmt(script.asking_price)}</p>
 
