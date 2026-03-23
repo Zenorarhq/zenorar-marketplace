@@ -55,6 +55,8 @@ export default function NewProductPage() {
     const result = await categoriesApi.list()
     if (result.success && result.data) {
       setCategories(result.data)
+      const scripts = result.data.find((c: Category) => c.slug === 'scripts')
+      if (scripts) setFormData(prev => ({ ...prev, categoryId: scripts.id }))
     }
   }
 
@@ -200,7 +202,7 @@ export default function NewProductPage() {
             <Icon name="arrow-left" size={20} className="text-white" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Add New Product</h1>
+            <h1 className="text-2xl font-bold text-white">Add New Script</h1>
             <p className="text-slate-400 text-sm">Create a new product for your marketplace</p>
           </div>
         </div>

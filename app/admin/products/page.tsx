@@ -6,7 +6,6 @@ import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { productsApi, Product } from '@/lib/api/products'
-import { categoriesApi, Category } from '@/lib/api/categories'
 import { formatNumber } from '@/lib/formatNumber'
 import { apiFetch } from '@/lib/api/client'
 import ProductReviewsModal from '@/components/admin/ProductReviewsModal'
@@ -16,7 +15,7 @@ import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 export default function ProductsPage() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedCategory] = useState('scripts')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -37,18 +36,6 @@ export default function ProductsPage() {
         return result.data
       }
       throw new Error(result.error || 'Failed to load products')
-    },
-  })
-
-  // Fetch categories with React Query (cached)
-  const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: ['admin-products-categories'],
-    queryFn: async () => {
-      const result = await categoriesApi.list()
-      if (result.success && result.data) {
-        return result.data
-      }
-      return []
     },
   })
 
@@ -163,8 +150,8 @@ export default function ProductsPage() {
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = selectedCategory === 'all' || product.categoryId === selectedCategory
     const matchesStatus = selectedStatus === 'all' || product.status.toLowerCase() === selectedStatus
+    const matchesCategory = product.category?.slug === 'scripts'
     return matchesSearch && matchesCategory && matchesStatus
   })
 
@@ -177,7 +164,7 @@ export default function ProductsPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, selectedCategory, selectedStatus])
+  }, [searchQuery, selectedStatus])
 
   // Calculate stats from all products
   const stats = {
@@ -220,15 +207,15 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-6">
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">Products</h1>
-          <p className="text-slate-500 text-xs sm:text-sm">Manage your marketplace products</p>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-1">Scripts</h1>
+          <p className="text-slate-500 text-xs sm:text-sm">Manage your marketplace scripts</p>
         </div>
         <Link
           href="/admin/products/new"
           className="bg-primary hover:bg-primary/90 text-black text-xs sm:text-sm font-semibold px-2 sm:px-3 py-2 rounded-lg transition-colors flex items-center gap-1 sm:gap-2 flex-shrink-0"
         >
           <Icon name="add" size={14} />
-          <span className="hidden sm:inline">Add Product</span>
+          <span className="hidden sm:inline">Add Script</span>
           <span className="sm:hidden">Add</span>
         </Link>
       </div>
@@ -237,7 +224,7 @@ export default function ProductsPage() {
       <div className="grid grid-cols-1 gap-3 lg:gap-4 mb-6">
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
           <div className="flex items-start justify-between mb-3">
-            <p className="text-slate-400 text-xs lg:text-sm">Total Products</p>
+            <p className="text-slate-400 text-xs lg:text-sm">Total Scripts</p>
             <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
               <Icon name="code" size={16} />
             </div>
@@ -251,7 +238,7 @@ export default function ProductsPage() {
 
       {/* Filters */}
       <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Search */}
           <div className="relative">
             <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -263,20 +250,6 @@ export default function ProductsPage() {
               className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white pl-10 pr-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
-
-          {/* Category Filter */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="all">All Categories</option>
-            {categories.map(category => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
 
           {/* Status Filter */}
           <select

@@ -33,7 +33,7 @@ interface AdminLayoutProps {
 }
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard', permission: 'view_analytics' },
-  { href: '/admin/products', label: 'Products', icon: 'box', permission: 'view_products' },
+  { href: '/admin/products', label: 'Scripts', icon: 'code', permission: 'view_products' },
   { href: '/admin/gift-cards', label: 'Gift Cards', icon: 'gift', permission: 'view_products' },
   { href: '/admin/esim', label: 'eSIMs', icon: 'sim-card', permission: 'view_products' },
   { href: '/admin/cards', label: 'Cards', icon: 'credit-card', permission: 'view_products' },

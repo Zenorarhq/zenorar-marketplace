@@ -437,7 +437,7 @@ export default function EditProductPage() {
             <Icon name="arrow-left" size={20} className="text-white" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Edit Product</h1>
+            <h1 className="text-2xl font-bold text-white">Edit Script</h1>
             <p className="text-slate-400 text-sm">Update product information</p>
           </div>
         </div>

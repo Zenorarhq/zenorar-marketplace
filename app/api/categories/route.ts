@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeQuery } from '@/lib/db-helpers'
+import { authenticateRequest } from '@/lib/auth-middleware'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,5 +92,39 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Categories list error:', error)
     return NextResponse.json({ success: false, error: 'Failed to load categories' }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const user = await authenticateRequest(request)
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+    }
+    const isAdmin = user.role?.toUpperCase() === 'ADMIN' || user.role?.toUpperCase() === 'EDITOR'
+    if (!isAdmin) {
+      return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { name, slug, description, image, icon, parentId } = body
+
+    if (!name?.trim() || !slug?.trim()) {
+      return NextResponse.json({ success: false, error: 'Name and slug are required' }, { status: 400 })
+    }
+
+    const result = await executeQuery(`
+      INSERT INTO categories (id, name, slug, description, image, icon, "parentId", "isActive", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, true, NOW(), NOW())
+      RETURNING *
+    `, [name.trim(), slug.trim(), description || null, image || null, icon || 'code', parentId || null])
+
+    return NextResponse.json({ success: true, data: result.rows[0] }, { status: 201 })
+  } catch (error: any) {
+    if (error.code === '23505') {
+      return NextResponse.json({ success: false, error: 'A category with this slug already exists' }, { status: 409 })
+    }
+    console.error('Category create error:', error)
+    return NextResponse.json({ success: false, error: 'Failed to create category' }, { status: 500 })
   }
 }
