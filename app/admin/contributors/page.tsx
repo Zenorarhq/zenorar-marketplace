@@ -146,6 +146,7 @@ export default function AdminContributorsPage() {
   const [scriptPage, setScriptPage] = useState(1)
   const [scriptNoteTarget, setScriptNoteTarget] = useState<{ id: string; title: string } | null>(null)
   const [scriptNoteValue, setScriptNoteValue] = useState('')
+  const [viewScriptId, setViewScriptId] = useState<string | null>(null)
   const [linkProductTarget, setLinkProductTarget] = useState<{ id: string; title: string } | null>(null)
   const [linkProductId, setLinkProductId] = useState('')
 
@@ -182,6 +183,12 @@ export default function AdminContributorsPage() {
     queryKey: ['c-admin-scripts', scriptStatusFilter, scriptPage],
     queryFn: () => cFetch<any>(`/admin/scripts?status=${scriptStatusFilter === 'ALL' ? '' : scriptStatusFilter}&page=${scriptPage}&limit=20`),
     enabled: tab === 'scripts',
+  })
+
+  const { data: viewScriptData, isLoading: viewScriptLoading } = useQuery({
+    queryKey: ['c-admin-script-detail', viewScriptId],
+    queryFn: () => cFetch<any>(`/admin/scripts/${viewScriptId}`),
+    enabled: !!viewScriptId,
   })
 
   const { data: payoutsData, isLoading: payoutsLoading } = useQuery({
@@ -513,6 +520,8 @@ export default function AdminContributorsPage() {
                         <td className="py-3 px-4 text-center"><StatusBadge status={s.status} /></td>
                         <td className="py-3 px-4">
                           <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <button onClick={() => setViewScriptId(s.id)}
+                              className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-medium hover:bg-blue-500/20 transition-colors">View</button>
                             {!['LIVE', 'REJECTED'].includes(s.status) && (
                               <button onClick={() => advanceScript.mutate({ id: s.id })}
                                 className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">Advance</button>
@@ -671,6 +680,99 @@ export default function AdminContributorsPage() {
                 {addScriptNote.isPending ? 'Saving...' : 'Save Note'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {viewScriptId && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setViewScriptId(null)}>
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-white">Script Details</h3>
+              <button onClick={() => setViewScriptId(null)} className="text-slate-400 hover:text-white transition-colors">✕</button>
+            </div>
+            {viewScriptLoading ? (
+              <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : viewScriptData ? (
+              <div className="space-y-4 text-sm">
+                <div>
+                  <div className="text-slate-400 text-xs uppercase mb-1">Title</div>
+                  <div className="text-white font-semibold">{viewScriptData.title}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-slate-400 text-xs uppercase mb-1">Category</div>
+                    <div className="text-slate-200">{viewScriptData.category}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 text-xs uppercase mb-1">Language / Platform</div>
+                    <div className="text-slate-200">{viewScriptData.language_platform}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 text-xs uppercase mb-1">Asking Price</div>
+                    <div className="text-primary font-semibold">{fmt(viewScriptData.asking_price)}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 text-xs uppercase mb-1">Status</div>
+                    <StatusBadge status={viewScriptData.status} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400 text-xs uppercase mb-1">Short Description</div>
+                  <div className="text-slate-200 leading-relaxed">{viewScriptData.short_description}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 text-xs uppercase mb-1">Full Description</div>
+                  <div className="text-slate-200 leading-relaxed whitespace-pre-wrap">{viewScriptData.full_description}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 text-xs uppercase mb-1">Demo URL</div>
+                  <a href={viewScriptData.demo_url} target="_blank" rel="noopener noreferrer"
+                    className="text-primary hover:underline break-all">{viewScriptData.demo_url}</a>
+                  <button onClick={() => navigator.clipboard.writeText(viewScriptData.demo_url)}
+                    className="ml-2 text-xs text-slate-400 hover:text-white border border-[#2a2a2a] px-2 py-0.5 rounded transition-colors">Copy</button>
+                </div>
+                {viewScriptData.tags?.length > 0 && (
+                  <div>
+                    <div className="text-slate-400 text-xs uppercase mb-1">Tags</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {viewScriptData.tags.map((t: string) => (
+                        <span key={t} className="px-2 py-0.5 rounded-full bg-[#1f1f1f] border border-[#2a2a2a] text-slate-300 text-xs">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-slate-400 text-xs uppercase mb-1">Offers Support</div>
+                    <div className="text-slate-200">{viewScriptData.offers_support ? 'Yes' : 'No'}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 text-xs uppercase mb-1">Exclusive</div>
+                    <div className="text-slate-200">{viewScriptData.exclusive ? 'Yes' : 'No'}</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400 text-xs uppercase mb-1">Contributor</div>
+                  <div className="text-slate-200">{viewScriptData.contributor_name} — {viewScriptData.contributor_email}</div>
+                </div>
+                {viewScriptData.admin_note && (
+                  <div>
+                    <div className="text-slate-400 text-xs uppercase mb-1">Admin Note</div>
+                    <div className="text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">{viewScriptData.admin_note}</div>
+                  </div>
+                )}
+                {viewScriptData.cloudinary_url && (
+                  <div>
+                    <div className="text-slate-400 text-xs uppercase mb-1">Uploaded File</div>
+                    <a href={viewScriptData.cloudinary_url} target="_blank" rel="noopener noreferrer"
+                      className="text-primary hover:underline break-all text-xs">{viewScriptData.cloudinary_url}</a>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-slate-400 text-center py-8">Script not found</div>
+            )}
           </div>
         </div>
       )}
