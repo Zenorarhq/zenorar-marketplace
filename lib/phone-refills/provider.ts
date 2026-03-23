@@ -269,8 +269,10 @@ class ZenditTopupProvider {
       const body: Record<string, unknown> = {
         offerId: params.offerId,
         transactionId,
-        recipientPhoneNumber: params.recipientPhone,
-        senderPhoneNumber: params.senderPhone || params.recipientPhone,
+        fields: [
+          { key: 'recipient.msisdn', value: params.recipientPhone },
+          { key: 'sender.msisdn', value: params.senderPhone || params.recipientPhone },
+        ],
       }
 
       // For range-priced offers, include value as dto.PurchaseValue { type, value }
