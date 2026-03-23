@@ -271,8 +271,8 @@ export default function AdminContributorsPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <StatCard label="Total Contributors" value={stats.totalContributors} icon="users" />
             <StatCard label="Pending Applications" value={stats.pendingApplications} icon="clock" color="yellow" />
-            <StatCard label="Scripts Under Review" value={stats.pendingScriptReviews} icon="file-text" color="blue" />
-            <StatCard label="Commission Paid" value={fmt(stats.totalCommissionPaid)} icon="dollar-sign" color="green" />
+            <StatCard label="Scripts Under Review" value={stats.pendingScriptReviews} icon="file" color="blue" />
+            <StatCard label="Commission Paid" value={fmt(stats.totalCommissionPaid)} icon="dollar" color="green" />
             <StatCard label="Pending Payouts" value={stats.pendingPayouts} icon="send" color="yellow" />
             <StatCard label="Pending Amount" value={fmt(stats.pendingPayoutAmount)} icon="wallet" color="red" />
           </div>
