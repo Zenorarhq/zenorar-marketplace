@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
@@ -74,17 +74,20 @@ function AdjustBalanceModal({ contributor, onClose, onDone }: { contributor: any
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const inFlight = useRef(false)
 
   async function submit() {
+    if (inFlight.current) return
     const amt = Number(amount)
     if (!amt) { setError('Enter a non-zero amount'); return }
+    inFlight.current = true
     setSubmitting(true); setError(null)
     try {
       await cFetch(`/admin/contributors/${contributor.id}/adjust-balance`, {
         method: 'POST', body: JSON.stringify({ amount: amt, note }),
       })
       onDone()
-    } catch (e: any) { setError(e.message) } finally { setSubmitting(false) }
+    } catch (e: any) { setError(e.message) } finally { inFlight.current = false; setSubmitting(false) }
   }
 
   return (
@@ -134,6 +137,11 @@ export default function AdminContributorsPage() {
   const [adjustTarget, setAdjustTarget] = useState<any>(null)
   const [noteTarget, setNoteTarget] = useState<{ id: string; email: string } | null>(null)
   const [noteValue, setNoteValue] = useState('')
+  const [detailTarget, setDetailTarget] = useState<any>(null)
+  const [commHistoryTarget, setCommHistoryTarget] = useState<any>(null)
+  const [commHistoryPage, setCommHistoryPage] = useState(1)
+  const [editRateTarget, setEditRateTarget] = useState<{ id: string; email: string; rate: number } | null>(null)
+  const [editRateValue, setEditRateValue] = useState('')
 
   // Applications state
   const [appStatusFilter, setAppStatusFilter] = useState('PENDING')
@@ -197,6 +205,18 @@ export default function AdminContributorsPage() {
     enabled: tab === 'payouts',
   })
 
+  const { data: detailData, isLoading: detailLoading } = useQuery({
+    queryKey: ['c-admin-contributor-detail', detailTarget?.id],
+    queryFn: () => cFetch<any>(`/admin/contributors/${detailTarget.id}`),
+    enabled: !!detailTarget?.id,
+  })
+
+  const { data: commHistoryData, isLoading: commHistoryLoading } = useQuery({
+    queryKey: ['c-admin-contributor-commissions', commHistoryTarget?.id, commHistoryPage],
+    queryFn: () => cFetch<any>(`/admin/contributors/${commHistoryTarget.id}/commissions?page=${commHistoryPage}&limit=20`),
+    enabled: !!commHistoryTarget?.id,
+  })
+
   // ── Mutations ─────────────────────────────────────────────────────────────────
 
   const approveApp = useMutation({
@@ -254,6 +274,17 @@ export default function AdminContributorsPage() {
     mutationFn: ({ id, note }: { id: string; note?: string }) =>
       cFetch(`/admin/payouts/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) }),
     onSuccess: () => { setRejectPayoutTarget(null); setRejectPayoutNote(''); qc.invalidateQueries({ queryKey: ['c-admin-payouts'] }) },
+  })
+
+  const setCommissionRate = useMutation({
+    mutationFn: ({ id, rate }: { id: string; rate: number }) =>
+      cFetch(`/admin/contributors/${id}/commission-rate`, { method: 'POST', body: JSON.stringify({ rate }) }),
+    onSuccess: () => {
+      setEditRateTarget(null)
+      setEditRateValue('')
+      qc.invalidateQueries({ queryKey: ['c-admin-contributors'] })
+      qc.invalidateQueries({ queryKey: ['c-admin-contributor-detail'] })
+    },
   })
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -375,6 +406,18 @@ export default function AdminContributorsPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => setDetailTarget(c)} title="View details"
+                              className={`p-1.5 rounded hover:bg-blue-500/10 transition-colors ${detailTarget?.id === c.id ? 'text-blue-400' : 'text-slate-400 hover:text-blue-400'}`}>
+                              <Icon name="eye" size={14} />
+                            </button>
+                            <button onClick={() => { setCommHistoryTarget(c); setCommHistoryPage(1) }} title="Commission history"
+                              className="p-1.5 rounded text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 transition-colors">
+                              <Icon name="history" size={14} />
+                            </button>
+                            <button onClick={() => { setEditRateTarget({ id: c.id, email: c.email, rate: c.contributor_commission_rate }); setEditRateValue(String(c.contributor_commission_rate)) }} title="Edit commission rate"
+                              className="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors">
+                              <Icon name="percent" size={14} />
+                            </button>
                             {c.contributor_suspended_at ? (
                               <button onClick={() => reinstateContributor.mutate(c.id)} title="Reinstate"
                                 className="p-1.5 rounded hover:bg-green-500/10 transition-colors text-green-400">
@@ -383,7 +426,7 @@ export default function AdminContributorsPage() {
                             ) : (
                               <button onClick={() => { if (confirm(`Suspend ${c.email}?`)) suspendContributor.mutate(c.id) }} title="Suspend"
                                 className="p-1.5 rounded hover:bg-orange-500/10 transition-colors text-orange-400">
-                                <Icon name="x-circle" size={14} />
+                                <Icon name="ban" size={14} />
                               </button>
                             )}
                             <button onClick={() => setAdjustTarget(c)} title="Adjust Balance"
@@ -832,6 +875,197 @@ export default function AdminContributorsPage() {
                 {markPayoutPaid.isPending ? 'Processing...' : 'Confirm Paid'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Commission Rate Modal ─────────────────────────────── */}
+      {editRateTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-sm">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-lg font-bold text-white">Edit Commission Rate</h3>
+              <button onClick={() => setEditRateTarget(null)} className="text-slate-400 hover:text-white"><Icon name="x" size={20} /></button>
+            </div>
+            <p className="text-slate-400 text-sm mb-4">{editRateTarget.email}</p>
+            <div className="mb-4">
+              <label className="block text-sm text-slate-300 mb-1.5">Commission Rate (%)</label>
+              <input
+                type="number" min={1} max={99} step={1}
+                value={editRateValue}
+                onChange={(e) => setEditRateValue(e.target.value)}
+                placeholder="e.g. 30"
+                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setEditRateTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Cancel</button>
+              <button
+                onClick={() => setCommissionRate.mutate({ id: editRateTarget.id, rate: Number(editRateValue) })}
+                disabled={setCommissionRate.isPending || !editRateValue}
+                className="flex-1 bg-primary text-black rounded-xl py-2.5 text-sm font-bold hover:brightness-110 disabled:opacity-50">
+                {setCommissionRate.isPending ? 'Saving...' : 'Save Rate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Commission History Modal ───────────────────────────────── */}
+      {commHistoryTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setCommHistoryTarget(null)}>
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-lg font-bold text-white">Commission History</h3>
+                <p className="text-slate-400 text-sm">{commHistoryTarget.email}</p>
+              </div>
+              <button onClick={() => setCommHistoryTarget(null)} className="text-slate-400 hover:text-white"><Icon name="x" size={20} /></button>
+            </div>
+            {commHistoryLoading ? (
+              <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : (
+              <>
+                <div className="overflow-x-auto rounded-xl border border-[#1f1f1f]">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#0a0a0a] border-b border-[#1f1f1f]">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Product</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase hidden md:table-cell">Order ID</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Sale</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Commission</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1f1f1f]">
+                      {commHistoryData?.commissions?.map((c: any) => (
+                        <tr key={c.id} className="hover:bg-[#1a1a1a] transition-colors">
+                          <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{fmtDate(c.created_at)}</td>
+                          <td className="px-4 py-3 text-white max-w-[180px] truncate">{c.product_name || '—'}</td>
+                          <td className="px-4 py-3 text-slate-500 text-xs font-mono hidden md:table-cell">{c.order_id?.slice(0, 8)}…</td>
+                          <td className="px-4 py-3 text-right text-slate-300">{fmt(c.sale_amount)}</td>
+                          <td className="px-4 py-3 text-right text-primary font-semibold">{fmt(c.commission_amount)}</td>
+                          <td className="px-4 py-3 text-center"><StatusBadge status={c.status} /></td>
+                        </tr>
+                      ))}
+                      {!commHistoryData?.commissions?.length && (
+                        <tr><td colSpan={6} className="py-8 text-center text-slate-500">No commissions yet</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {commHistoryData?.total > 20 && (
+                  <div className="flex justify-center gap-2 mt-4">
+                    <button disabled={commHistoryPage === 1} onClick={() => setCommHistoryPage(commHistoryPage - 1)}
+                      className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40 text-sm transition-colors">← Prev</button>
+                    <button disabled={commHistoryPage * 20 >= commHistoryData.total} onClick={() => setCommHistoryPage(commHistoryPage + 1)}
+                      className="px-3 py-1.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#2a2a2a] disabled:opacity-40 text-sm transition-colors">Next →</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Contributor Detail Modal ───────────────────────────────── */}
+      {detailTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setDetailTarget(null)}>
+          <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-300">
+                  {detailTarget.name?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-white">{detailTarget.name}</h3>
+                    <StatusBadge status={detailTarget.contributor_suspended_at ? 'SUSPENDED' : 'ACTIVE'} />
+                  </div>
+                  <p className="text-slate-400 text-sm">{detailTarget.email}</p>
+                </div>
+              </div>
+              <button onClick={() => setDetailTarget(null)} className="text-slate-400 hover:text-white"><Icon name="x" size={20} /></button>
+            </div>
+
+            {detailLoading ? (
+              <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : detailData ? (
+              <div className="space-y-5">
+                {/* Balance cards */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-4 text-center">
+                    <div className="text-xs text-slate-400 mb-1">Available</div>
+                    <div className="text-lg font-bold text-primary">{fmt(detailData.balance?.available_balance ?? 0)}</div>
+                  </div>
+                  <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-4 text-center">
+                    <div className="text-xs text-slate-400 mb-1">Lifetime Earned</div>
+                    <div className="text-lg font-bold text-white">{fmt(detailData.balance?.lifetime_earned ?? 0)}</div>
+                  </div>
+                  <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-4 text-center">
+                    <div className="text-xs text-slate-400 mb-1">Total Paid Out</div>
+                    <div className="text-lg font-bold text-green-400">{fmt(detailData.balance?.total_paid ?? 0)}</div>
+                  </div>
+                </div>
+
+                {/* Commission rate */}
+                <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-slate-400 mb-1">Commission Rate</div>
+                    <div className="text-xl font-bold text-white">{detailData.user?.contributorCommissionRate ?? detailTarget.contributor_commission_rate}%</div>
+                  </div>
+                  <button
+                    onClick={() => { setDetailTarget(null); setEditRateTarget({ id: detailTarget.id, email: detailTarget.email, rate: detailTarget.contributor_commission_rate }); setEditRateValue(String(detailTarget.contributor_commission_rate)) }}
+                    className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-medium hover:bg-primary/20 transition-colors flex items-center gap-1.5">
+                    <Icon name="edit" size={12} /> Edit Rate
+                  </button>
+                </div>
+
+                {/* Recent scripts */}
+                {detailData.recentScripts?.length > 0 && (
+                  <div>
+                    <div className="text-xs text-slate-400 uppercase mb-2 font-medium">Recent Scripts</div>
+                    <div className="bg-[#111] border border-[#1f1f1f] rounded-xl overflow-hidden">
+                      {detailData.recentScripts.map((s: any, i: number) => (
+                        <div key={s.id} className={`flex items-center justify-between px-4 py-3 text-sm ${i > 0 ? 'border-t border-[#1f1f1f]' : ''}`}>
+                          <div className="text-white truncate max-w-[60%]">{s.title}</div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-slate-400 text-xs">{fmt(s.asking_price)}</span>
+                            <StatusBadge status={s.status} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Joined date */}
+                <div className="text-slate-500 text-xs">
+                  Approved: {fmtDate(detailData.user?.contributorApprovedAt)}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3 pt-2">
+                  {detailData.user?.contributorSuspendedAt ? (
+                    <button
+                      onClick={() => { reinstateContributor.mutate(detailTarget.id); setDetailTarget(null) }}
+                      className="flex-1 bg-green-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-green-500 transition-colors">
+                      Reinstate Contributor
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { if (confirm(`Suspend ${detailTarget.email}?`)) { suspendContributor.mutate(detailTarget.id); setDetailTarget(null) } }}
+                      className="flex-1 bg-orange-600 text-white rounded-xl py-2.5 text-sm font-bold hover:bg-orange-500 transition-colors">
+                      Suspend Contributor
+                    </button>
+                  )}
+                  <button onClick={() => setDetailTarget(null)} className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-slate-300 rounded-xl py-2.5 text-sm font-medium hover:border-primary transition-all">Close</button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-slate-400 text-center py-8">Could not load contributor details</div>
+            )}
           </div>
         </div>
       )}
