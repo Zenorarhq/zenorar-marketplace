@@ -1,6 +1,6 @@
 // Categories API
 
-import { apiFetch, buildQueryString } from './client'
+import { apiFetch, localApiFetch, buildQueryString } from './client'
 import { Category } from './products'
 export type { Category }
 
@@ -35,13 +35,12 @@ export const categoriesApi = {
   },
 
   async getTree() {
-    return apiFetch<CategoryWithChildren[]>('/categories/tree')
+    return localApiFetch<CategoryWithChildren[]>('/categories/tree')
   },
 
   async getMainCategories() {
-    const result = await apiFetch<CategoryWithChildren[]>('/categories')
+    const result = await localApiFetch<CategoryWithChildren[]>('/categories')
     if (result.success && result.data) {
-      // Filter to get only main categories (no parent)
       return {
         ...result,
         data: result.data.filter(cat => !cat.parentId)
@@ -54,23 +53,23 @@ export const categoriesApi = {
     return apiFetch<Category[]>(`/categories/${id}/breadcrumb`)
   },
 
-  // Admin methods
+  // Admin methods — use Next.js API routes (localApiFetch) so they work independently of the Express backend
   async create(data: Partial<Category>) {
-    return apiFetch<Category>('/categories', {
+    return localApiFetch<Category>('/categories', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   },
 
   async update(id: string, data: Partial<Category>) {
-    return apiFetch<Category>(`/categories/${id}`, {
+    return localApiFetch<Category>(`/categories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     })
   },
 
   async delete(id: string) {
-    return apiFetch<void>(`/categories/${id}`, {
+    return localApiFetch<void>(`/categories/${id}`, {
       method: 'DELETE',
     })
   },
