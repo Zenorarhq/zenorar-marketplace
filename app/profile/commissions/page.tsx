@@ -400,200 +400,170 @@ export default function CommissionsPage() {
           </div>
         )}
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-white">Commissions</h1>
-              {user?.vendorSuspendedAt
-                ? <span className="text-xs font-bold text-red-400 bg-red-400/10 border border-red-400/20 px-2.5 py-1 rounded-full">⊘ Suspended</span>
-                : <span className="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full">✦ Verified Vendor</span>
-              }
+        {/* Balance Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { label: 'Available to Withdraw', value: fmt(balance?.available ?? 0), icon: 'dollar', accent: true },
+            { label: 'Locked (7-day window)', value: fmt(balance?.locked ?? 0), icon: 'lock' },
+            { label: 'Lifetime Earned', value: fmt(balance?.lifetimeEarned ?? 0), icon: 'trending-up' },
+          ].map((card) => (
+            <div key={card.label} className={`bg-surface-dark rounded-2xl p-5 border ${card.accent ? 'border-primary/30' : 'border-border-dark'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-slate-400 text-sm">{card.label}</span>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${card.accent ? 'bg-primary/15 text-primary' : 'bg-border-dark text-slate-400'}`}>
+                  <Icon name={card.icon} size={16} />
+                </div>
+              </div>
+              <div className={`text-2xl font-bold ${card.accent ? 'text-primary' : 'text-white'}`}>{card.value}</div>
             </div>
-            <p className="text-slate-400 text-sm mt-1">Track your earnings and manage payouts</p>
-          </div>
-          <button
-            onClick={() => setShowRequestPayout(true)}
-            disabled={!balance || balance.available <= 0}
-            className="bg-primary text-black px-5 py-2.5 rounded-xl font-semibold text-sm hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Request Payout
-          </button>
+          ))}
         </div>
 
-        {/* Balance Cards */}
-        {balLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-background-dark rounded-xl p-5 border border-border-dark h-20 animate-pulse" />
-            ))}
-          </div>
-        ) : balance ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-background-dark rounded-xl p-5 border border-border-dark">
-              <p className="text-slate-500 text-xs mb-1">Available to Withdraw</p>
-              <p className="text-2xl font-bold text-primary">{fmt(balance.available)}</p>
-            </div>
-            <div className="bg-background-dark rounded-xl p-5 border border-border-dark">
-              <p className="text-slate-500 text-xs mb-1">Locked (7-day window)</p>
-              <p className="text-2xl font-bold text-yellow-400">{fmt(balance.locked)}</p>
-            </div>
-            <div className="bg-background-dark rounded-xl p-5 border border-border-dark">
-              <p className="text-slate-500 text-xs mb-1">Lifetime Earned</p>
-              <p className="text-2xl font-bold text-white">{fmt(balance.lifetimeEarned)}</p>
-            </div>
-          </div>
-        ) : null}
-
         {/* Tabs */}
-        <div className="flex gap-1 bg-surface-dark rounded-xl p-1 overflow-x-auto">
+        <div className="flex gap-1 bg-surface-dark rounded-xl p-1 border border-border-dark overflow-x-auto">
           {([
-            { key: 'commissions', label: 'Earnings' },
-            { key: 'payouts', label: 'Payouts' },
-            { key: 'methods', label: 'Methods' },
-          ] as { key: Tab; label: string }[]).map((t) => (
+            { key: 'commissions', label: 'Earnings', icon: 'trending-up' },
+            { key: 'payouts', label: 'Payouts', icon: 'send' },
+            { key: 'methods', label: 'Methods', icon: 'wallet' },
+          ] as { key: Tab; label: string; icon: string }[]).map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                tab === t.key
-                  ? 'bg-primary text-black'
-                  : 'text-slate-400 hover:text-white'
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-1 justify-center ${
+                tab === t.key ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'
               }`}
             >
+              <Icon name={t.icon} size={15} />
               {t.label}
             </button>
           ))}
         </div>
 
-        {/* Commission History */}
+        {/* Earnings Tab */}
         {tab === 'commissions' && (
           commLoading ? (
-            <div className="text-slate-400 text-sm text-center py-10">Loading...</div>
+            <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
           ) : !commissions?.length ? (
-            <div className="text-center py-16 text-slate-400">
-              <Icon name="trending-up" size={32} className="mx-auto mb-3 opacity-30" />
-              <p>No commissions yet. Commission is earned when your orders are placed.</p>
+            <div className="bg-surface-dark rounded-2xl border border-border-dark p-12 text-center">
+              <Icon name="trending-up" size={32} className="text-slate-600 mx-auto mb-3" />
+              <h3 className="text-white font-semibold mb-2">No earnings yet</h3>
+              <p className="text-slate-400 text-sm">Commission records will appear here when your orders are placed.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="bg-surface-dark rounded-2xl border border-border-dark overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border-dark text-slate-400">
-                    <th className="text-left py-3 px-2">Order</th>
-                    <th className="text-right py-3 px-2">Amount</th>
-                    <th className="text-left py-3 px-2">Status</th>
-                    <th className="text-left py-3 px-2 hidden sm:table-cell">Unlocks</th>
-                    <th className="text-left py-3 px-2 hidden md:table-cell">Date</th>
+                    <th className="text-left py-3 px-4">Order</th>
+                    <th className="text-right py-3 px-4">Amount</th>
+                    <th className="text-right py-3 px-4">Status</th>
+                    <th className="text-right py-3 px-4 hidden sm:table-cell">Unlocks</th>
+                    <th className="text-right py-3 px-4 hidden md:table-cell">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-dark">
                   {commissions.map((c) => (
-                    <tr key={c.id} className="text-slate-300">
-                      <td className="py-3 px-2 font-mono text-xs text-slate-400">{c.orderNumber}</td>
-                      <td className="py-3 px-2 text-right font-semibold text-white">{fmt(c.amount)}</td>
-                      <td className="py-3 px-2">
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[c.status] || ''}`}>
-                          {c.status}
-                        </span>
+                    <tr key={c.id} className="text-slate-300 hover:bg-white/2">
+                      <td className="py-3 px-4 font-mono text-xs text-slate-400">{c.orderNumber}</td>
+                      <td className="py-3 px-4 text-right font-semibold text-primary">{fmt(c.amount)}</td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[c.status] || ''}`}>{c.status}</span>
                       </td>
-                      <td className="py-3 px-2 text-slate-400 text-xs hidden sm:table-cell">
+                      <td className="py-3 px-4 text-right text-slate-400 text-xs hidden sm:table-cell">
                         {c.status === 'LOCKED' ? fmtDate(c.unlocksAt) : '—'}
                       </td>
-                      <td className="py-3 px-2 text-slate-500 text-xs hidden md:table-cell">{fmtDate(c.createdAt)}</td>
+                      <td className="py-3 px-4 text-right text-slate-500 text-xs hidden md:table-cell">{fmtDate(c.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {commTotal > PAGE_SIZE && (
-                <div className="flex items-center justify-between pt-4 text-sm">
-                  <span className="text-slate-500 text-xs">Page {commPage} of {Math.ceil(commTotal / PAGE_SIZE)}</span>
-                  <div className="flex gap-2">
-                    <button onClick={() => setCommPage((p) => p - 1)} disabled={commPage <= 1}
-                      className="px-3 py-1.5 rounded-lg border border-border-dark text-slate-400 hover:text-white disabled:opacity-40 text-xs transition-colors">
-                      Prev
-                    </button>
-                    <button onClick={() => setCommPage((p) => p + 1)} disabled={commPage >= Math.ceil(commTotal / PAGE_SIZE)}
-                      className="px-3 py-1.5 rounded-lg border border-border-dark text-slate-400 hover:text-white disabled:opacity-40 text-xs transition-colors">
-                      Next
-                    </button>
-                  </div>
+                <div className="flex justify-center gap-2 p-4">
+                  <button onClick={() => setCommPage((p) => p - 1)} disabled={commPage <= 1}
+                    className="px-4 py-2 rounded-lg border border-border-dark text-slate-400 hover:border-primary hover:text-primary disabled:opacity-40 text-sm">← Prev</button>
+                  <span className="px-4 py-2 text-slate-400 text-sm">Page {commPage}</span>
+                  <button onClick={() => setCommPage((p) => p + 1)} disabled={commPage >= Math.ceil(commTotal / PAGE_SIZE)}
+                    className="px-4 py-2 rounded-lg border border-border-dark text-slate-400 hover:border-primary hover:text-primary disabled:opacity-40 text-sm">Next →</button>
                 </div>
               )}
             </div>
           )
         )}
 
-        {/* Payout History */}
+        {/* Payouts Tab */}
         {tab === 'payouts' && (
-          payoutsLoading ? (
-            <div className="text-slate-400 text-sm text-center py-10">Loading...</div>
-          ) : !payouts?.length ? (
-            <div className="text-center py-16 text-slate-400">
-              <Icon name="wallet" size={32} className="mx-auto mb-3 opacity-30" />
-              <p>No payouts yet. Request your first payout once you have available balance.</p>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-slate-400 text-sm">Available: <span className="text-white font-bold">{fmt(balance?.available ?? 0)}</span></p>
+                <p className="text-slate-500 text-xs">Min payout: ${balance?.minPayoutAmount ?? 50} · 7-day lock window</p>
+              </div>
+              <button
+                onClick={() => setShowRequestPayout(true)}
+                disabled={!balance || balance.available <= 0}
+                className="bg-primary text-black px-4 py-2.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Icon name="send" size={14} />
+                Request Payout
+              </button>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border-dark text-slate-400">
-                    <th className="text-right py-3 px-2">Amount</th>
-                    <th className="text-left py-3 px-2">Method</th>
-                    <th className="text-left py-3 px-2">Status</th>
-                    <th className="text-left py-3 px-2 hidden sm:table-cell">Tx Hash</th>
-                    <th className="text-left py-3 px-2 hidden md:table-cell">Date</th>
-                    <th className="py-3 px-2" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-dark">
-                  {payouts.map((p) => (
-                    <tr key={p.id} className="text-slate-300">
-                      <td className="py-3 px-2 text-right font-semibold text-white">{fmt(p.amount)}</td>
-                      <td className="py-3 px-2 text-slate-400 text-xs">{METHOD_LABELS[p.method] || p.method}</td>
-                      <td className="py-3 px-2">
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[p.status] || ''}`}>
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-2 text-slate-400 text-xs hidden sm:table-cell font-mono">
-                        {p.txHash ? `${p.txHash.slice(0, 10)}...` : '—'}
-                      </td>
-                      <td className="py-3 px-2 text-slate-500 text-xs hidden md:table-cell">{fmtDate(p.createdAt)}</td>
-                      <td className="py-3 px-2 text-right">
-                        {p.status === 'PENDING' && (
-                          <button
-                            onClick={() => cancelPayout.mutate(p.id)}
-                            className="text-xs text-red-400 hover:text-red-300 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                      </td>
+            {payoutsLoading ? (
+              <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : !payouts?.length ? (
+              <div className="bg-surface-dark rounded-2xl border border-border-dark p-12 text-center">
+                <Icon name="send" size={32} className="text-slate-600 mx-auto mb-3" />
+                <h3 className="text-white font-semibold mb-2">No payouts yet</h3>
+                <p className="text-slate-400 text-sm">Request a payout once you have available balance.</p>
+              </div>
+            ) : (
+              <div className="bg-surface-dark rounded-2xl border border-border-dark overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border-dark text-slate-400">
+                      <th className="text-left py-3 px-4">Date</th>
+                      <th className="text-right py-3 px-4">Amount</th>
+                      <th className="text-left py-3 px-4 hidden sm:table-cell">Method</th>
+                      <th className="text-right py-3 px-4">Status</th>
+                      <th className="py-3 px-4" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {payoutTotal > PAGE_SIZE && (
-                <div className="flex items-center justify-between pt-4 text-sm">
-                  <span className="text-slate-500 text-xs">Page {payoutPage} of {Math.ceil(payoutTotal / PAGE_SIZE)}</span>
-                  <div className="flex gap-2">
+                  </thead>
+                  <tbody className="divide-y divide-border-dark">
+                    {payouts.map((p) => (
+                      <tr key={p.id} className="text-slate-300 hover:bg-white/2">
+                        <td className="py-3 px-4 text-slate-400 whitespace-nowrap">{fmtDate(p.createdAt)}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-primary">{fmt(p.amount)}</td>
+                        <td className="py-3 px-4 text-slate-400 text-xs hidden sm:table-cell">{METHOD_LABELS[p.method] || p.method}</td>
+                        <td className="py-3 px-4 text-right">
+                          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[p.status] || ''}`}>{p.status}</span>
+                          {p.note && <p className="text-red-400/70 text-xs mt-1">{p.note}</p>}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {p.status === 'PENDING' && (
+                            <button onClick={() => cancelPayout.mutate(p.id)}
+                              className="text-xs text-red-400 hover:text-red-300 transition-colors">
+                              Cancel
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {payoutTotal > PAGE_SIZE && (
+                  <div className="flex justify-center gap-2 p-4">
                     <button onClick={() => setPayoutPage((p) => p - 1)} disabled={payoutPage <= 1}
-                      className="px-3 py-1.5 rounded-lg border border-border-dark text-slate-400 hover:text-white disabled:opacity-40 text-xs transition-colors">
-                      Prev
-                    </button>
+                      className="px-4 py-2 rounded-lg border border-border-dark text-slate-400 hover:border-primary hover:text-primary disabled:opacity-40 text-sm">← Prev</button>
+                    <span className="px-4 py-2 text-slate-400 text-sm">Page {payoutPage}</span>
                     <button onClick={() => setPayoutPage((p) => p + 1)} disabled={payoutPage >= Math.ceil(payoutTotal / PAGE_SIZE)}
-                      className="px-3 py-1.5 rounded-lg border border-border-dark text-slate-400 hover:text-white disabled:opacity-40 text-xs transition-colors">
-                      Next
-                    </button>
+                      className="px-4 py-2 rounded-lg border border-border-dark text-slate-400 hover:border-primary hover:text-primary disabled:opacity-40 text-sm">Next →</button>
                   </div>
-                </div>
-              )}
-            </div>
-          )
+                )}
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Payout Methods */}
+        {/* Methods Tab */}
         {tab === 'methods' && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -601,47 +571,41 @@ export default function CommissionsPage() {
               {(methods?.length ?? 0) < 3 && (
                 <button
                   onClick={() => setShowAddMethod(true)}
-                  className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                  className="bg-primary text-black px-4 py-2.5 rounded-xl font-bold text-sm hover:brightness-110 transition-all flex items-center gap-2"
                 >
                   <Icon name="plus" size={14} />
-                  Add Method
+                  Add Wallet
                 </button>
               )}
             </div>
-
             {methodsLoading ? (
-              <div className="text-slate-400 text-sm text-center py-10">Loading...</div>
+              <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
             ) : !methods?.length ? (
-              <div className="text-center py-10 text-slate-400">
-                <p className="mb-4">No payout methods saved yet.</p>
-                <button
-                  onClick={() => setShowAddMethod(true)}
-                  className="bg-primary text-black px-5 py-2.5 rounded-xl font-semibold text-sm hover:brightness-110 transition-all"
-                >
-                  Add Your First Method
+              <div className="bg-surface-dark rounded-2xl border border-border-dark p-12 text-center">
+                <Icon name="wallet" size={32} className="text-slate-600 mx-auto mb-3" />
+                <h3 className="text-white font-semibold mb-2">No payout wallets yet</h3>
+                <p className="text-slate-400 text-sm mb-6">Add a wallet address to receive payouts.</p>
+                <button onClick={() => setShowAddMethod(true)}
+                  className="bg-primary text-black px-5 py-2.5 rounded-xl font-semibold text-sm hover:brightness-110 transition-all">
+                  Add Your First Wallet
                 </button>
               </div>
             ) : (
               methods.map((m) => (
-                <div key={m.id} className="bg-background-dark rounded-xl border border-border-dark p-4 flex items-start justify-between gap-4">
+                <div key={m.id} className="bg-surface-dark rounded-2xl border border-border-dark p-5 flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-semibold text-white text-sm">{METHOD_LABELS[m.type] || m.type}</span>
                       {m.isDefault && (
                         <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Default</span>
                       )}
-                      {m.label && (
-                        <span className="text-xs text-slate-500">{m.label}</span>
-                      )}
+                      {m.label && <span className="text-xs text-slate-500">{m.label}</span>}
                     </div>
                     <p className="text-slate-400 text-xs font-mono break-all">{m.walletAddress}</p>
                   </div>
-                  <button
-                    onClick={() => deleteMethod.mutate(m.id)}
-                    className="text-slate-500 hover:text-red-400 transition-colors flex-shrink-0"
-                    title="Remove method"
-                  >
-                    <Icon name="trash" size={16} />
+                  <button onClick={() => deleteMethod.mutate(m.id)}
+                    className="text-slate-500 hover:text-red-400 transition-colors flex-shrink-0" title="Remove wallet">
+                    <Icon name="trash-2" size={16} />
                   </button>
                 </div>
               ))
