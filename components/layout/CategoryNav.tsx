@@ -3,15 +3,15 @@
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { navCategories } from '@/lib/mock-data'
 import Icon from '@/components/ui/Icon'
+import type { NavItem } from '@/lib/types'
 
-function CategoryLinks() {
+function CategoryLinks({ categories }: { categories: NavItem[] }) {
   const pathname = usePathname()
 
   return (
     <nav aria-label="Product categories" className="flex items-center gap-1 text-sm font-medium text-slate-400 -ml-2">
-      {navCategories.map((category) => {
+      {categories.map((category) => {
         const isActive = pathname === category.href
 
         return (
@@ -32,10 +32,10 @@ function CategoryLinks() {
   )
 }
 
-function CategoryLinksFallback() {
+function CategoryLinksFallback({ categories }: { categories: NavItem[] }) {
   return (
     <nav aria-label="Product categories" className="flex items-center gap-1 text-sm font-medium text-slate-400 -ml-2">
-      {navCategories.map((category) => (
+      {categories.map((category) => (
         <Link
           key={category.label}
           href={category.href}
@@ -49,7 +49,7 @@ function CategoryLinksFallback() {
   )
 }
 
-export default function CategoryNav() {
+export default function CategoryNav({ categories = [] }: { categories?: NavItem[] }) {
   const [showAppModal, setShowAppModal] = useState(false)
 
   return (
@@ -57,8 +57,8 @@ export default function CategoryNav() {
       <div className="hidden md:block border-b border-border-dark bg-background-dark">
         <div className="max-w-container mx-auto px-3 sm:px-4 md:px-8 lg:px-12 h-12 md:h-14 flex items-center justify-between gap-2">
           {/* Category Links wrapped in Suspense */}
-          <Suspense fallback={<CategoryLinksFallback />}>
-            <CategoryLinks />
+          <Suspense fallback={<CategoryLinksFallback categories={categories} />}>
+            <CategoryLinks categories={categories} />
           </Suspense>
 
           {/* Get App Button */}

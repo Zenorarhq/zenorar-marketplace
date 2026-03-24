@@ -18,8 +18,8 @@ import CartPopupWrapper from '@/components/cart/CartPopupWrapper'
 import CartDropdown from '@/components/cart/CartDropdown'
 import NotificationsDropdown from '@/components/notifications/NotificationsDropdown'
 import { useSiteSettings } from '@/contexts/SiteSettingsContext'
-import { navCategories } from '@/lib/mock-data'
 import { getBalance } from '@/lib/api/wallet'
+import type { NavItem } from '@/lib/types'
 
 function MobileNavItem({ item, pathname, onClose }: { item: { label: string; url: string; children?: { label: string; url: string }[] }; pathname: string; onClose: () => void }) {
   const [expanded, setExpanded] = useState(false)
@@ -51,7 +51,7 @@ function MobileNavItem({ item, pathname, onClose }: { item: { label: string; url
   )
 }
 
-export default function Header() {
+export default function Header({ categories = [] }: { categories?: NavItem[] }) {
   const router = useRouter()
   const pathname = usePathname()
   const { itemCount } = useCart()
@@ -837,7 +837,7 @@ export default function Header() {
                   <MobileNavItem key={idx} item={navItem} pathname={pathname} onClose={closeMobileMenu} />
                 ))
               ) : (
-                navCategories.map((category) => {
+                categories.map((category) => {
                   const isActive = pathname === category.href
                   return (
                     <Link
