@@ -41,6 +41,7 @@ interface Plan {
   base_price: number
   is_active: boolean
   is_featured: boolean
+  is_staff_pick: boolean
   total_subscriptions: string
   active_subscriptions: string
 }
@@ -134,7 +135,7 @@ function AdminVirtualNumbersContent() {
   const [planForm, setPlanForm] = useState({
     name: '', slug: '', duration_type: 'monthly', duration_days: '30',
     sms_included: '100', voice_minutes_included: '0', unlimited_sms: false,
-    unlimited_voice: false, base_price: '', is_active: true, is_featured: false,
+    unlimited_voice: false, base_price: '', is_active: true, is_featured: false, is_staff_pick: false,
   })
 
   // Country form state
@@ -256,6 +257,16 @@ function AdminVirtualNumbersContent() {
     onError: (error: any) => setFormError(error.message),
   })
 
+  // Toggle curated flags (Recommended / Staff Pick)
+  const toggleCuratedMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: 'is_featured' | 'is_staff_pick'; value: boolean }) => {
+      const result = await localApiFetch('/admin/virtual-numbers/plans', { method: 'PATCH', body: JSON.stringify({ id, [field]: value }) })
+      if (!result.success) throw new Error(result.error)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-virtual-number-plans'] }),
+  })
+
   // Save country mutation
   const saveCountryMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -276,7 +287,7 @@ function AdminVirtualNumbersContent() {
 
   // Helpers
   const resetPlanForm = () => {
-    setPlanForm({ name: '', slug: '', duration_type: 'monthly', duration_days: '30', sms_included: '100', voice_minutes_included: '0', unlimited_sms: false, unlimited_voice: false, base_price: '', is_active: true, is_featured: false })
+    setPlanForm({ name: '', slug: '', duration_type: 'monthly', duration_days: '30', sms_included: '100', voice_minutes_included: '0', unlimited_sms: false, unlimited_voice: false, base_price: '', is_active: true, is_featured: false, is_staff_pick: false })
     setFormError('')
   }
 
@@ -291,7 +302,7 @@ function AdminVirtualNumbersContent() {
       name: plan.name, slug: plan.slug, duration_type: plan.duration_type, duration_days: plan.duration_days.toString(),
       sms_included: plan.sms_included.toString(), voice_minutes_included: plan.voice_minutes_included.toString(),
       unlimited_sms: plan.unlimited_sms, unlimited_voice: plan.unlimited_voice,
-      base_price: plan.base_price.toString(), is_active: plan.is_active, is_featured: plan.is_featured,
+      base_price: plan.base_price.toString(), is_active: plan.is_active, is_featured: plan.is_featured, is_staff_pick: plan.is_staff_pick,
     })
     setShowPlanModal(true)
   }
@@ -326,7 +337,7 @@ function AdminVirtualNumbersContent() {
       duration_days: parseInt(planForm.duration_days), sms_included: parseInt(planForm.sms_included),
       voice_minutes_included: parseInt(planForm.voice_minutes_included), unlimited_sms: planForm.unlimited_sms,
       unlimited_voice: planForm.unlimited_voice, base_price: parseFloat(planForm.base_price),
-      is_active: planForm.is_active, is_featured: planForm.is_featured,
+      is_active: planForm.is_active, is_featured: planForm.is_featured, is_staff_pick: planForm.is_staff_pick,
     })
   }
 
@@ -515,6 +526,57 @@ function AdminVirtualNumbersContent() {
               </div>
             </div>
 
+            {/* Plans — curated toggle section */}
+            {plans.length > 0 && (
+              <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden mb-6">
+                <div className="p-4 border-b border-border-dark flex items-center justify-between">
+                  <h3 className="text-white font-bold">Plans</h3>
+                  <button onClick={() => handleTabChange('plans')} className="text-primary text-sm hover:underline">Manage Plans</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border-dark text-left">
+                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Plan</th>
+                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Duration</th>
+                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Price</th>
+                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
+                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {plans.map(plan => (
+                        <tr key={plan.id} className="border-b border-border-dark hover:bg-white/5">
+                          <td className="px-4 py-3 text-white font-medium">{plan.name}</td>
+                          <td className="px-4 py-3 text-slate-400 text-sm">{plan.duration_days} days</td>
+                          <td className="px-4 py-3 text-white text-sm font-medium">${Number(plan.base_price).toFixed(2)}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 text-xs rounded-full border ${plan.is_active ? 'bg-green-900/30 text-green-400 border-green-500/20' : 'bg-red-900/30 text-red-400 border-red-500/20'}`}>
+                              {plan.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => toggleCuratedMutation.mutate({ id: plan.id, field: 'is_featured', value: !plan.is_featured })}
+                                className={`p-1.5 rounded-lg transition-colors ${plan.is_featured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
+                                title="Toggle Recommended for You"
+                              ><Icon name="star" size={14} /></button>
+                              <button
+                                onClick={() => toggleCuratedMutation.mutate({ id: plan.id, field: 'is_staff_pick', value: !plan.is_staff_pick })}
+                                className={`p-1.5 rounded-lg transition-colors ${plan.is_staff_pick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
+                                title="Toggle Staff Pick"
+                              ><Icon name="crown" size={14} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Numbers Table */}
             <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
@@ -609,7 +671,17 @@ function AdminVirtualNumbersContent() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => toggleCuratedMutation.mutate({ id: plan.id, field: 'is_featured', value: !plan.is_featured })}
+                                className={`p-1.5 rounded-lg transition-colors ${plan.is_featured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
+                                title="Toggle Recommended for You"
+                              ><Icon name="star" size={14} /></button>
+                              <button
+                                onClick={() => toggleCuratedMutation.mutate({ id: plan.id, field: 'is_staff_pick', value: !plan.is_staff_pick })}
+                                className={`p-1.5 rounded-lg transition-colors ${plan.is_staff_pick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
+                                title="Toggle Staff Pick"
+                              ><Icon name="crown" size={14} /></button>
                               <button onClick={() => handleEditPlan(plan)} className="p-1.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
                                 <Icon name="edit" size={16} />
                               </button>
@@ -799,7 +871,11 @@ function AdminVirtualNumbersContent() {
                   </label>
                   <label className="flex items-center gap-2 text-sm text-slate-300">
                     <input type="checkbox" checked={planForm.is_featured} onChange={(e) => setPlanForm({ ...planForm, is_featured: e.target.checked })} className="rounded border-[#2a2a2a] bg-[#1a1a1a]" />
-                    Featured
+                    Recommended
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-300">
+                    <input type="checkbox" checked={planForm.is_staff_pick} onChange={(e) => setPlanForm({ ...planForm, is_staff_pick: e.target.checked })} className="rounded border-[#2a2a2a] bg-[#1a1a1a]" />
+                    Staff Pick
                   </label>
                 </div>
               </div>

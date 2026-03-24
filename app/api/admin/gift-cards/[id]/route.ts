@@ -148,6 +148,7 @@ export async function PUT(
       { name: 'discount_percent', value: body.discountPercent },
       { name: 'is_active', value: body.isActive },
       { name: 'is_featured', value: body.isFeatured },
+      { name: 'is_staff_pick', value: body.isStaffPick },
       { name: 'min_custom_amount', value: body.minCustomAmount },
       { name: 'max_custom_amount', value: body.maxCustomAmount },
       { name: 'provider', value: body.provider },

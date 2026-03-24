@@ -37,7 +37,7 @@ async function getStaffPickScripts(): Promise<StaffPickItem[]> {
       GROUP BY p.id
       ORDER BY p."createdAt" DESC
     `)
-    return result.rows.map((r: any) => ({ ...r, href: `/products/${r.slug}` }))
+    return result.rows.map((r: any) => ({ ...r, href: `/scripts/${r.slug}` }))
   } catch { return [] }
 }
 

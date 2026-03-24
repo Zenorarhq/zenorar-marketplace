@@ -207,7 +207,7 @@ export default function SearchDropdown({
                       onClick={() => {
                         saveRecentSearch(searchQuery)
                         onClose()
-                        router.push(`/products/${product.slug}`)
+                        router.push(`/scripts/${product.slug}`)
                       }}
                       className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >
@@ -431,7 +431,7 @@ export default function SearchDropdown({
                       type="button"
                       onClick={() => {
                         onClose()
-                        router.push(`/products/${product.slug}`)
+                        router.push(`/scripts/${product.slug}`)
                       }}
                       className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
                     >

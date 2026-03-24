@@ -86,7 +86,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const isAdmin = user.role?.toUpperCase() === 'ADMIN'
+    const isAdmin = user.role?.toUpperCase() === 'ADMIN' || user.role?.toUpperCase() === 'EDITOR'
     if (!isAdmin) {
       return NextResponse.json(
         { success: false, error: 'Admin access required' },
@@ -95,7 +95,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { provider, is_enabled, creation_fee, top_up_fee_percent, instant_markup_percent, min_top_up, max_top_up, min_denomination, max_denomination } = body
+    const { provider, is_enabled, creation_fee, top_up_fee_percent, instant_markup_percent, min_top_up, max_top_up, min_denomination, max_denomination, is_featured, is_staff_pick } = body
 
     if (!provider) {
       return NextResponse.json(
@@ -116,6 +116,8 @@ export async function PATCH(request: NextRequest) {
     if (max_top_up !== undefined) { fields.push(`max_top_up = $${idx++}`); values.push(max_top_up) }
     if (min_denomination !== undefined) { fields.push(`min_denomination = $${idx++}`); values.push(min_denomination) }
     if (max_denomination !== undefined) { fields.push(`max_denomination = $${idx++}`); values.push(max_denomination) }
+    if (is_featured !== undefined) { fields.push(`is_featured = $${idx++}`); values.push(is_featured) }
+    if (is_staff_pick !== undefined) { fields.push(`is_staff_pick = $${idx++}`); values.push(is_staff_pick) }
 
     if (fields.length === 0) {
       return NextResponse.json(

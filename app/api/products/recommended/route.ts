@@ -34,7 +34,7 @@ async function getFeaturedScripts(): Promise<RecommendedItem[]> {
       ORDER BY average_rating DESC
       LIMIT 4
     `)
-    return result.rows.map((r: any) => ({ ...r, href: `/products/${r.slug}` }))
+    return result.rows.map((r: any) => ({ ...r, href: `/scripts/${r.slug}` }))
   } catch { return [] }
 }
 
@@ -145,7 +145,7 @@ async function getFallbackScripts(exclude: string[]): Promise<RecommendedItem[]>
       ORDER BY average_rating DESC, p."createdAt" DESC
       LIMIT 4
     `, [exclude])
-    return result.rows.map((r: any) => ({ ...r, href: `/products/${r.slug}` }))
+    return result.rows.map((r: any) => ({ ...r, href: `/scripts/${r.slug}` }))
   } catch { return [] }
 }
 

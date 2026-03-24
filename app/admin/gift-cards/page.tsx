@@ -21,6 +21,7 @@ interface GiftCard {
   discountPercent: number
   isActive: boolean
   isFeatured: boolean
+  isStaffPick: boolean
   provider: string | null
   providerProductId: string | null
   sortPriority: number | null
@@ -110,6 +111,7 @@ function AdminGiftCardsPageContent() {
     discountPercent: 0,
     isActive: true,
     isFeatured: false,
+    isStaffPick: false,
     provider: '',
     providerProductId: '',
     sortPriority: '' as string | number
@@ -226,6 +228,22 @@ function AdminGiftCardsPageContent() {
     },
   })
 
+  // Toggle curated flags (Recommended / Staff Pick)
+  const toggleCuratedMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: 'isFeatured' | 'isStaffPick'; value: boolean }) => {
+      const token = localStorage.getItem('admin_auth_token')
+      const res = await fetch(`/api/admin/gift-cards/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ [field]: value }),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-gift-cards'] }),
+  })
+
   // Import codes mutation
   const importMutation = useMutation({
     mutationFn: async (data: { giftCardId: string; codes: any[] }) => {
@@ -332,6 +350,7 @@ function AdminGiftCardsPageContent() {
       discountPercent: 0,
       isActive: true,
       isFeatured: false,
+      isStaffPick: false,
       provider: '',
       providerProductId: '',
       sortPriority: ''
@@ -352,6 +371,7 @@ function AdminGiftCardsPageContent() {
       discountPercent: card.discountPercent,
       isActive: card.isActive,
       isFeatured: card.isFeatured,
+      isStaffPick: card.isStaffPick,
       provider: card.provider || '',
       providerProductId: card.providerProductId || '',
       sortPriority: card.sortPriority ?? ''
@@ -382,6 +402,7 @@ function AdminGiftCardsPageContent() {
       discountPercent: formData.discountPercent,
       isActive: formData.isActive,
       isFeatured: formData.isFeatured,
+      isStaffPick: formData.isStaffPick,
       provider: formData.provider || undefined,
       providerProductId: formData.providerProductId || undefined,
       sortPriority: formData.sortPriority === '' ? null : Number(formData.sortPriority)
@@ -670,16 +691,17 @@ function AdminGiftCardsPageContent() {
                       <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Reserved</th>
                       <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Sold</th>
                       <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td>
+                        <td colSpan={8} className="px-4 py-8 text-center text-slate-400">Loading...</td>
                       </tr>
                     ) : paginatedGiftCards.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                        <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                           No gift cards found.
                         </td>
                       </tr>
@@ -717,6 +739,20 @@ function AdminGiftCardsPageContent() {
                           <td className="px-4 py-3 text-center text-yellow-400">{card.inventory.reserved}</td>
                           <td className="px-4 py-3 text-center text-purple-400">{card.inventory.sold}</td>
                           <td className="px-4 py-3">{getStatusBadge(card.isActive)}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => toggleCuratedMutation.mutate({ id: card.id, field: 'isFeatured', value: !card.isFeatured })}
+                                className={`p-1.5 rounded-lg transition-colors ${card.isFeatured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
+                                title="Toggle Recommended for You"
+                              ><Icon name="star" size={14} /></button>
+                              <button
+                                onClick={() => toggleCuratedMutation.mutate({ id: card.id, field: 'isStaffPick', value: !card.isStaffPick })}
+                                className={`p-1.5 rounded-lg transition-colors ${card.isStaffPick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
+                                title="Toggle Staff Pick"
+                              ><Icon name="crown" size={14} /></button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -895,12 +931,24 @@ function AdminGiftCardsPageContent() {
                           </button>
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleEdit(card)}
-                            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                          >
-                            <Icon name="edit" size={16} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => toggleCuratedMutation.mutate({ id: card.id, field: 'isFeatured', value: !card.isFeatured })}
+                              className={`p-1.5 rounded-lg transition-colors ${card.isFeatured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
+                              title="Toggle Recommended for You"
+                            ><Icon name="star" size={14} /></button>
+                            <button
+                              onClick={() => toggleCuratedMutation.mutate({ id: card.id, field: 'isStaffPick', value: !card.isStaffPick })}
+                              className={`p-1.5 rounded-lg transition-colors ${card.isStaffPick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
+                              title="Toggle Staff Pick"
+                            ><Icon name="crown" size={14} /></button>
+                            <button
+                              onClick={() => handleEdit(card)}
+                              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                            >
+                              <Icon name="edit" size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1256,7 +1304,16 @@ function AdminGiftCardsPageContent() {
                       onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
                       className="w-4 h-4 rounded border-border-dark bg-surface-dark text-primary"
                     />
-                    <span className="text-slate-300">Featured</span>
+                    <span className="text-slate-300">Recommended</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isStaffPick}
+                      onChange={(e) => setFormData({ ...formData, isStaffPick: e.target.checked })}
+                      className="w-4 h-4 rounded border-border-dark bg-surface-dark text-primary"
+                    />
+                    <span className="text-slate-300">Staff Pick</span>
                   </label>
                 </div>
 

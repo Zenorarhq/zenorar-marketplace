@@ -37,7 +37,7 @@ export default function RecommendedCard({ product, href }: RecommendedCardProps)
 
   return (
     <Link
-      href={href ?? `/products/${product.slug}`}
+      href={href ?? `/scripts/${product.slug}`}
       className="flex items-center gap-4 group cursor-pointer"
     >
       {product.image ? (

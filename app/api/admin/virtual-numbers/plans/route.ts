@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
       voice_overage_price = 0.10,
       features = [],
       is_active = true,
-      is_featured = false
+      is_featured = false,
+      is_staff_pick = false
     } = body
 
     if (!name || !slug || !base_price) {
@@ -87,8 +88,8 @@ export async function POST(request: NextRequest) {
       `INSERT INTO virtual_number_plans
          (name, slug, duration_type, duration_days, sms_included, voice_minutes_included,
           unlimited_sms, unlimited_voice, base_price, sms_overage_price, voice_overage_price,
-          features, is_active, is_featured)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          features, is_active, is_featured, is_staff_pick)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        ON CONFLICT (slug)
        DO UPDATE SET
          name = EXCLUDED.name,
@@ -104,11 +105,12 @@ export async function POST(request: NextRequest) {
          features = EXCLUDED.features,
          is_active = EXCLUDED.is_active,
          is_featured = EXCLUDED.is_featured,
+         is_staff_pick = EXCLUDED.is_staff_pick,
          updated_at = NOW()
        RETURNING *`,
       [name, slug, duration_type, duration_days, sms_included, voice_minutes_included,
        unlimited_sms, unlimited_voice, base_price, sms_overage_price, voice_overage_price,
-       JSON.stringify(features), is_active, is_featured]
+       JSON.stringify(features), is_active, is_featured, is_staff_pick]
     )
 
     return NextResponse.json({
@@ -153,7 +155,7 @@ export async function PATCH(request: NextRequest) {
     const allowedFields = [
       'name', 'duration_type', 'duration_days', 'sms_included', 'voice_minutes_included',
       'unlimited_sms', 'unlimited_voice', 'base_price', 'sms_overage_price', 'voice_overage_price',
-      'features', 'is_active', 'is_featured', 'display_order'
+      'features', 'is_active', 'is_featured', 'is_staff_pick', 'display_order'
     ]
 
     const updateClauses: string[] = []

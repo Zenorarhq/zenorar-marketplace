@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       discountPercent: parseFloat(row.discount_percent || '0'),
       isActive: row.is_active,
       isFeatured: row.is_featured,
+      isStaffPick: row.is_staff_pick,
       minCustomAmount: row.min_custom_amount ? parseFloat(row.min_custom_amount) : null,
       maxCustomAmount: row.max_custom_amount ? parseFloat(row.max_custom_amount) : null,
       provider: row.provider,

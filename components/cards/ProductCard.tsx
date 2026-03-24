@@ -52,7 +52,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <div
-      onClick={() => router.push(product.href || `/products/${product.slug}`)}
+      onClick={() => router.push(product.href || `/scripts/${product.slug}`)}
       className="bg-white dark:bg-[#121212] rounded-xl border border-slate-200 dark:border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden flex flex-col"
     >
       {/* Image carousel or icon */}

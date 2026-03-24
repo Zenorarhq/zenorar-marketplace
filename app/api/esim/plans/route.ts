@@ -37,6 +37,7 @@ export async function GET(request: Request) {
         p.retail_price,
         p.currency,
         p.is_featured,
+        p.is_staff_pick,
         p.is_active,
         p.provider_id,
         pr.name as provider_name,
@@ -117,6 +118,7 @@ export async function GET(request: Request) {
       retailPrice: Math.round(((parseFloat(row.retail_price) || 0) * (1 + markupPercent / 100)) * 100) / 100,
       currency: row.currency,
       isFeatured: row.is_featured,
+      isStaffPick: row.is_staff_pick,
       isActive: row.is_active,
       provider: row.provider_id ? {
         id: row.provider_id,

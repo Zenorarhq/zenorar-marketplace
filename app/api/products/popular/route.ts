@@ -41,7 +41,7 @@ async function getTopScripts(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC, average_rating DESC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: `/products/${r.slug}` }))
+    return result.rows.map((r: any) => ({ ...r, href: `/scripts/${r.slug}` }))
   } catch { return [] }
 }
 

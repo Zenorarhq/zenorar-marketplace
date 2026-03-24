@@ -34,7 +34,7 @@ export default function RelatedProducts({ products }: RelatedProductsProps) {
         {products.map((product) => (
           <Link
             key={product.id}
-            href={`/products/${product.slug}`}
+            href={`/scripts/${product.slug}`}
             className="bg-charcoal border border-border-dark p-4 rounded-2xl hover:border-primary/50 transition-all group cursor-pointer flex flex-col"
           >
             {/* Product Image */}

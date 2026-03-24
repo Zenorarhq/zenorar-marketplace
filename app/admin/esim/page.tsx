@@ -20,6 +20,8 @@ interface EsimPlan {
   validityDays: number
   retailPrice: number
   isActive: boolean
+  isFeatured?: boolean
+  isStaffPick?: boolean
   provider: {
     name: string
     slug: string
@@ -339,6 +341,22 @@ function AdminEsimPageContent() {
     onError: (err: any) => setCancelError(err.message),
   })
 
+  // Toggle curated flags (Recommended / Staff Pick)
+  const toggleCuratedMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: 'isFeatured' | 'isStaffPick'; value: boolean }) => {
+      const token = localStorage.getItem('admin_auth_token')
+      const res = await fetch(`/api/admin/esim/plans/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ [field]: value }),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-esim-plans'] }),
+  })
+
   // Countdown helper
   const getCountdown = (deadline: string) => {
     const diff = new Date(deadline).getTime() - Date.now()
@@ -641,6 +659,7 @@ function AdminEsimPageContent() {
                     <th className="px-4 py-3 text-sm font-medium text-slate-400">Price</th>
                     <th className="px-4 py-3 text-sm font-medium text-slate-400">Provider</th>
                     <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -654,7 +673,7 @@ function AdminEsimPageContent() {
                     </tr>
                   ) : plans.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                         No eSIM plans found. Click "Sync Providers" to fetch plans.
                       </td>
                     </tr>
@@ -681,6 +700,20 @@ function AdminEsimPageContent() {
                           ) : (
                             <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 border border-red-500/20">Inactive</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => toggleCuratedMutation.mutate({ id: plan.id, field: 'isFeatured', value: !plan.isFeatured })}
+                              className={`p-1.5 rounded-lg transition-colors ${plan.isFeatured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
+                              title="Toggle Recommended for You"
+                            ><Icon name="star" size={14} /></button>
+                            <button
+                              onClick={() => toggleCuratedMutation.mutate({ id: plan.id, field: 'isStaffPick', value: !plan.isStaffPick })}
+                              className={`p-1.5 rounded-lg transition-colors ${plan.isStaffPick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
+                              title="Toggle Staff Pick"
+                            ><Icon name="crown" size={14} /></button>
+                          </div>
                         </td>
                       </tr>
                     ))

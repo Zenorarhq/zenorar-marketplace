@@ -410,7 +410,7 @@ function ScriptCard({ product, onAddToCart }: { product: any; onAddToCart: (p: a
             <Icon name="package" size={20} />
           </div>
         )}
-        <Link href={`/products/${product.slug}`}>
+        <Link href={`/scripts/${product.slug}`}>
           <h3 className="font-bold text-sm mb-1 group-hover:text-primary transition-colors line-clamp-2">{product.name}</h3>
         </Link>
         {product.category && (

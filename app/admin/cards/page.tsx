@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
@@ -73,6 +73,8 @@ interface ProviderConfig {
   min_denomination: number
   max_denomination: number
   is_enabled: boolean
+  is_featured?: boolean
+  is_staff_pick?: boolean
   features: Record<string, any>
   status: { enabled: boolean; configured: boolean; mode: string }
 }
@@ -115,6 +117,7 @@ function AdminCardsPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tz = useTimezone()
+  const queryClient = useQueryClient()
 
   const tabParam = searchParams.get('tab') as TabType | null
   const [activeTab, setActiveTab] = useState<TabType>(tabParam || 'overview')
@@ -169,6 +172,22 @@ function AdminCardsPageContent() {
       return data.data as ProviderConfig[]
     },
     enabled: activeTab === 'providers' || activeTab === 'overview' || activeTab === 'issued' || activeTab === 'transactions',
+  })
+
+  // Toggle curated flags (Recommended / Staff Pick)
+  const toggleCuratedMutation = useMutation({
+    mutationFn: async ({ provider, field, value }: { provider: string; field: 'is_featured' | 'is_staff_pick'; value: boolean }) => {
+      const token = localStorage.getItem('admin_auth_token')
+      const res = await fetch('/api/admin/cards/providers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ provider, [field]: value }),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-card-providers'] }),
   })
 
   // Fetch transactions
@@ -356,15 +375,30 @@ function AdminCardsPageContent() {
             {/* Provider Breakdown */}
             {stats.by_provider.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {stats.by_provider.map((bp) => (
-                  <div key={bp.provider} className="bg-[#121212] border border-border-dark rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-white font-medium capitalize">{bp.provider}</span>
-                      <span className="text-slate-400 text-sm">{bp.active_count} active</span>
+                {stats.by_provider.map((bp) => {
+                  const providerConfig = providers.find(p => p.provider === bp.provider)
+                  return (
+                    <div key={bp.provider} className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white font-medium capitalize">{bp.provider}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => toggleCuratedMutation.mutate({ provider: bp.provider, field: 'is_featured', value: !providerConfig?.is_featured })}
+                            className={`p-1.5 rounded-lg transition-colors ${providerConfig?.is_featured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
+                            title="Toggle Recommended for You"
+                          ><Icon name="star" size={14} /></button>
+                          <button
+                            onClick={() => toggleCuratedMutation.mutate({ provider: bp.provider, field: 'is_staff_pick', value: !providerConfig?.is_staff_pick })}
+                            className={`p-1.5 rounded-lg transition-colors ${providerConfig?.is_staff_pick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
+                            title="Toggle Staff Pick"
+                          ><Icon name="crown" size={14} /></button>
+                          <span className="text-slate-400 text-sm">{bp.active_count} active</span>
+                        </div>
+                      </div>
+                      <p className="text-xl font-bold text-white">{formatNumber(bp.card_count)} cards</p>
                     </div>
-                    <p className="text-xl font-bold text-white">{formatNumber(bp.card_count)} cards</p>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 
@@ -467,6 +501,16 @@ function AdminCardsPageContent() {
                       <p className="text-slate-400 text-sm capitalize">{p.provider} — {p.status.mode} mode</p>
                     </div>
                     <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => toggleCuratedMutation.mutate({ provider: p.provider, field: 'is_featured', value: !p.is_featured })}
+                        className={`p-1.5 rounded-lg transition-colors ${p.is_featured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
+                        title="Toggle Recommended for You"
+                      ><Icon name="star" size={14} /></button>
+                      <button
+                        onClick={() => toggleCuratedMutation.mutate({ provider: p.provider, field: 'is_staff_pick', value: !p.is_staff_pick })}
+                        className={`p-1.5 rounded-lg transition-colors ${p.is_staff_pick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
+                        title="Toggle Staff Pick"
+                      ><Icon name="crown" size={14} /></button>
                       {p.status.configured ? (
                         <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 border border-green-500/20">Configured</span>
                       ) : (

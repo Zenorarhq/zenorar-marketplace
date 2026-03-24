@@ -29,7 +29,7 @@ export default function ScriptCard({ product }: ScriptCardProps) {
 
   return (
     <Link
-      href={`/products/${product.slug}`}
+      href={`/scripts/${product.slug}`}
       className="bg-charcoal p-5 rounded-2xl border border-border-dark hover:border-primary/40 transition-all cursor-pointer group shadow-lg"
     >
       <div className={`w-10 h-10 mb-4 rounded-lg flex items-center justify-center ${colorClass}`}>
