@@ -166,9 +166,9 @@ export default function ProductsPage() {
     setCurrentPage(1)
   }, [searchQuery, selectedStatus])
 
-  // Calculate stats from all products
+  // Calculate stats from scripts only
   const stats = {
-    total: products.length,
+    total: products.filter(p => p.category?.slug === 'scripts').length,
   }
 
   if (loading) {
@@ -221,17 +221,17 @@ export default function ProductsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-3 lg:gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
           <div className="flex items-start justify-between mb-3">
-            <p className="text-slate-400 text-xs lg:text-sm">Total Scripts</p>
-            <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+            <p className="text-slate-400 text-xs lg:text-sm">Scripts</p>
+            <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-blue-400">
               <Icon name="code" size={16} />
             </div>
           </div>
           <p className="text-white text-lg lg:text-2xl font-bold mb-1">{formatNumber(stats.total)}</p>
           <p className="text-xs">
-            <span className="text-slate-500">active items</span>
+            <span className="text-slate-500">products</span>
           </p>
         </div>
       </div>
