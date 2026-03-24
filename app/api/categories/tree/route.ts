@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateRequest } from '@/lib/auth-middleware'
 import { query } from '@/lib/db'
+import { zenditTopupProvider } from '@/lib/phone-refills/provider'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +10,6 @@ const COUNT_OVERRIDES: Record<string, string> = {
   'gift-cards': `SELECT COUNT(*)::int as count FROM gift_cards WHERE is_active = true`,
   'virtual-numbers': `SELECT COUNT(*)::int as count FROM virtual_number_plans WHERE is_active = true`,
   'cards': `SELECT COUNT(*)::int as count FROM card_pricing WHERE is_enabled = true`,
-  'phone-refills': `SELECT COUNT(DISTINCT metadata->>'operatorName')::int as count FROM order_items WHERE product_type = 'phone_refill'`,
 }
 
 export async function GET(request: NextRequest) {
@@ -36,14 +36,23 @@ export async function GET(request: NextRequest) {
 
     // Apply count overrides for categories with dedicated tables
     const enriched = await Promise.all(rows.map(async (row) => {
-      const overrideQuery = COUNT_OVERRIDES[row.slug]
       let productCount = Number(row.productCount) || 0
-      if (overrideQuery) {
+
+      if (row.slug === 'phone-refills') {
         try {
-          const countResult = await query(overrideQuery)
-          productCount = Number(countResult.rows[0]?.count) || 0
+          const operators = await zenditTopupProvider.getOperators()
+          productCount = operators.length
         } catch { /* keep default */ }
+      } else {
+        const overrideQuery = COUNT_OVERRIDES[row.slug]
+        if (overrideQuery) {
+          try {
+            const countResult = await query(overrideQuery)
+            productCount = Number(countResult.rows[0]?.count) || 0
+          } catch { /* keep default */ }
+        }
       }
+
       return { ...row, productCount, _count: { products: productCount }, children: [] as any[] }
     }))
 
