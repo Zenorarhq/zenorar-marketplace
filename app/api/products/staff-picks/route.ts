@@ -32,8 +32,9 @@ async function getStaffPickScripts(): Promise<StaffPickItem[]> {
           FROM product_images pi WHERE pi."productId" = p.id
         ) as images
       FROM products p
+      LEFT JOIN categories c ON p."categoryId" = c.id
       LEFT JOIN reviews r ON r."productId" = p.id
-      WHERE p.status = 'ACTIVE' AND p."isStaffPick" = true
+      WHERE p.status = 'ACTIVE' AND p."isStaffPick" = true AND c.slug = 'scripts'
       GROUP BY p.id
       ORDER BY p."createdAt" DESC
     `)

@@ -28,8 +28,9 @@ async function getFeaturedScripts(): Promise<RecommendedItem[]> {
           FROM product_images pi WHERE pi."productId" = p.id
         ) as images
       FROM products p
+      LEFT JOIN categories c ON p."categoryId" = c.id
       LEFT JOIN reviews r ON r."productId" = p.id
-      WHERE p.status = 'ACTIVE' AND p."isFeatured" = true
+      WHERE p.status = 'ACTIVE' AND p."isFeatured" = true AND c.slug = 'scripts'
       GROUP BY p.id
       ORDER BY average_rating DESC
       LIMIT 4
@@ -138,8 +139,9 @@ async function getFallbackScripts(exclude: string[]): Promise<RecommendedItem[]>
           FROM product_images pi WHERE pi."productId" = p.id
         ) as images
       FROM products p
+      LEFT JOIN categories c ON p."categoryId" = c.id
       LEFT JOIN reviews r ON r."productId" = p.id
-      WHERE p.status = 'ACTIVE'
+      WHERE p.status = 'ACTIVE' AND c.slug = 'scripts'
         AND p.id::text != ALL($1)
       GROUP BY p.id
       ORDER BY average_rating DESC, p."createdAt" DESC
