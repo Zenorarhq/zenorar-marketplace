@@ -832,27 +832,32 @@ export default function Header({ categories = [] }: { categories?: NavItem[] }) 
           <div className="absolute top-0 left-0 bottom-0 w-[85vw] max-w-[320px] bg-[#1a1a1a] flex flex-col">
             {/* Categories - CMS navigation or default */}
             <nav className="flex-1 overflow-y-auto pt-8 px-5">
-              {(headerConfig?.navigation && headerConfig.navigation.length > 0) ? (
-                headerConfig.navigation.map((navItem: any, idx: number) => (
-                  <MobileNavItem key={idx} item={navItem} pathname={pathname} onClose={closeMobileMenu} />
-                ))
-              ) : (
-                categories.map((category) => {
-                  const isActive = pathname === category.href
-                  return (
-                    <Link
-                      key={category.label}
-                      href={category.href}
-                      onClick={closeMobileMenu}
-                      className={`block py-4 text-lg font-medium ${
-                        isActive ? 'text-primary' : 'text-white'
-                      }`}
-                    >
-                      {category.label}
-                    </Link>
-                  )
-                })
-              )}
+              {(() => {
+                const validNavItems = ((headerConfig?.navigation as any[]) || []).filter(
+                  (item: any) => typeof item?.label === 'string' && item.label.trim().length > 0
+                )
+                return validNavItems.length > 0 ? (
+                  validNavItems.map((navItem: any, idx: number) => (
+                    <MobileNavItem key={idx} item={navItem} pathname={pathname} onClose={closeMobileMenu} />
+                  ))
+                ) : (
+                  categories.map((category) => {
+                    const isActive = pathname === category.href
+                    return (
+                      <Link
+                        key={category.label}
+                        href={category.href}
+                        onClick={closeMobileMenu}
+                        className={`block py-4 text-lg font-medium ${
+                          isActive ? 'text-primary' : 'text-white'
+                        }`}
+                      >
+                        {category.label}
+                      </Link>
+                    )
+                  })
+                )
+              })()}
             </nav>
 
             {/* Bottom Section */}
