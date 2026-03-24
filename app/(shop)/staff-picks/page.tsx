@@ -25,6 +25,7 @@ function mapProduct(p: any): Product {
     tags: [],
     images: p.images || [],
     badge: isFeatured ? 'HOT' : isNew ? 'NEW' : undefined,
+    href: p.href,
   }
 }
 

@@ -18,6 +18,7 @@ interface StaffPickProduct {
   review_count: number
   created_at: string | null
   images: { url: string; isPrimary: boolean }[] | null
+  href?: string
 }
 
 export default function StaffPicks({ config }: { config?: { title?: string; columns?: string; style?: Record<string, any> } } = {}) {
@@ -92,6 +93,7 @@ export default function StaffPicks({ config }: { config?: { title?: string; colu
                 tags: [],
                 images: p.images || undefined,
                 badge,
+                href: p.href,
               }}
             />
           )

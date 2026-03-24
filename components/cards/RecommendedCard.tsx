@@ -8,6 +8,7 @@ import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface RecommendedCardProps {
   product: Product
+  href?: string
 }
 
 const iconColorClasses: Record<string, string> = {
@@ -29,14 +30,14 @@ const badgeClasses: Record<string, string> = {
   NEW: 'bg-slate-500/20 text-slate-400',
 }
 
-export default function RecommendedCard({ product }: RecommendedCardProps) {
+export default function RecommendedCard({ product, href }: RecommendedCardProps) {
   const { formatPrice } = usePreferences()
   const colorClass = iconColorClasses[product.iconColor] || iconColorClasses.primary
   const badgeClass = product.badge ? badgeClasses[product.badge] || badgeClasses.HOT : ''
 
   return (
     <Link
-      href={`/products/${product.slug}`}
+      href={href ?? `/products/${product.slug}`}
       className="flex items-center gap-4 group cursor-pointer"
     >
       {product.image ? (

@@ -17,6 +17,7 @@ interface RecommendedProduct {
   average_rating: number
   review_count: number
   images: { url: string; isPrimary: boolean }[] | null
+  href?: string
 }
 
 const DEFAULT_BANNERS = [
@@ -237,6 +238,7 @@ export default function HeroSection({ config }: { config?: Record<string, any> }
           {recommended.map((product: any) => (
             <RecommendedCard
               key={product.id}
+              href={product.href}
               product={{
                 id: product.id,
                 name: product.name,

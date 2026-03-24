@@ -248,7 +248,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <Breadcrumbs
           items={[
             { label: 'Home', href: '/' },
-            { label: 'Scripts', href: '/products' },
+            { label: 'Scripts', href: '/scripts' },
             { label: product.name }
           ]}
           className="mb-0"
