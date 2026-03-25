@@ -79,12 +79,19 @@ async function getFeaturedEsims(): Promise<RecommendedItem[]> {
 async function getFeaturedVirtualNumbers(): Promise<RecommendedItem[]> {
   try {
     const result = await executeQuery(`
-      SELECT vnp.id::text, vnp.name, vnp.slug, null as description,
-        vnp.base_price::float as price, vnp.is_featured,
+      SELECT uvn.id::text, uvn.phone_number as name, uvn.phone_number as slug, null as description,
+        vnp.base_price::float as price, uvn.is_featured,
         'Virtual Numbers' as category_name, 0::float as average_rating, 0 as review_count,
-        null as images
-      FROM virtual_number_plans vnp
-      WHERE vnp.is_active = true AND vnp.is_featured = true
+        CASE WHEN vnc.iso_code IS NOT NULL
+          THEN json_build_array(json_build_object(
+            'url', 'https://flagcdn.com/w160/' || lower(vnc.iso_code) || '.png',
+            'isPrimary', true
+          ))
+          ELSE null END as images
+      FROM user_virtual_numbers uvn
+      LEFT JOIN virtual_number_countries vnc ON uvn.country_id = vnc.id
+      LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id::text
+      WHERE uvn.is_featured = true AND uvn.status = 'active'
       LIMIT 4
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/virtual-numbers` }))

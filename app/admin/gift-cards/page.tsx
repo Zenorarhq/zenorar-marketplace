@@ -43,7 +43,7 @@ interface InventoryStats {
   expired: number
 }
 
-type TabType = 'overview' | 'products' | 'inventory' | 'import'
+type TabType = 'overview' | 'sales' | 'inventory' | 'providers' | 'import'
 
 function AdminGiftCardsPageContent() {
   const queryClient = useQueryClient()
@@ -65,10 +65,12 @@ function AdminGiftCardsPageContent() {
 
   // Sync tab from URL on mount
   useEffect(() => {
-    if (tabParam && ['overview', 'products', 'inventory', 'import'].includes(tabParam)) {
+    if (tabParam && ['overview', 'sales', 'inventory', 'providers', 'import'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [tabParam])
+  const [salesPage, setSalesPage] = useState(1)
+  const salesPageSize = 20
   const [inventoryFilter, setInventoryFilter] = useState<string>('')
   const [importCardId, setImportCardId] = useState<string>('')
   const [gcSearchQuery, setGcSearchQuery] = useState('')
@@ -153,6 +155,22 @@ function AdminGiftCardsPageContent() {
       return data.stats
     },
     enabled: activeTab === 'inventory' || activeTab === 'overview'
+  })
+
+  // Fetch gift card sales
+  const { data: salesData, isLoading: loadingSales } = useQuery({
+    queryKey: ['admin-gift-cards-sales', salesPage],
+    queryFn: async () => {
+      const token = localStorage.getItem('admin_auth_token')
+      const params = new URLSearchParams({ page: String(salesPage), limit: String(salesPageSize) })
+      const res = await fetch(`/api/admin/gift-cards/sales?${params}`, {
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+      return data
+    },
+    enabled: activeTab === 'sales',
   })
 
   // Test Reloadly connection
@@ -519,41 +537,14 @@ function AdminGiftCardsPageContent() {
           </div>
         </div>
 
-        {/* Provider Status */}
-        {reloadlyStatus && (
-          <div className="mb-4 space-y-2">
-            {reloadlyStatus.connections && Object.entries(reloadlyStatus.connections).map(([provider, status]: [string, any]) => (
-              <div key={provider} className={`p-3 rounded-lg border ${
-                status.success
-                  ? 'bg-green-900/20 border-green-500/20 text-green-400'
-                  : 'bg-yellow-900/20 border-yellow-500/20 text-yellow-400'
-              }`}>
-                <div className="flex items-center gap-2 text-sm">
-                  <Icon name={status.success ? 'check-circle' : 'alert'} size={16} />
-                  {status.success
-                    ? `${provider.charAt(0).toUpperCase() + provider.slice(1)} connected (${status.mode || 'live'} mode)`
-                    : `${provider.charAt(0).toUpperCase() + provider.slice(1)}: ${status.error || 'Not configured'}`
-                  }
-                </div>
-              </div>
-            ))}
-            {(!reloadlyStatus.connections || Object.keys(reloadlyStatus.connections).length === 0) && (
-              <div className="p-3 rounded-lg border bg-yellow-900/20 border-yellow-500/20 text-yellow-400">
-                <div className="flex items-center gap-2 text-sm">
-                  <Icon name="alert" size={16} />
-                  No gift card providers configured
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           {[
             { id: 'overview' as TabType, label: 'Overview', icon: 'chart' },
-            { id: 'products' as TabType, label: 'Products', icon: 'box' },
+            { id: 'sales' as TabType, label: 'Sales', icon: 'shopping-cart' },
             { id: 'inventory' as TabType, label: 'Inventory', icon: 'list' },
+            { id: 'providers' as TabType, label: 'Providers', icon: 'settings' },
             { id: 'import' as TabType, label: 'Import', icon: 'upload' },
           ].map(tab => (
             <button
@@ -571,8 +562,8 @@ function AdminGiftCardsPageContent() {
           ))}
         </div>
 
-        {/* Filters - shown on Overview and Products tabs */}
-        {(activeTab === 'overview' || activeTab === 'products') && (
+        {/* Filters - shown on Overview tab */}
+        {activeTab === 'overview' && (
           <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4 mb-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Search */}
@@ -810,145 +801,40 @@ function AdminGiftCardsPageContent() {
           </>
         )}
 
-        {/* Products Tab */}
-        {activeTab === 'products' && (
-          <>
-          {/* Batch action bar */}
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-xl px-4 py-3 mb-4">
-              <span className="text-sm text-white font-medium">{selectedIds.size} selected</span>
-              <div className="flex items-center gap-2 ml-auto">
-                <button onClick={() => handleBatchAction('activate')} disabled={batchLoading}
-                  className="px-3 py-1.5 text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-500/30 transition-colors disabled:opacity-50">
-                  {batchLoading ? 'Working…' : 'Activate All'}
-                </button>
-                <button onClick={() => handleBatchAction('deactivate')} disabled={batchLoading}
-                  className="px-3 py-1.5 text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition-colors disabled:opacity-50">
-                  {batchLoading ? 'Working…' : 'Deactivate All'}
-                </button>
-                <button onClick={() => handleBatchAction('delete')} disabled={batchLoading}
-                  className="px-3 py-1.5 text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50">
-                  {batchLoading ? 'Working…' : 'Delete All'}
-                </button>
-                <button onClick={() => setSelectedIds(new Set())}
-                  className="px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors">
-                  Clear
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Sales Tab */}
+        {activeTab === 'sales' && (
           <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border-dark text-left">
-                    <th className="px-4 py-3 w-10">
-                      <input type="checkbox"
-                        checked={paginatedGiftCards.length > 0 && paginatedGiftCards.every(c => selectedIds.has(c.id))}
-                        onChange={(e) => {
-                          setSelectedIds(e.target.checked
-                            ? new Set(paginatedGiftCards.map(c => c.id))
-                            : new Set()
-                          )
-                        }}
-                        className="w-4 h-4 accent-primary cursor-pointer"
-                      />
-                    </th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Date</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Customer</th>
                     <th className="px-4 py-3 text-sm font-medium text-slate-400">Brand</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Category</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Denominations</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Discount</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Provider</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Denomination</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Amount</th>
                     <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
-                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400">Loading...</td>
-                    </tr>
-                  ) : paginatedGiftCards.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
-                        No gift cards found.
-                      </td>
-                    </tr>
+                  {loadingSales ? (
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">Loading...</td></tr>
+                  ) : !salesData?.data?.length ? (
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">No sales yet</td></tr>
                   ) : (
-                    paginatedGiftCards.map(card => (
-                      <tr key={card.id} className={`border-b border-border-dark hover:bg-white/5 ${selectedIds.has(card.id) ? 'bg-primary/5' : ''}`}>
-                        <td className="px-4 py-3 w-10">
-                          <input type="checkbox"
-                            checked={selectedIds.has(card.id)}
-                            onChange={(e) => {
-                              setSelectedIds(prev => {
-                                const next = new Set(prev)
-                                e.target.checked ? next.add(card.id) : next.delete(card.id)
-                                return next
-                              })
-                            }}
-                            className="w-4 h-4 accent-primary cursor-pointer"
-                          />
-                        </td>
+                    salesData.data.map((sale: any) => (
+                      <tr key={sale.order_id + sale.brand} className="border-b border-border-dark hover:bg-white/5">
+                        <td className="px-4 py-3 text-slate-400 text-sm">{sale.created_at ? new Date(sale.created_at).toLocaleDateString() : '-'}</td>
+                        <td className="px-4 py-3 text-slate-400 text-sm">{sale.user_email}</td>
+                        <td className="px-4 py-3 text-white">{sale.brand}</td>
+                        <td className="px-4 py-3 text-slate-400">${sale.denomination}</td>
+                        <td className="px-4 py-3 text-white font-medium">${Number(sale.amount).toFixed(2)}</td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            {card.imageUrl ? (
-                              <img src={card.imageUrl} alt={card.brand} className="w-10 h-10 rounded object-cover" />
-                            ) : (
-                              <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center text-primary font-bold text-base">
-                                {card.brand.charAt(0)}
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-white font-medium">{card.brand}</p>
-                              <p className="text-sm text-slate-500">{card.slug}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 capitalize">{card.category}</td>
-                        <td className="px-4 py-3 text-slate-400">
-                          {card.denominations.slice(0, 3).map(d => `$${d}`).join(', ')}
-                          {card.denominations.length > 3 && ` +${card.denominations.length - 3}`}
-                        </td>
-                        <td className="px-4 py-3 text-slate-400">
-                          {card.discountPercent > 0 ? `${card.discountPercent}%` : '-'}
-                        </td>
-                        <td className="px-4 py-3">
-                          {card.provider ? (
-                            <span className="px-2 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400 border border-blue-500/20">
-                              {card.provider}
-                            </span>
-                          ) : (
-                            <span className="text-slate-500">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => { setTogglingId(card.id); toggleActiveMutation.mutate({ id: card.id, isActive: !card.isActive }) }}
-                            disabled={togglingId === card.id}
-                          >
-                            {getStatusBadge(card.isActive)}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => toggleCuratedMutation.mutate({ id: card.id, field: 'isFeatured', value: !card.isFeatured })}
-                              className={`p-1.5 rounded-lg transition-colors ${card.isFeatured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
-                              title="Toggle Recommended for You"
-                            ><Icon name="star" size={14} /></button>
-                            <button
-                              onClick={() => toggleCuratedMutation.mutate({ id: card.id, field: 'isStaffPick', value: !card.isStaffPick })}
-                              className={`p-1.5 rounded-lg transition-colors ${card.isStaffPick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
-                              title="Toggle Staff Pick"
-                            ><Icon name="crown" size={14} /></button>
-                            <button
-                              onClick={() => handleEdit(card)}
-                              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                            >
-                              <Icon name="edit" size={16} />
-                            </button>
-                          </div>
+                          <span className={`px-2 py-1 text-xs rounded-full border ${
+                            sale.order_status === 'completed' ? 'bg-green-900/30 text-green-400 border-green-500/20' :
+                            sale.order_status === 'pending' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-500/20' :
+                            'bg-slate-900/30 text-slate-400 border-slate-500/20'
+                          }`}>{sale.order_status}</span>
                         </td>
                       </tr>
                     ))
@@ -956,55 +842,18 @@ function AdminGiftCardsPageContent() {
                 </tbody>
               </table>
             </div>
-            {totalFiltered > pageSize && (
-              <div className="border-t border-[#1f1f1f] px-5 py-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-slate-400 text-sm">
-                    Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalFiltered)} of {formatNumber(totalFiltered)}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum: number
-                        if (totalPages <= 5) pageNum = i + 1
-                        else if (currentPage <= 3) pageNum = i + 1
-                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
-                        else pageNum = currentPage - 2 + i
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`w-8 h-8 rounded-lg text-sm transition-colors ${
-                              currentPage === pageNum
-                                ? 'bg-primary text-black font-semibold'
-                                : 'bg-[#1a1a1a] hover:bg-white/10 text-slate-400'
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </div>
+            {salesData?.pagination && salesData.pagination.totalPages > 1 && (
+              <div className="border-t border-[#1f1f1f] px-5 py-4 flex items-center justify-between">
+                <p className="text-slate-400 text-sm">Page {salesPage} of {salesData.pagination.totalPages}</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setSalesPage(p => Math.max(1, p - 1))} disabled={salesPage === 1}
+                    className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm disabled:opacity-50">Previous</button>
+                  <button onClick={() => setSalesPage(p => Math.min(salesData.pagination.totalPages, p + 1))} disabled={salesPage === salesData.pagination.totalPages}
+                    className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm disabled:opacity-50">Next</button>
                 </div>
               </div>
             )}
           </div>
-          </>
         )}
 
         {/* Inventory Tab */}
@@ -1068,6 +917,43 @@ function AdminGiftCardsPageContent() {
               </div>
             </div>
           </>
+        )}
+
+        {/* Providers Tab */}
+        {activeTab === 'providers' && (
+          <div className="space-y-4">
+            {reloadlyStatus ? (
+              <>
+                {reloadlyStatus.connections && Object.entries(reloadlyStatus.connections).map(([provider, status]: [string, any]) => (
+                  <div key={provider} className="bg-[#121212] border border-border-dark rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-white font-bold capitalize text-lg">{provider}</h3>
+                      {status.success ? (
+                        <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 border border-green-500/20">Connected</span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 border border-red-500/20">Not Connected</span>
+                      )}
+                    </div>
+                    <p className="text-slate-400 text-sm">
+                      {status.success
+                        ? `Connected in ${status.mode || 'live'} mode`
+                        : status.error || 'Not configured. Add credentials in Settings.'
+                      }
+                    </p>
+                  </div>
+                ))}
+                {(!reloadlyStatus.connections || Object.keys(reloadlyStatus.connections).length === 0) && (
+                  <div className="bg-[#121212] border border-border-dark rounded-xl p-8 text-center">
+                    <Icon name="settings" size={48} className="text-slate-600 mx-auto mb-4" />
+                    <p className="text-slate-400 mb-2">No gift card providers configured</p>
+                    <a href="/admin/settings" className="text-primary hover:underline text-sm">Configure in Settings</a>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-slate-400">Loading provider status...</div>
+            )}
+          </div>
         )}
 
         {/* Import Tab */}

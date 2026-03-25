@@ -125,3 +125,44 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+/**
+ * PATCH /api/admin/virtual-numbers
+ * Toggle is_featured or is_staff_pick on a specific user_virtual_number
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const user = await authenticateRequest(request)
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 })
+
+    const isAdmin = user.role?.toUpperCase() === 'ADMIN' || user.role?.toUpperCase() === 'EDITOR'
+    if (!isAdmin) return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 })
+
+    const body = await request.json()
+    const { id, is_featured, is_staff_pick } = body
+
+    if (!id) return NextResponse.json({ success: false, error: 'id is required' }, { status: 400 })
+
+    const fields: string[] = []
+    const params: any[] = []
+    let idx = 1
+
+    if (is_featured !== undefined) { fields.push(`is_featured = $${idx}`); params.push(is_featured); idx++ }
+    if (is_staff_pick !== undefined) { fields.push(`is_staff_pick = $${idx}`); params.push(is_staff_pick); idx++ }
+
+    if (fields.length === 0) return NextResponse.json({ success: false, error: 'No fields to update' }, { status: 400 })
+
+    params.push(id)
+    const result = await query(
+      `UPDATE user_virtual_numbers SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id`,
+      params
+    )
+
+    if (result.rows.length === 0) return NextResponse.json({ success: false, error: 'Number not found' }, { status: 404 })
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Error updating virtual number:', error)
+    return NextResponse.json({ success: false, error: error.message || 'Failed to update' }, { status: 500 })
+  }
+}

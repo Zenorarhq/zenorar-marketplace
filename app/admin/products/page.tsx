@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
@@ -12,8 +13,29 @@ import ProductReviewsModal from '@/components/admin/ProductReviewsModal'
 import Toast, { ToastState } from '@/components/ui/Toast'
 import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 
-export default function ProductsPage() {
+type TabType = 'overview' | 'sales'
+
+function ProductsPageContent() {
   const queryClient = useQueryClient()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const tabParam = searchParams.get('tab') as TabType | null
+  const [activeTab, setActiveTab] = useState<TabType>(tabParam || 'overview')
+  const [salesPage, setSalesPage] = useState(1)
+  const salesPageSize = 20
+
+  useEffect(() => {
+    if (tabParam && ['overview', 'sales'].includes(tabParam)) setActiveTab(tabParam)
+  }, [tabParam])
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.push(`/admin/products?${params.toString()}`, { scroll: false })
+  }
+
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory] = useState('scripts')
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -46,6 +68,22 @@ export default function ProductsPage() {
       const data = await apiFetch<string[]>('/products/admin/staff-picks')
       return (data.success && data.data) ? data.data : []
     },
+  })
+
+  // Fetch script sales
+  const { data: salesData, isLoading: loadingSales } = useQuery({
+    queryKey: ['admin-scripts-sales', salesPage],
+    queryFn: async () => {
+      const token = localStorage.getItem('admin_auth_token')
+      const params = new URLSearchParams({ page: String(salesPage), limit: String(salesPageSize) })
+      const res = await fetch(`/api/admin/scripts/sales?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+      return data
+    },
+    enabled: activeTab === 'sales',
   })
 
   const loading = productsLoading
@@ -219,6 +257,83 @@ export default function ProductsPage() {
           <span className="sm:hidden">Add</span>
         </Link>
       </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        {[
+          { id: 'overview' as TabType, label: 'Overview', icon: 'code' },
+          { id: 'sales' as TabType, label: 'Sales', icon: 'shopping-cart' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => handleTabChange(tab.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === tab.id ? 'bg-primary text-black' : 'bg-surface-dark text-slate-400 hover:text-white'
+            }`}
+          >
+            <Icon name={tab.icon} size={16} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sales Tab */}
+      {activeTab === 'sales' && (
+        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#1f1f1f]">
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Date</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Customer</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Script</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Qty</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Amount</th>
+                  <th className="text-left text-slate-500 text-xs font-medium px-5 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingSales ? (
+                  <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-400">Loading...</td></tr>
+                ) : !salesData?.data?.length ? (
+                  <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-400">No sales yet</td></tr>
+                ) : (
+                  salesData.data.map((sale: any) => (
+                    <tr key={sale.order_id + sale.product_name} className="border-b border-[#1f1f1f] last:border-0 hover:bg-white/5">
+                      <td className="px-5 py-3 text-slate-400 text-sm">{sale.created_at ? new Date(sale.created_at).toLocaleDateString() : '-'}</td>
+                      <td className="px-5 py-3 text-slate-400 text-sm">{sale.user_email}</td>
+                      <td className="px-5 py-3 text-white text-sm">{sale.product_name}</td>
+                      <td className="px-5 py-3 text-slate-400 text-sm">{sale.quantity}</td>
+                      <td className="px-5 py-3 text-white font-medium text-sm">${Number(sale.price).toFixed(2)}</td>
+                      <td className="px-5 py-3 text-sm">
+                        <span className={`px-2 py-1 text-xs rounded-full border ${
+                          sale.order_status === 'completed' ? 'bg-green-900/30 text-green-400 border-green-500/20' :
+                          sale.order_status === 'pending' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-500/20' :
+                          'bg-slate-900/30 text-slate-400 border-slate-500/20'
+                        }`}>{sale.order_status}</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {salesData?.pagination && salesData.pagination.totalPages > 1 && (
+            <div className="border-t border-[#1f1f1f] px-5 py-4 flex items-center justify-between">
+              <p className="text-xs text-slate-500">Page {salesPage} of {salesData.pagination.totalPages}</p>
+              <div className="flex gap-2">
+                <button onClick={() => setSalesPage(p => Math.max(1, p - 1))} disabled={salesPage === 1}
+                  className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-xs disabled:opacity-50">Previous</button>
+                <button onClick={() => setSalesPage(p => Math.min(salesData.pagination.totalPages, p + 1))} disabled={salesPage === salesData.pagination.totalPages}
+                  className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-xs disabled:opacity-50">Next</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && <>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
@@ -484,6 +599,8 @@ export default function ProductsPage() {
         )}
       </div>
 
+      </>}
+
       {/* Reviews Modal */}
       <ProductReviewsModal
         isOpen={!!reviewProduct}
@@ -495,5 +612,20 @@ export default function ProductsPage() {
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
       {confirmModal && <ConfirmModal modal={confirmModal} loading={confirmLoading} onClose={() => { setConfirmModal(null); setConfirmLoading(false) }} />}
     </AdminLayout>
+  )
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <AdminLayout>
+        <div className="p-6 animate-pulse">
+          <div className="h-8 w-48 bg-slate-800 rounded mb-4" />
+          <div className="h-64 bg-slate-800 rounded-xl" />
+        </div>
+      </AdminLayout>
+    }>
+      <ProductsPageContent />
+    </Suspense>
   )
 }

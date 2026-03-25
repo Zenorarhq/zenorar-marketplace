@@ -119,7 +119,7 @@ interface CarrierOrder {
   user_email: string
 }
 
-type TabType = 'overview' | 'providers' | 'inventory' | 'carrier-orders'
+type TabType = 'overview' | 'sales' | 'carrier-orders' | 'inventory'
 
 function AdminEsimPageContent() {
   const queryClient = useQueryClient()
@@ -159,6 +159,10 @@ function AdminEsimPageContent() {
     setImportSuccess('')
   }
 
+  // Sales (Digital Sales) state
+  const [salesPage, setSalesPage] = useState(1)
+  const salesPageSize = 50
+
   // Carrier orders state
   const [carrierStatusFilter, setCarrierStatusFilter] = useState<string>('')
   const [carrierPage, setCarrierPage] = useState(1)
@@ -187,7 +191,7 @@ function AdminEsimPageContent() {
 
   // Sync tab from URL on mount
   useEffect(() => {
-    if (tabParam && ['overview', 'providers', 'inventory', 'carrier-orders'].includes(tabParam)) {
+    if (tabParam && ['overview', 'sales', 'carrier-orders', 'inventory'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [tabParam])
@@ -249,7 +253,7 @@ function AdminEsimPageContent() {
       if (!data.success) return { overall: { available: 0, reserved: 0, sold: 0, total: 0 }, byPlan: [], lowStock: [] }
       return data.data
     },
-    enabled: activeTab === 'overview' || activeTab === 'providers' || activeTab === 'inventory'
+    enabled: activeTab === 'overview' || activeTab === 'inventory'
   })
 
   // Fetch inventory items
@@ -293,6 +297,22 @@ function AdminEsimPageContent() {
     },
     enabled: activeTab === 'carrier-orders',
     refetchInterval: activeTab === 'carrier-orders' ? 30000 : false,
+  })
+
+  // Fetch sold eSIMs (Digital Sales)
+  const { data: salesData, isLoading: loadingSales } = useQuery({
+    queryKey: ['esim-sales', salesPage],
+    queryFn: async () => {
+      const token = localStorage.getItem('admin_auth_token')
+      const params = new URLSearchParams({ status: 'sold', page: String(salesPage), limit: String(salesPageSize) })
+      const res = await fetch(`/api/admin/esim/inventory?${params}`, {
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (!data.success) return { items: [], pagination: { total: 0 } }
+      return data.data
+    },
+    enabled: activeTab === 'sales',
   })
 
   // Fulfill carrier order mutation
@@ -586,9 +606,9 @@ function AdminEsimPageContent() {
         <div className="flex gap-2 mb-6">
           {[
             { id: 'overview' as TabType, label: 'Overview', icon: 'sim-card' },
-            { id: 'providers' as TabType, label: 'Plans by Providers', icon: 'chart' },
-            { id: 'inventory' as TabType, label: 'Inventory', icon: 'list' },
+            { id: 'sales' as TabType, label: 'Digital Sales', icon: 'shopping-bag' },
             { id: 'carrier-orders' as TabType, label: `Carrier Orders${carrierOrdersData?.pendingCount ? ` (${carrierOrdersData.pendingCount})` : ''}`, icon: 'phone' },
+            { id: 'inventory' as TabType, label: 'Inventory', icon: 'list' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -753,70 +773,55 @@ function AdminEsimPageContent() {
           </>
         )}
 
-        {/* Plans by Providers Tab */}
-        {activeTab === 'providers' && (
-          <>
-            {/* Low Stock Alert */}
-            {inventoryStats?.lowStock && inventoryStats.lowStock.length > 0 && (
-              <div className="bg-red-900/20 border border-red-500/20 rounded-xl p-4 mb-6">
-                <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2">
-                  <Icon name="alert" size={18} />
-                  Low Stock Alerts
-                </h3>
-                <div className="space-y-2">
-                  {inventoryStats.lowStock.slice(0, 10).map(item => (
-                    <div key={item.planId} className="flex items-center justify-between text-sm">
-                      <span className="text-white">{item.planName} ({item.regionName})</span>
-                      <span className="text-red-400 font-medium">{item.available} remaining</span>
-                    </div>
-                  ))}
+        {/* Digital Sales Tab */}
+        {activeTab === 'sales' && (
+          <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border-dark text-left">
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Date Sold</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Plan</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">ICCID</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Cost</th>
+                    <th className="px-4 py-3 text-sm font-medium text-slate-400">Sold To</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingSales ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">Loading...</td></tr>
+                  ) : !salesData?.items?.length ? (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">No sold eSIMs yet</td></tr>
+                  ) : (
+                    salesData.items.map((item: InventoryItem) => (
+                      <tr key={item.id} className="border-b border-border-dark hover:bg-white/5">
+                        <td className="px-4 py-3 text-slate-400 text-sm">{item.sold_at ? formatDateShort(item.sold_at, tz) : '-'}</td>
+                        <td className="px-4 py-3 text-slate-300">{item.plan_name}</td>
+                        <td className="px-4 py-3 font-mono text-sm text-slate-400">{item.iccid.slice(0, 8)}…{item.iccid.slice(-4)}</td>
+                        <td className="px-4 py-3 text-slate-400">{item.cost_price ? `$${item.cost_price.toFixed(2)}` : '-'}</td>
+                        <td className="px-4 py-3 text-slate-400 text-sm">{item.sold_to_email || '-'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {salesData?.pagination && salesData.pagination.total > salesPageSize && (
+              <div className="border-t border-[#1f1f1f] px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
+                    {((salesPage - 1) * salesPageSize) + 1} - {Math.min(salesPage * salesPageSize, salesData.pagination.total)} of {salesData.pagination.total}
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setSalesPage(p => Math.max(1, p - 1))} disabled={salesPage === 1}
+                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm disabled:opacity-50">Previous</button>
+                    <button onClick={() => setSalesPage(p => p + 1)} disabled={salesPage * salesPageSize >= salesData.pagination.total}
+                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-white/10 text-white rounded-lg text-sm disabled:opacity-50">Next</button>
+                  </div>
                 </div>
               </div>
             )}
-
-            {/* Plans by Provider Table */}
-            <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-border-dark">
-                <h3 className="text-white font-bold">Plans by Provider</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border-dark text-left">
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Provider</th>
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Mode</th>
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400 text-center">Plans</th>
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enabledProviders.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
-                          No providers enabled
-                        </td>
-                      </tr>
-                    ) : (
-                      enabledProviders.map(([provider, status]) => (
-                        <tr key={provider} className="border-b border-border-dark hover:bg-white/5">
-                          <td className="px-4 py-3 text-white font-medium capitalize">{provider}</td>
-                          <td className="px-4 py-3 text-slate-400 capitalize">{status.mode}</td>
-                          <td className="px-4 py-3 text-center text-slate-400">{byProvider[provider] || 0}</td>
-                          <td className="px-4 py-3">
-                            {status.hasCredentials ? (
-                              <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 border border-green-500/20">Connected</span>
-                            ) : (
-                              <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 border border-red-500/20">Missing Credentials</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
+          </div>
         )}
 
         {/* Inventory Tab */}

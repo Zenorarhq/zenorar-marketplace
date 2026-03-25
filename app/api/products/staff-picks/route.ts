@@ -82,13 +82,20 @@ async function getStaffPickEsims(): Promise<StaffPickItem[]> {
 async function getStaffPickVirtualNumbers(): Promise<StaffPickItem[]> {
   try {
     const result = await executeQuery(`
-      SELECT vnp.id::text, vnp.name, vnp.slug, null as description,
+      SELECT uvn.id::text, uvn.phone_number as name, uvn.phone_number as slug, null as description,
         vnp.base_price::float as price, null as compare_price,
-        vnp.is_featured, vnp.created_at::text,
+        uvn.is_featured, uvn.created_at::text,
         'Virtual Numbers' as category_name, 0::float as average_rating, 0 as review_count,
-        null as images
-      FROM virtual_number_plans vnp
-      WHERE vnp.is_active = true AND vnp.is_staff_pick = true
+        CASE WHEN vnc.iso_code IS NOT NULL
+          THEN json_build_array(json_build_object(
+            'url', 'https://flagcdn.com/w160/' || lower(vnc.iso_code) || '.png',
+            'isPrimary', true
+          ))
+          ELSE null END as images
+      FROM user_virtual_numbers uvn
+      LEFT JOIN virtual_number_countries vnc ON uvn.country_id = vnc.id
+      LEFT JOIN virtual_number_plans vnp ON uvn.plan_id = vnp.id::text
+      WHERE uvn.is_staff_pick = true AND uvn.status = 'active'
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/virtual-numbers` }))
   } catch { return [] }

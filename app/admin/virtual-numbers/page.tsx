@@ -26,6 +26,8 @@ interface VirtualNumber {
   sms_received_count: number
   created_at: string
   expires_at: string | null
+  is_featured: boolean
+  is_staff_pick: boolean
 }
 
 interface Plan {
@@ -265,6 +267,22 @@ function AdminVirtualNumbersContent() {
       return result
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-virtual-number-plans'] }),
+  })
+
+  // Toggle curated flags on individual virtual numbers
+  const toggleNumberCuratedMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: 'is_featured' | 'is_staff_pick'; value: boolean }) => {
+      const token = localStorage.getItem('admin_auth_token')
+      const res = await fetch('/api/admin/virtual-numbers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id, [field]: value }),
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      return result
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-virtual-numbers'] }),
   })
 
   // Save country mutation
@@ -526,57 +544,6 @@ function AdminVirtualNumbersContent() {
               </div>
             </div>
 
-            {/* Plans — curated toggle section */}
-            {plans.length > 0 && (
-              <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden mb-6">
-                <div className="p-4 border-b border-border-dark flex items-center justify-between">
-                  <h3 className="text-white font-bold">Plans</h3>
-                  <button onClick={() => handleTabChange('plans')} className="text-primary text-sm hover:underline">Manage Plans</button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border-dark text-left">
-                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Plan</th>
-                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Duration</th>
-                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Price</th>
-                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
-                        <th className="px-4 py-3 text-sm font-medium text-slate-400">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plans.map(plan => (
-                        <tr key={plan.id} className="border-b border-border-dark hover:bg-white/5">
-                          <td className="px-4 py-3 text-white font-medium">{plan.name}</td>
-                          <td className="px-4 py-3 text-slate-400 text-sm">{plan.duration_days} days</td>
-                          <td className="px-4 py-3 text-white text-sm font-medium">${Number(plan.base_price).toFixed(2)}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 text-xs rounded-full border ${plan.is_active ? 'bg-green-900/30 text-green-400 border-green-500/20' : 'bg-red-900/30 text-red-400 border-red-500/20'}`}>
-                              {plan.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => toggleCuratedMutation.mutate({ id: plan.id, field: 'is_featured', value: !plan.is_featured })}
-                                className={`p-1.5 rounded-lg transition-colors ${plan.is_featured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
-                                title="Toggle Recommended for You"
-                              ><Icon name="star" size={14} /></button>
-                              <button
-                                onClick={() => toggleCuratedMutation.mutate({ id: plan.id, field: 'is_staff_pick', value: !plan.is_staff_pick })}
-                                className={`p-1.5 rounded-lg transition-colors ${plan.is_staff_pick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
-                                title="Toggle Staff Pick"
-                              ><Icon name="crown" size={14} /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
             {/* Numbers Table */}
             <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
@@ -590,13 +557,14 @@ function AdminVirtualNumbersContent() {
                       <th className="px-4 py-3 text-sm font-medium text-slate-400">SMS</th>
                       <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
                       <th className="px-4 py-3 text-sm font-medium text-slate-400">Expires</th>
+                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loadingNumbers ? (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td></tr>
+                      <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">Loading...</td></tr>
                     ) : numbers.length === 0 ? (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No virtual numbers found.</td></tr>
+                      <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">No virtual numbers found.</td></tr>
                     ) : (
                       numbers.map(n => (
                         <tr key={n.id} className="border-b border-border-dark hover:bg-white/5">
@@ -613,6 +581,20 @@ function AdminVirtualNumbersContent() {
                           <td className="px-4 py-3 text-slate-400 text-sm">{n.sms_sent_count}↑ {n.sms_received_count}↓</td>
                           <td className="px-4 py-3">{getStatusBadge(n.status)}</td>
                           <td className="px-4 py-3 text-slate-400 text-sm">{n.expires_at ? new Date(n.expires_at).toLocaleDateString() : '-'}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => toggleNumberCuratedMutation.mutate({ id: n.id, field: 'is_featured', value: !n.is_featured })}
+                                className={`p-1.5 rounded-lg transition-colors ${n.is_featured ? 'text-yellow-400 bg-yellow-400/10' : 'text-slate-600 hover:text-slate-400'}`}
+                                title="Toggle Recommended"
+                              ><Icon name="star" size={14} /></button>
+                              <button
+                                onClick={() => toggleNumberCuratedMutation.mutate({ id: n.id, field: 'is_staff_pick', value: !n.is_staff_pick })}
+                                className={`p-1.5 rounded-lg transition-colors ${n.is_staff_pick ? 'text-primary bg-primary/10' : 'text-slate-600 hover:text-slate-400'}`}
+                                title="Toggle Staff Pick"
+                              ><Icon name="crown" size={14} /></button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     )}

@@ -311,9 +311,9 @@ function AdminCardsPageContent() {
         <div className="flex gap-2 mb-6 overflow-x-auto">
           {[
             { id: 'overview' as TabType, label: 'Overview', icon: 'credit-card' },
-            { id: 'providers' as TabType, label: 'Providers', icon: 'settings' },
             { id: 'issued' as TabType, label: 'Cards Issued', icon: 'list' },
-            { id: 'transactions' as TabType, label: 'Transactions', icon: 'wallet' },
+            { id: 'transactions' as TabType, label: 'Card Transactions', icon: 'wallet' },
+            { id: 'providers' as TabType, label: 'Providers', icon: 'settings' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -402,78 +402,6 @@ function AdminCardsPageContent() {
               </div>
             )}
 
-            {/* Recent Cards Table */}
-            <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-border-dark flex items-center justify-between">
-                <h3 className="text-white font-bold">Recent Cards</h3>
-                <button
-                  onClick={() => handleTabChange('issued')}
-                  className="text-primary text-sm hover:underline"
-                >
-                  View All
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border-dark text-left">
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Card</th>
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">User</th>
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Provider</th>
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Type</th>
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Balance</th>
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Status</th>
-                      <th className="px-4 py-3 text-sm font-medium text-slate-400">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingCards ? (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Loading...</td></tr>
-                    ) : cardsError ? (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center text-red-400">Failed to load cards</td></tr>
-                    ) : cards.length === 0 ? (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No cards issued yet</td></tr>
-                    ) : (
-                      cards.slice(0, 10).map((card) => (
-                        <tr key={card.id} className="border-b border-border-dark hover:bg-white/5">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-white font-medium capitalize">{card.card_brand}</span>
-                              <span className="text-slate-500 font-mono text-sm">****{card.card_last_four}</span>
-                              {card.is_premium && <span className="px-1.5 py-0.5 text-[10px] rounded bg-amber-900/30 text-amber-400 border border-amber-500/20">3DS</span>}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div>
-                              <p className="text-white text-sm">{card.user_name || 'Unknown'}</p>
-                              <p className="text-slate-500 text-xs">{card.user_email}</p>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-400 capitalize">{card.provider}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 text-xs rounded-full border ${
-                              card.card_type === 'virtual'
-                                ? 'bg-blue-900/30 text-blue-400 border-blue-500/20'
-                                : 'bg-purple-900/30 text-purple-400 border-purple-500/20'
-                            }`}>
-                              {card.card_type === 'virtual' ? 'Virtual' : 'Instant'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-white font-medium">
-                            {card.card_type === 'virtual'
-                              ? formatCurrency(card.balance || 0)
-                              : formatCurrency(card.denomination || 0)
-                            }
-                          </td>
-                          <td className="px-4 py-3">{getStatusBadge(card.status)}</td>
-                          <td className="px-4 py-3 text-slate-400 text-sm">{formatDateShort(card.created_at, tz)}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
           </>
         )}
 
