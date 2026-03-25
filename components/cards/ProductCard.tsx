@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 
 interface ProductCardProps {
   product: Product
+  compact?: boolean
 }
 
 const iconColorClasses: Record<string, string> = {
@@ -26,7 +27,7 @@ const iconColorClasses: Record<string, string> = {
   red: 'bg-red-500/10 text-red-500',
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, compact = false }: ProductCardProps) {
   const router = useRouter()
   const { formatPrice } = usePreferences()
   const { isInWishlist, toggleItem } = useWishlist()
@@ -59,7 +60,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       {images ? (
         <div className="p-4 pb-0">
           <div
-            className="relative w-full aspect-square bg-surface-dark rounded-xl border border-border-dark overflow-hidden"
+            className={`relative w-full ${compact ? 'aspect-[4/3]' : 'aspect-square'} bg-surface-dark rounded-xl border border-border-dark overflow-hidden`}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
