@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ProductCard from '@/components/cards/ProductCard'
 import Icon from '@/components/ui/Icon'
+import ServiceLogo from '@/components/ui/ServiceLogo'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { getBitrefillImageUrl } from '@/lib/gift-cards/brand-images'
 
@@ -54,11 +55,9 @@ export default function MostPopular({ config }: { config?: { title?: string; col
     const isNew = createdAt && (Date.now() - new Date(createdAt).getTime()) < 14 * 24 * 60 * 60 * 1000
     const isFeatured = p.isFeatured ?? p.is_featured
     const badge = isFeatured ? 'HOT' : isNew ? 'NEW' : undefined
-    // Gift cards: fall back to Bitrefill CDN if DB image_url is null
-    const gcImage = p.category_name === 'Gift Cards' && !p.images
-      ? getBitrefillImageUrl(p.name)
-      : null
-    const images = p.images ?? (gcImage ? [{ url: gcImage, isPrimary: true }] : undefined)
+    // Gift cards: always prefer Bitrefill CDN (same source as the gift cards category page)
+    const gcImage = p.category_name === 'Gift Cards' ? getBitrefillImageUrl(p.name) : null
+    const images = gcImage ? [{ url: gcImage, isPrimary: true }] : (p.images ?? undefined)
     return (
       <ProductCard
         key={p.id}
@@ -121,6 +120,24 @@ export default function MostPopular({ config }: { config?: { title?: string; col
       </Link>
     )
   }
+
+  const renderPhoneRefillCard = (p: any) => (
+    <Link
+      key={p.id}
+      href={p.href ?? '#'}
+      className="bg-[#121212] rounded-xl border border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden flex flex-col"
+    >
+      <div className="p-3">
+        <div className="w-full aspect-square bg-white rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
+          <ServiceLogo name={p.name} size={80} className="rounded-lg" />
+        </div>
+      </div>
+      <div className="p-3 pt-0">
+        <h3 className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">{p.name}</h3>
+        <p className="text-primary font-medium text-sm mt-0.5">{formatPrice(Number(p.price))}</p>
+      </div>
+    </Link>
+  )
 
   const renderCountryChip = (p: any) => (
     <Link
@@ -188,7 +205,7 @@ export default function MostPopular({ config }: { config?: { title?: string; col
           {logoItems.length > 0 && (
             <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
               {logoItems.map((p: any) =>
-                p.category_name === 'Cards' ? renderCardChip(p) : renderProductCard(p)
+                p.category_name === 'Cards' ? renderCardChip(p) : renderPhoneRefillCard(p)
               )}
             </div>
           )}

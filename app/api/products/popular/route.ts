@@ -63,7 +63,7 @@ async function getTopEsims(): Promise<PopularItem[]> {
       WHERE ep.is_active = true
       GROUP BY ep.id
       ORDER BY total_purchased DESC, ep.retail_price ASC
-      LIMIT 2
+      LIMIT 8
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/esim?plan=${r.id}` }))
   } catch { return [] }
@@ -108,7 +108,7 @@ async function getTopVirtualNumbers(): Promise<PopularItem[]> {
       WHERE vnc.is_active = true
       GROUP BY vnc.id
       ORDER BY total_purchased DESC, vnc.retail_monthly ASC
-      LIMIT 2
+      LIMIT 8
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/virtual-numbers?country=${r.id}` }))
   } catch { return [] }
@@ -136,28 +136,6 @@ async function getTopCards(): Promise<PopularItem[]> {
       return { ...r, href: `/cards?tab=${tab}` }
     })
   } catch { return [] }
-}
-
-const PHONE_REFILL_SLUGS: Record<string, string> = {
-  'at&t': 'atandt-usa', 'att': 'atandt-usa',
-  'verizon': 'verizon-usa', 't-mobile': 't-mobile-usa', 'tmobile': 't-mobile-usa',
-  'boost mobile': 'boost-mobile-usa', 'cricket': 'cricket-usa', 'cricket mobile': 'cricket-usa',
-  'metro pcs': 'metropcs-usa', 'metropcs': 'metropcs-usa', 'metro by t-mobile': 'metropcs-usa',
-  'straight talk': 'straight-talk', 'ultra mobile': 'ultra-mobile-usa',
-  'net10': 'net10-usa', 'net10 mobile': 'net10-usa',
-  'simple mobile': 'simple-mobile-usa', 'h2o mobile': 'h2o-pin-usa',
-  'lyca mobile': 'lyca-mobile-usa', 'page plus': 'pageplus-pin-usa',
-  'gosmart': 'gosmart-usa', 'go smart': 'gosmart-usa',
-  'total wireless': 'total-by-verizon-usa', 'total by verizon': 'total-by-verizon-usa',
-  'mtn': 'mtn-nigeria', 'mtn nigeria': 'mtn-nigeria', 'mtn ghana': 'mtn-ghana',
-  'airtel': 'airtel-nigeria', 'airtel nigeria': 'airtel-nigeria', 'airtel india': 'airtel-india',
-  'glo': 'glo-nigeria', '9mobile': '9mobile-nigeria',
-  'safaricom': 'safaricom-kenya', 'vodafone': 'vodafone-uk',
-  'jio': 'jio-india', 'reliance jio': 'jio-india',
-  'orange': 'orange-france', 'telcel': 'telcel-mexico',
-  'claro': 'claro-mexico', 'movistar': 'movistar-spain',
-  'koodo': 'koodo-pin-canada', 'telus': 'telus-pin-canada',
-  'bell': 'bell-pin-canada', 'rogers': 'rogers-pin-canada',
 }
 
 async function getTopPhoneRefills(): Promise<PopularItem[]> {
@@ -202,7 +180,16 @@ export async function GET() {
       getTopPhoneRefills(),
     ])
 
-    const data = [...scripts, ...esims, ...giftCards, ...virtualNumbers, ...cards, ...phoneRefills]
+    // Deduplicate country items (eSIM + Virtual Numbers) so all 4 show different countries
+    const usedFlags = new Set<string>()
+    const uniqueCountryItems = [...esims, ...virtualNumbers].filter(item => {
+      const flag = item.images?.[0]?.url
+      if (!flag || usedFlags.has(flag)) return false
+      usedFlags.add(flag)
+      return true
+    }).slice(0, 4)
+
+    const data = [...scripts, ...giftCards, ...uniqueCountryItems, ...cards, ...phoneRefills]
 
     return NextResponse.json({ success: true, data })
   } catch (error) {
