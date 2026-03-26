@@ -51,7 +51,7 @@ const BITREFILL_SLUGS: Record<string, string> = {
   'airtel': 'airtel-nigeria', 'airtel nigeria': 'airtel-nigeria',
   'mtn': 'mtn-nigeria', 'mtn nigeria': 'mtn-nigeria',
   'glo': 'glo-nigeria', 'glo nigeria': 'glo-nigeria',
-  '9mobile': '9mobile-nigeria',
+  '9mobile': '9mobile-nigeria', 'nine mobile': '9mobile-nigeria', 'ninemobile': '9mobile-nigeria',
   'safaricom': 'safaricom-kenya',
   'mtn ghana': 'mtn-ghana',
   'vodafone ghana': 'vodafone-ghana',
@@ -68,7 +68,7 @@ const BITREFILL_SLUGS: Record<string, string> = {
   'vivo': 'vivo-brazil', 'tim brazil': 'tim-brasil', 'oi': 'oi-brazil',
 }
 
-function getBitrefillSlug(name: string): string | null {
+export function getBitrefillSlug(name: string): string | null {
   return BITREFILL_SLUGS[name.toLowerCase().trim()] ?? null
 }
 

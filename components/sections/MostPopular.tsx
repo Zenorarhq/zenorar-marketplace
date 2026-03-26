@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import ProductCard from '@/components/cards/ProductCard'
-import GiftCardVisual from '@/components/cards/GiftCardVisual'
 import { CardVisualMini } from '@/components/cards/CardVisual'
 import Icon from '@/components/ui/Icon'
-import ServiceLogo from '@/components/ui/ServiceLogo'
+import { getBitrefillSlug } from '@/components/ui/ServiceLogo'
+import { getBitrefillImageUrl } from '@/lib/gift-cards/brand-images'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
 interface PopularProduct {
@@ -34,6 +35,7 @@ export default function MostPopular({ config }: { config?: { title?: string; col
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const { formatPrice } = usePreferences()
+  const router = useRouter()
 
   useEffect(() => {
     fetch('/api/products/popular')
@@ -53,11 +55,13 @@ export default function MostPopular({ config }: { config?: { title?: string; col
   const logoItems    = products.filter(p => ['Cards', 'Phone Refills'].includes(p.category_name ?? ''))
   const countryItems = products.filter(p => ['eSIM', 'Virtual Numbers'].includes(p.category_name ?? ''))
 
-  const renderProductCard = (p: any) => {
+  const renderProductCard = (p: any, imageOverride?: { url: string; isPrimary: boolean }[] | null) => {
     const createdAt = p.createdAt || p.created_at
     const isNew = createdAt && (Date.now() - new Date(createdAt).getTime()) < 14 * 24 * 60 * 60 * 1000
     const isFeatured = p.isFeatured ?? p.is_featured
     const badge = isFeatured ? 'HOT' : isNew ? 'NEW' : undefined
+    const images = imageOverride !== undefined ? (imageOverride ?? undefined) : (p.images ?? undefined)
+    const iconMap: Record<string, string> = { 'Gift Cards': 'gift', 'Phone Refills': 'phone', 'Scripts': 'box' }
     return (
       <ProductCard
         key={p.id}
@@ -71,10 +75,10 @@ export default function MostPopular({ config }: { config?: { title?: string; col
           rating: Number(p.avgRating ?? p.average_rating) || 0,
           reviewCount: Number(p._count?.reviews ?? p.review_count) || 0,
           category: p.category?.name ?? p.category_name ?? '',
-          icon: 'box',
+          icon: iconMap[p.category_name] ?? 'box',
           iconColor: 'primary',
           tags: [],
-          images: p.images ?? undefined,
+          images,
           badge,
           href: p.href,
         }}
@@ -82,55 +86,44 @@ export default function MostPopular({ config }: { config?: { title?: string; col
     )
   }
 
-  const renderGiftCard = (p: any) => (
-    <Link
-      key={p.id}
-      href={p.href ?? '#'}
-      className="bg-charcoal border border-border-dark rounded-2xl overflow-hidden hover:border-primary/50 transition-all flex flex-col cursor-pointer"
-    >
-      <GiftCardVisual brand={p.name} category="gift cards" height="h-32" />
-      <div className="p-3">
-        <h3 className="font-bold text-white text-sm truncate">{p.name}</h3>
-        <p className="text-primary font-medium text-sm">{formatPrice(Number(p.price))}</p>
-      </div>
-    </Link>
-  )
-
-  const renderCardMini = (p: any) => {
+  const renderCardProductStyle = (p: any) => {
     const brand: 'mastercard' | 'visa' = p.name.includes('Mastercard') ? 'mastercard' : 'visa'
     const type: 'instant' | 'virtual' = p.name.includes('Instant') ? 'instant' : 'virtual'
     return (
-      <Link
+      <div
         key={p.id}
-        href={p.href ?? '#'}
-        className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden hover:border-primary/50 transition-all flex flex-col items-center p-3 gap-2 cursor-pointer"
+        onClick={() => router.push(p.href ?? '/cards')}
+        className="bg-[#121212] rounded-xl border border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden flex flex-col"
       >
-        <CardVisualMini brand={brand} type={type} />
-        <div className="text-center">
-          <p className="text-[11px] font-semibold text-white truncate">{p.name}</p>
-          <p className="text-primary font-bold text-[11px]">{formatPrice(Number(p.price))}</p>
+        {/* Image slot — matches ProductCard compact layout */}
+        <div className="p-4 pb-0">
+          <div className="relative w-full aspect-[4/3] bg-surface-dark rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
+            <CardVisualMini brand={brand} type={type} className="scale-[1.6]" />
+          </div>
         </div>
-      </Link>
+        {/* Info */}
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="font-bold text-sm group-hover:text-primary transition-colors line-clamp-2">{p.name}</h3>
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <Icon name="credit-card" size={12} className="text-primary" />
+            <span className="text-[10px] text-slate-500 uppercase font-bold">Cards</span>
+          </div>
+          <div className="flex items-center justify-between mt-auto">
+            <p className="text-white font-bold text-base">{formatPrice(Number(p.price))}</p>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(p.href ?? '/cards') }}
+              className="w-8 h-8 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center hover:bg-primary hover:text-black transition-colors"
+              aria-label="View card"
+            >
+              <Icon name="arrow-right" size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
     )
   }
-
-  const renderPhoneRefillCard = (p: any) => (
-    <Link
-      key={p.id}
-      href={p.href ?? '#'}
-      className="bg-[#121212] rounded-xl border border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden flex flex-col"
-    >
-      <div className="p-3">
-        <div className="w-full aspect-square bg-white rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
-          <ServiceLogo name={p.name} size={80} className="rounded-lg" />
-        </div>
-      </div>
-      <div className="p-3 pt-0">
-        <h3 className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">{p.name}</h3>
-        <p className="text-primary font-medium text-sm mt-0.5">{formatPrice(Number(p.price))}</p>
-      </div>
-    </Link>
-  )
 
   const renderCountryCard = (p: any) => (
     <Link
@@ -190,21 +183,28 @@ export default function MostPopular({ config }: { config?: { title?: string; col
 
       {!loading && !error && (
         <div className="space-y-4">
-          {/* Row 1 — Scripts (ProductCard) + Gift Cards (GiftCardVisual) */}
+          {/* Row 1 — Scripts + Gift Cards — all ProductCard style */}
           {imageItems.length > 0 && (
             <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
-              {imageItems.map((p: any) =>
-                p.category_name === 'Gift Cards' ? renderGiftCard(p) : renderProductCard(p)
-              )}
+              {imageItems.map((p: any) => {
+                if (p.category_name === 'Gift Cards') {
+                  const imgUrl = getBitrefillImageUrl(p.name)
+                  return renderProductCard(p, imgUrl ? [{ url: imgUrl, isPrimary: true }] : p.images)
+                }
+                return renderProductCard(p)
+              })}
             </div>
           )}
 
-          {/* Row 2 — Phone Refills (ServiceLogo) + Cards (CardVisualMini) */}
+          {/* Row 2 — Phone Refills + Cards — all ProductCard style */}
           {logoItems.length > 0 && (
             <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
-              {logoItems.map((p: any) =>
-                p.category_name === 'Cards' ? renderCardMini(p) : renderPhoneRefillCard(p)
-              )}
+              {logoItems.map((p: any) => {
+                if (p.category_name === 'Cards') return renderCardProductStyle(p)
+                const slug = getBitrefillSlug(p.name)
+                const imgUrl = slug ? `https://cdn.bitrefill.com/primg/i1w192h192/${slug}.webp` : null
+                return renderProductCard(p, imgUrl ? [{ url: imgUrl, isPrimary: true }] : null)
+              })}
             </div>
           )}
 

@@ -134,7 +134,7 @@ export default function ProductCard({ product, compact = false }: ProductCardPro
           <h3 className="font-bold text-sm group-hover:text-primary transition-colors line-clamp-2">
             {product.name}
           </h3>
-          {product.rating > 0 && (
+          {(product.rating > 0 || (product.reviewCount ?? 0) > 0) && (
             <div className="flex items-center text-yellow-500 scale-75 origin-right flex-shrink-0">
               <Icon name="star" size={16} />
               <span className="text-slate-300 text-xs ml-1 font-bold">{product.rating.toFixed(1)}</span>

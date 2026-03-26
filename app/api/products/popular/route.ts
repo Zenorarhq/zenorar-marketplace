@@ -156,6 +156,10 @@ async function getTopPhoneRefills(): Promise<PopularItem[]> {
       FROM order_items
       WHERE product_type = 'phone_refill'
         AND metadata->>'operatorName' IS NOT NULL
+        AND LOWER(metadata->>'operatorName') NOT LIKE '%nigeria%'
+        AND LOWER(metadata->>'operatorName') NOT LIKE '%nine mobile%'
+        AND LOWER(metadata->>'operatorName') NOT LIKE '%9mobile%'
+        AND LOWER(metadata->>'operatorName') NOT LIKE '%glo%'
       GROUP BY metadata->>'offerId', metadata->>'operatorName'
       ORDER BY total_purchased DESC
       LIMIT 2
