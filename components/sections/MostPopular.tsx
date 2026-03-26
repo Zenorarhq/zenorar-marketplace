@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ProductCard from '@/components/cards/ProductCard'
+import GiftCardVisual from '@/components/cards/GiftCardVisual'
+import { CardVisualMini } from '@/components/cards/CardVisual'
 import Icon from '@/components/ui/Icon'
 import ServiceLogo from '@/components/ui/ServiceLogo'
 import { usePreferences } from '@/contexts/PreferencesContext'
-import { getBitrefillImageUrl } from '@/lib/gift-cards/brand-images'
 
 interface PopularProduct {
   id: string
@@ -22,6 +23,8 @@ interface PopularProduct {
   created_at: string | null
   images: { url: string; isPrimary: boolean }[] | null
   href?: string
+  data_amount_display?: string
+  validity_days?: number
 }
 
 const SCROLL_GRID = 'grid grid-rows-1 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 md:grid-cols-4 md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible'
@@ -55,9 +58,6 @@ export default function MostPopular({ config }: { config?: { title?: string; col
     const isNew = createdAt && (Date.now() - new Date(createdAt).getTime()) < 14 * 24 * 60 * 60 * 1000
     const isFeatured = p.isFeatured ?? p.is_featured
     const badge = isFeatured ? 'HOT' : isNew ? 'NEW' : undefined
-    // Gift cards: always prefer Bitrefill CDN (same source as the gift cards category page)
-    const gcImage = p.category_name === 'Gift Cards' ? getBitrefillImageUrl(p.name) : null
-    const images = gcImage ? [{ url: gcImage, isPrimary: true }] : (p.images ?? undefined)
     return (
       <ProductCard
         key={p.id}
@@ -74,7 +74,7 @@ export default function MostPopular({ config }: { config?: { title?: string; col
           icon: 'box',
           iconColor: 'primary',
           tags: [],
-          images,
+          images: p.images ?? undefined,
           badge,
           href: p.href,
         }}
@@ -82,40 +82,33 @@ export default function MostPopular({ config }: { config?: { title?: string; col
     )
   }
 
-  const renderCardChip = (p: any) => {
-    const isMastercard = p.name.includes('Mastercard')
-    const isInstant = p.name.includes('Instant')
+  const renderGiftCard = (p: any) => (
+    <Link
+      key={p.id}
+      href={p.href ?? '#'}
+      className="bg-charcoal border border-border-dark rounded-2xl overflow-hidden hover:border-primary/50 transition-all flex flex-col cursor-pointer"
+    >
+      <GiftCardVisual brand={p.name} category="gift cards" height="h-32" />
+      <div className="p-3">
+        <h3 className="font-bold text-white text-sm truncate">{p.name}</h3>
+        <p className="text-primary font-medium text-sm">{formatPrice(Number(p.price))}</p>
+      </div>
+    </Link>
+  )
+
+  const renderCardMini = (p: any) => {
+    const brand: 'mastercard' | 'visa' = p.name.includes('Mastercard') ? 'mastercard' : 'visa'
+    const type: 'instant' | 'virtual' = p.name.includes('Instant') ? 'instant' : 'virtual'
     return (
       <Link
         key={p.id}
         href={p.href ?? '#'}
-        className="rounded-xl overflow-hidden border border-border-dark hover:border-primary/50 transition-all flex flex-col"
+        className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden hover:border-primary/50 transition-all flex flex-col items-center p-3 gap-2 cursor-pointer"
       >
-        <div
-          className={`p-3 flex flex-col justify-between bg-gradient-to-br ${
-            isMastercard
-              ? 'from-emerald-900/60 via-teal-800/40 to-emerald-900/60'
-              : 'from-blue-900/60 via-indigo-800/40 to-blue-900/60'
-          }`}
-          style={{ aspectRatio: '4/3' }}
-        >
-          <div className="flex items-start justify-between">
-            <span className="text-white/80 text-[10px] font-semibold">
-              {isMastercard ? 'Mastercard' : 'Visa'}
-            </span>
-            <span className={`px-1.5 py-0.5 text-[8px] rounded-full ${
-              isInstant
-                ? 'bg-emerald-500/20 text-emerald-400'
-                : 'bg-blue-500/20 text-blue-400'
-            }`}>
-              {isInstant ? 'Instant' : 'Virtual'}
-            </span>
-          </div>
-          <p className="text-white/40 font-mono text-[10px]">**** **** ****</p>
-        </div>
-        <div className="p-2 bg-[#121212]">
-          <p className="text-[10px] font-semibold text-white truncate">{p.name}</p>
-          <p className="text-primary font-bold text-[10px]">{formatPrice(Number(p.price))}</p>
+        <CardVisualMini brand={brand} type={type} />
+        <div className="text-center">
+          <p className="text-[11px] font-semibold text-white truncate">{p.name}</p>
+          <p className="text-primary font-bold text-[11px]">{formatPrice(Number(p.price))}</p>
         </div>
       </Link>
     )
@@ -139,25 +132,28 @@ export default function MostPopular({ config }: { config?: { title?: string; col
     </Link>
   )
 
-  const renderCountryChip = (p: any) => (
+  const renderCountryCard = (p: any) => (
     <Link
       key={p.id}
       href={p.href ?? '#'}
-      className="relative rounded-xl overflow-hidden border border-border-dark hover:border-primary/50 transition-all flex flex-col justify-end"
-      style={{ minHeight: 100 }}
+      className="relative bg-[#121212] border border-border-dark rounded-xl overflow-hidden hover:border-primary/50 transition-all flex flex-col p-3 cursor-pointer min-h-[100px]"
     >
+      {/* Small SIM-card shaped flag — top-right corner */}
       {p.images?.[0]?.url && (
-        <img
-          src={p.images[0].url}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-25 blur-sm scale-110"
-        />
+        <div
+          className="absolute top-3 right-3 w-10 overflow-hidden flex-shrink-0"
+          style={{ aspectRatio: '4/3', clipPath: 'polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%)' }}
+        >
+          <img src={p.images[0].url} alt="" className="w-full h-full object-cover" />
+        </div>
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-black/20" />
-      <div className="relative z-10 p-2.5">
-        <span className="text-[9px] text-slate-400 uppercase tracking-wider">{p.category_name}</span>
-        <p className="text-xs font-semibold text-white truncate leading-tight">{p.name}</p>
-        <p className="text-primary font-bold text-[11px] mt-0.5">{formatPrice(Number(p.price))}</p>
+      {/* Text — left side, padded away from flag */}
+      <div className="pr-12 mt-auto">
+        <p className="font-semibold text-white text-xs truncate">{p.name}</p>
+        {p.data_amount_display && (
+          <p className="text-[10px] text-slate-400">{p.data_amount_display} · {p.validity_days}d</p>
+        )}
+        <p className="text-primary font-medium text-xs mt-0.5">{formatPrice(Number(p.price))}</p>
       </div>
     </Link>
   )
@@ -194,26 +190,28 @@ export default function MostPopular({ config }: { config?: { title?: string; col
 
       {!loading && !error && (
         <div className="space-y-4">
-          {/* Row 1 — Scripts + Gift Cards (image cards) */}
+          {/* Row 1 — Scripts (ProductCard) + Gift Cards (GiftCardVisual) */}
           {imageItems.length > 0 && (
             <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
-              {imageItems.map(renderProductCard)}
-            </div>
-          )}
-
-          {/* Row 2 — Cards (custom credit card visual) + Phone Refills (brand logos) */}
-          {logoItems.length > 0 && (
-            <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
-              {logoItems.map((p: any) =>
-                p.category_name === 'Cards' ? renderCardChip(p) : renderPhoneRefillCard(p)
+              {imageItems.map((p: any) =>
+                p.category_name === 'Gift Cards' ? renderGiftCard(p) : renderProductCard(p)
               )}
             </div>
           )}
 
-          {/* Row 3 — eSIM + Virtual Numbers (country flag chips) */}
+          {/* Row 2 — Phone Refills (ServiceLogo) + Cards (CardVisualMini) */}
+          {logoItems.length > 0 && (
+            <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
+              {logoItems.map((p: any) =>
+                p.category_name === 'Cards' ? renderCardMini(p) : renderPhoneRefillCard(p)
+              )}
+            </div>
+          )}
+
+          {/* Row 3 — eSIM + Virtual Numbers (SIM clip-path flag card) */}
           {countryItems.length > 0 && (
             <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
-              {countryItems.map(renderCountryChip)}
+              {countryItems.map(renderCountryCard)}
             </div>
           )}
         </div>

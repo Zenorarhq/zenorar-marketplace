@@ -376,3 +376,191 @@ export function getBitrefillImageUrl(brand: string): string | null {
   const slug = BRAND_BITREFILL_SLUGS[brand.toLowerCase().trim()]
   return slug ? `https://cdn.bitrefill.com/primg/w360h216/${slug}.webp` : null
 }
+
+// ── Brand gradient colors ──────────────────────────────────────────────────
+// Used by GiftCardVisual as a fallback when Bitrefill has no artwork
+
+export const BRAND_COLORS: Record<string, [string, string]> = {
+  // Gaming
+  'xbox':                   ['#107C10','#0a5a0a'],
+  'xbox live':              ['#107C10','#0a5a0a'],
+  'xbox game pass':         ['#107C10','#0a5a0a'],
+  'playstation':            ['#003087','#0059c2'],
+  'playstation store':      ['#003087','#0059c2'],
+  'psn':                    ['#003087','#0059c2'],
+  'ps plus':                ['#003087','#0059c2'],
+  'steam':                  ['#1b2838','#2a475e'],
+  'nintendo':               ['#E4000F','#9e0000'],
+  'nintendo eshop':         ['#E4000F','#9e0000'],
+  'roblox':                 ['#E8002B','#8b0000'],
+  'fortnite':               ['#1d1046','#9d4dca'],
+  'fortnite v-bucks':       ['#1d1046','#9d4dca'],
+  'minecraft':              ['#5c7a1f','#3a5012'],
+  'league of legends':      ['#C89B3C','#785a28'],
+  'valorant':               ['#FF4655','#8b0000'],
+  'twitch':                 ['#6441a5','#9146FF'],
+  'blizzard':               ['#148EFF','#0e6bbf'],
+  'epic games':             ['#2d2d2d','#000000'],
+  'razer gold':             ['#44D62C','#2a8a1a'],
+  'apex legends':           ['#CD3333','#6b0000'],
+  'call of duty':           ['#1a1a1a','#3d3d3d'],
+  'pubg':                   ['#F5A623','#c07c0e'],
+  'pubg mobile':            ['#F5A623','#c07c0e'],
+  'genshin impact':         ['#4a90d9','#1a3a6b'],
+  'mobile legends':         ['#1a1a2e','#c0392b'],
+  'free fire':              ['#ff6b00','#c04e00'],
+  'garena':                 ['#ff6b00','#c04e00'],
+  'square enix':            ['#1a1a1a','#3d3d3d'],
+  'runescape':              ['#8B4513','#5c2c0a'],
+  'gamestop':               ['#E31A22','#9e0000'],
+  'discord':                ['#5865F2','#404EED'],
+  // Mega brands
+  'amazon':                 ['#FF9900','#c97200'],
+  'amazon us':              ['#FF9900','#c97200'],
+  'apple':                  ['#555555','#1d1d1d'],
+  'app store & itunes':     ['#555555','#1d1d1d'],
+  'itunes':                 ['#555555','#1d1d1d'],
+  'google play':            ['#01875f','#34a853'],
+  'visa':                   ['#1A1F71','#0d1245'],
+  'mastercard':             ['#EB001B','#c00014'],
+  // Streaming
+  'netflix':                ['#E50914','#8B0000'],
+  'spotify':                ['#1DB954','#158a3e'],
+  'hulu':                   ['#1CE783','#0fa35c'],
+  'disney+':                ['#113CCF','#051a6e'],
+  'disney plus':            ['#113CCF','#051a6e'],
+  'crunchyroll':            ['#F47521','#c45810'],
+  'paramount plus':         ['#0064FF','#0041a8'],
+  'cbsi paramount plus':    ['#0064FF','#0041a8'],
+  'tidal':                  ['#111111','#333333'],
+  'showtime':               ['#CC0000','#8b0000'],
+  'sling tv':               ['#1d6fe8','#0d4db5'],
+  // Shopping
+  'walmart':                ['#0071CE','#004f94'],
+  'target':                 ['#CC0000','#8b0000'],
+  'best buy':               ['#0046BE','#003494'],
+  'ebay':                   ['#E53238','#0064D2'],
+  'nike':                   ['#111111','#333333'],
+  'adidas':                 ['#000000','#1a1a1a'],
+  'nordstrom':              ['#1a1a1a','#3d3d3d'],
+  'sephora':                ['#111111','#333333'],
+  'ulta':                   ['#000000','#1a1a1a'],
+  'lululemon':              ['#CC0000','#8b0000'],
+  'under armour':           ['#1a1a1a','#CC0000'],
+  'home depot':             ['#F96302','#c24c00'],
+  'the home depot':         ['#F96302','#c24c00'],
+  'gap':                    ['#0C4DA2','#083580'],
+  'old navy':               ['#0C4DA2','#083580'],
+  'banana republic':        ['#2d2d2d','#1a1a1a'],
+  'athleta':                ['#1a1a1a','#2d2d2d'],
+  'aerie':                  ['#c0687a','#8b3a4f'],
+  'aeropostale':            ['#1a2a5e','#0d1a3d'],
+  "macy's":                 ['#E21A22','#9e0000'],
+  "kohl's":                 ['#6b1a1a','#3d0a0a'],
+  'jc penney':              ['#1a1a1a','#3d3d3d'],
+  'tjx':                    ['#CC0000','#8b0000'],
+  'marshalls':              ['#CC0000','#8b0000'],
+  'home goods':             ['#CC0000','#8b0000'],
+  'home sense':             ['#CC0000','#8b0000'],
+  'sierra':                 ['#2d6b2d','#1a3a1a'],
+  'wayfair':                ['#7B2D8B','#4a1a57'],
+  'birch lane':             ['#5C3D2E','#3a2519'],
+  'joss and main':          ['#2d2d2d','#1a1a1a'],
+  'perigold':               ['#8B7355','#5c4a35'],
+  'pottery barn':           ['#5C3D2E','#3a2519'],
+  'west elm':               ['#1a1a1a','#2d2d2d'],
+  'williams sonoma':        ['#8B0000','#5c0000'],
+  "crate n' kids":          ['#1a3a6b','#0d1f45'],
+  'cb2':                    ['#1a1a1a','#000000'],
+  'etsy':                   ['#F45800','#b83f00'],
+  "sam's club":             ['#0071CE','#004f94'],
+  'home chef':              ['#FF6B35','#c04a1f'],
+  // Food & dining
+  'starbucks':              ['#00704A','#004d33'],
+  'doordash':               ['#FF3008','#cc2500'],
+  'uber':                   ['#000000','#1a1a1a'],
+  'chipotle':               ['#A81612','#7a0f0d'],
+  'mcdonalds':              ['#FFC72C','#DA291C'],
+  "mcdonald's":             ['#FFC72C','#DA291C'],
+  'subway':                 ['#009B48','#FFC600'],
+  'taco bell':              ['#702082','#4b1559'],
+  'dunkin':                 ['#FF6E0F','#DD1D21'],
+  'papa johns':             ['#CC0000','#006747'],
+  "domino's":               ['#006491','#CC0000'],
+  'panera':                 ['#6B3A2A','#4a2519'],
+  'krispy kreme':           ['#CC0000','#267c37'],
+  'five guys':              ['#CC0000','#e8c800'],
+  'buffalo wild wings':     ['#F4C31D','#CC0000'],
+  'chilis':                 ['#CC0000','#8b0000'],
+  'red robin':              ['#CC0000','#FFD700'],
+  'cracker barrel':         ['#8B0000','#4a0000'],
+  'texas roadhouse':        ['#CC0000','#8b0000'],
+  'outback steakhouse':     ['#CC0000','#8b0000'],
+  'red lobster':            ['#CC0000','#8b0000'],
+  'the cheesecake factory': ['#8B0000','#5C3D2E'],
+  'panda express':          ['#CC0000','#1a1a1a'],
+  'sonic app':              ['#1B428A','#E31C1C'],
+  'sonic':                  ['#1B428A','#E31C1C'],
+  'jersey mike':            ['#CC0000','#8b0000'],
+  'jamba juice':            ['#F5A623','#c07c0e'],
+  'instacart':              ['#43B02A','#2d7a1c'],
+  'starbucks us':           ['#00704A','#004d33'],
+  // Travel
+  'airbnb':                 ['#FF5A5F','#e04045'],
+  'delta airlines':         ['#003366','#cc0000'],
+  'southwest airlines':     ['#304CB2','#F9B612'],
+  'royal caribbean':        ['#003087','#0077C8'],
+  'carnival cruises':       ['#CC0000','#003087'],
+  'hotels.com':             ['#CC0000','#8b0000'],
+  'amtrak':                 ['#1a3a6b','#CC0000'],
+  // Entertainment
+  'amc':                    ['#1a1a1a','#cc0000'],
+  'fandango':               ['#5C2483','#3a1657'],
+  'stubhub':                ['#003168','#0057B8'],
+  'regal entertainment':    ['#1a1a1a','#cc0000'],
+  'topgolf':                ['#1a3a1a','#2d6b2d'],
+  'dave & buster':          ['#CC0000','#1a1a1a'],
+  'sirius xm':              ['#003087','#0057b3'],
+  // Outdoor / Auto
+  'jiffy lube':             ['#F5A623','#E8001B'],
+  // Sports
+  'nba store':              ['#1d428a','#CC0000'],
+  'nfl shop':               ['#013369','#D50A0A'],
+  'nhl shop':               ['#000000','#1a1a1a'],
+  // Misc
+  'groupon':                ['#53A318','#3a7210'],
+  "lowe's":                 ['#004990','#003060'],
+  'lowes':                  ['#004990','#003060'],
+  'paypal':                 ['#003087','#009cde'],
+  'airalo':                 ['#6C63FF','#4a42cc'],
+}
+
+export const CATEGORY_COLORS: Record<string, [string, string]> = {
+  gaming:        ['#2d1b69','#4B0082'],
+  streaming:     ['#8B0000','#cc0000'],
+  shopping:      ['#003d7a','#0057b3'],
+  food:          ['#6B2D0A','#a84412'],
+  travel:        ['#003366','#0057b3'],
+  entertainment: ['#1a0033','#4B0082'],
+  retail:        ['#1a2e1a','#2d4d2d'],
+  payment:       ['#1a1a2e','#2d2d5a'],
+  other:         ['#1a1a2e','#2d2d3d'],
+}
+
+export function hashBrandColor(brand: string): [string, string] {
+  let hash = 0
+  for (let i = 0; i < brand.length; i++) {
+    hash = brand.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const h = Math.abs(hash) % 360
+  return [`hsl(${h}, 55%, 25%)`, `hsl(${h}, 65%, 15%)`]
+}
+
+export function getBrandColors(brand: string, category: string): [string, string] {
+  const key = brand.toLowerCase().trim()
+  if (BRAND_COLORS[key]) return BRAND_COLORS[key]
+  for (const [k, colors] of Object.entries(BRAND_COLORS)) {
+    if (key.includes(k) || k.includes(key)) return colors
+  }
+  return CATEGORY_COLORS[category?.toLowerCase()] || hashBrandColor(brand)
+}

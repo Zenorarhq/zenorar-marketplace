@@ -16,6 +16,8 @@ interface PopularItem {
   total_purchased: number
   images: { url: string; isPrimary: boolean }[] | null
   href: string
+  data_amount_display?: string
+  validity_days?: number
 }
 
 async function getTopScripts(): Promise<PopularItem[]> {
@@ -51,6 +53,7 @@ async function getTopEsims(): Promise<PopularItem[]> {
       SELECT ep.id::text, ep.name, ep.slug, ep.description,
         ep.retail_price::float as price, false as is_featured, ep.created_at::text,
         'eSIM' as category_name, 0 as average_rating, 0 as review_count,
+        ep.data_amount_display, ep.validity_days::int,
         COUNT(ue.id)::int as total_purchased,
         CASE WHEN array_length(ep.countries, 1) > 0
           THEN json_build_array(json_build_object(
@@ -63,7 +66,7 @@ async function getTopEsims(): Promise<PopularItem[]> {
       WHERE ep.is_active = true
       GROUP BY ep.id
       ORDER BY total_purchased DESC, ep.retail_price ASC
-      LIMIT 8
+      LIMIT 2
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/esim?plan=${r.id}` }))
   } catch { return [] }
@@ -108,7 +111,7 @@ async function getTopVirtualNumbers(): Promise<PopularItem[]> {
       WHERE vnc.is_active = true
       GROUP BY vnc.id
       ORDER BY total_purchased DESC, vnc.retail_monthly ASC
-      LIMIT 8
+      LIMIT 2
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/virtual-numbers?country=${r.id}` }))
   } catch { return [] }
@@ -157,15 +160,10 @@ async function getTopPhoneRefills(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => {
-      const slug = PHONE_REFILL_SLUGS[r.name.toLowerCase().trim()]
-      const imageUrl = slug ? `https://cdn.bitrefill.com/primg/i1w192h192/${slug}.webp` : null
-      return {
-        ...r,
-        images: imageUrl ? [{ url: imageUrl, isPrimary: true }] : null,
-        href: `/phone-refills?search=${encodeURIComponent(r.name)}`,
-      }
-    })
+    return result.rows.map((r: any) => ({
+      ...r,
+      href: `/phone-refills?search=${encodeURIComponent(r.name)}`,
+    }))
   } catch { return [] }
 }
 
@@ -180,16 +178,7 @@ export async function GET() {
       getTopPhoneRefills(),
     ])
 
-    // Deduplicate country items (eSIM + Virtual Numbers) so all 4 show different countries
-    const usedFlags = new Set<string>()
-    const uniqueCountryItems = [...esims, ...virtualNumbers].filter(item => {
-      const flag = item.images?.[0]?.url
-      if (!flag || usedFlags.has(flag)) return false
-      usedFlags.add(flag)
-      return true
-    }).slice(0, 4)
-
-    const data = [...scripts, ...giftCards, ...uniqueCountryItems, ...cards, ...phoneRefills]
+    const data = [...scripts, ...giftCards, ...esims, ...virtualNumbers, ...cards, ...phoneRefills]
 
     return NextResponse.json({ success: true, data })
   } catch (error) {
