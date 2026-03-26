@@ -16,11 +16,24 @@ export interface FinanceOverview {
   totalRefunds: number
   totalFees: number
   totalExpenses: number
+  totalVendorPayouts: number
+  totalContributorPayouts: number
+  totalPayouts: number
   netRevenue: number
   availableBalance: number
   pendingBalance: number
   currency: string
   revenueByPaymentMethod: { method: string; amount: number; count: number }[]
+}
+
+export interface PaidPayout {
+  id: string
+  type: 'vendor' | 'contributor'
+  userName: string
+  userEmail: string
+  amount: number
+  note: string | null
+  paidAt: string
 }
 
 export interface AdminExpense {
@@ -117,5 +130,9 @@ export const financeApi = {
     return apiFetch<void>(`/payments/finance/expenses/${id}`, {
       method: 'DELETE',
     })
+  },
+
+  async getPaidPayouts(limit: number = 50) {
+    return apiFetch<PaidPayout[]>(`/payments/finance/payouts?limit=${limit}`)
   },
 }
