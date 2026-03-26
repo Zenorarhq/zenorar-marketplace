@@ -117,25 +117,47 @@ async function getTopVirtualNumbers(): Promise<PopularItem[]> {
 async function getTopCards(): Promise<PopularItem[]> {
   try {
     const result = await executeQuery(`
-      SELECT md5(card_type || card_brand) as id,
-        initcap(card_brand) || ' ' || initcap(card_type) || ' Card' as name,
-        card_type || '-' || card_brand as slug, null as description,
+      (SELECT md5('instantmastercard') as id, 'Mastercard Instant Card' as name,
+        'instant-mastercard' as slug, null as description,
         COALESCE(AVG(denomination), 0)::float as price, false as is_featured, null as created_at,
         'Cards' as category_name, 0 as average_rating, 0 as review_count,
         COUNT(*)::int as total_purchased, null as images
-      FROM user_cards
-      WHERE status = 'active'
-      GROUP BY card_type, card_brand
-      ORDER BY total_purchased DESC
-      LIMIT 2
+       FROM user_cards WHERE status = 'active' AND card_type = 'instant' AND card_brand = 'mastercard')
+      UNION ALL
+      (SELECT md5('virtualvisa') as id, 'Visa Virtual Card' as name,
+        'virtual-visa' as slug, null as description,
+        COALESCE(AVG(denomination), 0)::float as price, false as is_featured, null as created_at,
+        'Cards' as category_name, 0 as average_rating, 0 as review_count,
+        COUNT(*)::int as total_purchased, null as images
+       FROM user_cards WHERE status = 'active' AND card_type = 'virtual' AND card_brand = 'visa')
     `)
-    // slug is "instant-visa" or "virtual_card-visa"; extract card_type for tab param
     return result.rows.map((r: any) => {
-      const cardType = r.slug.split('-')[0]
-      const tab = cardType === 'instant' ? 'instant' : 'virtual'
+      const tab = r.slug.startsWith('instant') ? 'instant' : 'virtual'
       return { ...r, href: `/cards?tab=${tab}` }
     })
   } catch { return [] }
+}
+
+const PHONE_REFILL_SLUGS: Record<string, string> = {
+  'at&t': 'atandt-usa', 'att': 'atandt-usa',
+  'verizon': 'verizon-usa', 't-mobile': 't-mobile-usa', 'tmobile': 't-mobile-usa',
+  'boost mobile': 'boost-mobile-usa', 'cricket': 'cricket-usa', 'cricket mobile': 'cricket-usa',
+  'metro pcs': 'metropcs-usa', 'metropcs': 'metropcs-usa', 'metro by t-mobile': 'metropcs-usa',
+  'straight talk': 'straight-talk', 'ultra mobile': 'ultra-mobile-usa',
+  'net10': 'net10-usa', 'net10 mobile': 'net10-usa',
+  'simple mobile': 'simple-mobile-usa', 'h2o mobile': 'h2o-pin-usa',
+  'lyca mobile': 'lyca-mobile-usa', 'page plus': 'pageplus-pin-usa',
+  'gosmart': 'gosmart-usa', 'go smart': 'gosmart-usa',
+  'total wireless': 'total-by-verizon-usa', 'total by verizon': 'total-by-verizon-usa',
+  'mtn': 'mtn-nigeria', 'mtn nigeria': 'mtn-nigeria', 'mtn ghana': 'mtn-ghana',
+  'airtel': 'airtel-nigeria', 'airtel nigeria': 'airtel-nigeria', 'airtel india': 'airtel-india',
+  'glo': 'glo-nigeria', '9mobile': '9mobile-nigeria',
+  'safaricom': 'safaricom-kenya', 'vodafone': 'vodafone-uk',
+  'jio': 'jio-india', 'reliance jio': 'jio-india',
+  'orange': 'orange-france', 'telcel': 'telcel-mexico',
+  'claro': 'claro-mexico', 'movistar': 'movistar-spain',
+  'koodo': 'koodo-pin-canada', 'telus': 'telus-pin-canada',
+  'bell': 'bell-pin-canada', 'rogers': 'rogers-pin-canada',
 }
 
 async function getTopPhoneRefills(): Promise<PopularItem[]> {
@@ -157,7 +179,15 @@ async function getTopPhoneRefills(): Promise<PopularItem[]> {
       ORDER BY total_purchased DESC
       LIMIT 2
     `)
-    return result.rows.map((r: any) => ({ ...r, href: `/phone-refills?search=${encodeURIComponent(r.name)}` }))
+    return result.rows.map((r: any) => {
+      const slug = PHONE_REFILL_SLUGS[r.name.toLowerCase().trim()]
+      const imageUrl = slug ? `https://cdn.bitrefill.com/primg/i1w192h192/${slug}.webp` : null
+      return {
+        ...r,
+        images: imageUrl ? [{ url: imageUrl, isPrimary: true }] : null,
+        href: `/phone-refills?search=${encodeURIComponent(r.name)}`,
+      }
+    })
   } catch { return [] }
 }
 
