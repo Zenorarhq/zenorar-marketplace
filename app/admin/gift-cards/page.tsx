@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
-import { formatNumber } from '@/lib/formatNumber'
+import { formatNumber, formatCurrency } from '@/lib/formatNumber'
 import { GIFT_CARD_CATEGORIES } from '@/lib/gift-cards/types'
 import Toast, { ToastState } from '@/components/ui/Toast'
 import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
@@ -542,7 +542,7 @@ function AdminGiftCardsPageContent() {
         <div className="flex gap-2 mb-6">
           {[
             { id: 'overview' as TabType, label: 'Overview', icon: 'chart' },
-            { id: 'sales' as TabType, label: 'Sales', icon: 'shopping-cart' },
+            { id: 'sales' as TabType, label: 'Orders', icon: 'shopping-cart' },
             { id: 'inventory' as TabType, label: 'Inventory', icon: 'list' },
             { id: 'providers' as TabType, label: 'Providers', icon: 'settings' },
             { id: 'import' as TabType, label: 'Import', icon: 'upload' },
@@ -801,8 +801,24 @@ function AdminGiftCardsPageContent() {
           </>
         )}
 
-        {/* Sales Tab */}
+        {/* Orders Tab */}
         {activeTab === 'sales' && (
+          <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {[
+              { label: 'Total Orders', value: formatNumber(salesData?.stats?.total_orders ?? 0), icon: 'shopping-cart' },
+              { label: 'Total Revenue', value: formatCurrency(salesData?.stats?.total_revenue ?? 0), icon: 'wallet' },
+            ].map(s => (
+              <div key={s.label} className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name={s.icon as any} size={16} />
+                  {s.label}
+                </div>
+                <p className="text-2xl font-bold text-white">{s.value}</p>
+              </div>
+            ))}
+          </div>
           <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -854,6 +870,7 @@ function AdminGiftCardsPageContent() {
               </div>
             )}
           </div>
+          </>
         )}
 
         {/* Inventory Tab */}

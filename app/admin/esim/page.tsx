@@ -7,7 +7,7 @@ import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import ServiceLogo from '@/components/ui/ServiceLogo'
-import { formatNumber } from '@/lib/formatNumber'
+import { formatNumber, formatCurrency } from '@/lib/formatNumber'
 import { useTimezone } from '@/hooks/use-timezone'
 import { formatDateShort } from '@/lib/date-utils'
 import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
@@ -606,7 +606,7 @@ function AdminEsimPageContent() {
         <div className="flex gap-2 mb-6">
           {[
             { id: 'overview' as TabType, label: 'Overview', icon: 'sim-card' },
-            { id: 'sales' as TabType, label: 'Digital Sales', icon: 'shopping-bag' },
+            { id: 'sales' as TabType, label: 'Orders', icon: 'shopping-bag' },
             { id: 'carrier-orders' as TabType, label: `Carrier Orders${carrierOrdersData?.pendingCount ? ` (${carrierOrdersData.pendingCount})` : ''}`, icon: 'phone' },
             { id: 'inventory' as TabType, label: 'Inventory', icon: 'list' },
           ].map(tab => (
@@ -773,8 +773,24 @@ function AdminEsimPageContent() {
           </>
         )}
 
-        {/* Digital Sales Tab */}
+        {/* Orders Tab */}
         {activeTab === 'sales' && (
+          <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {[
+              { label: 'Total Sold', value: formatNumber(salesData?.stats?.total_sold ?? salesData?.pagination?.total ?? 0), icon: 'shopping-bag' },
+              { label: 'Total Cost', value: formatCurrency(salesData?.stats?.total_cost ?? 0), icon: 'wallet' },
+            ].map(s => (
+              <div key={s.label} className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name={s.icon as any} size={16} />
+                  {s.label}
+                </div>
+                <p className="text-2xl font-bold text-white">{s.value}</p>
+              </div>
+            ))}
+          </div>
           <div className="bg-[#121212] border border-border-dark rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -822,6 +838,7 @@ function AdminEsimPageContent() {
               </div>
             )}
           </div>
+          </>
         )}
 
         {/* Inventory Tab */}

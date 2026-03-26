@@ -32,12 +32,12 @@ interface PhoneRefillStats {
 }
 
 interface FeaturedOperator {
-  id: string
   operator_name: string
   country_code: string
   image_url: string | null
   is_recommended: boolean
   is_staff_pick: boolean
+  order_count?: number
 }
 
 type TabType = 'overview' | 'orders'
@@ -112,7 +112,7 @@ function PhoneRefillsContent() {
   const totalPages = Math.ceil(total / pageSize)
 
   const operators: FeaturedOperator[] = operatorsData?.data ?? []
-  const operatorStats = operatorsData?.stats ?? { total: 0, recommended_count: 0, staff_pick_count: 0 }
+  const operatorStats = operatorsData?.stats ?? { total_operators: 0, recommended_count: 0, staff_pick_count: 0 }
 
   return (
     <div className="space-y-6">
@@ -141,7 +141,7 @@ function PhoneRefillsContent() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'Featured Operators', value: operatorStats.total },
+              { label: 'All Operators', value: operatorStats.total_operators },
               { label: 'Recommended', value: operatorStats.recommended_count },
               { label: 'Staff Picks', value: operatorStats.staff_pick_count },
             ].map((s) => (
@@ -152,11 +152,11 @@ function PhoneRefillsContent() {
             ))}
           </div>
 
-          {/* Featured Operators Table */}
+          {/* All Operators Table */}
           <div className="bg-surface-dark border border-border-dark rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-border-dark">
-              <h2 className="text-sm font-semibold text-white">Featured Operators</h2>
-              <p className="text-xs text-slate-400 mt-1">Operators added here appear in Recommended / Staff Picks sections</p>
+              <h2 className="text-sm font-semibold text-white">Phone Refill Operators</h2>
+              <p className="text-xs text-slate-400 mt-1">All operators from order history — toggle ⭐ Recommended or 👑 Staff Pick to feature them</p>
             </div>
             {loadingOperators ? (
               <div className="flex items-center justify-center py-16">
@@ -165,8 +165,8 @@ function PhoneRefillsContent() {
             ) : operators.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-slate-500">
                 <Icon name="smartphone" size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">No featured operators yet</p>
-                <p className="text-xs mt-1">Operators are added here via the Recommended/Staff Pick toggles</p>
+                <p className="text-sm">No phone refill orders found</p>
+                <p className="text-xs mt-1">Operators will appear here once customers place phone refill orders</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -180,7 +180,7 @@ function PhoneRefillsContent() {
                   </thead>
                   <tbody className="divide-y divide-border-dark">
                     {operators.map((op) => (
-                      <tr key={op.id} className="hover:bg-white/[0.02] transition-colors">
+                      <tr key={op.operator_name} className="hover:bg-white/[0.02] transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             {op.image_url ? (

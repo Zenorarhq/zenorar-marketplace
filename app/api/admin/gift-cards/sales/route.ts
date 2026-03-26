@@ -15,10 +15,16 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
     const offset = (page - 1) * limit
 
+    const statsResult = await query(`
+      SELECT COUNT(*)::int as total_orders, COALESCE(SUM(oi.price), 0)::float as total_revenue
+      FROM order_items oi
+      WHERE oi.product_type = 'gift_card'
+    `)
+
     const countResult = await query(`
       SELECT COUNT(*) as total
       FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
+      JOIN orders o ON oi."orderId" = o.id
       WHERE oi.product_type = 'gift_card'
     `)
 
@@ -32,7 +38,7 @@ export async function GET(request: NextRequest) {
         oi.price as amount,
         o.status as order_status
       FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
+      JOIN orders o ON oi."orderId" = o.id
       JOIN users u ON o."userId" = u.id
       WHERE oi.product_type = 'gift_card'
       ORDER BY o."createdAt" DESC
@@ -43,6 +49,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      stats: statsResult.rows[0],
       data: result.rows,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     })

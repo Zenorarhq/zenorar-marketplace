@@ -7,7 +7,7 @@ import Link from 'next/link'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Icon from '@/components/ui/Icon'
 import { productsApi, Product } from '@/lib/api/products'
-import { formatNumber } from '@/lib/formatNumber'
+import { formatNumber, formatCurrency } from '@/lib/formatNumber'
 import { apiFetch } from '@/lib/api/client'
 import ProductReviewsModal from '@/components/admin/ProductReviewsModal'
 import Toast, { ToastState } from '@/components/ui/Toast'
@@ -262,7 +262,7 @@ function ProductsPageContent() {
       <div className="flex gap-2 mb-6">
         {[
           { id: 'overview' as TabType, label: 'Overview', icon: 'code' },
-          { id: 'sales' as TabType, label: 'Sales', icon: 'shopping-cart' },
+          { id: 'sales' as TabType, label: 'Orders', icon: 'shopping-cart' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -277,8 +277,26 @@ function ProductsPageContent() {
         ))}
       </div>
 
-      {/* Sales Tab */}
+      {/* Orders Tab */}
       {activeTab === 'sales' && (
+        <>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {[
+            { label: 'Total Orders', value: formatNumber(salesData?.stats?.total_orders ?? 0), icon: 'shopping-cart' },
+            { label: 'Total Revenue', value: formatCurrency(salesData?.stats?.total_revenue ?? 0), icon: 'wallet' },
+          ].map(s => (
+            <div key={s.label} className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-4">
+              <div className="flex items-start justify-between mb-3">
+                <p className="text-slate-400 text-xs lg:text-sm">{s.label}</p>
+                <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-blue-400">
+                  <Icon name={s.icon as any} size={16} />
+                </div>
+              </div>
+              <p className="text-white text-lg lg:text-2xl font-bold">{s.value}</p>
+            </div>
+          ))}
+        </div>
         <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -330,6 +348,7 @@ function ProductsPageContent() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* Overview Tab */}

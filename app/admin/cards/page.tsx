@@ -334,7 +334,7 @@ function AdminCardsPageContent() {
         {activeTab === 'overview' && (
           <>
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
                 <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
                   <Icon name="credit-card" size={16} />
@@ -355,20 +355,6 @@ function AdminCardsPageContent() {
                   Frozen
                 </div>
                 <p className="text-2xl font-bold text-blue-400">{formatNumber(stats.frozen_cards)}</p>
-              </div>
-              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
-                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
-                  <Icon name="wallet" size={16} />
-                  Revenue
-                </div>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(stats.total_revenue)}</p>
-              </div>
-              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
-                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
-                  <Icon name="tag" size={16} />
-                  Fees Earned
-                </div>
-                <p className="text-2xl font-bold text-yellow-400">{formatCurrency(stats.total_fees)}</p>
               </div>
             </div>
 
@@ -585,6 +571,23 @@ function AdminCardsPageContent() {
         {/* Transactions Tab */}
         {activeTab === 'transactions' && (
           <>
+            {/* Revenue Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="wallet" size={16} />
+                  Total Revenue
+                </div>
+                <p className="text-2xl font-bold text-primary">{formatCurrency(stats.total_revenue)}</p>
+              </div>
+              <div className="bg-[#121212] border border-border-dark rounded-xl p-4">
+                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                  <Icon name="tag" size={16} />
+                  Fees Earned
+                </div>
+                <p className="text-2xl font-bold text-yellow-400">{formatCurrency(stats.total_fees)}</p>
+              </div>
+            </div>
             {/* Filters */}
             <div className="flex flex-wrap gap-3 mb-4">
               <select

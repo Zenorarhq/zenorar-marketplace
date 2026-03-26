@@ -79,6 +79,16 @@ export async function GET(request: NextRequest) {
       return acc
     }, { available: 0, reserved: 0, sold: 0 })
 
+    // When filtering by sold status, return aggregate stats for the tab header
+    let soldStats: { total_sold: number; total_cost: number } | undefined
+    if (status === 'sold') {
+      const soldStatsResult = await query(`
+        SELECT COUNT(*)::int as total_sold, COALESCE(SUM(cost_price), 0)::float as total_cost
+        FROM esim_inventory WHERE status = 'sold'
+      `)
+      soldStats = soldStatsResult.rows[0]
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -89,7 +99,8 @@ export async function GET(request: NextRequest) {
           total: parseInt(countResult.rows[0]?.count || '0'),
           totalPages: Math.ceil(parseInt(countResult.rows[0]?.count || '0') / limit)
         },
-        summary
+        summary,
+        ...(soldStats ? { stats: soldStats } : {}),
       }
     })
   } catch (error: any) {
