@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
@@ -8,7 +8,7 @@ import { Product } from '@/lib/types'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { getAccessToken } from '@/lib/api/client'
+import { useWishlist } from '@/hooks/use-wishlist'
 
 interface ProductPurchasePanelProps {
   product: Product
@@ -18,52 +18,11 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
   const { addItem, showAddedToCartPopup, buyNow } = useCart()
   const { formatPrice } = usePreferences()
   const { isAuthenticated } = useAuth()
+  const { isInWishlist, toggleItem, isLoading: wishlistLoading } = useWishlist()
+  const wishlisted = isInWishlist(product.id)
   const [selectedLicense, setSelectedLicense] = useState<'standard' | 'extended' | 'pro'>('standard')
   const [isAdding, setIsAdding] = useState(false)
-  const [showAddedMessage, setShowAddedMessage] = useState(false)
-  const [wishlisted, setWishlisted] = useState(false)
-  const [wishlistLoading, setWishlistLoading] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
-
-  // Check initial wishlist state
-  useEffect(() => {
-    if (!isAuthenticated) return
-    const token = getAccessToken()
-    fetch('/api/wishlist', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          setWishlisted(data.data?.some((w: any) => w.product_id === product.id) ?? false)
-        }
-      })
-      .catch(() => {})
-  }, [isAuthenticated, product.id])
-
-  async function handleWishlist() {
-    if (!isAuthenticated) return
-    setWishlistLoading(true)
-    const token = getAccessToken()
-    try {
-      if (wishlisted) {
-        await fetch(`/api/wishlist/${product.id}`, {
-          method: 'DELETE',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-        setWishlisted(false)
-      } else {
-        await fetch('/api/wishlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ productId: product.id }),
-        })
-        setWishlisted(true)
-      }
-    } catch {
-      // silent fail
-    } finally {
-      setWishlistLoading(false)
-    }
-  }
 
   async function handleShare() {
     const url = window.location.href
@@ -150,7 +109,7 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
           className="w-full bg-primary text-black font-bold py-4 rounded-xl mb-4 hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <Icon name="shopping-cart" size={20} />
-          {showAddedMessage ? 'Added to Cart!' : isAdding ? 'Adding...' : 'Add to Cart'}
+          {isAdding ? 'Adding...' : 'Add to Cart'}
         </button>
 
         {/* Buy Now Button */}
@@ -167,7 +126,7 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
         <div className="flex gap-2 mt-3 mb-8">
           <button
             type="button"
-            onClick={handleWishlist}
+            onClick={() => toggleItem(product.id)}
             disabled={wishlistLoading || !isAuthenticated}
             title={isAuthenticated ? (wishlisted ? 'Remove from wishlist' : 'Add to wishlist') : 'Log in to save'}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all disabled:opacity-50 ${
