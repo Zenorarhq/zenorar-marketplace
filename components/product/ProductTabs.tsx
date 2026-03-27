@@ -319,7 +319,7 @@ export default function ProductTabs({ product }: ProductTabsProps) {
             <div>
               <h2 className="text-xl font-bold text-white mb-6">Documentation</h2>
               <div
-                className="prose prose-invert prose-sm max-w-none prose-headings:text-white prose-p:text-slate-400 prose-code:text-primary prose-code:bg-surface-dark prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-surface-dark prose-pre:border prose-pre:border-border-dark prose-li:text-slate-400 prose-strong:text-white prose-a:text-primary"
+                className="prose prose-invert prose-sm max-w-none prose-headings:text-white prose-h1:text-lg prose-h2:text-base prose-h3:text-sm prose-p:text-slate-400 prose-code:text-primary prose-code:bg-surface-dark prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-surface-dark prose-pre:border prose-pre:border-border-dark prose-li:text-slate-400 prose-strong:text-white prose-a:text-primary"
                 dangerouslySetInnerHTML={{ __html: parseMarkdown(product.docsContent) }}
               />
             </div>
