@@ -153,35 +153,29 @@ export default function FilterSidebar({ onFilterChange, categories = [], availab
         />
       </div>
 
-      {/* Rating Filter - Clickable Stars */}
+      {/* Rating Filter - Single interactive star row */}
       <fieldset>
-        <legend className="text-white font-bold text-sm mb-4">Rating</legend>
-        <div className="space-y-2">
-          {[5, 4, 3, 2, 1].map((rating) => (
+        <legend className="text-white font-bold text-sm mb-3">Rating</legend>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((star) => (
             <button
-              key={rating}
+              key={star}
               type="button"
-              onClick={() => handleRatingClick(rating)}
-              className={`flex items-center gap-2 text-sm w-full py-1.5 px-2 rounded-lg transition-colors ${
-                filters.minRating === rating
-                  ? 'bg-primary/10 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
+              onClick={() => handleRatingClick(star)}
+              className="p-0.5 transition-transform hover:scale-110"
+              aria-label={`${star} star${star > 1 ? 's' : ''} & up`}
             >
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Icon
-                    key={star}
-                    name="star"
-                    size={16}
-                    className={star <= rating ? 'text-yellow-500 fill-yellow-500' : 'text-slate-600'}
-                  />
-                ))}
-              </div>
-              {rating < 5 && <span className="text-[11px] text-slate-500">& up</span>}
+              <Icon
+                name="star"
+                size={22}
+                className={star <= filters.minRating ? 'text-yellow-500 fill-yellow-500' : 'text-slate-600 hover:text-yellow-400'}
+              />
             </button>
           ))}
         </div>
+        <p className="text-xs text-slate-500 mt-2">
+          {filters.minRating > 0 ? `${filters.minRating}★ & up` : 'Any rating'}
+        </p>
       </fieldset>
 
       {/* Tags Filter */}
@@ -387,31 +381,27 @@ export default function FilterSidebar({ onFilterChange, categories = [], availab
 
               {/* Rating sheet */}
               {activeSheet === 'rating' && (
-                <div className="space-y-2">
-                  {[5, 4, 3, 2, 1].map((rating) => (
-                    <button
-                      key={rating}
-                      type="button"
-                      onClick={() => handleRatingClick(rating)}
-                      className={`flex items-center gap-2 text-sm w-full py-2 px-3 rounded-lg transition-colors ${
-                        filters.minRating === rating
-                          ? 'bg-primary/10 text-white'
-                          : 'text-slate-400 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Icon
-                            key={star}
-                            name="star"
-                            size={16}
-                            className={star <= rating ? 'text-yellow-500 fill-yellow-500' : 'text-slate-600'}
-                          />
-                        ))}
-                      </div>
-                      {rating < 5 && <span className="text-[11px] text-slate-500">& up</span>}
-                    </button>
-                  ))}
+                <div>
+                  <div className="flex gap-2 justify-center py-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => handleRatingClick(star)}
+                        className="p-1 transition-transform hover:scale-110"
+                        aria-label={`${star} star${star > 1 ? 's' : ''} & up`}
+                      >
+                        <Icon
+                          name="star"
+                          size={28}
+                          className={star <= filters.minRating ? 'text-yellow-500 fill-yellow-500' : 'text-slate-600 hover:text-yellow-400'}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 text-center mt-1">
+                    {filters.minRating > 0 ? `${filters.minRating}★ & up` : 'Any rating'}
+                  </p>
                 </div>
               )}
 
