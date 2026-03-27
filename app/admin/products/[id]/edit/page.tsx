@@ -71,6 +71,8 @@ export default function EditProductPage() {
     tags: '',
     demoUrl: '',
     demoInfo: '',
+    languagePlatform: '',
+    docsContent: '',
     features: [] as { icon: string; title: string; description: string }[],
     specs: [] as { label: string; value: string }[],
     contributorId: '',
@@ -132,6 +134,8 @@ export default function EditProductPage() {
         tags: (p as any).tags?.join(', ') || '',
         demoUrl: (p as any).demoUrl || '',
         demoInfo: (p as any).demoInfo || '',
+        languagePlatform: (p as any).languagePlatform || '',
+        docsContent: (p as any).docsContent || '',
         features: (p as any).features || [],
         specs: (p as any).specs || [],
         contributorId: existingContributorId,
@@ -241,6 +245,8 @@ export default function EditProductPage() {
         tags: formData.tags ? formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
         demoUrl: formData.demoUrl.trim() || null,
         demoInfo: formData.demoInfo.trim() || null,
+        languagePlatform: formData.languagePlatform.trim() || null,
+        docsContent: formData.docsContent.trim() || null,
         features: formData.features.length > 0 ? formData.features : null,
         specs: formData.specs.length > 0 ? formData.specs : null,
         contributorId: formData.contributorId || null,
@@ -722,6 +728,20 @@ export default function EditProductPage() {
                 <textarea name="demoInfo" value={formData.demoInfo} onChange={handleChange} rows={3}
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Description shown above the demo button..." />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Language / Platform</label>
+                <input type="text" name="languagePlatform" value={formData.languagePlatform} onChange={handleChange}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="e.g. Python 3.10+, Node.js 18+, Bash" />
+                <p className="text-xs text-slate-500 mt-1">Shown as a badge on the product page and in Technical Specs</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Documentation</label>
+                <textarea name="docsContent" value={formData.docsContent} onChange={handleChange} rows={12}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                  placeholder={'# Getting Started\n\nInstall the dependencies:\n\n```\nnpm install\n```\n\n## Usage\n\n- Step one\n- Step two'} />
+                <p className="text-xs text-slate-500 mt-1">Markdown supported. When filled, a Documentation tab appears on the product page.</p>
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">

@@ -1,3 +1,24 @@
+# Library Purchase Flow Fixes
+
+## Checklist
+
+- [x] **Fix 1 (Critical):** Stripe confirm route silently discards fulfillment failures
+  - File: `app/api/payments/stripe/confirm/route.ts`
+  - Root cause: fulfillment errors are caught + console.warn'd, always returns `{ success: true }` even if gift card/digital delivery failed
+  - Fix: detect failed items after fulfillment → send "delivery failed" notification + include `fulfillmentWarning` in response
+
+- [x] **Fix 2 (Low):** Gift card wallet purchase doesn't invalidate library cache before redirect
+  - File: `app/(shop)/gift-cards/page.tsx`
+  - Root cause: `router.push('/profile/library...')` fires before React Query cache is invalidated
+  - Fix: call `queryClient.invalidateQueries({ queryKey: ['user-library'] })` before the push
+
+- [x] **Fix 3 (Medium):** Scripts/digital products with failed Stripe fulfillment show no pending/failed state in library
+  - File: `app/api/library/route.ts`
+  - Root cause: library only queries `licenses` table; if no license created (fulfillment failed), product never appears
+  - Fix: add query for digital product orders (script/tool/api) with no license yet → show as pending/failed items
+
+---
+
 # Gift Card Provider Deactivation — Task Plan
 
 ## Goal

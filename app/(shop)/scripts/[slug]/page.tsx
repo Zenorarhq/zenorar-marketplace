@@ -22,7 +22,8 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
     const productResult = await executeQuery(`
       SELECT
         p.id, p.name, p.slug, p.description, p.price, p."extendedPrice", p."proPrice", p."isFeatured" as is_featured, p.video_url,
-        p."demoUrl", p."demoInfo", p.features, p.specs,
+        p."demoUrl", p."demoInfo", p.features, p.specs, p.tags,
+        p.language_platform, p.docs_content,
         p."categoryId" as category_id, c.name as category_name,
         COALESCE(AVG(r.rating), 0) as average_rating,
         COUNT(DISTINCT r.id) as review_count,
@@ -101,7 +102,9 @@ async function getProductBySlug(slug: string): Promise<Product | null> {
       categoryId: row.category_id || null,
       icon: 'box',
       iconColor: 'primary',
-      tags: [],
+      tags: row.tags || [],
+      languagePlatform: row.language_platform || undefined,
+      docsContent: row.docs_content || undefined,
       image: primaryImage,
       images: imagesList,
       badge: row.is_featured ? 'HOT' : undefined,
@@ -274,7 +277,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               src={product.image || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23222' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' fill='%23555' font-size='16' text-anchor='middle' dy='.3em'%3ENo Image%3C/text%3E%3C/svg%3E"}
               alt={product.name}
               fill
-              className="object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
+              className="object-cover opacity-90 group-hover:scale-105 transition-transform duration-700"
             />
 
             {/* Overlay with actions */}

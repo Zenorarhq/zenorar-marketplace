@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 import { Product } from '@/lib/types'
 import { useCart } from '@/lib/cart-context'
 import { usePreferences } from '@/contexts/PreferencesContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { getAccessToken } from '@/lib/api/client'
 
 interface ProductPurchasePanelProps {
   product: Product
@@ -15,9 +17,64 @@ interface ProductPurchasePanelProps {
 export default function ProductPurchasePanel({ product }: ProductPurchasePanelProps) {
   const { addItem, showAddedToCartPopup, buyNow } = useCart()
   const { formatPrice } = usePreferences()
+  const { isAuthenticated } = useAuth()
   const [selectedLicense, setSelectedLicense] = useState<'standard' | 'extended' | 'pro'>('standard')
   const [isAdding, setIsAdding] = useState(false)
   const [showAddedMessage, setShowAddedMessage] = useState(false)
+  const [wishlisted, setWishlisted] = useState(false)
+  const [wishlistLoading, setWishlistLoading] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
+
+  // Check initial wishlist state
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const token = getAccessToken()
+    fetch('/api/wishlist', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setWishlisted(data.data?.some((w: any) => w.product_id === product.id) ?? false)
+        }
+      })
+      .catch(() => {})
+  }, [isAuthenticated, product.id])
+
+  async function handleWishlist() {
+    if (!isAuthenticated) return
+    setWishlistLoading(true)
+    const token = getAccessToken()
+    try {
+      if (wishlisted) {
+        await fetch(`/api/wishlist/${product.id}`, {
+          method: 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        setWishlisted(false)
+      } else {
+        await fetch('/api/wishlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ productId: product.id }),
+        })
+        setWishlisted(true)
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setWishlistLoading(false)
+    }
+  }
+
+  async function handleShare() {
+    const url = window.location.href
+    if (navigator.share) {
+      navigator.share({ title: product.name, url }).catch(() => {})
+    } else {
+      await navigator.clipboard.writeText(url)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    }
+  }
 
   const currentPrice = selectedLicense === 'pro'
     ? (product.proPrice || product.price)
@@ -100,11 +157,38 @@ export default function ProductPurchasePanel({ product }: ProductPurchasePanelPr
         <button
           type="button"
           onClick={handleBuyNow}
-          className="w-full bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl mb-8 hover:border-primary/50 transition-all flex items-center justify-center gap-2"
+          className="w-full bg-surface-dark border border-border-dark text-white font-bold py-3 rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2"
         >
           <Icon name="flash" size={18} />
           Buy Now
         </button>
+
+        {/* Wishlist + Share row */}
+        <div className="flex gap-2 mt-3 mb-8">
+          <button
+            type="button"
+            onClick={handleWishlist}
+            disabled={wishlistLoading || !isAuthenticated}
+            title={isAuthenticated ? (wishlisted ? 'Remove from wishlist' : 'Add to wishlist') : 'Log in to save'}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all disabled:opacity-50 ${
+              wishlisted
+                ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
+                : 'bg-surface-dark border-border-dark text-slate-400 hover:text-white hover:border-slate-500'
+            }`}
+          >
+            <Icon name="heart" size={16} className={wishlisted ? 'fill-red-400' : ''} />
+            {wishlisted ? 'Saved' : 'Wishlist'}
+          </button>
+          <button
+            type="button"
+            onClick={handleShare}
+            title="Share this product"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border-dark bg-surface-dark text-slate-400 hover:text-white hover:border-slate-500 text-sm font-medium transition-all"
+          >
+            <Icon name={shareCopied ? 'check' : 'share'} size={16} className={shareCopied ? 'text-green-400' : ''} />
+            {shareCopied ? 'Copied!' : 'Share'}
+          </button>
+        </div>
 
         {/* Seller Info */}
         {product.seller && (
