@@ -98,7 +98,7 @@ export default function MostPopular({ config }: { config?: { title?: string; col
         {/* Image slot — matches ProductCard compact layout */}
         <div className="p-4 pb-0">
           <div className="relative w-full aspect-[4/3] bg-surface-dark rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
-            <CardVisualMini brand={brand} type={type} className="scale-[1.6]" />
+            <CardVisualMini brand={brand} type={type} className="scale-[1.2] md:scale-[1.6]" />
           </div>
         </div>
         {/* Info */}
