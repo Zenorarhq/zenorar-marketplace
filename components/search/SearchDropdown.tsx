@@ -425,23 +425,31 @@ export default function SearchDropdown({
                   Trending Products
                 </h5>
                 <div className="space-y-1">
-                  {trendingProducts.map((product) => (
-                    <button
-                      key={product.id}
-                      type="button"
-                      onClick={() => {
-                        onClose()
-                        router.push(`/scripts/${product.slug}`)
-                      }}
-                      className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
-                    >
-                      <Icon name="fire" size={18} className="text-orange-500" />
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate">{product.name}</div>
-                        <div className="text-xs text-slate-500">{formatPrice(Number(product.price))}</div>
-                      </div>
-                    </button>
-                  ))}
+                  {trendingProducts.map((product) => {
+                    const routes: Record<string, string> = {
+                      'gift-card': `/gift-cards/${product.slug}`,
+                      'esim': '/esim',
+                      'virtual-number': '/virtual-numbers',
+                    }
+                    const href = routes[product.type || ''] || `/scripts/${product.slug}`
+                    return (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => {
+                          onClose()
+                          router.push(href)
+                        }}
+                        className="flex items-center gap-3 px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-primary rounded-md transition-colors group w-full text-left"
+                      >
+                        <Icon name="fire" size={18} className="text-orange-500" />
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate">{product.name}</div>
+                          {product.price > 0 && <div className="text-xs text-slate-500">{formatPrice(Number(product.price))}</div>}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )}

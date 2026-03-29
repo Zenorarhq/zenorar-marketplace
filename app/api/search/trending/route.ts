@@ -9,13 +9,50 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(20, Math.max(1, parseInt(searchParams.get('limit') || '10')))
 
     const result = await executeQuery(`
-      SELECT p.id, p.name, p.slug, p.price,
-        (SELECT pi.url FROM product_images pi WHERE pi."productId" = p.id ORDER BY pi."isPrimary" DESC, pi."order" ASC LIMIT 1) as image
-      FROM products p
-      LEFT JOIN order_items oi ON oi."productId" = p.id
-      WHERE p.status = 'ACTIVE' AND p.price > 0
-      GROUP BY p.id, p.name, p.slug, p.price, p."isFeatured", p."createdAt"
-      ORDER BY p."isFeatured" DESC, COALESCE(SUM(oi.quantity), 0) DESC, p."createdAt" DESC
+      SELECT id, name, slug, price, image, type FROM (
+        SELECT p.id, p.name, p.slug, p.price::float,
+          (SELECT pi.url FROM product_images pi WHERE pi."productId" = p.id ORDER BY pi."isPrimary" DESC, pi."order" ASC LIMIT 1) as image,
+          'script' as type,
+          p."isFeatured" as is_featured,
+          COALESCE((SELECT SUM(oi.quantity) FROM order_items oi WHERE oi."productId" = p.id), 0) as sales,
+          p."createdAt" as created_at
+        FROM products p
+        WHERE p.status = 'ACTIVE' AND p.price > 0
+
+        UNION ALL
+
+        SELECT g.id, g.brand as name, g.slug, 0 as price,
+          g.image_url as image,
+          'gift-card' as type,
+          g.is_featured as is_featured,
+          0 as sales,
+          g.created_at
+        FROM gift_cards g
+        WHERE g.is_active = true
+
+        UNION ALL
+
+        SELECT e.id, e.name, e.slug, e.retail_price::float as price,
+          NULL as image,
+          'esim' as type,
+          e.is_featured as is_featured,
+          0 as sales,
+          e.created_at
+        FROM esim_plans e
+        WHERE e.is_active = true
+
+        UNION ALL
+
+        SELECT v.id, v.name, v.iso_code as slug, v.retail_monthly::float as price,
+          NULL as image,
+          'virtual-number' as type,
+          false as is_featured,
+          0 as sales,
+          v.created_at
+        FROM virtual_number_countries v
+        WHERE v.is_active = true
+      ) trending
+      ORDER BY is_featured DESC, sales DESC, created_at DESC
       LIMIT $1
     `, [limit])
 
@@ -25,6 +62,7 @@ export async function GET(request: NextRequest) {
       slug: row.slug,
       price: Number(row.price),
       image: row.image || null,
+      type: row.type,
     }))
 
     return NextResponse.json({ success: true, data })

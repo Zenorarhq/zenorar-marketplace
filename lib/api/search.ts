@@ -97,6 +97,7 @@ export interface TrendingProduct {
   slug: string
   price: number
   image: string | null
+  type?: 'script' | 'gift-card' | 'esim' | 'virtual-number'
 }
 
 export interface PopularCategory {
