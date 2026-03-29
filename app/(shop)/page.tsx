@@ -14,6 +14,7 @@ const TextBlock = dynamic(() => import('@/components/sections/TextBlock'))
 const ImageBanner = dynamic(() => import('@/components/sections/ImageBanner'))
 const ProductShowcase = dynamic(() => import('@/components/sections/ProductShowcase'))
 const Testimonials = dynamic(() => import('@/components/sections/Testimonials'))
+const HowItWorks = dynamic(() => import('@/components/sections/HowItWorks'))
 
 // Map section IDs/types to their components
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,6 +30,7 @@ const SECTION_MAP: Record<string, ComponentType<any>> = {
   'image-banner': ImageBanner,
   'product-showcase': ProductShowcase,
   'testimonials': Testimonials,
+  'how-it-works': HowItWorks,
 }
 
 // Build inline styles from section config.style
@@ -55,6 +57,7 @@ function buildSectionStyle(style?: Record<string, any>): React.CSSProperties | u
 const DEFAULT_LAYOUT = [
   { id: 'hero-slider', visible: true, config: {} },
   { id: 'most-popular', visible: true, config: {} },
+  { id: 'how-it-works', visible: true, config: {} },
   { id: 'trust-banner', visible: true, config: {} },
   { id: 'promo-banner', visible: true, config: {} },
   { id: 'script-categories', visible: true, config: {} },
