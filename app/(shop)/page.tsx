@@ -8,7 +8,7 @@ const MostPopular = dynamic(() => import('@/components/sections/MostPopular'))
 const PromoBanner = dynamic(() => import('@/components/sections/PromoBanner'))
 const ScriptCategories = dynamic(() => import('@/components/sections/ScriptCategories'))
 const StaffPicks = dynamic(() => import('@/components/sections/StaffPicks'))
-const TrustBanner = dynamic(() => import('@/components/sections/TrustBanner'))
+// const TrustBanner = dynamic(() => import('@/components/sections/TrustBanner'))
 const Connectivity = dynamic(() => import('@/components/sections/Connectivity'))
 const TextBlock = dynamic(() => import('@/components/sections/TextBlock'))
 const ImageBanner = dynamic(() => import('@/components/sections/ImageBanner'))
@@ -21,7 +21,7 @@ const HowItWorks = dynamic(() => import('@/components/sections/HowItWorks'))
 const SECTION_MAP: Record<string, ComponentType<any>> = {
   'hero-slider': HeroSection,
   'most-popular': MostPopular,
-  'trust-banner': TrustBanner,
+  // 'trust-banner': TrustBanner,
   'promo-banner': PromoBanner,
   'script-categories': ScriptCategories,
   'staff-picks': StaffPicks,
@@ -57,8 +57,8 @@ function buildSectionStyle(style?: Record<string, any>): React.CSSProperties | u
 const DEFAULT_LAYOUT = [
   { id: 'hero-slider', visible: true, config: {} },
   { id: 'most-popular', visible: true, config: {} },
+  { id: 'trust-banner', visible: false, config: {} },
   { id: 'how-it-works', visible: true, config: {} },
-  { id: 'trust-banner', visible: true, config: {} },
   { id: 'promo-banner', visible: true, config: {} },
   { id: 'script-categories', visible: true, config: {} },
   { id: 'staff-picks', visible: true, config: {} },
