@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import Icon from '@/components/ui/Icon'
 
 const steps = [
@@ -11,12 +12,12 @@ const steps = [
     gradient: 'from-primary/20 to-emerald-500/10',
     iconColor: 'text-primary',
     items: [
-      { icon: 'code' as const, label: 'Scripts' },
-      { icon: 'gift' as const, label: 'Gift Cards' },
-      { icon: 'sim-card' as const, label: 'eSIM' },
-      { icon: 'credit-card' as const, label: 'Cards' },
-      { icon: 'phone' as const, label: 'Refills' },
-      { icon: 'globe' as const, label: 'Numbers' },
+      { icon: 'code' as const, label: 'Scripts', href: '/scripts' },
+      { icon: 'gift' as const, label: 'Gift Cards', href: '/gift-cards' },
+      { icon: 'sim-card' as const, label: 'eSIM', href: '/esim' },
+      { icon: 'credit-card' as const, label: 'Cards', href: '/cards' },
+      { icon: 'phone' as const, label: 'Refills', href: '/phone-refills' },
+      { icon: 'globe' as const, label: 'Numbers', href: '/virtual-numbers' },
     ],
   },
   {
@@ -84,15 +85,30 @@ export default function HowItWorks({ config }: { config?: { title?: string; styl
 
             {/* Mini icon grid */}
             <div className="grid grid-cols-3 gap-2">
-              {step.items.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex flex-col items-center gap-1.5 py-2 px-1 rounded-lg bg-white/[0.03] border border-white/[0.04]"
-                >
-                  <Icon name={item.icon} size={16} className="text-slate-500" />
-                  <span className="text-[10px] text-slate-500 font-medium">{item.label}</span>
-                </div>
-              ))}
+              {step.items.map((item) => {
+                const content = (
+                  <>
+                    <Icon name={item.icon} size={16} className="text-slate-500 group-hover/item:text-primary transition-colors" />
+                    <span className="text-[10px] text-slate-500 group-hover/item:text-white font-medium transition-colors">{item.label}</span>
+                  </>
+                )
+                return 'href' in item && item.href ? (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className="flex flex-col items-center gap-1.5 py-2 px-1 rounded-lg bg-white/[0.03] border border-white/[0.04] hover:border-primary/30 hover:bg-white/[0.06] transition-all cursor-pointer group/item"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div
+                    key={item.label}
+                    className="flex flex-col items-center gap-1.5 py-2 px-1 rounded-lg bg-white/[0.03] border border-white/[0.04]"
+                  >
+                    {content}
+                  </div>
+                )
+              })}
             </div>
           </div>
         ))}
