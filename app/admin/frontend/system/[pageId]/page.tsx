@@ -20,6 +20,7 @@ interface SectionDef {
 const HOME_SECTIONS: SectionDef[] = [
   { id: 'hero-slider', name: 'Hero Slider', icon: 'image', defaultConfig: {} },
   { id: 'most-popular', name: 'Most Popular', icon: 'chart', defaultConfig: { title: 'Most Popular' } },
+  { id: 'how-it-works', name: 'How It Works', icon: 'info', defaultConfig: { title: 'How It Works' } },
   { id: 'trust-banner', name: 'Trust Banner', icon: 'shield', defaultConfig: { rating: '4.8', reviewCount: 'Over 1,000 5 star reviews', trustStatement: 'Trusted since 2020', paymentStats: '10k+ payments processed every day' } },
   { id: 'promo-banner', name: 'Promo Banner', icon: 'tag', defaultConfig: {} },
   { id: 'script-categories', name: 'Script Categories', icon: 'grid-view', defaultConfig: { title: 'Scripts Categories' } },

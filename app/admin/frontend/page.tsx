@@ -15,7 +15,7 @@ import ConfirmModal, { ConfirmModalState } from '@/components/ui/ConfirmModal'
 type TabType = 'all' | 'published' | 'draft' | 'archived'
 
 const SYSTEM_PAGES = [
-  { id: 'home', name: 'Home Page', path: '/', sections: ['Hero Slider', 'Most Popular', 'Trust Banner', 'Promo Banner', 'Script Categories', 'Staff Picks', 'Connectivity'], icon: 'home' as const },
+  { id: 'home', name: 'Home Page', path: '/', sections: ['Hero Slider', 'Most Popular', 'How It Works', 'Trust Banner', 'Promo Banner', 'Script Categories', 'Staff Picks', 'Connectivity'], icon: 'home' as const },
 ]
 
 export default function PageBuilderPage() {
