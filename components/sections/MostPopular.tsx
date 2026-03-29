@@ -158,7 +158,7 @@ export default function MostPopular({ config }: { config?: { title?: string; col
           <Icon name="chart" size={24} />
           {config?.title || 'Most Popular'}
         </h2>
-        <Link href="/scripts/popular" className="text-sm text-slate-400 hover:text-primary transition-colors">
+        <Link href="/popular" className="text-sm text-slate-400 hover:text-primary transition-colors">
           See all
         </Link>
       </div>

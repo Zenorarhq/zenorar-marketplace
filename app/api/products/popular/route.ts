@@ -20,7 +20,7 @@ interface PopularItem {
   validity_days?: number
 }
 
-async function getTopScripts(): Promise<PopularItem[]> {
+async function getTopScripts(limit = 2): Promise<PopularItem[]> {
   try {
     const result = await executeQuery(`
       SELECT p.id, p.name, p.slug, p.description, p.price::float,
@@ -41,13 +41,13 @@ async function getTopScripts(): Promise<PopularItem[]> {
       WHERE p.status = 'ACTIVE' AND c.slug = 'scripts' AND p.price > 0
       GROUP BY p.id
       ORDER BY total_purchased DESC, average_rating DESC
-      LIMIT 2
+      LIMIT ${limit}
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/scripts/${r.slug}` }))
   } catch { return [] }
 }
 
-async function getTopEsims(): Promise<PopularItem[]> {
+async function getTopEsims(limit = 2): Promise<PopularItem[]> {
   try {
     const result = await executeQuery(`
       SELECT ep.id::text, ep.name, ep.slug, ep.description,
@@ -66,13 +66,13 @@ async function getTopEsims(): Promise<PopularItem[]> {
       WHERE ep.is_active = true
       GROUP BY ep.id
       ORDER BY total_purchased DESC, ep.retail_price ASC
-      LIMIT 2
+      LIMIT ${limit}
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/esim?plan=${r.id}` }))
   } catch { return [] }
 }
 
-async function getTopGiftCards(): Promise<PopularItem[]> {
+async function getTopGiftCards(limit = 2): Promise<PopularItem[]> {
   try {
     const result = await executeQuery(`
       SELECT gc.id::text, gc.brand as name, gc.slug, gc.description,
@@ -88,13 +88,13 @@ async function getTopGiftCards(): Promise<PopularItem[]> {
       WHERE gc.is_active = true
       GROUP BY gc.id
       ORDER BY total_purchased DESC
-      LIMIT 2
+      LIMIT ${limit}
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/gift-cards?card=${r.slug}` }))
   } catch { return [] }
 }
 
-async function getTopVirtualNumbers(): Promise<PopularItem[]> {
+async function getTopVirtualNumbers(limit = 2): Promise<PopularItem[]> {
   try {
     const result = await executeQuery(`
       SELECT vnc.id::text, vnc.name || ' Virtual Number' as name,
@@ -111,7 +111,7 @@ async function getTopVirtualNumbers(): Promise<PopularItem[]> {
       WHERE vnc.is_active = true
       GROUP BY vnc.id
       ORDER BY total_purchased DESC, vnc.retail_monthly ASC
-      LIMIT 2
+      LIMIT ${limit}
     `)
     return result.rows.map((r: any) => ({ ...r, href: `/virtual-numbers?country=${r.id}` }))
   } catch { return [] }
@@ -141,7 +141,7 @@ async function getTopCards(): Promise<PopularItem[]> {
   } catch { return [] }
 }
 
-async function getTopPhoneRefills(): Promise<PopularItem[]> {
+async function getTopPhoneRefills(limit = 2): Promise<PopularItem[]> {
   try {
     const result = await executeQuery(`
       SELECT
@@ -162,7 +162,7 @@ async function getTopPhoneRefills(): Promise<PopularItem[]> {
         AND LOWER(metadata->>'operatorName') NOT LIKE '%glo%'
       GROUP BY metadata->>'offerId', metadata->>'operatorName'
       ORDER BY total_purchased DESC
-      LIMIT 2
+      LIMIT ${limit}
     `)
     return result.rows.map((r: any) => ({
       ...r,
@@ -171,15 +171,17 @@ async function getTopPhoneRefills(): Promise<PopularItem[]> {
   } catch { return [] }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const perCategory = Math.min(parseInt(searchParams.get('limit') || '2') || 2, 20)
   try {
     const [scripts, esims, giftCards, virtualNumbers, cards, phoneRefills] = await Promise.all([
-      getTopScripts(),
-      getTopEsims(),
-      getTopGiftCards(),
-      getTopVirtualNumbers(),
+      getTopScripts(perCategory),
+      getTopEsims(perCategory),
+      getTopGiftCards(perCategory),
+      getTopVirtualNumbers(perCategory),
       getTopCards(),
-      getTopPhoneRefills(),
+      getTopPhoneRefills(perCategory),
     ])
 
     const data = [...scripts, ...giftCards, ...esims, ...virtualNumbers, ...cards, ...phoneRefills]
