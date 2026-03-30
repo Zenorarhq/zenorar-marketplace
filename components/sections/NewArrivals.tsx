@@ -30,7 +30,7 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
       .then(res => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
-          setProducts(data.data)
+          setProducts(data.data.slice(0, 12))
         }
       })
       .catch(() => setError(true))
@@ -47,7 +47,7 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
           {config?.title || 'New Arrivals'}
         </h2>
         <Link
-          href="/popular"
+          href="/new-arrivals"
           className="text-sm text-slate-400 hover:text-primary transition-colors"
         >
           See all
