@@ -427,7 +427,7 @@ export default function SearchDropdown({
                 <div className="space-y-1">
                   {trendingProducts.map((product) => {
                     const routes: Record<string, string> = {
-                      'gift-card': `/gift-cards/${product.slug}`,
+                      'gift-card': `/gift-cards?search=${encodeURIComponent(product.name)}`,
                       'esim': '/esim',
                       'virtual-number': '/virtual-numbers',
                     }
