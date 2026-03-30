@@ -27,7 +27,8 @@ interface NewArrivalProduct {
   validity_days?: number
 }
 
-const SCROLL_GRID = 'grid grid-rows-1 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 md:grid-cols-4 md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible'
+const ROW1_GRID = 'grid grid-rows-1 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 md:grid-cols-6 md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible'
+const ROW2_GRID = 'grid grid-rows-1 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 md:grid-cols-4 md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible'
 
 export default function NewArrivals({ config }: { config?: { title?: string; columns?: string; style?: Record<string, any> } } = {}) {
   const [products, setProducts] = useState<NewArrivalProduct[]>([])
@@ -163,10 +164,10 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
 
       {loading && (
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="bg-[#1a1a1a] rounded-xl h-44 animate-pulse" />)}
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="bg-[#1a1a1a] rounded-xl h-44 animate-pulse" />)}
           </div>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => <div key={i} className="bg-[#1a1a1a] rounded-xl h-24 animate-pulse" />)}
           </div>
         </div>
@@ -178,8 +179,9 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
 
       {!loading && !error && (
         <div className="space-y-4">
+          {/* Row 1 — Scripts + Gift Cards — 6 columns */}
           {imageItems.length > 0 && (
-            <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
+            <div className={ROW1_GRID} style={{ scrollbarWidth: 'none' }}>
               {imageItems.map((p: any) => {
                 if (p.category_name === 'Gift Cards') {
                   const imgUrl = getBitrefillImageUrl(p.name)
@@ -190,19 +192,15 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
             </div>
           )}
 
-          {logoItems.length > 0 && (
-            <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
+          {/* Row 2 — Cards + Phone Refills + eSIM + Virtual Numbers */}
+          {(logoItems.length > 0 || countryItems.length > 0) && (
+            <div className={ROW2_GRID} style={{ scrollbarWidth: 'none' }}>
               {logoItems.map((p: any) => {
                 if (p.category_name === 'Cards') return renderCardProductStyle(p)
                 const slug = getBitrefillSlug(p.name)
                 const imgUrl = slug ? `https://cdn.bitrefill.com/primg/i1w192h192/${slug}.webp` : null
                 return renderProductCard(p, imgUrl ? [{ url: imgUrl, isPrimary: true }] : null)
               })}
-            </div>
-          )}
-
-          {countryItems.length > 0 && (
-            <div className={SCROLL_GRID} style={{ scrollbarWidth: 'none' }}>
               {countryItems.map(renderCountryCard)}
             </div>
           )}
