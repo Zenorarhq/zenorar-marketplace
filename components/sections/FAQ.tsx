@@ -5,28 +5,28 @@ import Icon from '@/components/ui/Icon'
 
 const faqs = [
   {
-    question: 'What payment methods do you accept?',
-    answer: 'We accept Bitcoin (BTC), Ethereum (ETH), USDT, USDC, Solana (SOL), and many other cryptocurrencies. We also support Visa and Mastercard payments.',
+    question: 'How do I pay with crypto?',
+    answer: 'Choose your product, pick your preferred coin at checkout — Bitcoin, Ethereum, USDT, USDC, Solana, or 50+ other cryptocurrencies — and send the payment. Once confirmed on-chain, your product is delivered automatically. We also accept Visa and Mastercard if you prefer to pay by card.',
   },
   {
-    question: 'How fast is delivery?',
-    answer: 'Most products are delivered instantly after payment confirmation. Gift card codes, eSIM QR codes, and virtual card details arrive within seconds. Scripts are available for immediate download.',
+    question: 'How quickly will I receive my product?',
+    answer: 'Seconds, not minutes. Gift card codes, eSIM activation QR codes, virtual card details, and phone refills all arrive instantly after payment confirmation. Scripts and tools are available for immediate download. No waiting, no manual processing.',
   },
   {
-    question: 'Is it safe to buy here?',
-    answer: 'Yes. All transactions are encrypted and processed through secure payment gateways. We never store your payment details, and all crypto payments are verified on-chain.',
+    question: 'Is my payment secure?',
+    answer: 'Every transaction is encrypted end-to-end. Card payments are processed through Stripe — we never see or store your card details. Crypto payments are verified directly on-chain. Your funds go straight to the purchase with no intermediaries holding your data.',
   },
   {
-    question: 'Can I get a refund?',
-    answer: 'Digital products are non-refundable once delivered. However, if you receive a faulty code or experience a delivery issue, contact our support team and we will resolve it promptly.',
+    question: 'What happens if something goes wrong with my order?',
+    answer: 'If you receive a faulty code or your delivery does not arrive, our support team will fix it. Open a ticket from your account and we will investigate and resolve the issue. Digital products are non-refundable once successfully delivered, but we stand behind every order.',
   },
   {
-    question: 'Which countries do you support?',
-    answer: 'We serve customers worldwide. Gift cards and phone refills are available for 190+ countries. eSIM plans cover most regions globally, and virtual numbers are available in select countries.',
+    question: 'Which countries can I buy from?',
+    answer: 'Zenorar serves customers in 190+ countries. Gift cards and phone refills cover major brands worldwide. eSIM plans work across most regions — from the US and Europe to Asia and Africa. Virtual numbers and payment cards are available in select countries with more being added regularly.',
   },
   {
-    question: 'Do I need an account to purchase?',
-    answer: 'You can browse products without an account, but you will need to create one to complete a purchase. This lets us deliver your products securely and keep your order history.',
+    question: 'What products does Zenorar sell?',
+    answer: 'Everything digital. 8,000+ gift cards from brands like Amazon, Google Play, and Steam. eSIM data plans for 190+ countries. Instant and virtual Mastercard and Visa cards. Phone refills for major carriers. Plus scripts, tools, and automation software for developers.',
   },
 ]
 
