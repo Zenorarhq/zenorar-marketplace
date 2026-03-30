@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import ProductCard from '@/components/cards/ProductCard'
-import { CardVisualMini } from '@/components/cards/CardVisual'
 import Icon from '@/components/ui/Icon'
 import { getBitrefillImageUrl } from '@/lib/gift-cards/brand-images'
 import { usePreferences } from '@/contexts/PreferencesContext'
@@ -33,10 +31,9 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const { formatPrice } = usePreferences()
-  const router = useRouter()
 
   useEffect(() => {
-    fetch('/api/products/newest?limit=3')
+    fetch('/api/products/newest?limit=4')
       .then(res => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
@@ -49,8 +46,9 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
 
   if (!loading && !error && products.length === 0) return null
 
-  const imageItems   = products.filter(p => ['Scripts', 'Gift Cards'].includes(p.category_name ?? '')).slice(0, 4)
-  const cardItems    = products.filter(p => p.category_name === 'Cards').slice(0, 2)
+  const scriptItems  = products.filter(p => p.category_name === 'Scripts').slice(0, 4)
+  const giftItems    = products.filter(p => p.category_name === 'Gift Cards').slice(0, 2)
+  const row1Items    = [...scriptItems, ...giftItems]
   const countryItems = products.filter(p => ['eSIM', 'Virtual Numbers'].includes(p.category_name ?? '')).slice(0, 6)
 
   const renderProductCard = (p: any, imageOverride?: { url: string; isPrimary: boolean }[] | null) => {
@@ -81,43 +79,6 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
           href: p.href,
         }}
       />
-    )
-  }
-
-  const renderCardProductStyle = (p: any) => {
-    const brand: 'mastercard' | 'visa' = p.name.includes('Mastercard') ? 'mastercard' : 'visa'
-    const type: 'instant' | 'virtual' = p.name.includes('Instant') ? 'instant' : 'virtual'
-    return (
-      <div
-        key={p.id}
-        onClick={() => router.push(p.href ?? '/cards')}
-        className="bg-[#121212] rounded-xl border border-border-dark hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group overflow-hidden flex flex-col"
-      >
-        <div className="p-4 pb-0">
-          <div className="relative w-full aspect-[4/3] bg-surface-dark rounded-xl border border-border-dark overflow-hidden flex items-center justify-center">
-            <CardVisualMini brand={brand} type={type} className="scale-[1.2] md:scale-[1.6]" />
-          </div>
-        </div>
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="font-bold text-sm group-hover:text-primary transition-colors line-clamp-2">{p.name}</h3>
-          </div>
-          <div className="flex items-center gap-2 mb-2">
-            <Icon name="credit-card" size={12} className="text-primary" />
-            <span className="text-[10px] text-slate-500 uppercase font-bold">Cards</span>
-          </div>
-          <div className="flex items-center justify-between mt-auto">
-            <p className="text-white font-bold text-base">{formatPrice(Number(p.price))}</p>
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(p.href ?? '/cards') }}
-              className="w-8 h-8 rounded-lg bg-surface-dark border border-border-dark flex items-center justify-center hover:bg-primary hover:text-black transition-colors"
-              aria-label="View card"
-            >
-              <Icon name="arrow-right" size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
     )
   }
 
@@ -177,17 +138,16 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
 
       {!loading && !error && (
         <div className="space-y-4">
-          {/* Row 1 — Scripts + Gift Cards + Cards — 6 columns */}
-          {(imageItems.length > 0 || cardItems.length > 0) && (
+          {/* Row 1 — 4 Scripts + 2 Gift Cards — 6 columns */}
+          {row1Items.length > 0 && (
             <div className={ROW_GRID} style={{ scrollbarWidth: 'none' }}>
-              {imageItems.map((p: any) => {
+              {row1Items.map((p: any) => {
                 if (p.category_name === 'Gift Cards') {
                   const imgUrl = getBitrefillImageUrl(p.name)
                   return renderProductCard(p, imgUrl ? [{ url: imgUrl, isPrimary: true }] : p.images)
                 }
                 return renderProductCard(p)
               })}
-              {cardItems.map((p: any) => renderCardProductStyle(p))}
             </div>
           )}
 
