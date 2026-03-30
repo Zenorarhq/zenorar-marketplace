@@ -49,7 +49,9 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
   const scriptItems  = products.filter(p => p.category_name === 'Scripts').slice(0, 4)
   const giftItems    = products.filter(p => p.category_name === 'Gift Cards').slice(0, 2)
   const row1Items    = [...scriptItems, ...giftItems]
-  const countryItems = products.filter(p => ['eSIM', 'Virtual Numbers'].includes(p.category_name ?? '')).slice(0, 6)
+  const esimItems    = products.filter(p => p.category_name === 'eSIM').slice(0, 3)
+  const vnItems      = products.filter(p => p.category_name === 'Virtual Numbers').slice(0, 3)
+  const countryItems = [...esimItems, ...vnItems]
 
   const renderProductCard = (p: any, imageOverride?: { url: string; isPrimary: boolean }[] | null) => {
     const createdAt = p.createdAt || p.created_at
