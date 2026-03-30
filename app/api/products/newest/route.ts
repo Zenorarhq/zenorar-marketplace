@@ -103,23 +103,10 @@ async function getNewestVirtualNumbers(limit = 2): Promise<NewestItem[]> {
 
 async function getNewestCards(): Promise<NewestItem[]> {
   try {
-    const result = await executeQuery(`
-      (SELECT md5('instantmastercard') as id, 'Mastercard Instant Card' as name,
-        'instant-mastercard' as slug, null as description,
-        0::float as price, false as is_featured, null as created_at,
-        'Cards' as category_name, 0 as average_rating, 0 as review_count, null as images
-       FROM user_cards WHERE card_type = 'instant' AND card_brand = 'mastercard' LIMIT 1)
-      UNION ALL
-      (SELECT md5('virtualvisa') as id, 'Visa Virtual Card' as name,
-        'virtual-visa' as slug, null as description,
-        0::float as price, false as is_featured, null as created_at,
-        'Cards' as category_name, 0 as average_rating, 0 as review_count, null as images
-       FROM user_cards WHERE card_type = 'virtual' AND card_brand = 'visa' LIMIT 1)
-    `)
-    return result.rows.map((r: any) => {
-      const tab = r.slug.startsWith('instant') ? 'instant' : 'virtual'
-      return { ...r, href: `/cards?tab=${tab}` }
-    })
+    return [
+      { id: 'instant-mastercard', name: 'Mastercard Instant Card', slug: 'instant-mastercard', description: null, price: 0, is_featured: false, created_at: null, category_name: 'Cards', average_rating: 0, review_count: 0, images: null, href: '/cards?tab=instant' },
+      { id: 'virtual-visa', name: 'Visa Virtual Card', slug: 'virtual-visa', description: null, price: 0, is_featured: false, created_at: null, category_name: 'Cards', average_rating: 0, review_count: 0, images: null, href: '/cards?tab=virtual' },
+    ]
   } catch { return [] }
 }
 
