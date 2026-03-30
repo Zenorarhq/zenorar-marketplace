@@ -21,33 +21,33 @@ export async function GET(request: NextRequest) {
 
         UNION ALL
 
-        SELECT g.id, g.brand as name, g.slug, 0 as price,
+        SELECT g.id::text, g.brand as name, g.slug, 0::float as price,
           g.image_url as image,
           'gift-card' as type,
           g.is_featured as is_featured,
-          0 as sales,
+          0::bigint as sales,
           g.created_at
         FROM gift_cards g
         WHERE g.is_active = true
 
         UNION ALL
 
-        SELECT e.id, e.name, e.slug, e.retail_price::float as price,
+        SELECT e.id::text, e.name, e.slug, e.retail_price::float as price,
           NULL as image,
           'esim' as type,
           e.is_featured as is_featured,
-          0 as sales,
+          0::bigint as sales,
           e.created_at
         FROM esim_plans e
         WHERE e.is_active = true
 
         UNION ALL
 
-        SELECT v.id, v.name, v.iso_code as slug, v.retail_monthly::float as price,
+        SELECT v.id::text, v.name, v.iso_code as slug, v.retail_monthly::float as price,
           NULL as image,
           'virtual-number' as type,
           false as is_featured,
-          0 as sales,
+          0::bigint as sales,
           v.created_at
         FROM virtual_number_countries v
         WHERE v.is_active = true
