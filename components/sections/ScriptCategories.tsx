@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 
 import CategoryCard from '@/components/cards/CategoryCard'
+import Icon from '@/components/ui/Icon'
 import { apiFetch } from '@/lib/api/client'
 
 interface DBCategory {
@@ -35,7 +36,7 @@ export default function ScriptCategories({ config }: { config?: { title?: string
   return (
     <section className="mb-12">
       <div className="mb-6">
-        <h2 className={`${({ small: 'text-xl', large: 'text-3xl', xl: 'text-4xl' } as Record<string, string>)[config?.style?.headingSize] || 'text-2xl'} ${({ normal: 'font-normal', semibold: 'font-semibold', extrabold: 'font-extrabold' } as Record<string, string>)[config?.style?.headingWeight] || 'font-bold'} text-primary`}>{config?.title || 'Scripts Categories'}</h2>
+        <h2 className={`${({ small: 'text-xl', large: 'text-3xl', xl: 'text-4xl' } as Record<string, string>)[config?.style?.headingSize] || 'text-2xl'} ${({ normal: 'font-normal', semibold: 'font-semibold', extrabold: 'font-extrabold' } as Record<string, string>)[config?.style?.headingWeight] || 'font-bold'} text-primary flex items-center gap-2`}><Icon name="grid-view" size={24} />{config?.title || 'Scripts Categories'}</h2>
       </div>
 
       {loading && (

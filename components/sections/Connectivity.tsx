@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import ConnectivityCard from '@/components/cards/ConnectivityCard'
+import Icon from '@/components/ui/Icon'
 
 interface ConnectivityItem {
   id: string
@@ -33,7 +34,7 @@ export default function Connectivity({ config }: { config?: { title?: string; co
   return (
     <section className="mb-12">
       <div className="mb-6">
-        <h2 className={`${({ small: 'text-xl', large: 'text-3xl', xl: 'text-4xl' } as Record<string, string>)[config?.style?.headingSize] || 'text-2xl'} ${({ normal: 'font-normal', semibold: 'font-semibold', extrabold: 'font-extrabold' } as Record<string, string>)[config?.style?.headingWeight] || 'font-bold'} text-primary`}>{config?.title || 'Connectivity'}</h2>
+        <h2 className={`${({ small: 'text-xl', large: 'text-3xl', xl: 'text-4xl' } as Record<string, string>)[config?.style?.headingSize] || 'text-2xl'} ${({ normal: 'font-normal', semibold: 'font-semibold', extrabold: 'font-extrabold' } as Record<string, string>)[config?.style?.headingWeight] || 'font-bold'} text-primary flex items-center gap-2`}><Icon name="wifi" size={24} />{config?.title || 'Connectivity'}</h2>
       </div>
 
       {loading && (

@@ -57,7 +57,8 @@ const steps = [
 export default function HowItWorks({ config }: { config?: { title?: string; style?: Record<string, string> } } = {}) {
   return (
     <section className="mb-12">
-      <h2 className={`${({ small: 'text-xl', large: 'text-3xl', xl: 'text-4xl' } as Record<string, string>)[config?.style?.headingSize || ''] || 'text-2xl'} ${({ normal: 'font-normal', semibold: 'font-semibold', extrabold: 'font-extrabold' } as Record<string, string>)[config?.style?.headingWeight || ''] || 'font-bold'} text-primary mb-8`}>
+      <h2 className={`${({ small: 'text-xl', large: 'text-3xl', xl: 'text-4xl' } as Record<string, string>)[config?.style?.headingSize || ''] || 'text-2xl'} ${({ normal: 'font-normal', semibold: 'font-semibold', extrabold: 'font-extrabold' } as Record<string, string>)[config?.style?.headingWeight || ''] || 'font-bold'} text-primary flex items-center gap-2 mb-8`}>
+        <Icon name="zap" size={24} />
         {config?.title || 'How It Works'}
       </h2>
 
