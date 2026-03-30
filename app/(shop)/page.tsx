@@ -17,6 +17,7 @@ const Testimonials = dynamic(() => import('@/components/sections/Testimonials'))
 const HowItWorks = dynamic(() => import('@/components/sections/HowItWorks'))
 const StatsBanner = dynamic(() => import('@/components/sections/StatsBanner'))
 const FAQ = dynamic(() => import('@/components/sections/FAQ'))
+const NewArrivals = dynamic(() => import('@/components/sections/NewArrivals'))
 
 // Map section IDs/types to their components
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,6 +36,7 @@ const SECTION_MAP: Record<string, ComponentType<any>> = {
   'how-it-works': HowItWorks,
   'stats-banner': StatsBanner,
   'faq': FAQ,
+  'new-arrivals': NewArrivals,
 }
 
 // Build inline styles from section config.style
@@ -66,7 +68,7 @@ const DEFAULT_LAYOUT = [
   { id: 'stats-banner', visible: true, config: {} },
   { id: 'promo-banner', visible: true, config: {} },
   { id: 'script-categories', visible: true, config: {} },
-  { id: 'staff-picks', visible: true, config: {} },
+  { id: 'new-arrivals', visible: true, config: {} },
   { id: 'connectivity', visible: true, config: {} },
   { id: 'faq', visible: true, config: {} },
 ]

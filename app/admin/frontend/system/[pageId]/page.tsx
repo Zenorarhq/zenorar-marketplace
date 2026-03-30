@@ -25,6 +25,7 @@ const HOME_SECTIONS: SectionDef[] = [
   { id: 'promo-banner', name: 'Promo Banner', icon: 'tag', defaultConfig: {} },
   { id: 'script-categories', name: 'Script Categories', icon: 'grid-view', defaultConfig: { title: 'Scripts Categories' } },
   { id: 'staff-picks', name: 'Staff Picks', icon: 'crown', defaultConfig: { title: 'Staff Picks' } },
+  { id: 'new-arrivals', name: 'New Arrivals', icon: 'sparkles', defaultConfig: { title: 'New Arrivals' } },
   { id: 'connectivity', name: 'Connectivity', icon: 'wifi', defaultConfig: { title: 'Connectivity' } },
 ]
 
@@ -134,6 +135,7 @@ function getGridInfo(section: SectionLayout): { cols: number; spans?: number[] }
     case 'most-popular': return { cols: parseInt(section.config.columns || '4') }
     case 'script-categories': return { cols: parseInt(section.config.columns || '4') }
     case 'staff-picks': return { cols: parseInt(section.config.columns || '6') }
+    case 'new-arrivals': return { cols: parseInt(section.config.columns || '6') }
     case 'connectivity': return { cols: parseInt(section.config.columns || '4') }
     case 'product-showcase': return { cols: parseInt(section.config.columns || '4') }
     case 'testimonials': return { cols: 3 }
@@ -413,6 +415,15 @@ export default function SystemPageEditor() {
         return (
           <div className="space-y-3">
             <Field label="Section Title" value={section.config.title || ''} onChange={(v) => updateConfig(section.id, 'title', v)} placeholder="Staff Picks" />
+            <SelectField label="Columns" value={section.config.columns || '6'} onChange={(v) => updateConfig(section.id, 'columns', v)} options={[
+              { value: '4', label: '4 Columns' }, { value: '5', label: '5 Columns' }, { value: '6', label: '6 Columns' },
+            ]} />
+          </div>
+        )
+      case 'new-arrivals':
+        return (
+          <div className="space-y-3">
+            <Field label="Section Title" value={section.config.title || ''} onChange={(v) => updateConfig(section.id, 'title', v)} placeholder="New Arrivals" />
             <SelectField label="Columns" value={section.config.columns || '6'} onChange={(v) => updateConfig(section.id, 'columns', v)} options={[
               { value: '4', label: '4 Columns' }, { value: '5', label: '5 Columns' }, { value: '6', label: '6 Columns' },
             ]} />
