@@ -156,7 +156,7 @@ export default function Footer() {
             let cols = config?.columns && config.columns.length > 0 ? config.columns : [
               { title: 'Products', links: [{ label: 'Premium Scripts', url: '/scripts' }, { label: 'Global eSIMs', url: '/esim' }, { label: 'Virtual Numbers', url: '/virtual-numbers' }, { label: 'Gift Cards', url: '/gift-cards' }] },
               { title: 'Support', links: [{ label: 'Help Center', url: '/help' }, { label: 'Contact Us', url: '/contact' }, { label: 'Product Request', url: '/product-request' }, { label: 'My Account', url: '/profile' }, { label: 'Terms of Service', url: '/terms' }, { label: 'Privacy Policy', url: '/privacy' }] },
-              { title: 'Company', links: [{ label: 'About Us', url: '/about' }, { label: 'Blog', url: '/blog' }, { label: 'Careers', url: '/careers' }, { label: 'Become a Vendor', url: '/become-a-vendor' }] },
+              { title: 'Company', links: [{ label: 'Blog', url: '/blog' }, { label: 'Become a Vendor', url: '/become-a-vendor' }] },
             ]
             // Ensure "Become a Vendor" always appears — inject if missing from all columns
             const hasVendorLink = cols.some((c) => c.links.some((l) => l.url === '/become-a-vendor'))
