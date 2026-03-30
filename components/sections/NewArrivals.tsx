@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import ProductCard from '@/components/cards/ProductCard'
 import { CardVisualMini } from '@/components/cards/CardVisual'
 import Icon from '@/components/ui/Icon'
-import { getBitrefillSlug } from '@/components/ui/ServiceLogo'
 import { getBitrefillImageUrl } from '@/lib/gift-cards/brand-images'
 import { usePreferences } from '@/contexts/PreferencesContext'
 
@@ -27,8 +26,7 @@ interface NewArrivalProduct {
   validity_days?: number
 }
 
-const ROW1_GRID = 'grid grid-rows-1 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 md:grid-cols-6 md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible'
-const ROW2_GRID = 'grid grid-rows-1 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 md:grid-cols-4 md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible'
+const ROW_GRID = 'grid grid-rows-1 grid-flow-col auto-cols-[calc(50vw-2rem)] overflow-x-auto gap-4 md:grid-cols-6 md:grid-rows-none md:grid-flow-row md:auto-cols-auto md:overflow-visible'
 
 export default function NewArrivals({ config }: { config?: { title?: string; columns?: string; style?: Record<string, any> } } = {}) {
   const [products, setProducts] = useState<NewArrivalProduct[]>([])
@@ -38,7 +36,7 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
   const router = useRouter()
 
   useEffect(() => {
-    fetch('/api/products/newest?limit=2')
+    fetch('/api/products/newest?limit=3')
       .then(res => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
@@ -51,9 +49,9 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
 
   if (!loading && !error && products.length === 0) return null
 
-  const imageItems   = products.filter(p => ['Scripts', 'Gift Cards'].includes(p.category_name ?? ''))
-  const logoItems    = products.filter(p => ['Cards', 'Phone Refills'].includes(p.category_name ?? ''))
-  const countryItems = products.filter(p => ['eSIM', 'Virtual Numbers'].includes(p.category_name ?? ''))
+  const imageItems   = products.filter(p => ['Scripts', 'Gift Cards'].includes(p.category_name ?? '')).slice(0, 4)
+  const cardItems    = products.filter(p => p.category_name === 'Cards').slice(0, 2)
+  const countryItems = products.filter(p => ['eSIM', 'Virtual Numbers'].includes(p.category_name ?? '')).slice(0, 6)
 
   const renderProductCard = (p: any, imageOverride?: { url: string; isPrimary: boolean }[] | null) => {
     const createdAt = p.createdAt || p.created_at
@@ -179,9 +177,9 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
 
       {!loading && !error && (
         <div className="space-y-4">
-          {/* Row 1 — Scripts + Gift Cards — 6 columns */}
-          {imageItems.length > 0 && (
-            <div className={ROW1_GRID} style={{ scrollbarWidth: 'none' }}>
+          {/* Row 1 — Scripts + Gift Cards + Cards — 6 columns */}
+          {(imageItems.length > 0 || cardItems.length > 0) && (
+            <div className={ROW_GRID} style={{ scrollbarWidth: 'none' }}>
               {imageItems.map((p: any) => {
                 if (p.category_name === 'Gift Cards') {
                   const imgUrl = getBitrefillImageUrl(p.name)
@@ -189,18 +187,13 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
                 }
                 return renderProductCard(p)
               })}
+              {cardItems.map((p: any) => renderCardProductStyle(p))}
             </div>
           )}
 
-          {/* Row 2 — Cards + Phone Refills + eSIM + Virtual Numbers */}
-          {(logoItems.length > 0 || countryItems.length > 0) && (
-            <div className={ROW2_GRID} style={{ scrollbarWidth: 'none' }}>
-              {logoItems.map((p: any) => {
-                if (p.category_name === 'Cards') return renderCardProductStyle(p)
-                const slug = getBitrefillSlug(p.name)
-                const imgUrl = slug ? `https://cdn.bitrefill.com/primg/i1w192h192/${slug}.webp` : null
-                return renderProductCard(p, imgUrl ? [{ url: imgUrl, isPrimary: true }] : null)
-              })}
+          {/* Row 2 — eSIM + Virtual Numbers — 6 columns */}
+          {countryItems.length > 0 && (
+            <div className={ROW_GRID} style={{ scrollbarWidth: 'none' }}>
               {countryItems.map(renderCountryCard)}
             </div>
           )}
