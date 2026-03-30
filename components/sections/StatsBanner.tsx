@@ -3,10 +3,10 @@
 import Icon from '@/components/ui/Icon'
 
 const stats = [
-  { icon: 'gift' as const, value: '8,000+', label: 'Gift Cards', color: 'text-primary' },
-  { icon: 'globe' as const, value: '190+', label: 'Countries', color: 'text-cyan-400' },
+  { icon: 'store' as const, value: '10,000+', label: 'Digital Products', color: 'text-primary' },
+  { icon: 'globe' as const, value: '190+', label: 'Countries Served', color: 'text-cyan-400' },
   { icon: 'flash' as const, value: 'Instant', label: 'Delivery', color: 'text-amber-400' },
-  { icon: 'shield' as const, value: '100%', label: 'Secure', color: 'text-violet-400' },
+  { icon: 'bitcoin' as const, value: 'Crypto', label: 'Payments Accepted', color: 'text-orange-400' },
 ]
 
 export default function StatsBanner({ config }: { config?: { title?: string; style?: Record<string, string> } } = {}) {
