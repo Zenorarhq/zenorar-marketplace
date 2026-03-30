@@ -37,7 +37,7 @@ export default function NewArrivals({ config }: { config?: { title?: string; col
       .then(res => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data)) {
-          setProducts(data.data.slice(0, 12))
+          setProducts(data.data)
         }
       })
       .catch(() => setError(true))
