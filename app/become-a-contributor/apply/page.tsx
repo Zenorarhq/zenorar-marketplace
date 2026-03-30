@@ -28,9 +28,13 @@ export default function ContributorApplyPage() {
     fullName: '',
     email: '',
     country: '',
+    contactMethod: '',
     websiteUrl: '',
+    githubUrl: '',
     bio: '',
     scriptTypes: '',
+    sampleWorkUrl: '',
+    experienceLevel: '',
     plannedSubmissions: '',
     marketplaceExperience: '',
   })
@@ -64,9 +68,13 @@ export default function ContributorApplyPage() {
           fullName: form.fullName,
           email: form.email,
           country: form.country,
+          contactMethod: form.contactMethod || undefined,
           websiteUrl: form.websiteUrl || undefined,
+          githubUrl: form.githubUrl || undefined,
           bio: form.bio,
           scriptTypes: form.scriptTypes,
+          sampleWorkUrl: form.sampleWorkUrl || undefined,
+          experienceLevel: form.experienceLevel || undefined,
           plannedSubmissions: form.plannedSubmissions ? Number(form.plannedSubmissions) : undefined,
           marketplaceExperience: form.marketplaceExperience || undefined,
         }),
@@ -200,11 +208,26 @@ export default function ContributorApplyPage() {
                   placeholder="e.g. United States, Nigeria, UK" className={inputCls} />
               </div>
 
+              {/* Contact Method */}
+              <div>
+                <label className={labelCls}>Preferred Contact <span className="text-slate-500 font-normal">(optional)</span></label>
+                <input type="text" value={form.contactMethod} onChange={(e) => setForm({ ...form, contactMethod: e.target.value })}
+                  placeholder="e.g. Discord: user#1234, Telegram: @handle, WhatsApp: +1234567890" className={inputCls} />
+                <p className="text-slate-500 text-xs mt-1.5">How should we reach you for deal discussions?</p>
+              </div>
+
               {/* Website */}
               <div>
                 <label className={labelCls}>Website / Portfolio <span className="text-slate-500 font-normal">(optional)</span></label>
                 <input type="text" value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })}
                   placeholder="https://yoursite.com" className={inputCls} />
+              </div>
+
+              {/* GitHub */}
+              <div>
+                <label className={labelCls}>GitHub / GitLab <span className="text-slate-500 font-normal">(optional)</span></label>
+                <input type="text" value={form.githubUrl} onChange={(e) => setForm({ ...form, githubUrl: e.target.value })}
+                  placeholder="https://github.com/yourusername" className={inputCls} />
               </div>
 
               {/* Bio */}
@@ -222,6 +245,26 @@ export default function ContributorApplyPage() {
                   placeholder="e.g. PHP automation tools, Node.js bots, browser extensions, WordPress plugins..."
                   rows={3} className={`${inputCls} resize-none`} />
                 <p className="text-slate-500 text-xs mt-1.5">Common: {SCRIPT_TYPE_OPTIONS.join(', ')}</p>
+              </div>
+
+              {/* Sample Work */}
+              <div>
+                <label className={labelCls}>Sample Work / Demo Link <span className="text-slate-500 font-normal">(optional)</span></label>
+                <input type="text" value={form.sampleWorkUrl} onChange={(e) => setForm({ ...form, sampleWorkUrl: e.target.value })}
+                  placeholder="Link to a script, tool, or project you've built" className={inputCls} />
+              </div>
+
+              {/* Experience Level */}
+              <div>
+                <label className={labelCls}>Experience Level <span className="text-slate-500 font-normal">(optional)</span></label>
+                <select value={form.experienceLevel} onChange={(e) => setForm({ ...form, experienceLevel: e.target.value })}
+                  className={inputCls}>
+                  <option value="">Select your experience level</option>
+                  <option value="1-2 years">1–2 years</option>
+                  <option value="3-5 years">3–5 years</option>
+                  <option value="5-10 years">5–10 years</option>
+                  <option value="10+ years">10+ years</option>
+                </select>
               </div>
 
               {/* Planned Submissions */}
