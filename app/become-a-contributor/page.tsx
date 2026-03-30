@@ -160,7 +160,7 @@ export default function BecomeAContributorPage() {
                 <thead>
                   <tr className="border-b border-border-dark text-slate-400">
                     <th className="text-left py-3 px-4">Sale Price</th>
-                    <th className="text-right py-3 px-4">Platform Fee (10%)</th>
+                    <th className="text-right py-3 px-4">Platform Fee (7.5%)</th>
                     <th className="text-right py-3 px-4">Net Amount</th>
                     <th className="text-right py-3 px-4">You Earn (50%)</th>
                     <th className="text-right py-3 px-4">You Earn (70%)</th>
@@ -168,10 +168,10 @@ export default function BecomeAContributorPage() {
                 </thead>
                 <tbody className="divide-y divide-border-dark">
                   {[
-                    { price: '$25', fee: '$2.50', net: '$22.50', low: '$11.25', high: '$15.75' },
-                    { price: '$50', fee: '$5.00', net: '$45.00', low: '$22.50', high: '$31.50' },
-                    { price: '$100', fee: '$10.00', net: '$90.00', low: '$45.00', high: '$63.00' },
-                    { price: '$250', fee: '$25.00', net: '$225.00', low: '$112.50', high: '$157.50' },
+                    { price: '$25', fee: '$1.88', net: '$23.12', low: '$11.56', high: '$16.19' },
+                    { price: '$50', fee: '$3.75', net: '$46.25', low: '$23.13', high: '$32.38' },
+                    { price: '$100', fee: '$7.50', net: '$92.50', low: '$46.25', high: '$64.75' },
+                    { price: '$250', fee: '$18.75', net: '$231.25', low: '$115.63', high: '$161.88' },
                   ].map((row) => (
                     <tr key={row.price} className="text-slate-300">
                       <td className="py-3 px-4 font-medium">{row.price}</td>
